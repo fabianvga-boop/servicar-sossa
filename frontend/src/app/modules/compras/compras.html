@@ -1,0 +1,224 @@
+<div class="fila-entre envuelve mb-2">
+  <div>
+    <h1>Compras</h1>
+    <p class="texto-tenue texto-sm mb-0">
+      Ingreso de repuestos al inventario — registrar una compra incrementa el stock
+    </p>
+  </div>
+  <button
+    type="button"
+    class="btn btn-primario"
+    appAtajo="n"
+    title="Atajo: tecla N"
+    (click)="abrirNuevo()"
+  >
+    + Nueva compra
+  </button>
+</div>
+
+<div class="tarjeta">
+  <div class="tarjeta-encabezado">
+    <select
+      style="max-width: 260px"
+      [value]="proveedorFiltro()"
+      (change)="onFiltrarProveedor($any($event.target).value)"
+    >
+      <option value="">Todos los proveedores</option>
+      @for (proveedor of proveedores(); track proveedor.proveedorId) {
+        <option [value]="proveedor.proveedorId">{{ proveedor.nombre }}</option>
+      }
+    </select>
+    <span class="texto-tenue texto-sm">{{ compras().length }} compra(s)</span>
+  </div>
+
+  @if (cargando() || compras().length === 0) {
+    <app-estado-tabla
+      [cargando]="cargando()"
+      [hayFiltro]="proveedorFiltro().length > 0"
+      titulo="Sin compras registradas"
+      descripcion="Registre una compra para ingresar repuestos al inventario."
+    />
+  } @else {
+    <div class="tabla-contenedor">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Fecha</th>
+            <th>Proveedor</th>
+            <th>Registrada por</th>
+            <th class="num">Líneas</th>
+            <th class="num">Total</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (compra of compras(); track compra.compraId) {
+            <tr>
+              <td class="codigo">{{ compra.compraId }}</td>
+              <td class="texto-sm">{{ compra.fecha | date: 'dd/MM/yyyy HH:mm' }}</td>
+              <td class="texto-fuerte">{{ compra.nombreProveedor }}</td>
+              <td class="texto-sm">{{ compra.nombreUsuario }}</td>
+              <td class="num">{{ compra.cantidadLineas }}</td>
+              <td class="num texto-fuerte">{{ compra.total | bs }}</td>
+              <td>
+                <div class="acciones">
+                  <button type="button" class="btn-enlace" (click)="verDetalle(compra)">
+                    Ver detalle
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+@if (formularioAbierto()) {
+  <app-modal titulo="Nueva compra" [ancho]="760" (cerrar)="formularioAbierto.set(false)">
+    <form [formGroup]="formulario" id="form-compra" (ngSubmit)="guardar()">
+      <div class="campo">
+        <label for="proveedorId">Proveedor <span class="obligatorio">*</span></label>
+        <app-selector-busqueda
+          idCampo="proveedorId"
+          formControlName="proveedorId"
+          marcador="Escriba el nombre del proveedor…"
+          [opciones]="opcionesProveedor()"
+        />
+      </div>
+
+      <div class="fila-entre mb-1 mt-2">
+        <h3>Detalle de la compra</h3>
+        <button type="button" class="btn btn-secundario btn-sm" (click)="agregarLinea()">
+          + Agregar línea
+        </button>
+      </div>
+
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th style="min-width: 220px">Repuesto</th>
+              <th style="width: 110px">Cantidad</th>
+              <th style="width: 140px">Precio unit.</th>
+              <th class="num" style="width: 120px">Subtotal</th>
+              <th style="width: 40px"></th>
+            </tr>
+          </thead>
+          <tbody formArrayName="detalles">
+            @for (linea of detalles.controls; track $index; let i = $index) {
+              <tr [formGroupName]="i">
+                <td>
+                  <app-selector-busqueda
+                    formControlName="repuestoId"
+                    marcador="Escriba el repuesto…"
+                    [opciones]="opcionesRepuesto()"
+                    (seleccion)="onRepuestoSeleccionado(i, $event)"
+                  />
+                </td>
+                <td>
+                  <input
+                    type="number"
+                    min="1"
+                    formControlName="cantidad"
+                    (input)="sincronizarTotales()"
+                  />
+                </td>
+                <td>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    formControlName="precioUnitario"
+                    (input)="sincronizarTotales()"
+                  />
+                </td>
+                <td class="num">
+                  {{ (lineas()[i]?.cantidad || 0) * (lineas()[i]?.precioUnitario || 0) | bs }}
+                </td>
+                <td>
+                  @if (detalles.length > 1) {
+                    <button
+                      type="button"
+                      class="btn-enlace texto-rojo"
+                      (click)="quitarLinea(i)"
+                      aria-label="Quitar línea"
+                    >
+                      ✕
+                    </button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="total-caja mt-2">
+        <span>Total de la compra</span>
+        <span class="total-monto">{{ totalCompra() | bs }}</span>
+      </div>
+
+      <p class="texto-tenue texto-sm mt-2 mb-0">
+        Al guardar, el stock de cada repuesto se incrementa automáticamente y su precio
+        unitario se actualiza al de esta compra. Las compras no se pueden editar después.
+      </p>
+    </form>
+
+    <div pie>
+      <button type="button" class="btn btn-secundario" (click)="formularioAbierto.set(false)">
+        Cancelar
+      </button>
+      <button type="submit" form="form-compra" class="btn btn-primario" [disabled]="guardando()">
+        {{ guardando() ? 'Registrando…' : 'Registrar compra' }}
+      </button>
+    </div>
+  </app-modal>
+}
+
+@if (detalle(); as compra) {
+  <app-modal titulo="Compra {{ compra.compraId }}" [ancho]="680" (cerrar)="detalle.set(null)">
+    <dl class="datos mb-2">
+      <dt>Proveedor</dt>
+      <dd>{{ compra.nombreProveedor }}</dd>
+      <dt>Fecha</dt>
+      <dd>{{ compra.fecha | date: 'dd/MM/yyyy HH:mm' }}</dd>
+      <dt>Registrada por</dt>
+      <dd>{{ compra.nombreUsuario }}</dd>
+    </dl>
+
+    <div class="tabla-contenedor">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>Repuesto</th>
+            <th class="num">Cantidad</th>
+            <th class="num">Precio unit.</th>
+            <th class="num">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (linea of compra.detalles; track linea.detalleId) {
+            <tr>
+              <td>{{ linea.nombreRepuesto }}</td>
+              <td class="num">{{ linea.cantidad }}</td>
+              <td class="num">{{ linea.precioUnitario | bs }}</td>
+              <td class="num">{{ linea.subtotal | bs }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="total-caja mt-2">
+      <span>Total</span>
+      <span class="total-monto">{{ compra.total | bs }}</span>
+    </div>
+
+    <div pie>
+      <button type="button" class="btn btn-secundario" (click)="detalle.set(null)">Cerrar</button>
+    </div>
+  </app-modal>
+}

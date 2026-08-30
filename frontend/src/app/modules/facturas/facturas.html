@@ -1,0 +1,158 @@
+<div class="fila-entre envuelve mb-2">
+  <div>
+    <h1>Proformas</h1>
+    <p class="texto-tenue texto-sm mb-0">Cobro de órdenes finalizadas</p>
+  </div>
+  <button
+    type="button"
+    class="btn btn-primario"
+    appAtajo="n"
+    title="Atajo: tecla N"
+    (click)="abrirNueva()"
+  >
+    + Emitir proforma
+  </button>
+</div>
+
+<div class="tarjeta">
+  <div class="tarjeta-encabezado">
+    <select
+      style="max-width: 220px"
+      [value]="estadoFiltro()"
+      (change)="onFiltrarEstado($any($event.target).value)"
+    >
+      <option value="">Todas</option>
+      <option value="0">Emitidas</option>
+      <option value="1">Anuladas</option>
+    </select>
+    <span class="texto-tenue texto-sm">{{ facturas().length }} proforma(s)</span>
+  </div>
+
+  @if (cargando() || facturas().length === 0) {
+    <app-estado-tabla
+      [cargando]="cargando()"
+      [hayFiltro]="estadoFiltro().length > 0"
+      titulo="Sin proformas emitidas"
+      descripcion="Emita la proforma de una orden finalizada o cerrada."
+    />
+  } @else {
+    <div class="tabla-contenedor">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Emisión</th>
+            <th>Orden</th>
+            <th>Cliente</th>
+            <th>NIT / Razón social</th>
+            <th class="num">Total</th>
+            <th class="num">Pagado</th>
+            <th class="num">Saldo</th>
+            <th>Estado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (factura of facturas(); track factura.facturaId) {
+            <tr>
+              <td class="codigo">{{ factura.facturaId }}</td>
+              <td class="texto-sm">{{ factura.fechaEmision | date: 'dd/MM/yyyy' }}</td>
+              <td>
+                <a [routerLink]="['/ordenes', factura.ordenId]" class="codigo">
+                  {{ factura.ordenId }}
+                </a>
+              </td>
+              <td>
+                <div>{{ factura.nombreCliente }}</div>
+                <div class="texto-tenue texto-sm">{{ factura.placaVehiculo }}</div>
+              </td>
+              <td class="texto-sm">{{ factura.nitRazonSocial || '—' }}</td>
+              <td class="num texto-fuerte">{{ factura.total | bs }}</td>
+              <td class="num">{{ factura.totalPagado | bs }}</td>
+              <td class="num">
+                @if (factura.estaSaldada) {
+                  <span class="insignia insignia-verde">Saldada</span>
+                } @else {
+                  <span class="texto-rojo">{{ factura.saldoPendiente | bs }}</span>
+                }
+              </td>
+              <td><app-insignia-estado familia="factura" [valor]="factura.estado" /></td>
+              <td>
+                <div class="acciones">
+                  <button
+                    type="button"
+                    class="btn-enlace"
+                    [disabled]="descargando() === factura.facturaId"
+                    title="Descargar el comprobante en PDF"
+                    (click)="descargarPdf(factura)"
+                  >
+                    {{ descargando() === factura.facturaId ? 'Generando…' : 'PDF' }}
+                  </button>
+                  @if (factura.estado === EstadoFactura.Emitida && factura.totalPagado === 0) {
+                    <button
+                      type="button"
+                      class="btn-enlace texto-rojo"
+                      (click)="porAnular.set(factura)"
+                    >
+                      Anular
+                    </button>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+@if (panelNueva()) {
+  <app-modal titulo="Emitir proforma" (cerrar)="panelNueva.set(false)">
+    <div class="campo">
+      <label for="ordenFactura">Orden de trabajo</label>
+      <app-selector-busqueda
+        idCampo="ordenFactura"
+        name="ordenFactura"
+        marcador="Escriba el código, placa o cliente…"
+        [opciones]="opcionesOrden()"
+        [(ngModel)]="nueva.ordenId"
+      />
+      <span class="texto-tenue texto-sm">
+        Solo se listan órdenes Finalizadas o Cerradas.
+      </span>
+    </div>
+
+    <div class="campo">
+      <label for="nitFactura">NIT / Razón social</label>
+      <input
+        id="nitFactura"
+        name="nitFactura"
+        [(ngModel)]="nueva.nitRazonSocial"
+        placeholder="Datos de facturación del cliente"
+      />
+    </div>
+
+    <div pie>
+      <button type="button" class="btn btn-secundario" (click)="panelNueva.set(false)">
+        Cancelar
+      </button>
+      <button type="button" class="btn btn-primario" [disabled]="procesando()" (click)="emitir()">
+        {{ procesando() ? 'Emitiendo…' : 'Emitir proforma' }}
+      </button>
+    </div>
+  </app-modal>
+}
+
+@if (porAnular(); as factura) {
+  <app-confirmacion
+    titulo="Anular proforma"
+    [mensaje]="'¿Anular la proforma ' + factura.facturaId + ' por ' + (factura.total | bs) + '?'"
+    advertencia="Una proforma anulada no se puede reactivar. Solo se puede anular si no tiene pagos registrados."
+    textoConfirmar="Anular proforma"
+    [peligroso]="true"
+    [procesando]="procesando()"
+    (confirmar)="anular()"
+    (cancelar)="porAnular.set(null)"
+  />
+}

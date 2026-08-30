@@ -1,0 +1,191 @@
+<div class="fila-entre envuelve mb-2">
+  <div>
+    <h1>Reportes</h1>
+    <p class="texto-tenue texto-sm mb-0">Consulta y exportación de información del taller</p>
+  </div>
+  <button type="button" class="btn btn-secundario" (click)="mostrarBitacora.set(!mostrarBitacora())">
+    {{ mostrarBitacora() ? 'Ocultar historial' : 'Ver historial de emisiones' }}
+  </button>
+</div>
+
+<div class="tarjeta mb-2">
+  <div class="tarjeta-cuerpo">
+    <div class="filtros">
+      <div class="campo mb-0">
+        <label for="tipoReporte">Tipo de reporte</label>
+        <select id="tipoReporte" name="tipoReporte" [(ngModel)]="filtros.tipo" (ngModelChange)="generar()">
+          @for (tipo of tipos; track tipo.valor) {
+            <option [value]="tipo.valor">{{ tipo.etiqueta }} — {{ tipo.ayuda }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="campo mb-0">
+        <label for="desde">Desde</label>
+        <input
+          id="desde"
+          type="date"
+          name="desde"
+          [(ngModel)]="filtros.desde"
+          [disabled]="!periodoAplica"
+        />
+      </div>
+
+      <div class="campo mb-0">
+        <label for="hasta">Hasta</label>
+        <input
+          id="hasta"
+          type="date"
+          name="hasta"
+          [(ngModel)]="filtros.hasta"
+          [disabled]="!periodoAplica"
+        />
+      </div>
+
+      <button type="button" class="btn btn-primario" [disabled]="generando()" (click)="generar()">
+        {{ generando() ? 'Generando…' : 'Generar' }}
+      </button>
+    </div>
+
+    @if (!periodoAplica) {
+      <p class="texto-tenue texto-sm mt-2 mb-0">
+        El reporte de inventario refleja el estado actual del stock: el rango de fechas no aplica,
+        porque el sistema no guarda histórico de movimientos.
+      </p>
+    }
+  </div>
+</div>
+
+@if (mostrarBitacora()) {
+  <div class="tarjeta mb-2">
+    <div class="tarjeta-encabezado">
+      <h2>Historial de reportes emitidos</h2>
+      <span class="texto-tenue texto-sm">{{ bitacora().length }} registro(s)</span>
+    </div>
+
+    @if (bitacora().length === 0) {
+      <div class="vacio">
+        <div class="vacio-titulo">Sin emisiones registradas</div>
+        <div class="texto-sm">Cada descarga de reporte queda registrada aquí.</div>
+      </div>
+    } @else {
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Tipo</th>
+              <th>Periodo</th>
+              <th>Formato</th>
+              <th>Emitido por</th>
+              <th>Fecha</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (registro of bitacora(); track registro.reporteId) {
+              <tr>
+                <td class="codigo">{{ registro.reporteId }}</td>
+                <td>{{ registro.tipoReporte }}</td>
+                <td class="texto-sm">
+                  {{ registro.fechaInicio | date: 'dd/MM/yyyy' }} —
+                  {{ registro.fechaFin | date: 'dd/MM/yyyy' }}
+                </td>
+                <td>
+                  <span class="insignia insignia-gris">{{ nombreFormato(registro.formato) }}</span>
+                </td>
+                <td class="texto-sm">{{ registro.nombreUsuario }}</td>
+                <td class="texto-sm">{{ registro.fechaGeneracion | date: 'dd/MM/yyyy HH:mm' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+}
+
+@if (generando()) {
+  <div class="tarjeta"><div class="cargando">Generando reporte…</div></div>
+} @else if (reporte(); as r) {
+  <div class="tarjeta">
+    <div class="tarjeta-encabezado">
+      <div>
+        <h2>{{ r.titulo }}</h2>
+        <p class="texto-tenue texto-sm mb-0">
+          Periodo {{ r.fechaInicio | date: 'dd/MM/yyyy' }} — {{ r.fechaFin | date: 'dd/MM/yyyy' }}
+          · {{ r.cantidadFilas }} fila(s)
+        </p>
+      </div>
+
+      <div class="fila">
+        <span class="texto-tenue texto-sm">Descargar:</span>
+        <button
+          type="button"
+          class="btn btn-secundario btn-sm"
+          [disabled]="exportando()"
+          (click)="exportar(FormatoReporte.Pdf)"
+        >
+          PDF
+        </button>
+        <button
+          type="button"
+          class="btn btn-secundario btn-sm"
+          [disabled]="exportando()"
+          (click)="exportar(FormatoReporte.Excel)"
+        >
+          Excel
+        </button>
+        <button
+          type="button"
+          class="btn btn-secundario btn-sm"
+          [disabled]="exportando()"
+          (click)="exportar(FormatoReporte.Csv)"
+        >
+          CSV
+        </button>
+      </div>
+    </div>
+
+    @if (r.filas.length === 0) {
+      <app-estado-tabla
+        titulo="Sin datos en el periodo"
+        descripcion="No hay registros para el rango de fechas seleccionado."
+      />
+    } @else {
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead>
+            <tr>
+              @for (columna of r.columnas; track columna) {
+                <th>{{ columna }}</th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (fila of r.filas; track $index) {
+              <tr>
+                @for (celda of fila; track $index) {
+                  <td>{{ celda }}</td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    @if (r.totales | keyvalue; as totales) {
+      @if (totales.length > 0) {
+        <div class="tarjeta-cuerpo resumen">
+          <h3 class="mb-1">Resumen</h3>
+          @for (total of totales; track total.key) {
+            <div class="linea-resumen">
+              <span class="texto-tenue">{{ total.key }}</span>
+              <span class="texto-fuerte">{{ total.value }}</span>
+            </div>
+          }
+        </div>
+      }
+    }
+  </div>
+}

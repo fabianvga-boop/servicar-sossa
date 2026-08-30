@@ -1,0 +1,328 @@
+<div class="fila-entre envuelve mb-2">
+  <div>
+    <h1>Vehículos</h1>
+    <p class="texto-tenue texto-sm mb-0">Vehículos registrados por cliente</p>
+  </div>
+  @if (auth.esAdministrador()) {
+    <button
+      type="button"
+      class="btn btn-primario"
+      appAtajo="n"
+      title="Atajo: tecla N"
+      (click)="abrirNuevo()"
+    >
+      + Nuevo vehículo
+    </button>
+  }
+</div>
+
+<div class="tarjeta">
+  <div class="tarjeta-encabezado">
+    <div class="fila envuelve">
+      <input
+        type="search"
+        placeholder="Buscar por placa, marca o modelo…"
+        style="max-width: 280px"
+        [value]="buscar()"
+        (input)="onBuscar($any($event.target).value)"
+      />
+
+      @if (auth.esAdministrador()) {
+        <select
+          style="max-width: 240px"
+          [value]="clienteFiltro()"
+          (change)="onFiltrarCliente($any($event.target).value)"
+        >
+          <option value="">Todos los clientes</option>
+          @for (cliente of clientes(); track cliente.clienteId) {
+            <option [value]="cliente.clienteId">
+              {{ cliente.razonSocial || cliente.nombre + ' ' + (cliente.apellido || '') }}
+            </option>
+          }
+        </select>
+      }
+    </div>
+    <span class="texto-tenue texto-sm">{{ vehiculos().length }} vehículo(s)</span>
+  </div>
+
+  @if (cargando() || vehiculos().length === 0) {
+    <app-estado-tabla
+      [cargando]="cargando()"
+      [hayFiltro]="buscar().length > 0 || clienteFiltro().length > 0"
+      titulo="Sin vehículos registrados"
+      descripcion="Registre un vehículo para poder abrir órdenes de trabajo."
+    />
+  } @else {
+    <div class="tabla-contenedor">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Placa</th>
+            <th>Vehículo</th>
+            <th>Año</th>
+            <th>Propietario</th>
+            <th class="num">Kilometraje</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (vehiculo of vehiculos(); track vehiculo.vehiculoId) {
+            <tr>
+              <td class="codigo">{{ vehiculo.vehiculoId }}</td>
+              <td class="texto-fuerte">{{ vehiculo.placa }}</td>
+              <td>
+                {{ vehiculo.marca }} {{ vehiculo.modelo }}
+                @if (vehiculo.color) {
+                  <span class="texto-tenue texto-sm"> · {{ vehiculo.color }}</span>
+                }
+              </td>
+              <td>{{ vehiculo.anio || '—' }}</td>
+              <td>{{ vehiculo.nombreCliente }}</td>
+              <td class="num">{{ vehiculo.kilometraje ?? 0 }} km</td>
+              <td>
+                <div class="acciones">
+                  <button type="button" class="btn-enlace" (click)="abrirHistorial(vehiculo)">
+                    Historial
+                  </button>
+                  <button type="button" class="btn-enlace" (click)="abrirGaleria(vehiculo)">
+                    Fotos
+                  </button>
+                  @if (auth.esAdministrador()) {
+                    <button type="button" class="btn-enlace" (click)="abrirEditar(vehiculo)">
+                      Editar
+                    </button>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+@if (formularioAbierto()) {
+  <app-modal
+    [titulo]="editando() ? 'Editar vehículo' : 'Nuevo vehículo'"
+    [ancho]="620"
+    (cerrar)="cerrarFormulario()"
+  >
+    <form [formGroup]="formulario" id="form-vehiculo" (ngSubmit)="guardar()">
+      <div class="campo">
+        <label for="clienteId">Propietario <span class="obligatorio">*</span></label>
+        <app-selector-busqueda
+          idCampo="clienteId"
+          formControlName="clienteId"
+          marcador="Escriba el nombre o CI/NIT del cliente…"
+          [opciones]="opcionesCliente()"
+          [invalido]="invalido('clienteId')"
+        />
+        @if (editando()) {
+          <span class="texto-tenue texto-sm">El propietario no se puede reasignar.</span>
+        } @else if (error('clienteId'); as mensaje) {
+          <span class="campo-error">{{ mensaje }}</span>
+        }
+      </div>
+
+      <div class="rejilla">
+        <div class="campo">
+          <label for="placa">Placa <span class="obligatorio">*</span></label>
+          <input id="placa" formControlName="placa" [class.invalido]="invalido('placa')" />
+          @if (error('placa'); as mensaje) {
+            <span class="campo-error">{{ mensaje }}</span>
+          } @else {
+            <span class="texto-tenue texto-sm">No puede repetirse entre vehículos.</span>
+          }
+        </div>
+
+        <div class="campo">
+          <label for="anio">Año</label>
+          <input
+            id="anio"
+            type="number"
+            min="1900"
+            max="2100"
+            formControlName="anio"
+            [class.invalido]="invalido('anio')"
+          />
+          @if (error('anio'); as mensaje) {
+            <span class="campo-error">{{ mensaje }}</span>
+          }
+        </div>
+      </div>
+
+      <div class="rejilla">
+        <div class="campo">
+          <label for="marca">Marca <span class="obligatorio">*</span></label>
+          <input id="marca" formControlName="marca" [class.invalido]="invalido('marca')" />
+          @if (error('marca'); as mensaje) {
+            <span class="campo-error">{{ mensaje }}</span>
+          }
+        </div>
+
+        <div class="campo">
+          <label for="modelo">Modelo <span class="obligatorio">*</span></label>
+          <input id="modelo" formControlName="modelo" [class.invalido]="invalido('modelo')" />
+          @if (error('modelo'); as mensaje) {
+            <span class="campo-error">{{ mensaje }}</span>
+          }
+        </div>
+      </div>
+
+      <div class="rejilla">
+        <div class="campo">
+          <label for="color">Color</label>
+          <input id="color" formControlName="color" />
+        </div>
+
+        <div class="campo">
+          <label for="kilometraje">Kilometraje</label>
+          <input id="kilometraje" type="number" min="0" formControlName="kilometraje" />
+        </div>
+      </div>
+
+      <div class="rejilla">
+        <div class="campo">
+          <label for="numMotor">N.º de motor</label>
+          <input id="numMotor" formControlName="numMotor" />
+        </div>
+
+        <div class="campo">
+          <label for="numChasis">N.º de chasis</label>
+          <input id="numChasis" formControlName="numChasis" />
+        </div>
+      </div>
+    </form>
+
+    <div pie>
+      <button type="button" class="btn btn-secundario" (click)="cerrarFormulario()">Cancelar</button>
+      <button type="submit" form="form-vehiculo" class="btn btn-primario" [disabled]="guardando()">
+        {{ guardando() ? 'Guardando…' : 'Guardar' }}
+      </button>
+    </div>
+  </app-modal>
+}
+
+@if (historialDe(); as vehiculo) {
+  <app-modal
+    titulo="Historial de {{ vehiculo.placa }}"
+    [ancho]="640"
+    (cerrar)="cerrarHistorial()"
+  >
+    @if (cargandoHistorial()) {
+      <app-esqueleto [filas]="4" [columnas]="1" />
+    } @else if (historial(); as h) {
+      <div class="indicadores-historial mb-2">
+        <div class="indicador-mini">
+          <div class="indicador-mini-valor">{{ h.resumen.totalVisitas }}</div>
+          <div class="indicador-mini-etiqueta">Órdenes atendidas</div>
+        </div>
+        <div class="indicador-mini">
+          <div class="indicador-mini-valor">{{ h.resumen.gastoAcumulado | bs }}</div>
+          <div class="indicador-mini-etiqueta">Gasto acumulado</div>
+        </div>
+        <div class="indicador-mini">
+          <div class="indicador-mini-valor">
+            {{ h.resumen.ultimaVisita ? (h.resumen.ultimaVisita | date: 'dd/MM/yyyy') : '—' }}
+          </div>
+          <div class="indicador-mini-etiqueta">Última visita</div>
+        </div>
+      </div>
+
+      @if (h.serviciosFrecuentes.length > 0) {
+        <h3 class="mb-1">Servicios más frecuentes</h3>
+        <div class="chips mb-2">
+          @for (s of h.serviciosFrecuentes; track s.nombre) {
+            <span class="chip">
+              {{ s.nombre }} <strong>× {{ s.cantidad }}</strong>
+            </span>
+          }
+        </div>
+      }
+
+      <h3 class="mb-1">Línea de tiempo</h3>
+      @if (h.eventos.length === 0) {
+        <p class="texto-tenue texto-sm mb-0">
+          Este vehículo todavía no tiene diagnósticos ni órdenes registradas.
+        </p>
+      } @else {
+        <ul class="linea-tiempo">
+          @for (evento of h.eventos; track evento.tipo + evento.id) {
+            <li>
+              <span class="linea-tiempo-icono" aria-hidden="true">
+                {{ evento.tipo === 'Diagnostico' ? '🔧' : '🗂' }}
+              </span>
+              <span class="linea-tiempo-cuerpo">
+                <span class="texto-fuerte texto-sm">
+                  {{ evento.tipo === 'Diagnostico' ? 'Diagnóstico' : 'Orden' }} {{ evento.id }}
+                </span>
+                <span class="texto-tenue texto-sm"> — {{ evento.detalle }}</span>
+                <span class="linea-tiempo-meta">
+                  {{ evento.fecha | date: 'dd/MM/yyyy' }} · {{ evento.estado }}
+                </span>
+              </span>
+            </li>
+          }
+        </ul>
+      }
+    }
+
+    <div pie>
+      <button type="button" class="btn btn-secundario" (click)="cerrarHistorial()">Cerrar</button>
+    </div>
+  </app-modal>
+}
+
+@if (galeriaDe(); as vehiculo) {
+  <app-modal titulo="Fotos de {{ vehiculo.placa }}" [ancho]="620" (cerrar)="cerrarGaleria()">
+    <p class="texto-tenue texto-sm mb-0">
+      Opcional: fotos para dejar constancia del estado del vehículo (golpes, rayones, nivel de
+      combustible…) al momento de ingresar.
+    </p>
+
+    @if (cargandoFotos()) {
+      <app-esqueleto [filas]="1" [columnas]="3" />
+    } @else {
+      <div class="galeria-fotos">
+        @if (auth.esAdministrador()) {
+          <label class="galeria-subir">
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              [disabled]="subiendoFoto()"
+              (change)="onArchivoSeleccionado($event)"
+            />
+            {{ subiendoFoto() ? 'Subiendo…' : '+ Agregar foto' }}
+          </label>
+        }
+
+        @for (foto of fotos(); track foto.fotoId) {
+          <div class="galeria-item">
+            <img [src]="urlArchivo(foto.url)" alt="Foto del vehículo {{ vehiculo.placa }}" />
+            @if (auth.esAdministrador()) {
+              <button
+                type="button"
+                class="galeria-item-quitar"
+                title="Eliminar foto"
+                [disabled]="eliminandoFoto() === foto.fotoId"
+                (click)="eliminarFoto(foto)"
+              >
+                ×
+              </button>
+            }
+          </div>
+        }
+
+        @if (fotos().length === 0 && !auth.esAdministrador()) {
+          <p class="texto-tenue texto-sm">Este vehículo todavía no tiene fotos.</p>
+        }
+      </div>
+    }
+
+    <div pie>
+      <button type="button" class="btn btn-secundario" (click)="cerrarGaleria()">Cerrar</button>
+    </div>
+  </app-modal>
+}

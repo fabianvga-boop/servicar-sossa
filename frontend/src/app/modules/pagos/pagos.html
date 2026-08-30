@@ -1,0 +1,173 @@
+<div class="fila-entre envuelve mb-2">
+  <div>
+    <h1>Pagos</h1>
+    <p class="texto-tenue texto-sm mb-0">Cobros registrados contra facturas emitidas</p>
+  </div>
+  <button
+    type="button"
+    class="btn btn-primario"
+    appAtajo="n"
+    title="Atajo: tecla N"
+    (click)="abrirNuevo()"
+  >
+    + Registrar pago
+  </button>
+</div>
+
+<div class="tarjeta">
+  <div class="tarjeta-encabezado">
+    <select
+      style="max-width: 220px"
+      [value]="metodoFiltro()"
+      (change)="onFiltrarMetodo($any($event.target).value)"
+    >
+      <option value="">Todos los métodos</option>
+      @for (metodo of metodos; track metodo.valor) {
+        <option [value]="metodo.valor">{{ metodo.etiqueta }}</option>
+      }
+    </select>
+    <span class="texto-tenue texto-sm">{{ pagos().length }} pago(s)</span>
+  </div>
+
+  @if (cargando() || pagos().length === 0) {
+    <app-estado-tabla
+      [cargando]="cargando()"
+      [hayFiltro]="metodoFiltro().length > 0"
+      titulo="Sin pagos registrados"
+      descripcion="Registre el cobro de una factura emitida."
+    />
+  } @else {
+    <div class="tabla-contenedor">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Fecha</th>
+            <th>Factura</th>
+            <th>Cliente</th>
+            <th>Método</th>
+            <th>Referencia</th>
+            <th class="num">Monto</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (pago of pagos(); track pago.pagoId) {
+            <tr>
+              <td class="codigo">{{ pago.pagoId }}</td>
+              <td class="texto-sm">{{ pago.fechaPago | date: 'dd/MM/yyyy HH:mm' }}</td>
+              <td class="codigo">{{ pago.facturaId }}</td>
+              <td>{{ pago.nombreCliente }}</td>
+              <td>
+                <span class="insignia insignia-azul">{{ etiquetaMetodo(pago.metodoPago) }}</span>
+              </td>
+              <td class="texto-sm texto-tenue">{{ pago.referencia || '—' }}</td>
+              <td class="num texto-fuerte">{{ pago.monto | bs }}</td>
+              <td>
+                <div class="acciones">
+                  <button
+                    type="button"
+                    class="btn-enlace texto-rojo"
+                    (click)="porRevertir.set(pago)"
+                  >
+                    Revertir
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+@if (panelNuevo()) {
+  <app-modal titulo="Registrar pago" (cerrar)="panelNuevo.set(false)">
+    @if (facturasCobrables().length === 0) {
+      <p class="texto-tenue mb-0">
+        No hay facturas emitidas con saldo pendiente. Emita una factura antes de registrar un pago.
+      </p>
+    } @else {
+      <div class="campo">
+        <label for="facturaPago">Factura</label>
+        <app-selector-busqueda
+          idCampo="facturaPago"
+          name="facturaPago"
+          marcador="Escriba el código o el cliente…"
+          [opciones]="opcionesFactura()"
+          [(ngModel)]="nuevo.facturaId"
+          (seleccion)="onFacturaSeleccionada()"
+        />
+      </div>
+
+      @if (facturaElegida(); as factura) {
+        <div class="total-caja mb-2">
+          <span>Saldo pendiente</span>
+          <span class="total-monto">{{ factura.saldoPendiente | bs }}</span>
+        </div>
+      }
+
+      <div class="rejilla">
+        <div class="campo">
+          <label for="montoPago">Monto (Bs)</label>
+          <input
+            id="montoPago"
+            type="number"
+            min="0.01"
+            step="0.01"
+            name="montoPago"
+            [(ngModel)]="nuevo.monto"
+          />
+          <span class="texto-tenue texto-sm">Admite pagos parciales.</span>
+        </div>
+
+        <div class="campo">
+          <label for="metodoPago">Método de pago</label>
+          <select id="metodoPago" name="metodoPago" [(ngModel)]="nuevo.metodoPago">
+            @for (metodo of metodos; track metodo.valor) {
+              <option [value]="metodo.valor">{{ metodo.etiqueta }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <div class="campo">
+        <label for="referenciaPago">Referencia</label>
+        <input
+          id="referenciaPago"
+          name="referenciaPago"
+          [(ngModel)]="nuevo.referencia"
+          placeholder="N.º de transferencia, comprobante o QR"
+        />
+      </div>
+    }
+
+    <div pie>
+      <button type="button" class="btn btn-secundario" (click)="panelNuevo.set(false)">
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="btn btn-primario"
+        [disabled]="procesando() || facturasCobrables().length === 0"
+        (click)="registrar()"
+      >
+        {{ procesando() ? 'Registrando…' : 'Registrar pago' }}
+      </button>
+    </div>
+  </app-modal>
+}
+
+@if (porRevertir(); as pago) {
+  <app-confirmacion
+    titulo="Revertir pago"
+    [mensaje]="'¿Revertir el pago ' + pago.pagoId + ' de ' + (pago.monto | bs) + '?'"
+    advertencia="El pago se elimina del registro y el saldo de la factura vuelve a aumentar. Use esto solo para corregir un error de carga."
+    textoConfirmar="Revertir"
+    [peligroso]="true"
+    [procesando]="procesando()"
+    (confirmar)="revertir()"
+    (cancelar)="porRevertir.set(null)"
+  />
+}

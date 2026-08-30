@@ -1,0 +1,700 @@
+@if (cargando()) {
+  <div class="tarjeta"><div class="cargando">Cargando orden…</div></div>
+} @else if (orden(); as o) {
+  <app-migas [items]="migas()" />
+
+  <div class="fila-entre envuelve mb-2">
+    <div>
+      <h1>
+        Orden {{ o.ordenId }}
+        <app-insignia-estado familia="orden" [valor]="o.estado" />
+      </h1>
+      <p class="texto-tenue texto-sm mb-0">
+        {{ o.placaVehiculo }} · {{ o.descripcionVehiculo }} — {{ o.nombreCliente }}
+      </p>
+    </div>
+
+    @if (puedeGestionar()) {
+      <div class="fila envuelve">
+        @switch (o.estado) {
+          @case (EstadoOrden.Abierta) {
+            <!-- Deshabilitado con motivo, no oculto: así se aprende el requisito -->
+            <button
+              type="button"
+              class="btn btn-primario"
+              [disabled]="procesando() || requisitosPendientes() > 0"
+              [title]="
+                requisitosPendientes() > 0
+                  ? 'Asigne al menos un mecánico antes de iniciar el trabajo.'
+                  : 'Habilita la carga de servicios y repuestos'
+              "
+              (click)="iniciar()"
+            >
+              Iniciar trabajo
+            </button>
+            <button type="button" class="btn btn-secundario" (click)="porCancelar.set(true)">
+              Cancelar orden
+            </button>
+          }
+          @case (EstadoOrden.EnProceso) {
+            <button
+              type="button"
+              class="btn btn-exito"
+              [disabled]="procesando() || requisitosPendientes() > 0"
+              [title]="
+                requisitosPendientes() > 0
+                  ? 'Complete los servicios pendientes antes de finalizar.'
+                  : 'Declara terminado el trabajo del taller'
+              "
+              (click)="finalizar()"
+            >
+              Finalizar trabajo
+            </button>
+            <button type="button" class="btn btn-secundario" (click)="porCancelar.set(true)">
+              Cancelar orden
+            </button>
+          }
+          @case (EstadoOrden.Finalizada) {
+            <button
+              type="button"
+              class="btn btn-primario"
+              [disabled]="requisitosPendientes() > 0"
+              [title]="
+                requisitosPendientes() > 0
+                  ? 'Quedan servicios sin completar.'
+                  : 'Descuenta stock y calcula comisiones'
+              "
+              (click)="porCerrar.set(true)"
+            >
+              Cerrar orden
+            </button>
+          }
+        }
+      </div>
+    }
+  </div>
+
+  <!-- ----------------------------------------------- Progreso del flujo -->
+  <div class="tarjeta mb-2">
+    <div class="tarjeta-cuerpo">
+      <app-pasos
+        [pasos]="pasos()"
+        [anulado]="cancelada()"
+        motivoAnulado="Esta orden fue cancelada: no se puede reabrir ni facturar."
+      />
+
+      @if (requisitos().length > 0) {
+        <ul class="requisitos">
+          @for (requisito of requisitos(); track requisito.etiqueta) {
+            <li [class.cumplido]="requisito.cumplido">
+              <span class="marca" aria-hidden="true">{{ requisito.cumplido ? '✓' : '○' }}</span>
+              <span>
+                {{ requisito.etiqueta }}
+                @if (!requisito.cumplido) {
+                  <span class="texto-tenue texto-sm"> — {{ requisito.ayuda }}</span>
+                }
+              </span>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+  </div>
+
+  <div class="columnas">
+    <div class="principal-col">
+      <!-- ------------------------------------------------------ Diagnóstico -->
+      @if (o.diagnosticoId) {
+        <div class="tarjeta mb-2">
+          <div class="tarjeta-encabezado">
+            <h2>Diagnóstico de origen</h2>
+            <a [routerLink]="['/diagnosticos']" class="codigo">{{ o.diagnosticoId }}</a>
+          </div>
+          <div class="tarjeta-cuerpo">
+            <h3 class="mb-1">Falla reportada</h3>
+            <p class="parrafo texto-sm">{{ o.descripcionFalla }}</p>
+            @if (o.observacionesTecnicasDiagnostico) {
+              <h3 class="mt-2 mb-1">Observaciones técnicas</h3>
+              <p class="parrafo texto-sm">{{ o.observacionesTecnicasDiagnostico }}</p>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- ------------------------------------------------------ Servicios -->
+      <div class="tarjeta mb-2">
+        <div class="tarjeta-encabezado">
+          <h2>Servicios</h2>
+          @if (puedeGestionar()) {
+            <button
+              type="button"
+              class="btn btn-secundario btn-sm"
+              [disabled]="!editableTrabajo()"
+              [title]="motivoBloqueoTrabajo()"
+              (click)="abrirPanelServicio()"
+            >
+              + Agregar servicio
+            </button>
+          }
+        </div>
+
+        @if (o.servicios.length === 0) {
+          <div class="vacio">
+            <div class="vacio-titulo">Sin servicios registrados</div>
+            <div class="texto-sm">
+              @if (o.estado === EstadoOrden.Abierta) {
+                Inicie el trabajo para poder cargar los servicios que se ejecutarán.
+              } @else {
+                Agregue los servicios que se ejecutarán en este vehículo.
+              }
+            </div>
+          </div>
+        } @else {
+          <div class="tabla-contenedor">
+            <table class="tabla">
+              <thead>
+                <tr>
+                  <th>Servicio</th>
+                  <th>Mecánico</th>
+                  <th>Estado</th>
+                  <th class="num">Precio</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (servicio of o.servicios; track servicio.ordenServicioId) {
+                  <tr>
+                    <td>
+                      <div class="texto-fuerte">
+                        {{ servicio.nombreServicio }}
+                        @if (!servicio.servicioId) {
+                          <span class="insignia insignia-gris ml-1">Fuera de catálogo</span>
+                        }
+                      </div>
+                      @if (servicio.descripcion) {
+                        <div class="texto-tenue texto-sm">{{ servicio.descripcion }}</div>
+                      }
+                    </td>
+                    <td class="texto-sm">{{ servicio.nombreMecanico }}</td>
+                    <td>
+                      <app-insignia-estado familia="servicioOrden" [valor]="servicio.estado" />
+                    </td>
+                    <td class="num">{{ servicio.precio | bs }}</td>
+                    <td>
+                      <div class="acciones">
+                        @if (puedeAvanzarServicios()) {
+                          @if (servicio.estado === EstadoServicioOrden.Pendiente) {
+                            <button
+                              type="button"
+                              class="btn-enlace"
+                              [disabled]="procesando()"
+                              (click)="avanzarServicio(servicio.ordenServicioId, EstadoServicioOrden.EnProceso)"
+                            >
+                              Iniciar
+                            </button>
+                          }
+                          @if (servicio.estado === EstadoServicioOrden.EnProceso) {
+                            <button
+                              type="button"
+                              class="btn-enlace"
+                              [disabled]="procesando()"
+                              (click)="avanzarServicio(servicio.ordenServicioId, EstadoServicioOrden.Completado)"
+                            >
+                              Completar
+                            </button>
+                          }
+                        }
+                        @if (puedeGestionar() && editableTrabajo()) {
+                          <button
+                            type="button"
+                            class="btn-enlace texto-rojo"
+                            [disabled]="procesando()"
+                            (click)="quitarServicio(servicio)"
+                          >
+                            Quitar
+                          </button>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+
+      <!-- ------------------------------------------------------ Repuestos -->
+      <div class="tarjeta">
+        <div class="tarjeta-encabezado">
+          <h2>Repuestos utilizados</h2>
+          @if (puedeGestionar()) {
+            <button
+              type="button"
+              class="btn btn-secundario btn-sm"
+              [disabled]="!editableTrabajo()"
+              [title]="motivoBloqueoTrabajo()"
+              (click)="panelRepuesto.set(true)"
+            >
+              + Agregar repuesto
+            </button>
+          }
+        </div>
+
+        @if (o.repuestos.length === 0) {
+          <div class="vacio">
+            <div class="vacio-titulo">Sin repuestos cargados</div>
+            <div class="texto-sm">
+              @if (o.estado === EstadoOrden.Abierta) {
+                Inicie el trabajo para poder cargar los repuestos utilizados.
+              } @else {
+                El stock se descuenta recién al cerrar la orden.
+              }
+            </div>
+          </div>
+        } @else {
+          <div class="tabla-contenedor">
+            <table class="tabla">
+              <thead>
+                <tr>
+                  <th>Repuesto</th>
+                  <th class="num">Cantidad</th>
+                  <th class="num">Precio unit.</th>
+                  <th class="num">Subtotal</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (repuesto of o.repuestos; track repuesto.ordenRepuestoId) {
+                  <tr>
+                    <td class="texto-fuerte">
+                      {{ repuesto.nombreRepuesto }}
+                      @if (repuesto.origen !== OrigenRepuesto.Inventario) {
+                        <span class="insignia insignia-gris ml-1">{{ ETIQUETAS.origenRepuesto[repuesto.origen] }}</span>
+                      }
+                    </td>
+                    <td class="num">{{ repuesto.cantidad }}</td>
+                    <td class="num">
+                      @if (repuesto.origen === OrigenRepuesto.ClienteTrae) {
+                        <span class="texto-tenue">Sin cargo</span>
+                      } @else {
+                        {{ repuesto.precioUnitario | bs }}
+                      }
+                    </td>
+                    <td class="num">
+                      @if (repuesto.origen === OrigenRepuesto.ClienteTrae) {
+                        <span class="texto-tenue">—</span>
+                      } @else {
+                        {{ repuesto.subtotal | bs }}
+                      }
+                    </td>
+                    <td>
+                      @if (puedeGestionar() && editableTrabajo()) {
+                        <div class="acciones">
+                          <button
+                            type="button"
+                            class="btn-enlace texto-rojo"
+                            [disabled]="procesando()"
+                            (click)="quitarRepuesto(repuesto)"
+                          >
+                            Quitar
+                          </button>
+                        </div>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- ----------------------------------------------------- Barra lateral -->
+    <div class="lateral-col">
+      <div class="tarjeta mb-2">
+        <div class="tarjeta-encabezado"><h2>Resumen</h2></div>
+        <div class="tarjeta-cuerpo">
+          <dl class="datos">
+            <dt>Apertura</dt>
+            <dd>{{ o.fechaCreacion | date: 'dd/MM/yyyy HH:mm' }}</dd>
+            <dt>Entrega estimada</dt>
+            <dd>{{ o.fechaEstimada ? (o.fechaEstimada | date: 'dd/MM/yyyy') : '—' }}</dd>
+            @if (o.fechaCierre) {
+              <dt>Cierre</dt>
+              <dd>{{ o.fechaCierre | date: 'dd/MM/yyyy HH:mm' }}</dd>
+            }
+            <dt>Responsable</dt>
+            <dd>{{ o.nombreAdministrador }}</dd>
+          </dl>
+
+          <hr class="separador" />
+
+          <div class="linea-total">
+            <span class="texto-tenue">Servicios</span>
+            <span>{{ o.totalServicios | bs }}</span>
+          </div>
+          <div class="linea-total">
+            <span class="texto-tenue">Repuestos</span>
+            <span>{{ o.totalRepuestos | bs }}</span>
+          </div>
+
+          <div class="total-caja mt-1">
+            <span>Total</span>
+            <span class="total-monto">{{ o.total | bs }}</span>
+          </div>
+
+          @if (o.observaciones) {
+            <h3 class="mt-2 mb-1">Observaciones</h3>
+            <p class="parrafo texto-sm">{{ o.observaciones }}</p>
+          }
+        </div>
+      </div>
+
+      <div class="tarjeta">
+        <div class="tarjeta-encabezado">
+          <h2>Mecánicos</h2>
+          @if (puedeGestionar()) {
+            <button
+              type="button"
+              class="btn btn-secundario btn-sm"
+              [disabled]="!editable()"
+              [title]="motivoBloqueoMecanicos()"
+              (click)="panelMecanico.set(true)"
+            >
+              + Asignar
+            </button>
+          }
+        </div>
+        <div class="tarjeta-cuerpo">
+          @if (o.mecanicos.length === 0) {
+            <p class="texto-tenue texto-sm mb-0">
+              Sin mecánicos asignados. Debe asignar uno antes de iniciar el trabajo.
+            </p>
+          } @else {
+            <ul class="lista-mecanicos">
+              @for (mecanico of o.mecanicos; track mecanico.mecanicoId) {
+                <li>
+                  <div>
+                    <div class="texto-fuerte texto-sm">{{ mecanico.nombreMecanico }}</div>
+                    <div class="texto-tenue texto-sm">
+                      Desde {{ mecanico.fechaAsignacion | date: 'dd/MM/yyyy' }}
+                    </div>
+                  </div>
+                  @if (editable() && puedeGestionar()) {
+                    <button
+                      type="button"
+                      class="btn-enlace texto-rojo"
+                      [disabled]="procesando()"
+                      (click)="quitarMecanico(mecanico.mecanicoId)"
+                    >
+                      Quitar
+                    </button>
+                  }
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================== Diálogos -->
+
+  @if (panelMecanico()) {
+    <app-modal titulo="Asignar mecánico" [ancho]="460" (cerrar)="panelMecanico.set(false)">
+      @if (mecanicosDisponibles().length === 0) {
+        <p class="texto-tenue mb-0">
+          Todos los mecánicos activos ya están asignados a esta orden.
+        </p>
+      } @else {
+        <div class="campo">
+          <label for="mecanico">Mecánico</label>
+          <app-selector-busqueda
+            idCampo="mecanico"
+            name="mecanico"
+            marcador="Escriba el nombre del mecánico…"
+            [opciones]="opcionesMecanico()"
+            [(ngModel)]="mecanicoSeleccionado"
+          />
+        </div>
+      }
+
+      <div pie>
+        <button type="button" class="btn btn-secundario" (click)="panelMecanico.set(false)">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-primario"
+          [disabled]="procesando() || !mecanicoSeleccionado"
+          (click)="asignarMecanico()"
+        >
+          Asignar
+        </button>
+      </div>
+    </app-modal>
+  }
+
+  @if (panelServicio()) {
+    <app-modal titulo="Agregar servicio" [ancho]="560" (cerrar)="panelServicio.set(false)">
+      @if (o.mecanicos.length === 0) {
+        <p class="texto-tenue mb-0">
+          Primero asigne al menos un mecánico a la orden: el servicio debe tener un responsable.
+        </p>
+      } @else {
+        <div class="campo">
+          <label>Origen del servicio</label>
+          <div class="segmentos">
+            <button
+              type="button"
+              class="segmento"
+              [class.activo]="nuevoServicio.delCatalogo"
+              (click)="cambiarOrigenServicio(true)"
+            >
+              Del catálogo
+            </button>
+            <button
+              type="button"
+              class="segmento"
+              [class.activo]="!nuevoServicio.delCatalogo"
+              (click)="cambiarOrigenServicio(false)"
+            >
+              Fuera de catálogo
+            </button>
+          </div>
+        </div>
+
+        @if (nuevoServicio.delCatalogo) {
+          <div class="campo">
+            <label for="servicio">Servicio del catálogo</label>
+            <app-selector-busqueda
+              idCampo="servicio"
+              name="servicio"
+              marcador="Escriba el nombre del servicio…"
+              [opciones]="opcionesCatalogo()"
+              [(ngModel)]="nuevoServicio.servicioId"
+              (seleccion)="onServicioSeleccionado($event)"
+            />
+          </div>
+        } @else {
+          <div class="campo">
+            <label for="nombreLibreServicio">Servicio realizado</label>
+            <input
+              id="nombreLibreServicio"
+              type="text"
+              maxlength="150"
+              name="nombreLibreServicio"
+              placeholder="Ej. Reparación de manguera de radiador"
+              [(ngModel)]="nuevoServicio.nombreLibre"
+            />
+          </div>
+        }
+
+        <div class="rejilla">
+          <div class="campo">
+            <label>Mecánico responsable</label>
+            @if (o.mecanicos.length === 1) {
+              <div class="texto-fuerte">{{ o.mecanicos[0].nombreMecanico }}</div>
+            } @else {
+              <app-selector-busqueda
+                idCampo="mecanicoServicio"
+                name="mecanicoServicio"
+                marcador="Elija entre los asignados…"
+                [opciones]="opcionesAsignados()"
+                [(ngModel)]="nuevoServicio.mecanicoId"
+              />
+            }
+            <span class="texto-tenue texto-sm">Su comisión se calcula sobre este monto.</span>
+          </div>
+
+          <div class="campo">
+            <label for="precioServicio">Precio (Bs)</label>
+            <input
+              id="precioServicio"
+              type="number"
+              min="0"
+              step="0.01"
+              name="precioServicio"
+              [(ngModel)]="nuevoServicio.precio"
+            />
+          </div>
+        </div>
+
+        <div class="campo">
+          <label for="descripcionServicio">Detalle del trabajo</label>
+          <input
+            id="descripcionServicio"
+            name="descripcionServicio"
+            [(ngModel)]="nuevoServicio.descripcion"
+            placeholder="Opcional"
+          />
+        </div>
+
+        @if (!nuevoServicio.delCatalogo) {
+          <p class="texto-tenue texto-sm mb-0">
+            Servicio fuera de catálogo: se registra con el nombre y precio indicados, sin tocar
+            el catálogo de servicios.
+          </p>
+        }
+      }
+
+      <div pie>
+        <button type="button" class="btn btn-secundario" (click)="panelServicio.set(false)">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-primario"
+          [disabled]="procesando() || o.mecanicos.length === 0"
+          (click)="agregarServicio()"
+        >
+          Agregar
+        </button>
+      </div>
+    </app-modal>
+  }
+
+  @if (panelRepuesto()) {
+    <app-modal titulo="Agregar repuesto" [ancho]="560" (cerrar)="panelRepuesto.set(false)">
+      <div class="campo">
+        <label>Origen del repuesto</label>
+        <div class="segmentos">
+          @for (op of origenesRepuesto; track op) {
+            <button
+              type="button"
+              class="segmento"
+              [class.activo]="nuevoRepuesto.origen === op"
+              (click)="cambiarOrigenRepuesto(op)"
+            >
+              {{ ETIQUETAS.origenRepuesto[op] }}
+            </button>
+          }
+        </div>
+      </div>
+
+      @if (nuevoRepuesto.origen === OrigenRepuesto.Inventario) {
+        <div class="campo">
+          <label for="repuesto">Repuesto</label>
+          <app-selector-busqueda
+            idCampo="repuesto"
+            name="repuesto"
+            marcador="Escriba el nombre del repuesto…"
+            [opciones]="opcionesRepuesto()"
+            [(ngModel)]="nuevoRepuesto.repuestoId"
+            (seleccion)="onRepuestoSeleccionado($event)"
+          />
+        </div>
+      } @else {
+        <div class="campo">
+          <label for="descripcionRepuesto">Descripción del repuesto</label>
+          <input
+            id="descripcionRepuesto"
+            type="text"
+            maxlength="150"
+            name="descripcionRepuesto"
+            placeholder="Ej. Pastillas de freno delanteras"
+            [(ngModel)]="nuevoRepuesto.descripcion"
+          />
+        </div>
+      }
+
+      <div class="rejilla">
+        <div class="campo">
+          <label for="cantidadRepuesto">Cantidad</label>
+          <input
+            id="cantidadRepuesto"
+            type="number"
+            min="1"
+            name="cantidadRepuesto"
+            [(ngModel)]="nuevoRepuesto.cantidad"
+          />
+        </div>
+
+        @if (nuevoRepuesto.origen !== OrigenRepuesto.ClienteTrae) {
+          <div class="campo">
+            <label for="precioRepuesto">
+              {{ nuevoRepuesto.origen === OrigenRepuesto.CompraExterna ? 'Costo unitario (Bs)' : 'Precio unitario (Bs)' }}
+            </label>
+            <input
+              id="precioRepuesto"
+              type="number"
+              min="0"
+              step="0.01"
+              name="precioRepuesto"
+              [(ngModel)]="nuevoRepuesto.precioUnitario"
+            />
+          </div>
+        }
+      </div>
+
+      <p class="texto-tenue texto-sm mb-0">
+        @switch (nuevoRepuesto.origen) {
+          @case (OrigenRepuesto.Inventario) {
+            Se verifica que haya stock suficiente, pero el descuento se aplica al cerrar la orden.
+          }
+          @case (OrigenRepuesto.ClienteTrae) {
+            El repuesto lo trae el cliente: se registra sin cargo y no afecta el inventario.
+          }
+          @case (OrigenRepuesto.CompraExterna) {
+            Comprado fuera del taller: se cobra al costo indicado y no afecta el inventario.
+          }
+        }
+      </p>
+
+      <div pie>
+        <button type="button" class="btn btn-secundario" (click)="panelRepuesto.set(false)">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-primario"
+          [disabled]="procesando()"
+          (click)="agregarRepuesto()"
+        >
+          Agregar
+        </button>
+      </div>
+    </app-modal>
+  }
+
+  @if (porCerrar()) {
+    <app-confirmacion
+      titulo="Cerrar orden de trabajo"
+      [mensaje]="
+        serviciosPendientes() > 0
+          ? 'Esta orden tiene ' + serviciosPendientes() + ' servicio(s) sin completar. Complételos antes de cerrar.'
+          : '¿Cerrar la orden ' + o.ordenId + ' por un total de Bs ' + o.total.toFixed(2) + '?'
+      "
+      advertencia="Al cerrar se descuenta el stock de los repuestos y se calculan las comisiones de los mecánicos. La orden no se puede reabrir."
+      textoConfirmar="Cerrar orden"
+      [procesando]="procesando()"
+      (confirmar)="cerrarOrden()"
+      (cancelar)="porCerrar.set(false)"
+    />
+  }
+
+  @if (porCancelar()) {
+    <app-confirmacion
+      titulo="Cancelar orden"
+      [mensaje]="'¿Cancelar la orden ' + o.ordenId + '?'"
+      advertencia="Una orden cancelada no se puede reabrir ni facturar."
+      textoConfirmar="Cancelar orden"
+      [peligroso]="true"
+      [procesando]="procesando()"
+      (confirmar)="cancelarOrden()"
+      (cancelar)="porCancelar.set(false)"
+    />
+  }
+} @else {
+  <div class="tarjeta">
+    <div class="vacio">
+      <div class="vacio-titulo">Orden no encontrada</div>
+      <div class="texto-sm">
+        <a routerLink="/ordenes">Volver al listado de órdenes</a>
+      </div>
+    </div>
+  </div>
+}

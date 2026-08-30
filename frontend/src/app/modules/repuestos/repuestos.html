@@ -1,0 +1,351 @@
+<div class="fila-entre envuelve mb-2">
+  <div>
+    <h1>Repuestos</h1>
+    <p class="texto-tenue texto-sm mb-0">Inventario del taller</p>
+  </div>
+  @if (auth.esAdministrador()) {
+    <button
+      type="button"
+      class="btn btn-primario"
+      appAtajo="n"
+      title="Atajo: tecla N"
+      (click)="abrirNuevo()"
+    >
+      + Nuevo repuesto
+    </button>
+  }
+</div>
+
+<div class="tarjeta">
+  <div class="tarjeta-encabezado">
+    <div class="fila envuelve">
+      <input
+        type="search"
+        placeholder="Buscar repuesto…"
+        style="max-width: 280px"
+        [value]="buscar()"
+        (input)="onBuscar($any($event.target).value)"
+      />
+      <label class="fila texto-sm" style="gap: 6px">
+        <input
+          type="checkbox"
+          style="width: auto"
+          [checked]="soloStockBajo()"
+          (change)="alternarStockBajo()"
+        />
+        Solo stock bajo
+      </label>
+    </div>
+    <span class="texto-tenue texto-sm">{{ repuestos().length }} repuesto(s)</span>
+  </div>
+
+  @if (cargando() || repuestos().length === 0) {
+    <app-estado-tabla
+      [cargando]="cargando()"
+      [hayFiltro]="buscar().length > 0 || soloStockBajo()"
+      [columnas]="8"
+      titulo="Sin repuestos en inventario"
+      descripcion="Registre los repuestos que maneja el taller."
+    />
+  } @else {
+    <div class="tabla-contenedor">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Repuesto</th>
+            <th>Proveedor</th>
+            <th class="num">Stock</th>
+            <th class="num">Mínimo</th>
+            <th class="num">Costo</th>
+            <th class="num">Venta</th>
+            <th class="num">Valor</th>
+            @if (auth.esAdministrador()) { <th></th> }
+          </tr>
+        </thead>
+        <tbody>
+          @for (repuesto of repuestos(); track repuesto.repuestoId) {
+            <tr [class.fila-agotada]="repuesto.stockActual === 0">
+              <td class="codigo">{{ repuesto.repuestoId }}</td>
+              <td>
+                <div class="fila-producto">
+                  @if (repuesto.fotoUrl) {
+                    <img
+                      class="miniatura-producto"
+                      [src]="urlArchivo(repuesto.fotoUrl)"
+                      [alt]="repuesto.nombre"
+                    />
+                  } @else {
+                    <span class="miniatura-producto miniatura-vacia" aria-hidden="true">📦</span>
+                  }
+                  <span>
+                    <span class="texto-fuerte">{{ repuesto.nombre }}</span>
+                    @if (repuesto.descripcion) {
+                      <span class="texto-tenue texto-sm bloque">{{ repuesto.descripcion }}</span>
+                    }
+                  </span>
+                </div>
+              </td>
+              <td class="texto-sm">{{ repuesto.nombreProveedor || '—' }}</td>
+              <td class="num">
+                <!-- Sin unidades bloquea el trabajo; poco stock solo avisa -->
+                @if (repuesto.stockActual === 0) {
+                  <span class="insignia insignia-roja" title="Agotado: no se puede usar en órdenes">
+                    ⛔ 0
+                  </span>
+                } @else if (repuesto.stockBajo) {
+                  <span
+                    class="insignia insignia-naranja"
+                    [title]="'Stock bajo: mínimo ' + repuesto.stockMinimo"
+                  >
+                    ⚠ {{ repuesto.stockActual }}
+                  </span>
+                } @else {
+                  {{ repuesto.stockActual }}
+                }
+              </td>
+              <td class="num texto-tenue">{{ repuesto.stockMinimo }}</td>
+              <td class="num texto-tenue">{{ repuesto.precioCompra | bs }}</td>
+              <td class="num texto-fuerte">{{ repuesto.precioVenta | bs }}</td>
+              <td class="num">{{ repuesto.valorInventario | bs }}</td>
+              @if (auth.esAdministrador()) {
+                <td>
+                  <div class="acciones">
+                    <button type="button" class="btn-enlace" (click)="abrirEditar(repuesto)">
+                      Editar
+                    </button>
+                    <button type="button" class="btn-enlace" (click)="abrirAjuste(repuesto)">
+                      Ajustar stock
+                    </button>
+                    <button type="button" class="btn-enlace" (click)="abrirFoto(repuesto)">
+                      Foto
+                    </button>
+                  </div>
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+@if (formularioAbierto()) {
+  <app-modal
+    [titulo]="editando() ? 'Editar repuesto' : 'Nuevo repuesto'"
+    (cerrar)="cerrarFormulario()"
+  >
+    <form [formGroup]="formulario" id="form-repuesto" (ngSubmit)="guardar()">
+      <div class="campo">
+        <label for="nombre">Nombre <span class="obligatorio">*</span></label>
+        <input id="nombre" formControlName="nombre" [class.invalido]="invalido('nombre')" />
+        @if (error('nombre'); as mensaje) {
+          <span class="campo-error">{{ mensaje }}</span>
+        }
+      </div>
+
+      <div class="campo">
+        <label for="descripcion">Descripción</label>
+        <textarea id="descripcion" formControlName="descripcion" rows="2"></textarea>
+      </div>
+
+      <div class="rejilla">
+        <div class="campo">
+          <label for="stockActual">
+            {{ editando() ? 'Stock actual' : 'Stock inicial' }}
+            @if (!editando()) { <span class="obligatorio">*</span> }
+          </label>
+          <input id="stockActual" type="number" min="0" formControlName="stockActual" />
+          @if (editando()) {
+            <span class="texto-tenue texto-sm">Use "Ajustar stock" para modificarlo.</span>
+          }
+        </div>
+
+        <div class="campo">
+          <label for="stockMinimo">Stock mínimo <span class="obligatorio">*</span></label>
+          <input
+            id="stockMinimo"
+            type="number"
+            min="0"
+            formControlName="stockMinimo"
+            [class.invalido]="invalido('stockMinimo')"
+          />
+          @if (error('stockMinimo'); as mensaje) {
+            <span class="campo-error">{{ mensaje }}</span>
+          } @else {
+            <span class="texto-tenue texto-sm">Dispara la alerta de reposición.</span>
+          }
+        </div>
+      </div>
+
+      <div class="rejilla">
+        <div class="campo">
+          <label for="precioCompra">Precio de compra (Bs) <span class="obligatorio">*</span></label>
+          <input
+            id="precioCompra"
+            type="number"
+            min="0"
+            step="0.01"
+            formControlName="precioCompra"
+            [class.invalido]="invalido('precioCompra')"
+          />
+          @if (error('precioCompra'); as mensaje) {
+            <span class="campo-error">{{ mensaje }}</span>
+          } @else {
+            <span class="texto-tenue texto-sm">
+              Lo que se paga por él. Una compra lo actualiza solo.
+            </span>
+          }
+        </div>
+
+        <div class="campo">
+          <label for="precioVenta">Precio de venta (Bs) <span class="obligatorio">*</span></label>
+          <input
+            id="precioVenta"
+            type="number"
+            min="0"
+            step="0.01"
+            formControlName="precioVenta"
+            [class.invalido]="invalido('precioVenta')"
+          />
+          @if (error('precioVenta'); as mensaje) {
+            <span class="campo-error">{{ mensaje }}</span>
+          } @else {
+            <span class="texto-tenue texto-sm">
+              Lo que se cobra. Se usa en órdenes y en el punto de venta.
+            </span>
+          }
+        </div>
+      </div>
+
+      <div class="campo">
+        <label for="proveedorId">Proveedor</label>
+        <app-selector-busqueda
+          idCampo="proveedorId"
+          formControlName="proveedorId"
+          marcador="Sin proveedor"
+          [opciones]="opcionesProveedor()"
+        />
+      </div>
+
+      <div class="campo">
+        <label>Foto <span class="texto-tenue">(opcional)</span></label>
+        <div class="fila" style="gap: 10px; align-items: center">
+          @if (previsualizacionFoto()) {
+            <img class="miniatura-producto" [src]="previsualizacionFoto()" alt="Vista previa" />
+          } @else {
+            <span class="miniatura-producto miniatura-vacia" aria-hidden="true">📦</span>
+          }
+
+          <label class="btn btn-secundario" style="margin: 0">
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              style="display: none"
+              (change)="onFotoFormularioSeleccionada($event)"
+            />
+            {{ previsualizacionFoto() ? 'Cambiar' : 'Elegir foto' }}
+          </label>
+
+          @if (previsualizacionFoto()) {
+            <button type="button" class="btn-enlace texto-rojo" (click)="quitarFotoFormulario()">
+              Quitar
+            </button>
+          }
+        </div>
+        <span class="texto-tenue texto-sm">
+          Sirve para reconocer el producto de un vistazo, por ejemplo al vender en mostrador.
+        </span>
+      </div>
+    </form>
+
+    <div pie>
+      <button type="button" class="btn btn-secundario" (click)="cerrarFormulario()">Cancelar</button>
+      <button type="submit" form="form-repuesto" class="btn btn-primario" [disabled]="guardando()">
+        {{ guardando() ? 'Guardando…' : 'Guardar' }}
+      </button>
+    </div>
+  </app-modal>
+}
+
+@if (ajustando(); as repuesto) {
+  <app-modal titulo="Ajustar stock" [ancho]="440" (cerrar)="ajustando.set(null)">
+    <p class="mb-2">
+      <span class="texto-fuerte">{{ repuesto.nombre }}</span><br />
+      <span class="texto-tenue texto-sm">Stock registrado: {{ repuesto.stockActual }} unidades</span>
+    </p>
+
+    <div class="campo">
+      <label for="ajuste">Stock real (conteo físico)</label>
+      <input
+        id="ajuste"
+        type="number"
+        min="0"
+        [value]="nuevoStock()"
+        (input)="nuevoStock.set(+$any($event.target).value)"
+      />
+    </div>
+
+    <p class="texto-tenue texto-sm mb-0">
+      Use esta opción solo para corregir diferencias por conteo físico, merma o rotura.
+      Las compras y el cierre de órdenes mueven el stock automáticamente.
+    </p>
+
+    <div pie>
+      <button type="button" class="btn btn-secundario" (click)="ajustando.set(null)">
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="btn btn-primario"
+        [disabled]="guardando()"
+        (click)="confirmarAjuste()"
+      >
+        {{ guardando() ? 'Guardando…' : 'Ajustar' }}
+      </button>
+    </div>
+  </app-modal>
+}
+
+@if (fotoDe(); as repuesto) {
+  <app-modal titulo="Foto de {{ repuesto.nombre }}" [ancho]="480" (cerrar)="fotoDe.set(null)">
+    <p class="texto-tenue texto-sm">
+      Opcional: una foto del producto para reconocerlo de un vistazo al venderlo en mostrador.
+    </p>
+
+    @if (repuesto.fotoUrl) {
+      <img class="foto-producto" [src]="urlArchivo(repuesto.fotoUrl)" [alt]="repuesto.nombre" />
+    } @else {
+      <div class="foto-producto foto-vacia">Sin foto</div>
+    }
+
+    <div class="fila mt-1" style="gap: 8px">
+      <label class="btn btn-secundario" style="margin: 0">
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          style="display: none"
+          [disabled]="subiendoFoto()"
+          (change)="onFotoSeleccionada($event)"
+        />
+        {{ subiendoFoto() ? 'Subiendo…' : repuesto.fotoUrl ? 'Reemplazar' : 'Subir foto' }}
+      </label>
+
+      @if (repuesto.fotoUrl) {
+        <button
+          type="button"
+          class="btn btn-peligro"
+          [disabled]="subiendoFoto()"
+          (click)="quitarFoto()"
+        >
+          Quitar
+        </button>
+      }
+    </div>
+
+    <div pie>
+      <button type="button" class="btn btn-secundario" (click)="fotoDe.set(null)">Cerrar</button>
+    </div>
+  </app-modal>
+}

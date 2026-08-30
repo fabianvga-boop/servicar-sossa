@@ -1,0 +1,88 @@
+<div class="shell">
+  <!-- Cortina para cerrar el menú tocando fuera, solo en móvil -->
+  @if (menuAbierto()) {
+    <div class="cortina" (click)="cerrarMenu()"></div>
+  }
+
+  <aside class="lateral" [class.abierto]="menuAbierto()">
+    <div class="marca">
+      <img src="assets/logo.png" alt="Servicar SOSSA" class="marca-logo" />
+    </div>
+
+    <nav class="navegacion">
+      @for (grupo of menu(); track grupo.titulo) {
+        <div class="grupo">
+          <div class="grupo-titulo">{{ grupo.titulo }}</div>
+
+          @for (enlace of grupo.enlaces; track enlace.ruta) {
+            <a
+              class="enlace"
+              [routerLink]="enlace.ruta"
+              routerLinkActive="activo"
+              (click)="cerrarMenu()"
+            >
+              <span class="icono">{{ enlace.icono }}</span>
+              <span class="crece">{{ enlace.etiqueta }}</span>
+
+              <!-- Insignia de pendientes: sin pendientes no se dibuja nada -->
+              @if (valorContador(enlace.contador); as pendientes) {
+                <span
+                  class="contador"
+                  [class.alerta]="enlace.contador === 'stockBajo'"
+                  [attr.aria-label]="pendientes + ' pendientes'"
+                >
+                  {{ pendientes }}
+                </span>
+              }
+            </a>
+          }
+        </div>
+      }
+    </nav>
+  </aside>
+
+  <div class="principal">
+    <header class="encabezado">
+      <button
+        type="button"
+        class="hamburguesa"
+        (click)="alternarMenu()"
+        aria-label="Abrir menú"
+      >
+        ☰
+      </button>
+
+      <!-- Disparador del buscador global; el atajo Ctrl+K hace lo mismo -->
+      <button type="button" class="buscar-disparador" (click)="abrirBuscador()">
+        <span class="lupa" aria-hidden="true">⌕</span>
+        <span class="buscar-texto">Buscar orden, cliente, placa…</span>
+        <kbd>Ctrl</kbd><kbd>K</kbd>
+      </button>
+
+      <div class="crece"></div>
+
+      <div class="usuario">
+        <button type="button" class="usuario-btn" (click)="alternarMenuUsuario()">
+          <span class="avatar">{{ iniciales() }}</span>
+          <span class="usuario-datos">
+            <span class="usuario-nombre">{{ auth.nombreCompleto() }}</span>
+            <span class="usuario-rol">{{ auth.rol() }}</span>
+          </span>
+        </button>
+
+        @if (menuUsuarioAbierto()) {
+          <div class="menu-usuario">
+            <a routerLink="/perfil" (click)="alternarMenuUsuario()">Cambiar contraseña</a>
+            <button type="button" (click)="salir()">Cerrar sesión</button>
+          </div>
+        }
+      </div>
+    </header>
+
+    <main class="contenido">
+      <router-outlet />
+    </main>
+  </div>
+</div>
+
+<app-buscador-global />

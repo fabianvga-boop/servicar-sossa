@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="ServicarSossa.API/ServicarSossa.API.csproj" />
+  <Project Path="ServicarSossa.Application/ServicarSossa.Application.csproj" />
+  <Project Path="ServicarSossa.Domain/ServicarSossa.Domain.csproj" />
+  <Project Path="ServicarSossa.Infrastructure/ServicarSossa.Infrastructure.csproj" />
+</Solution>

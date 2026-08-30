@@ -1,0 +1,25 @@
+.filtros {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.resumen {
+  border-top: 1px solid var(--gris-200);
+  background: var(--gris-50);
+  border-radius: 0 0 var(--radio) var(--radio);
+}
+
+.linea-resumen {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 0;
+  font-size: 13px;
+  max-width: 420px;
+}
+
+@media (max-width: 760px) {
+  .filtros { grid-template-columns: 1fr; }
+}

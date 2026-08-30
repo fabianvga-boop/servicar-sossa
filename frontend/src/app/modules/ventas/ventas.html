@@ -1,0 +1,334 @@
+<div class="fila-entre envuelve mb-2">
+  <div>
+    <h1>Punto de venta</h1>
+    <p class="texto-tenue texto-sm mb-0">
+      Venta de repuestos en mostrador, sin orden de trabajo
+    </p>
+  </div>
+</div>
+
+<div class="columnas-pos">
+  <!-- ------------------------------------------------------------- Carrito -->
+  <div class="tarjeta">
+    <div class="tarjeta-encabezado"><h2>Nueva venta</h2></div>
+
+    <div class="tarjeta-cuerpo">
+      <input
+        type="search"
+        placeholder="Buscar producto…"
+        [value]="buscarProducto()"
+        (input)="buscarProducto.set($any($event.target).value)"
+      />
+
+      @if (productosFiltrados().length === 0) {
+        <p class="texto-tenue texto-sm mt-1 mb-0">No hay productos que coincidan con la búsqueda.</p>
+      } @else {
+        <div class="catalogo-pos mt-1">
+          @for (repuesto of productosFiltrados(); track repuesto.repuestoId) {
+            <button
+              type="button"
+              class="tarjeta-producto"
+              [disabled]="disponible(repuesto) < 1"
+              [title]="disponible(repuesto) < 1 ? 'Sin stock disponible' : 'Agregar al carrito'"
+              (click)="agregarProducto(repuesto)"
+            >
+              @if (repuesto.fotoUrl) {
+                <img [src]="urlArchivo(repuesto.fotoUrl)" [alt]="repuesto.nombre" />
+              } @else {
+                <span class="tarjeta-producto-sin-foto" aria-hidden="true">📦</span>
+              }
+              <span class="tarjeta-producto-nombre">{{ repuesto.nombre }}</span>
+              <span class="tarjeta-producto-precio">{{ repuesto.precioVenta | bs }}</span>
+              <span class="tarjeta-producto-stock">
+                {{ disponible(repuesto) < 1 ? 'Sin stock' : disponible(repuesto) + ' disp.' }}
+              </span>
+            </button>
+          }
+        </div>
+      }
+
+      @if (carrito().length === 0) {
+        <div class="vacio">
+          <div class="vacio-titulo">Carrito vacío</div>
+          <div class="texto-sm">Toque un producto del catálogo para empezar la venta.</div>
+        </div>
+      } @else {
+        <div class="tabla-contenedor mt-1">
+          <table class="tabla">
+            <thead>
+              <tr>
+                <th>Repuesto</th>
+                <th class="num">Cantidad</th>
+                <th class="num">P. unit. (Bs)</th>
+                <th class="num">Subtotal</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (linea of carrito(); track linea.repuesto.repuestoId) {
+                <tr>
+                  <td>
+                    <div class="fila-producto">
+                      @if (linea.repuesto.fotoUrl) {
+                        <img
+                          class="miniatura-producto"
+                          [src]="urlArchivo(linea.repuesto.fotoUrl)"
+                          [alt]="linea.repuesto.nombre"
+                        />
+                      } @else {
+                        <span class="miniatura-producto miniatura-vacia" aria-hidden="true">📦</span>
+                      }
+                      <span>
+                        <span class="texto-fuerte">{{ linea.repuesto.nombre }}</span>
+                        <span class="texto-tenue texto-sm bloque">
+                          stock {{ linea.repuesto.stockActual }}
+                        </span>
+                      </span>
+                    </div>
+                  </td>
+                  <td class="num">
+                    <input
+                      class="entrada-mini"
+                      type="number"
+                      min="1"
+                      [max]="linea.repuesto.stockActual"
+                      [value]="linea.cantidad"
+                      (change)="cambiarCantidad(linea.repuesto.repuestoId, +$any($event.target).value)"
+                    />
+                  </td>
+                  <td class="num">
+                    <input
+                      class="entrada-mini"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      [value]="linea.precioUnitario"
+                      (change)="cambiarPrecio(linea.repuesto.repuestoId, +$any($event.target).value)"
+                    />
+                  </td>
+                  <td class="num texto-fuerte">
+                    {{ linea.cantidad * linea.precioUnitario | bs }}
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      class="btn-enlace texto-rojo"
+                      (click)="quitarDelCarrito(linea.repuesto.repuestoId)"
+                    >
+                      Quitar
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <div class="total-caja mt-1">
+          <span>{{ articulos() }} artículo(s)</span>
+          <span class="total-monto">{{ total() | bs }}</span>
+        </div>
+
+        <div class="fila-entre mt-1">
+          <button type="button" class="btn btn-secundario" (click)="vaciarCarrito()">
+            Vaciar
+          </button>
+          <button type="button" class="btn btn-exito" (click)="abrirCobro()">
+            Cobrar {{ total() | bs }}
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- -------------------------------------------------------- Últimas ventas -->
+  <div class="tarjeta">
+    <div class="tarjeta-encabezado">
+      <h2>Ventas registradas</h2>
+      <span class="texto-tenue texto-sm">{{ ventas().length }} venta(s)</span>
+    </div>
+
+    @if (cargando() || ventas().length === 0) {
+      <app-estado-tabla
+        [cargando]="cargando()"
+        titulo="Sin ventas registradas"
+        descripcion="Las ventas de mostrador aparecerán aquí."
+      />
+    } @else {
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Fecha</th>
+              <th>Cliente</th>
+              <th class="num">Art.</th>
+              <th class="num">Total</th>
+              <th>Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (venta of ventas(); track venta.ventaId) {
+              <tr>
+                <td class="codigo">{{ venta.ventaId }}</td>
+                <td class="texto-sm">{{ venta.fechaVenta | date: 'dd/MM/yyyy HH:mm' }}</td>
+                <td>
+                  <div class="texto-sm">{{ venta.nombreCliente }}</div>
+                  <div class="texto-tenue texto-sm">
+                    {{ ETIQUETAS.metodoPago[venta.metodoPago] }}
+                  </div>
+                </td>
+                <td class="num">{{ venta.cantidadArticulos }}</td>
+                <td class="num texto-fuerte">{{ venta.total | bs }}</td>
+                <td><app-insignia-estado familia="venta" [valor]="venta.estado" /></td>
+                <td>
+                  <div class="acciones">
+                    <button type="button" class="btn-enlace" (click)="detalleDe.set(venta)">
+                      Ver
+                    </button>
+                    @if (venta.estado === EstadoVenta.Emitida) {
+                      <button
+                        type="button"
+                        class="btn-enlace texto-rojo"
+                        (click)="porAnular.set(venta)"
+                      >
+                        Anular
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</div>
+
+@if (panelCobro()) {
+  <app-modal titulo="Cobrar venta" [ancho]="480" (cerrar)="panelCobro.set(false)">
+    <div class="total-caja mb-2">
+      <span>{{ articulos() }} artículo(s)</span>
+      <span class="total-monto">{{ total() | bs }}</span>
+    </div>
+
+    <div class="campo">
+      <label for="metodoPagoVenta">Método de pago</label>
+      <select id="metodoPagoVenta" name="metodoPagoVenta" [(ngModel)]="cobro.metodoPago">
+        @for (metodo of metodosPago; track metodo) {
+          <option [value]="metodo">{{ ETIQUETAS.metodoPago[metodo] }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="campo">
+      <label for="clienteVenta">Cliente <span class="texto-tenue">(opcional)</span></label>
+      <app-selector-busqueda
+        idCampo="clienteVenta"
+        name="clienteVenta"
+        marcador="Venta de mostrador"
+        [opciones]="opcionesCliente()"
+        [(ngModel)]="cobro.clienteId"
+      />
+      <span class="texto-tenue texto-sm">
+        Déjelo vacío si el cliente no está registrado.
+      </span>
+    </div>
+
+    <div class="campo">
+      <label for="observacionesVenta">Observaciones</label>
+      <input
+        id="observacionesVenta"
+        name="observacionesVenta"
+        maxlength="255"
+        placeholder="Opcional"
+        [(ngModel)]="cobro.observaciones"
+      />
+    </div>
+
+    <p class="texto-tenue texto-sm mb-0">
+      Al confirmar, el stock de cada repuesto se descuenta en el acto. Si la venta se anula
+      después, el stock vuelve al inventario.
+    </p>
+
+    <div pie>
+      <button type="button" class="btn btn-secundario" (click)="panelCobro.set(false)">
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="btn btn-exito"
+        [disabled]="procesando()"
+        (click)="confirmarVenta()"
+      >
+        {{ procesando() ? 'Registrando…' : 'Confirmar venta' }}
+      </button>
+    </div>
+  </app-modal>
+}
+
+@if (detalleDe(); as venta) {
+  <app-modal titulo="Venta {{ venta.ventaId }}" [ancho]="560" (cerrar)="detalleDe.set(null)">
+    <dl class="datos mb-2">
+      <dt>Fecha</dt>
+      <dd>{{ venta.fechaVenta | date: 'dd/MM/yyyy HH:mm' }}</dd>
+      <dt>Cliente</dt>
+      <dd>{{ venta.nombreCliente }}</dd>
+      <dt>Método de pago</dt>
+      <dd>{{ ETIQUETAS.metodoPago[venta.metodoPago] }}</dd>
+      <dt>Vendedor</dt>
+      <dd>{{ venta.nombreUsuario }}</dd>
+      @if (venta.observaciones) {
+        <dt>Observaciones</dt>
+        <dd>{{ venta.observaciones }}</dd>
+      }
+    </dl>
+
+    <div class="tabla-contenedor">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>Repuesto</th>
+            <th class="num">Cant.</th>
+            <th class="num">P. unit.</th>
+            <th class="num">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (linea of venta.detalles; track linea.ventaDetalleId) {
+            <tr>
+              <td>{{ linea.nombreRepuesto }}</td>
+              <td class="num">{{ linea.cantidad }}</td>
+              <td class="num">{{ linea.precioUnitario | bs }}</td>
+              <td class="num">{{ linea.subtotal | bs }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="total-caja mt-1">
+      <span>Total</span>
+      <span class="total-monto">{{ venta.total | bs }}</span>
+    </div>
+
+    <div pie>
+      <button type="button" class="btn btn-secundario" (click)="detalleDe.set(null)">Cerrar</button>
+    </div>
+  </app-modal>
+}
+
+@if (porAnular(); as venta) {
+  <app-confirmacion
+    titulo="Anular venta"
+    [mensaje]="'¿Anular la venta ' + venta.ventaId + ' por ' + (venta.total | bs) + '?'"
+    advertencia="El stock de los repuestos vendidos volverá al inventario. La anulación no se puede revertir."
+    textoConfirmar="Anular venta"
+    [peligroso]="true"
+    [procesando]="procesando()"
+    (confirmar)="anular()"
+    (cancelar)="porAnular.set(null)"
+  />
+}
