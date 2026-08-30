@@ -1,0 +1,89 @@
+<div class="fila-entre envuelve mb-2">
+  <div>
+    <h1>Auditoría</h1>
+    <p class="texto-tenue texto-sm mb-0">Quién hizo qué, sobre qué registro y cuándo</p>
+  </div>
+</div>
+
+<div class="tarjeta">
+  <div class="tarjeta-encabezado">
+    <div class="fila envuelve" style="gap: 10px">
+      <select
+        style="max-width: 180px"
+        [(ngModel)]="filtro.entidad"
+        (ngModelChange)="cargar()"
+      >
+        <option value="">Todos los módulos</option>
+        @for (entidad of entidades; track entidad) {
+          <option [value]="entidad">{{ entidad }}</option>
+        }
+      </select>
+
+      <select
+        style="max-width: 160px"
+        [(ngModel)]="filtro.accion"
+        (ngModelChange)="cargar()"
+      >
+        <option value="">Toda acción</option>
+        @for (accion of acciones; track accion.valor) {
+          <option [value]="accion.valor">{{ accion.etiqueta }}</option>
+        }
+      </select>
+
+      <input
+        type="date"
+        style="max-width: 160px"
+        [(ngModel)]="filtro.desde"
+        (ngModelChange)="cargar()"
+      />
+      <input
+        type="date"
+        style="max-width: 160px"
+        [(ngModel)]="filtro.hasta"
+        (ngModelChange)="cargar()"
+      />
+
+      @if (hayFiltro()) {
+        <button type="button" class="btn-enlace" (click)="limpiarFiltros()">Limpiar filtros</button>
+      }
+    </div>
+    <span class="texto-tenue texto-sm">{{ filas().length }} registro(s)</span>
+  </div>
+
+  @if (cargando() || filas().length === 0) {
+    <app-estado-tabla
+      [cargando]="cargando()"
+      [hayFiltro]="hayFiltro()"
+      [columnas]="4"
+      titulo="Sin acciones registradas"
+      descripcion="Las acciones sobre repuestos, vehículos, ventas y demás módulos aparecerán aquí."
+    />
+  } @else {
+    <div class="tabla-contenedor">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Usuario</th>
+            <th>Acción</th>
+            <th>Descripción</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (fila of filas(); track fila.auditoriaId) {
+            <tr>
+              <td class="texto-sm">{{ fila.fecha | date: 'dd/MM/yyyy HH:mm' }}</td>
+              <td class="texto-sm">{{ fila.nombreUsuario }}</td>
+              <td>
+                <span class="insignia insignia-gris">
+                  {{ ETIQUETAS.accionAuditoria[fila.accion] }} {{ fila.entidad }}
+                </span>
+              </td>
+              <td class="texto-sm">{{ fila.descripcion }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

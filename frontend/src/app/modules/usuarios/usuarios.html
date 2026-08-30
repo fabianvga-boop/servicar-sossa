@@ -1,0 +1,198 @@
+<div class="fila-entre envuelve mb-2">
+  <div>
+    <h1>Usuarios</h1>
+    <p class="texto-tenue texto-sm mb-0">Administradores y mecánicos del sistema</p>
+  </div>
+  <button
+    type="button"
+    class="btn btn-primario"
+    appAtajo="n"
+    title="Atajo: tecla N"
+    (click)="abrirNuevo()"
+  >
+    + Nuevo usuario
+  </button>
+</div>
+
+<div class="tarjeta">
+  <div class="tarjeta-encabezado">
+    <input
+      type="search"
+      placeholder="Buscar por nombre, usuario o email…"
+      style="max-width: 320px"
+      [value]="buscar()"
+      (input)="onBuscar($any($event.target).value)"
+    />
+    <span class="texto-tenue texto-sm">{{ usuarios().length }} registro(s)</span>
+  </div>
+
+  @if (cargando() || usuarios().length === 0) {
+    <app-estado-tabla
+      [cargando]="cargando()"
+      [hayFiltro]="buscar().length > 0"
+      titulo="Sin usuarios registrados"
+      descripcion="Cree el primer usuario del sistema."
+    />
+  } @else {
+    <div class="tabla-contenedor">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Nombre</th>
+            <th>Usuario</th>
+            <th>Email</th>
+            <th>Rol</th>
+            <th>Estado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (usuario of usuarios(); track usuario.usuarioId) {
+            <tr>
+              <td class="codigo">{{ usuario.usuarioId }}</td>
+              <td class="texto-fuerte">{{ usuario.nombreCompleto }}</td>
+              <td>{{ usuario.username }}</td>
+              <td class="texto-sm">{{ usuario.email }}</td>
+              <td>
+                <span
+                  class="insignia"
+                  [class.insignia-azul]="usuario.nombreRol === 'Administrador'"
+                  [class.insignia-gris]="usuario.nombreRol !== 'Administrador'"
+                >
+                  {{ usuario.nombreRol }}
+                </span>
+              </td>
+              <td><app-insignia-estado familia="activo" [valor]="usuario.estado" /></td>
+              <td>
+                <div class="acciones">
+                  <button type="button" class="btn-enlace" (click)="abrirEditar(usuario)">
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-enlace"
+                    (click)="porCambiarEstado.set(usuario)"
+                  >
+                    {{ usuario.estado === EstadoUsuario.Activo ? 'Desactivar' : 'Activar' }}
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+@if (formularioAbierto()) {
+  <app-modal
+    [titulo]="editando() ? 'Editar usuario' : 'Nuevo usuario'"
+    (cerrar)="cerrarFormulario()"
+  >
+    <form [formGroup]="formulario" id="form-usuario" (ngSubmit)="guardar()">
+      <div class="rejilla">
+        <div class="campo">
+          <label for="nombre">Nombre <span class="obligatorio">*</span></label>
+          <input id="nombre" formControlName="nombre" [class.invalido]="invalido('nombre')" />
+          @if (invalido('nombre')) {
+            <span class="campo-error">El nombre es obligatorio.</span>
+          }
+        </div>
+
+        <div class="campo">
+          <label for="apellido">Apellido <span class="obligatorio">*</span></label>
+          <input id="apellido" formControlName="apellido" [class.invalido]="invalido('apellido')" />
+          @if (invalido('apellido')) {
+            <span class="campo-error">El apellido es obligatorio.</span>
+          }
+        </div>
+      </div>
+
+      <div class="campo">
+        <label for="email">Email <span class="obligatorio">*</span></label>
+        <input id="email" type="email" formControlName="email" [class.invalido]="invalido('email')" />
+        @if (invalido('email')) {
+          <span class="campo-error">Ingrese un email válido.</span>
+        }
+      </div>
+
+      <div class="rejilla">
+        <div class="campo">
+          <label for="username">Usuario <span class="obligatorio">*</span></label>
+          <input id="username" formControlName="username" [class.invalido]="invalido('username')" />
+          @if (editando()) {
+            <span class="texto-tenue texto-sm">El nombre de usuario no se puede cambiar.</span>
+          } @else if (invalido('username')) {
+            <span class="campo-error">El usuario es obligatorio.</span>
+          }
+        </div>
+
+        <div class="campo">
+          <label for="rolId">Rol <span class="obligatorio">*</span></label>
+          <select id="rolId" formControlName="rolId" [class.invalido]="invalido('rolId')">
+            <option value="">Seleccione…</option>
+            @for (rol of roles(); track rol.rolId) {
+              <option [value]="rol.rolId">{{ rol.nombreRol }}</option>
+            }
+          </select>
+          @if (invalido('rolId')) {
+            <span class="campo-error">Seleccione un rol.</span>
+          }
+        </div>
+      </div>
+
+      <div class="rejilla">
+        @if (!editando()) {
+          <div class="campo">
+            <label for="password">Contraseña <span class="obligatorio">*</span></label>
+            <input
+              id="password"
+              type="password"
+              formControlName="password"
+              autocomplete="new-password"
+              [class.invalido]="invalido('password')"
+            />
+            @if (invalido('password')) {
+              <span class="campo-error">Mínimo 8 caracteres.</span>
+            }
+          </div>
+        }
+
+        <div class="campo">
+          <label for="telefono">Teléfono</label>
+          <input id="telefono" formControlName="telefono" />
+        </div>
+      </div>
+    </form>
+
+    <div pie>
+      <button type="button" class="btn btn-secundario" (click)="cerrarFormulario()">Cancelar</button>
+      <button type="submit" form="form-usuario" class="btn btn-primario" [disabled]="guardando()">
+        {{ guardando() ? 'Guardando…' : 'Guardar' }}
+      </button>
+    </div>
+  </app-modal>
+}
+
+@if (porCambiarEstado(); as usuario) {
+  <app-confirmacion
+    [titulo]="usuario.estado === EstadoUsuario.Activo ? 'Desactivar usuario' : 'Activar usuario'"
+    [mensaje]="
+      usuario.estado === EstadoUsuario.Activo
+        ? '¿Desactivar a ' + usuario.nombreCompleto + '?'
+        : '¿Activar nuevamente a ' + usuario.nombreCompleto + '?'
+    "
+    [advertencia]="
+      usuario.estado === EstadoUsuario.Activo
+        ? 'No podrá iniciar sesión mientras esté inactivo.'
+        : null
+    "
+    [textoConfirmar]="usuario.estado === EstadoUsuario.Activo ? 'Desactivar' : 'Activar'"
+    [peligroso]="usuario.estado === EstadoUsuario.Activo"
+    [procesando]="guardando()"
+    (confirmar)="cambiarEstado()"
+    (cancelar)="porCambiarEstado.set(null)"
+  />
+}

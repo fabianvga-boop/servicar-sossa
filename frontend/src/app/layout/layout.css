@@ -1,0 +1,305 @@
+.shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ------------------------------------------------------- Barra lateral */
+
+.lateral {
+  width: var(--ancho-lateral);
+  flex-shrink: 0;
+  background: var(--ink);
+  color: #c6cbd3;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 60;
+  overflow-y: auto;
+}
+
+.marca {
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid #2e343e;
+  margin-bottom: 6px;
+  flex-shrink: 0;
+}
+
+.marca-logo {
+  width: 100%;
+  max-width: 175px;
+  height: auto;
+  display: block;
+}
+
+.navegacion {
+  padding: 6px 0 20px;
+}
+
+.grupo { margin-bottom: 4px; }
+
+.grupo-titulo {
+  padding: 13px 20px 5px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #77808f;
+}
+
+.enlace {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 20px;
+  color: #c6cbd3;
+  font-size: 13.5px;
+  font-weight: 500;
+  text-decoration: none;
+  border-left: 3px solid transparent;
+}
+
+.enlace:hover {
+  background: #232830;
+  color: var(--blanco);
+  text-decoration: none;
+}
+
+.enlace.activo {
+  background: #232830;
+  border-left-color: var(--brand);
+  color: var(--blanco);
+}
+
+.icono {
+  width: 17px;
+  text-align: center;
+  font-size: 13.5px;
+  flex-shrink: 0;
+}
+
+/* Insignia de pendientes: dice cuánto trabajo espera sin tener que entrar */
+.contador {
+  min-width: 19px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: #3a414e;
+  color: var(--blanco);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* El stock bajo es una alerta, no un simple conteo de trabajo por hacer */
+.contador.alerta {
+  background: var(--brand);
+}
+
+/* ------------------------------------------------------------ Principal */
+
+.principal {
+  flex: 1;
+  margin-left: var(--ancho-lateral);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.encabezado {
+  height: var(--alto-encabezado);
+  background: var(--blanco);
+  border-bottom: 1px solid var(--gris-200);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.hamburguesa {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: var(--gris-700);
+  padding: 4px 8px;
+}
+
+.crece { flex: 1; }
+
+/* ---------------------------------------------------- Buscador global */
+
+.buscar-disparador {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 260px;
+  padding: 7px 10px;
+  background: var(--gris-50);
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio-sm);
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--gris-500);
+  cursor: pointer;
+  text-align: left;
+}
+
+.buscar-disparador:hover {
+  background: var(--blanco);
+  border-color: var(--gris-300);
+}
+
+.buscar-disparador .lupa {
+  font-size: 16px;
+  color: var(--gris-400);
+}
+
+.buscar-texto { flex: 1; }
+
+.buscar-disparador kbd {
+  font-family: inherit;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--gris-500);
+  background: var(--blanco);
+  border: 1px solid var(--gris-200);
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+
+/* -------------------------------------------------------- Menú usuario */
+
+.usuario { position: relative; }
+
+.usuario-btn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: var(--radio-sm);
+  font-family: inherit;
+}
+
+.usuario-btn:hover { background: var(--gris-100); }
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--brand);
+  color: var(--blanco);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Oswald', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.usuario-datos {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.25;
+}
+
+.usuario-nombre {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gris-900);
+}
+
+.usuario-rol {
+  font-size: 11px;
+  color: var(--gris-500);
+}
+
+.menu-usuario {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 190px;
+  background: var(--blanco);
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio-sm);
+  box-shadow: var(--sombra-md);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-usuario a,
+.menu-usuario button {
+  padding: 8px 11px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 13px;
+  color: var(--gris-700);
+  cursor: pointer;
+  border-radius: var(--radio-sm);
+  font-family: inherit;
+  text-decoration: none;
+}
+
+.menu-usuario a:hover,
+.menu-usuario button:hover {
+  background: var(--gris-100);
+  text-decoration: none;
+}
+
+.contenido {
+  flex: 1;
+  padding: 22px;
+  max-width: 1400px;
+  width: 100%;
+}
+
+/* ------------------------------------------------------------- Responsive */
+
+.cortina {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(12, 14, 18, 0.55);
+  z-index: 55;
+}
+
+@media (max-width: 900px) {
+  .lateral {
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+  }
+
+  .lateral.abierto { transform: translateX(0); }
+
+  .principal { margin-left: 0; }
+
+  .hamburguesa { display: block; }
+
+  .cortina { display: block; }
+
+  .contenido { padding: 16px; }
+
+  .usuario-datos { display: none; }
+
+  /* En móvil el disparador se reduce al ícono: no hay ancho para la leyenda */
+  .buscar-disparador {
+    min-width: 0;
+    padding: 7px 9px;
+  }
+
+  .buscar-disparador .buscar-texto,
+  .buscar-disparador kbd {
+    display: none;
+  }
+}

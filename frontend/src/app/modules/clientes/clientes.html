@@ -1,0 +1,241 @@
+<div class="fila-entre envuelve mb-2">
+  <div>
+    <h1>Clientes</h1>
+    <p class="texto-tenue texto-sm mb-0">Registro de clientes del taller</p>
+  </div>
+  <button
+    type="button"
+    class="btn btn-primario"
+    appAtajo="n"
+    title="Atajo: tecla N"
+    (click)="abrirNuevo()"
+  >
+    + Nuevo cliente
+  </button>
+</div>
+
+<div class="tarjeta">
+  <div class="tarjeta-encabezado">
+    <input
+      type="search"
+      placeholder="Buscar por nombre, razón social o CI/NIT…"
+      style="max-width: 340px"
+      [value]="buscar()"
+      (input)="onBuscar($any($event.target).value)"
+    />
+    <span class="texto-tenue texto-sm">{{ clientes().length }} registro(s)</span>
+  </div>
+
+  @if (cargando() || clientes().length === 0) {
+    <app-estado-tabla
+      [cargando]="cargando()"
+      [hayFiltro]="buscar().length > 0"
+      titulo="Sin clientes registrados"
+      descripcion="Registre el primer cliente para empezar a crear órdenes de trabajo."
+    />
+  } @else {
+    <div class="tabla-contenedor">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Cliente</th>
+            <th>CI / NIT</th>
+            <th>Contacto</th>
+            <th class="num">Vehículos</th>
+            <th>Estado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (cliente of clientes(); track cliente.clienteId) {
+            <tr>
+              <td class="codigo">{{ cliente.clienteId }}</td>
+              <td>
+                <div class="texto-fuerte">
+                  {{ cliente.razonSocial || cliente.nombre + ' ' + (cliente.apellido || '') }}
+                </div>
+                @if (cliente.razonSocial) {
+                  <div class="texto-tenue texto-sm">
+                    Contacto: {{ cliente.nombre }} {{ cliente.apellido }}
+                  </div>
+                }
+              </td>
+              <td>{{ cliente.ciNit }}</td>
+              <td>
+                <div class="texto-sm">{{ cliente.telefono || '—' }}</div>
+                <div class="texto-tenue texto-sm">{{ cliente.email || '' }}</div>
+              </td>
+              <td class="num">
+                @if (cliente.cantidadVehiculos > 0) {
+                  <a [routerLink]="['/vehiculos']" [queryParams]="{ clienteId: cliente.clienteId }">
+                    {{ cliente.cantidadVehiculos }}
+                  </a>
+                } @else {
+                  <span class="texto-tenue">0</span>
+                }
+              </td>
+              <td><app-insignia-estado familia="activo" [valor]="cliente.estado" /></td>
+              <td>
+                <div class="acciones">
+                  <button type="button" class="btn-enlace" (click)="abrirEditar(cliente)">
+                    Editar
+                  </button>
+                  <button type="button" class="btn-enlace" (click)="agregarVehiculo(cliente)">
+                    + Vehículo
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-enlace"
+                    (click)="confirmarCambioEstado(cliente)"
+                  >
+                    {{ cliente.estado === EstadoCliente.Activo ? 'Desactivar' : 'Activar' }}
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+@if (formularioAbierto()) {
+  <app-modal
+    [titulo]="editando() ? 'Editar cliente' : 'Nuevo cliente'"
+    (cerrar)="cerrarFormulario()"
+  >
+    <form [formGroup]="formulario" id="form-cliente" (ngSubmit)="guardar()">
+      <div class="rejilla">
+        <div class="campo">
+          <label for="nombre">Nombre <span class="obligatorio">*</span></label>
+          <input id="nombre" formControlName="nombre" [class.invalido]="invalido('nombre')" />
+          @if (error('nombre'); as mensaje) {
+            <span class="campo-error">{{ mensaje }}</span>
+          }
+        </div>
+
+        <div class="campo">
+          <label for="apellido">Apellido</label>
+          <input id="apellido" formControlName="apellido" />
+        </div>
+      </div>
+
+      <div class="campo">
+        <label for="razonSocial">Razón social</label>
+        <input id="razonSocial" formControlName="razonSocial" placeholder="Solo para empresas" />
+      </div>
+
+      <div class="rejilla">
+        <div class="campo">
+          <label for="ciNit">CI / NIT <span class="obligatorio">*</span></label>
+          <input id="ciNit" formControlName="ciNit" [class.invalido]="invalido('ciNit')" />
+          @if (error('ciNit'); as mensaje) {
+            <span class="campo-error">{{ mensaje }}</span>
+          } @else {
+            <span class="texto-tenue texto-sm">No puede repetirse entre clientes.</span>
+          }
+        </div>
+
+        <div class="campo">
+          <label for="telefono">Teléfono</label>
+          <input id="telefono" formControlName="telefono" />
+        </div>
+      </div>
+
+      <div class="campo">
+        <label for="email">Email <span class="texto-tenue">(opcional)</span></label>
+        <input id="email" type="email" formControlName="email" [class.invalido]="invalido('email')" />
+        @if (error('email'); as mensaje) {
+          <span class="campo-error">{{ mensaje }}</span>
+        }
+      </div>
+
+      <div class="campo">
+        <label for="direccion">Dirección <span class="texto-tenue">(opcional)</span></label>
+        <input id="direccion" formControlName="direccion" />
+      </div>
+
+      @if (!editando()) {
+        <label class="fila texto-sm mt-1" style="gap: 6px">
+          <input
+            type="checkbox"
+            style="width: auto"
+            [checked]="registrarVehiculo()"
+            (change)="registrarVehiculo.set($any($event.target).checked)"
+          />
+          Registrar un vehículo ahora
+        </label>
+
+        @if (registrarVehiculo()) {
+          <div [formGroup]="formularioVehiculo" class="mt-1">
+            <div class="rejilla">
+              <div class="campo">
+                <label for="placaVehiculo">Placa <span class="obligatorio">*</span></label>
+                <input id="placaVehiculo" formControlName="placa" />
+              </div>
+              <div class="campo">
+                <label for="anioVehiculo">Año</label>
+                <input
+                  id="anioVehiculo"
+                  type="number"
+                  min="1900"
+                  max="2100"
+                  formControlName="anio"
+                />
+              </div>
+            </div>
+
+            <div class="rejilla">
+              <div class="campo">
+                <label for="marcaVehiculo">Marca <span class="obligatorio">*</span></label>
+                <input id="marcaVehiculo" formControlName="marca" />
+              </div>
+              <div class="campo">
+                <label for="modeloVehiculo">Modelo <span class="obligatorio">*</span></label>
+                <input id="modeloVehiculo" formControlName="modelo" />
+              </div>
+            </div>
+
+            <div class="rejilla">
+              <div class="campo">
+                <label for="colorVehiculo">Color</label>
+                <input id="colorVehiculo" formControlName="color" />
+              </div>
+              <div class="campo">
+                <label for="kilometrajeVehiculo">Kilometraje</label>
+                <input id="kilometrajeVehiculo" type="number" min="0" formControlName="kilometraje" />
+              </div>
+            </div>
+          </div>
+        }
+      }
+    </form>
+
+    <div pie>
+      <button type="button" class="btn btn-secundario" (click)="cerrarFormulario()">
+        Cancelar
+      </button>
+      <button type="submit" form="form-cliente" class="btn btn-primario" [disabled]="guardando()">
+        {{ guardando() ? 'Guardando…' : 'Guardar' }}
+      </button>
+    </div>
+  </app-modal>
+}
+
+@if (porCambiarEstado(); as cliente) {
+  <app-confirmacion
+    [titulo]="cliente.estado === EstadoCliente.Activo ? 'Desactivar cliente' : 'Activar cliente'"
+    [mensaje]="
+      cliente.estado === EstadoCliente.Activo
+        ? '¿Desactivar a ' + cliente.nombre + '? No aparecerá al crear nuevas órdenes.'
+        : '¿Activar nuevamente a ' + cliente.nombre + '?'
+    "
+    [textoConfirmar]="cliente.estado === EstadoCliente.Activo ? 'Desactivar' : 'Activar'"
+    [peligroso]="cliente.estado === EstadoCliente.Activo"
+    [procesando]="guardando()"
+    (confirmar)="cambiarEstado()"
+    (cancelar)="porCambiarEstado.set(null)"
+  />
+}

@@ -1,0 +1,126 @@
+/* Carrito a la izquierda, historial a la derecha */
+.columnas-pos {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+/* Catálogo de productos: tarjetas clickeables que suman al carrito */
+.catalogo-pos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.tarjeta-producto {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 6px;
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio-sm);
+  background: var(--gris-50, #fff);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.tarjeta-producto:hover:not(:disabled) {
+  border-color: var(--color-primario, #2563eb);
+  background: var(--gris-100);
+}
+
+.tarjeta-producto:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.tarjeta-producto img {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radio-sm);
+  object-fit: cover;
+}
+
+.tarjeta-producto-sin-foto {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  border-radius: var(--radio-sm);
+  background: var(--gris-100);
+  color: var(--gris-400);
+}
+
+.tarjeta-producto-nombre {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tarjeta-producto-precio {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-primario, #2563eb);
+}
+
+.tarjeta-producto-stock {
+  font-size: 11px;
+  color: var(--gris-400);
+}
+
+/* Miniatura del producto en el carrito */
+.fila-producto {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bloque {
+  display: block;
+}
+
+.miniatura-producto {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: var(--radio-sm);
+  border: 1px solid var(--gris-200);
+  object-fit: cover;
+  background: var(--gris-100);
+}
+
+.miniatura-vacia {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  color: var(--gris-400);
+}
+
+/* Cantidad y precio editables dentro de la tabla */
+.entrada-mini {
+  width: 78px;
+  text-align: right;
+  padding: 4px 6px;
+  font-size: 13px;
+}
+
+@media (max-width: 1100px) {
+  .columnas-pos { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 560px) {
+  .rejilla-agregar { grid-template-columns: 1fr; }
+}

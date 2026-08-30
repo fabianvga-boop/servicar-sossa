@@ -1,0 +1,125 @@
+.indicadores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+}
+
+.indicador {
+  background: var(--blanco);
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra-sm);
+  padding: 16px 18px;
+}
+
+.indicador-valor {
+  font-family: 'Oswald', sans-serif;
+  font-size: 27px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.indicador-valor.naranja { color: var(--naranja-600); }
+.indicador-valor.verde { color: var(--verde-600); }
+
+.indicador-etiqueta {
+  font-size: 12px;
+  color: var(--gris-500);
+  margin-top: 3px;
+}
+
+.alerta { border-left: 4px solid var(--naranja-500); }
+
+/* ------------------------------------------------------ Accesos directos */
+
+.accesos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 12px;
+}
+
+.acceso {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--blanco);
+  border: 1px solid var(--gris-200);
+  border-left: 4px solid var(--azul-600);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra-sm);
+  color: inherit;
+  text-decoration: none;
+}
+
+.acceso:hover {
+  border-color: var(--gris-300);
+  border-left-color: var(--azul-600);
+  box-shadow: var(--sombra-md);
+  text-decoration: none;
+}
+
+.acceso.urgente { border-left-color: var(--brand); }
+.acceso.urgente:hover { border-left-color: var(--brand); }
+
+.acceso-icono {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.acceso-texto {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.acceso-etiqueta {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.acceso-descripcion {
+  font-size: 11.5px;
+  color: var(--gris-500);
+}
+
+.acceso-cantidad {
+  font-family: 'Oswald', sans-serif;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.acceso.urgente .acceso-cantidad { color: var(--brand-dk); }
+
+/* ------------------------------------------------------------ Stock bajo */
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  background: var(--naranja-100);
+  border-radius: 999px;
+  font-size: 12.5px;
+  color: #92400e;
+}
+
+/* Sin unidades es distinto de "poco stock": bloquea el trabajo, no lo avisa */
+.chip-agotado {
+  background: var(--brand-soft);
+  color: var(--brand-dk);
+  font-weight: 600;
+}

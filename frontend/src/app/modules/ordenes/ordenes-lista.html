@@ -1,0 +1,79 @@
+<div class="fila-entre envuelve mb-2">
+  <div>
+    <h1>Órdenes de trabajo</h1>
+    <p class="texto-tenue texto-sm mb-0">Trabajos registrados en el taller</p>
+  </div>
+  @if (auth.esAdministrador()) {
+    <a routerLink="/diagnosticos" class="btn btn-primario">+ Nueva orden (desde diagnóstico)</a>
+  }
+</div>
+
+<div class="tarjeta">
+  <div class="tarjeta-encabezado">
+    <select
+      style="max-width: 220px"
+      [value]="estadoFiltro()"
+      (change)="onFiltrarEstado($any($event.target).value)"
+    >
+      <option value="">Todos los estados</option>
+      <option value="0">Abierta</option>
+      <option value="1">En proceso</option>
+      <option value="2">Finalizada</option>
+      <option value="3">Cerrada</option>
+      <option value="4">Cancelada</option>
+    </select>
+    <span class="texto-tenue texto-sm">{{ ordenes().length }} orden(es)</span>
+  </div>
+
+  @if (cargando() || ordenes().length === 0) {
+    <app-estado-tabla
+      [cargando]="cargando()"
+      [hayFiltro]="estadoFiltro().length > 0"
+      [columnas]="7"
+      titulo="Sin órdenes de trabajo"
+      descripcion="Las órdenes se generan desde un diagnóstico: registre uno y use 'Generar orden'."
+    />
+  } @else {
+    <div class="tabla-contenedor">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>Orden</th>
+            <th>Apertura</th>
+            <th>Cliente</th>
+            <th>Vehículo</th>
+            <th class="num">Mecánicos</th>
+            <th>Estado</th>
+            <th class="num">Total</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (orden of ordenes(); track orden.ordenId) {
+            <tr>
+              <td>
+                <a [routerLink]="['/ordenes', orden.ordenId]" class="codigo">
+                  {{ orden.ordenId }}
+                </a>
+              </td>
+              <td class="texto-sm">{{ orden.fechaCreacion | date: 'dd/MM/yyyy' }}</td>
+              <td>{{ orden.nombreCliente }}</td>
+              <td>
+                <span class="texto-fuerte">{{ orden.placaVehiculo }}</span>
+                <span class="texto-tenue texto-sm"> · {{ orden.descripcionVehiculo }}</span>
+              </td>
+              <td class="num">{{ orden.cantidadMecanicos }}</td>
+              <td><app-insignia-estado familia="orden" [valor]="orden.estado" /></td>
+              <td class="num texto-fuerte">{{ orden.total | bs }}</td>
+              <td>
+                <div class="acciones">
+                  <a [routerLink]="['/ordenes', orden.ordenId]" class="btn-enlace">Abrir</a>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

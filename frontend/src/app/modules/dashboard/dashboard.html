@@ -1,0 +1,144 @@
+<div class="fila-entre envuelve mb-2">
+  <div>
+    <h1>Panel</h1>
+    <p class="texto-tenue texto-sm mb-0">
+      Resumen del taller — {{ auth.nombreCompleto() }}
+    </p>
+  </div>
+</div>
+
+@if (cargando()) {
+  <div class="indicadores">
+    @for (hueco of [1, 2, 3, 4]; track hueco) {
+      <div class="indicador"><app-esqueleto [filas]="2" [columnas]="1" /></div>
+    }
+  </div>
+
+  <div class="tarjeta mt-2"><app-esqueleto [filas]="6" [columnas]="5" /></div>
+} @else {
+  <div class="indicadores">
+    <div class="indicador">
+      <div class="indicador-valor">{{ abiertas() }}</div>
+      <div class="indicador-etiqueta">Órdenes abiertas</div>
+    </div>
+    <div class="indicador">
+      <div class="indicador-valor naranja">{{ enProceso() }}</div>
+      <div class="indicador-etiqueta">En proceso</div>
+    </div>
+    <div class="indicador">
+      <div class="indicador-valor verde">{{ finalizadas() }}</div>
+      <div class="indicador-etiqueta">Finalizadas por cerrar</div>
+    </div>
+    <div class="indicador">
+      <div class="indicador-valor">{{ montoEnCurso() | bs }}</div>
+      <div class="indicador-etiqueta">Trabajo en curso</div>
+    </div>
+  </div>
+
+  <!-- --------------------------------------------- Accesos directos por rol -->
+  @if (accesos().length > 0) {
+    <div class="accesos mt-2">
+      @for (acceso of accesos(); track acceso.etiqueta) {
+        <a
+          class="acceso"
+          [class.urgente]="acceso.urgente"
+          [routerLink]="acceso.ruta"
+          [queryParams]="acceso.parametros"
+        >
+          <span class="acceso-icono" aria-hidden="true">{{ acceso.icono }}</span>
+          <span class="acceso-texto">
+            <span class="acceso-etiqueta">{{ acceso.etiqueta }}</span>
+            <span class="acceso-descripcion">{{ acceso.descripcion }}</span>
+          </span>
+          <span class="acceso-cantidad">{{ acceso.cantidad }}</span>
+        </a>
+      }
+    </div>
+  }
+
+  @if (auth.esAdministrador() && comisionesPendientes().length > 0) {
+    <div class="tarjeta mt-2">
+      <div class="tarjeta-encabezado">
+        <h2>Comisiones por liquidar</h2>
+        <a routerLink="/comisiones" class="texto-sm">Ir a comisiones</a>
+      </div>
+      <div class="tarjeta-cuerpo fila-entre envuelve">
+        <span class="texto-tenue texto-sm">
+          {{ comisionesPendientes().length }} comisión(es) esperando pago
+        </span>
+        <span class="total-monto">{{ totalComisionesPendientes() | bs }}</span>
+      </div>
+    </div>
+  }
+
+  @if (stockBajo().length > 0) {
+    <div class="tarjeta alerta mt-2">
+      <div class="tarjeta-encabezado">
+        <h2>⚠️ Repuestos por reponer</h2>
+        <a routerLink="/repuestos" [queryParams]="{ stockBajo: true }" class="texto-sm">
+          Ver inventario
+        </a>
+      </div>
+      <div class="tarjeta-cuerpo">
+        <div class="chips">
+          @for (repuesto of stockBajo(); track repuesto.repuestoId) {
+            <span class="chip" [class.chip-agotado]="repuesto.stockActual === 0">
+              @if (repuesto.stockActual === 0) {
+                <span aria-hidden="true">⛔</span>
+              }
+              {{ repuesto.nombre }}
+              <strong>{{ repuesto.stockActual }}</strong>
+              <span class="texto-tenue">/ mín. {{ repuesto.stockMinimo }}</span>
+            </span>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  <div class="tarjeta mt-2">
+    <div class="tarjeta-encabezado">
+      <h2>Órdenes recientes</h2>
+      <a routerLink="/ordenes" class="texto-sm">Ver todas</a>
+    </div>
+
+    @if (recientes().length === 0) {
+      <div class="vacio">
+        <div class="vacio-titulo">Sin órdenes registradas</div>
+        <div class="texto-sm">Las órdenes de trabajo aparecerán aquí.</div>
+      </div>
+    } @else {
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Orden</th>
+              <th>Cliente</th>
+              <th>Vehículo</th>
+              <th>Estado</th>
+              <th class="num">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (orden of recientes(); track orden.ordenId) {
+              <tr>
+                <td>
+                  <a [routerLink]="['/ordenes', orden.ordenId]" class="codigo">
+                    {{ orden.ordenId }}
+                  </a>
+                </td>
+                <td>{{ orden.nombreCliente }}</td>
+                <td>
+                  <span class="texto-fuerte">{{ orden.placaVehiculo }}</span>
+                  <span class="texto-tenue texto-sm"> · {{ orden.descripcionVehiculo }}</span>
+                </td>
+                <td><app-insignia-estado familia="orden" [valor]="orden.estado" /></td>
+                <td class="num">{{ orden.total | bs }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+}
