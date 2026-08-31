@@ -19,9 +19,9 @@
 }
 
 .marca {
-  padding: 16px 18px 14px;
+  padding: 11px 18px 9px;
   border-bottom: 1px solid #2e343e;
-  margin-bottom: 6px;
+  margin-bottom: 2px;
   flex-shrink: 0;
 }
 
@@ -33,28 +33,30 @@
 }
 
 .navegacion {
-  padding: 6px 0 20px;
+  padding: 2px 0 8px;
 }
 
-.grupo { margin-bottom: 4px; }
+.grupo { margin-bottom: 0; }
 
 .grupo-titulo {
-  padding: 13px 20px 5px;
+  padding: 7px 20px 2px;
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: #77808f;
+  line-height: 1.2;
 }
 
 .enlace {
   display: flex;
   align-items: center;
   gap: 11px;
-  padding: 11px 20px;
+  padding: 6px 20px;
   color: #c6cbd3;
   font-size: 13.5px;
   font-weight: 500;
+  line-height: 1.2;
   text-decoration: none;
   border-left: 3px solid transparent;
 }
