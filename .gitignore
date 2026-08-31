@@ -26,6 +26,11 @@ appsettings.Local.json
 *.swp
 
 
+# ------------------------------------------------------- CLIs (estado local)
+supabase/.temp/
+.vercel/
+.railway/
+
 # ---------------------------------------------------------------- Sistema
 Thumbs.db
 Desktop.ini
