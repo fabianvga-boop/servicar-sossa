@@ -18,127 +18,142 @@
 } @else {
   <div class="indicadores">
     <div class="indicador">
+      <span class="indicador-icono" aria-hidden="true">🗂</span>
       <div class="indicador-valor">{{ abiertas() }}</div>
       <div class="indicador-etiqueta">Órdenes abiertas</div>
+      @if (nuevasEstaSemana() > 0) {
+        <div class="indicador-extra">+{{ nuevasEstaSemana() }} nueva(s) esta semana</div>
+      }
     </div>
     <div class="indicador">
+      <span class="indicador-icono" aria-hidden="true">🔧</span>
       <div class="indicador-valor naranja">{{ enProceso() }}</div>
       <div class="indicador-etiqueta">En proceso</div>
     </div>
     <div class="indicador">
+      <span class="indicador-icono" aria-hidden="true">✅</span>
       <div class="indicador-valor verde">{{ finalizadas() }}</div>
       <div class="indicador-etiqueta">Finalizadas por cerrar</div>
     </div>
     <div class="indicador">
+      <span class="indicador-icono" aria-hidden="true">💵</span>
       <div class="indicador-valor">{{ montoEnCurso() | bs }}</div>
       <div class="indicador-etiqueta">Trabajo en curso</div>
     </div>
   </div>
 
-  <!-- --------------------------------------------- Accesos directos por rol -->
-  @if (accesos().length > 0) {
-    <div class="accesos mt-2">
-      @for (acceso of accesos(); track acceso.etiqueta) {
-        <a
-          class="acceso"
-          [class.urgente]="acceso.urgente"
-          [routerLink]="acceso.ruta"
-          [queryParams]="acceso.parametros"
-        >
-          <span class="acceso-icono" aria-hidden="true">{{ acceso.icono }}</span>
-          <span class="acceso-texto">
-            <span class="acceso-etiqueta">{{ acceso.etiqueta }}</span>
-            <span class="acceso-descripcion">{{ acceso.descripcion }}</span>
-          </span>
-          <span class="acceso-cantidad">{{ acceso.cantidad }}</span>
-        </a>
+  <div class="panel-cols mt-2">
+    <!-- ------------------------------------------------- Columna principal -->
+    <div class="tarjeta">
+      <div class="tarjeta-encabezado">
+        <h2>Órdenes recientes</h2>
+        <a routerLink="/ordenes" class="texto-sm">Ver todas</a>
+      </div>
+
+      @if (recientes().length === 0) {
+        <div class="vacio">
+          <div class="vacio-titulo">Sin órdenes registradas</div>
+          <div class="texto-sm">Las órdenes de trabajo aparecerán aquí.</div>
+        </div>
+      } @else {
+        <div class="tabla-contenedor">
+          <table class="tabla">
+            <thead>
+              <tr>
+                <th>Orden</th>
+                <th>Cliente</th>
+                <th>Vehículo</th>
+                <th>Estado</th>
+                <th class="num">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (orden of recientes(); track orden.ordenId) {
+                <tr>
+                  <td>
+                    <a [routerLink]="['/ordenes', orden.ordenId]" class="codigo">
+                      {{ orden.ordenId }}
+                    </a>
+                  </td>
+                  <td>{{ orden.nombreCliente }}</td>
+                  <td>
+                    <span class="texto-fuerte">{{ orden.placaVehiculo }}</span>
+                    <span class="texto-tenue texto-sm"> · {{ orden.descripcionVehiculo }}</span>
+                  </td>
+                  <td><app-insignia-estado familia="orden" [valor]="orden.estado" /></td>
+                  <td class="num">{{ orden.total | bs }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
       }
     </div>
-  }
 
-  @if (auth.esAdministrador() && comisionesPendientes().length > 0) {
-    <div class="tarjeta mt-2">
-      <div class="tarjeta-encabezado">
-        <h2>Comisiones por liquidar</h2>
-        <a routerLink="/comisiones" class="texto-sm">Ir a comisiones</a>
-      </div>
-      <div class="tarjeta-cuerpo fila-entre envuelve">
-        <span class="texto-tenue texto-sm">
-          {{ comisionesPendientes().length }} comisión(es) esperando pago
-        </span>
-        <span class="total-monto">{{ totalComisionesPendientes() | bs }}</span>
-      </div>
-    </div>
-  }
-
-  @if (stockBajo().length > 0) {
-    <div class="tarjeta alerta mt-2">
-      <div class="tarjeta-encabezado">
-        <h2>⚠️ Repuestos por reponer</h2>
-        <a routerLink="/repuestos" [queryParams]="{ stockBajo: true }" class="texto-sm">
-          Ver inventario
-        </a>
-      </div>
-      <div class="tarjeta-cuerpo">
-        <div class="chips">
-          @for (repuesto of stockBajo(); track repuesto.repuestoId) {
-            <span class="chip" [class.chip-agotado]="repuesto.stockActual === 0">
-              @if (repuesto.stockActual === 0) {
-                <span aria-hidden="true">⛔</span>
-              }
-              {{ repuesto.nombre }}
-              <strong>{{ repuesto.stockActual }}</strong>
-              <span class="texto-tenue">/ mín. {{ repuesto.stockMinimo }}</span>
-            </span>
-          }
-        </div>
-      </div>
-    </div>
-  }
-
-  <div class="tarjeta mt-2">
-    <div class="tarjeta-encabezado">
-      <h2>Órdenes recientes</h2>
-      <a routerLink="/ordenes" class="texto-sm">Ver todas</a>
-    </div>
-
-    @if (recientes().length === 0) {
-      <div class="vacio">
-        <div class="vacio-titulo">Sin órdenes registradas</div>
-        <div class="texto-sm">Las órdenes de trabajo aparecerán aquí.</div>
-      </div>
-    } @else {
-      <div class="tabla-contenedor">
-        <table class="tabla">
-          <thead>
-            <tr>
-              <th>Orden</th>
-              <th>Cliente</th>
-              <th>Vehículo</th>
-              <th>Estado</th>
-              <th class="num">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (orden of recientes(); track orden.ordenId) {
-              <tr>
-                <td>
-                  <a [routerLink]="['/ordenes', orden.ordenId]" class="codigo">
-                    {{ orden.ordenId }}
-                  </a>
-                </td>
-                <td>{{ orden.nombreCliente }}</td>
-                <td>
-                  <span class="texto-fuerte">{{ orden.placaVehiculo }}</span>
-                  <span class="texto-tenue texto-sm"> · {{ orden.descripcionVehiculo }}</span>
-                </td>
-                <td><app-insignia-estado familia="orden" [valor]="orden.estado" /></td>
-                <td class="num">{{ orden.total | bs }}</td>
-              </tr>
+    <!-- --------------------------------------------------- Columna lateral -->
+    <div class="col-lateral">
+      @if (accesos().length > 0) {
+        <div class="tarjeta">
+          <div class="tarjeta-encabezado"><h2>Requiere atención</h2></div>
+          <div class="accesos">
+            @for (acceso of accesos(); track acceso.etiqueta) {
+              <a
+                class="acceso"
+                [class.urgente]="acceso.urgente"
+                [routerLink]="acceso.ruta"
+                [queryParams]="acceso.parametros"
+              >
+                <span class="acceso-icono" aria-hidden="true">{{ acceso.icono }}</span>
+                <span class="acceso-texto">
+                  <span class="acceso-etiqueta">{{ acceso.etiqueta }}</span>
+                  <span class="acceso-descripcion">{{ acceso.descripcion }}</span>
+                  @if (acceso.detalle) {
+                    <span class="acceso-detalle">{{ acceso.detalle }}</span>
+                  }
+                </span>
+                <span class="acceso-cantidad">{{ acceso.cantidad }}</span>
+              </a>
             }
-          </tbody>
-        </table>
-      </div>
-    }
+          </div>
+        </div>
+      }
+
+      @if (stockBajo().length > 0) {
+        <div class="tarjeta">
+          <div class="tarjeta-encabezado">
+            <h2>Por reponer</h2>
+            <a routerLink="/repuestos" [queryParams]="{ stockBajo: true }" class="texto-sm">
+              Ver todo
+            </a>
+          </div>
+          <div class="reponer-lista">
+            @for (repuesto of stockBajo(); track repuesto.repuestoId) {
+              <a
+                class="reponer-item"
+                [routerLink]="['/repuestos']"
+                [queryParams]="{ buscar: repuesto.nombre }"
+              >
+                @if (repuesto.fotoUrl) {
+                  <img
+                    class="reponer-foto"
+                    [src]="urlArchivo(repuesto.fotoUrl)"
+                    [alt]="repuesto.nombre"
+                  />
+                } @else {
+                  <span class="reponer-foto reponer-foto-vacia" aria-hidden="true">📦</span>
+                }
+                <span class="reponer-texto">
+                  <span class="reponer-nombre">{{ repuesto.nombre }}</span>
+                  <span class="reponer-stock" [class.critico]="repuesto.stockActual === 0">
+                    {{ repuesto.stockActual === 0 ? 'Agotado' : repuesto.stockActual + ' unid.' }}
+                    <span class="texto-tenue">/ mín. {{ repuesto.stockMinimo }}</span>
+                  </span>
+                </span>
+              </a>
+            }
+          </div>
+        </div>
+      }
+    </div>
   </div>
 }

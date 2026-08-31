@@ -8,6 +8,7 @@ import { Comision } from '../../core/models/finanzas.model';
 import { Repuesto } from '../../core/models/inventario.model';
 import { Orden } from '../../core/models/taller.model';
 import { AuthService } from '../../core/services/auth.service';
+import { urlArchivo } from '../../core/services/api-base';
 import { ComisionesService } from '../../core/services/finanzas.service';
 import { RepuestosService } from '../../core/services/inventario.service';
 import { OrdenesService } from '../../core/services/ordenes.service';
@@ -25,7 +26,11 @@ interface AccesoDirecto {
   parametros?: Record<string, string>;
   /** Se pinta en rojo cuando exige atención inmediata. */
   urgente?: boolean;
+  /** Dato adicional de una línea, p. ej. el monto de las comisiones. */
+  detalle?: string;
 }
+
+const DIAS_TENDENCIA = 7;
 
 /**
  * Panel de inicio. Muestra el trabajo en curso y las alertas que exigen
@@ -77,6 +82,19 @@ export class Dashboard {
   /** Las más recientes primero; el backend ya las devuelve ordenadas. */
   protected readonly recientes = computed(() => this.ordenes().slice(0, 8));
 
+  protected readonly urlArchivo = urlArchivo;
+
+  /**
+   * Órdenes abiertas en los últimos 7 días: el único dato de tendencia que se
+   * puede calcular de forma honesta con lo que ya llega del backend (no hay
+   * histórico de conteos guardado, así que no se inventa un "% vs. semana
+   * pasada" para el resto de los indicadores).
+   */
+  protected readonly nuevasEstaSemana = computed(() => {
+    const limite = Date.now() - DIAS_TENDENCIA * 24 * 60 * 60 * 1000;
+    return this.ordenes().filter((o) => new Date(o.fechaCreacion).getTime() >= limite).length;
+  });
+
   /**
    * Atajos al trabajo que realmente espera. Solo se listan los que tienen algo
    * pendiente: una tarjeta en cero es ruido, no información.
@@ -99,6 +117,9 @@ export class Dashboard {
           descripcion: 'Pendientes de pago a los mecánicos',
           icono: '%',
           cantidad: this.comisionesPendientes().length,
+          detalle: this.totalComisionesPendientes() > 0
+            ? `Bs ${this.totalComisionesPendientes().toFixed(2)}`
+            : undefined,
           ruta: '/comisiones',
         },
         {
