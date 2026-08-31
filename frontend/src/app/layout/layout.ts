@@ -43,7 +43,8 @@ export class Layout {
 
   private readonly grupos: GrupoMenu[] = [
     {
-      titulo: 'Principal',
+      // Sin título: es un solo enlace, no necesita una fila de categoría propia.
+      titulo: '',
       enlaces: [
         { ruta: '/dashboard', etiqueta: 'Panel', icono: '▦' },
       ],
