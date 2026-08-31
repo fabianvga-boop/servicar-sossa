@@ -28,6 +28,11 @@ appsettings.Local.json
 # ----------------------------------------------------- Claude Code (local)
 .claude/settings.local.json
 
+# ------------------------------------------------------- CLIs (estado local)
+supabase/.temp/
+.vercel/
+.railway/
+
 # ---------------------------------------------------------------- Sistema
 Thumbs.db
 Desktop.ini

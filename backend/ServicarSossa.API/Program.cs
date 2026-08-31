@@ -98,10 +98,12 @@ if (app.Environment.IsDevelopment())
         opt.SwaggerEndpoint("/swagger/v1/swagger.json", "Servicar SOSSA API v1");
         opt.DocumentTitle = "Servicar SOSSA — API";
     });
-
-    // Crea los roles y el administrador inicial si la base está vacía.
-    await DbSeeder.SeedAsync(app.Services);
 }
+
+// Crea los roles y el administrador inicial si la base está vacía. Corre en
+// cualquier entorno (es idempotente): sin esto, un despliegue nuevo no tendría
+// ninguna credencial con la que iniciar sesión por primera vez.
+await DbSeeder.SeedAsync(app.Services);
 
 // Archivos subidos por el usuario (fotos de vehículos, etc.), separados de
 // "Recursos" (que sí se versiona). Sin autenticación: igual que el logo del

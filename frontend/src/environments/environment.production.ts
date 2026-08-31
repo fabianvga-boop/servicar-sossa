@@ -1,5 +1,4 @@
 export const environment = {
   production: true,
-  // Ajustar al dominio real al desplegar.
-  apiUrl: '/api',
+  apiUrl: 'https://servicar-sossa-production.up.railway.app/api',
 };
