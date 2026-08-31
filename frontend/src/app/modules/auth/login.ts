@@ -13,7 +13,7 @@ import { NotificacionService } from '../../core/services/notificacion.service';
       <div class="caja">
         <div class="marca">
           <img src="assets/logo.png" alt="Servicar SOSSA" class="marca-logo" />
-          <p class="marca-sistema">Sistema de información del taller</p>
+          <p class="marca-sistema">Sistema de información del taller — Tarija, Bolivia</p>
         </div>
 
         <form class="cuerpo" [formGroup]="formulario" (ngSubmit)="ingresar()">
