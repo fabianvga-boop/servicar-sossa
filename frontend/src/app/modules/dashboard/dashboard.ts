@@ -13,6 +13,7 @@ import { ComisionesService } from '../../core/services/finanzas.service';
 import { RepuestosService } from '../../core/services/inventario.service';
 import { OrdenesService } from '../../core/services/ordenes.service';
 import { Esqueleto } from '../../shared/components/esqueleto';
+import { IconoMenu } from '../../shared/components/icono-menu';
 import { InsigniaEstado } from '../../shared/components/insignia-estado';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 
@@ -41,7 +42,7 @@ const DIAS_TENDENCIA = 7;
  */
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterLink, Esqueleto, InsigniaEstado, BolivianosPipe],
+  imports: [RouterLink, Esqueleto, IconoMenu, InsigniaEstado, BolivianosPipe],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
 })

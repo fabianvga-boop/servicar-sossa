@@ -1,4 +1,5 @@
 using ServicarSossa.Application.Common;
+using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Application.DTOs.Usuarios;
 
 namespace ServicarSossa.Application.Interfaces;
@@ -20,4 +21,11 @@ public interface IUsuarioService
     /// <summary>USU004 — baja lógica: cambia el estado, nunca borra el registro.</summary>
     Task<Result<UsuarioResponseDto>> CambiarEstadoAsync(
         string id, CambiarEstadoUsuarioDto dto, string actorId, CancellationToken ct = default);
+
+    /// <summary>Sube o reemplaza la foto de perfil (JPG, PNG o WEBP, hasta 8 MB).</summary>
+    Task<Result<UsuarioResponseDto>> SubirFotoAsync(
+        string id, SubirFotoDto dto, CancellationToken ct = default);
+
+    /// <summary>Quita la foto de perfil.</summary>
+    Task<Result<UsuarioResponseDto>> EliminarFotoAsync(string id, CancellationToken ct = default);
 }

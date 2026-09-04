@@ -77,7 +77,7 @@ import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
                 <th>Descripción</th>
                 <th class="num">Precio base</th>
                 <th>Estado</th>
-                @if (auth.esAdministrador()) { <th></th> }
+                @if (auth.esAdministrador()) { <th class="th-acciones">Acciones</th> }
               </tr>
             </thead>
             <tbody>

@@ -46,7 +46,7 @@ h1 {
 .requisitos li.cumplido {
   color: var(--gris-500);
   text-decoration: line-through;
-  text-decoration-color: var(--gris-300);
+  text-decoration-color: var(--gris-200);
 }
 
 .requisitos .marca {

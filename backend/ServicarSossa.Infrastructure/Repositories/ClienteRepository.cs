@@ -27,11 +27,18 @@ public class ClienteRepository(AppDbContext context)
         return await query.OrderBy(c => c.ClienteId).ToListAsync(ct);
     }
 
-    public async Task<Dictionary<string, int>> ContarVehiculosPorClienteAsync(
+    public async Task<Dictionary<string, List<string>>> ObtenerPlacasPorClienteAsync(
         IEnumerable<string> clienteIds, CancellationToken ct = default)
-        => await Context.Vehiculos
+    {
+        // Solo cliente y placa: no se materializan entidades Vehiculo completas.
+        var filas = await Context.Vehiculos
             .Where(v => clienteIds.Contains(v.ClienteId))
-            .GroupBy(v => v.ClienteId)
-            .Select(g => new { ClienteId = g.Key, Cantidad = g.Count() })
-            .ToDictionaryAsync(x => x.ClienteId, x => x.Cantidad, ct);
+            .OrderBy(v => v.Placa)
+            .Select(v => new { v.ClienteId, v.Placa })
+            .ToListAsync(ct);
+
+        return filas
+            .GroupBy(f => f.ClienteId)
+            .ToDictionary(g => g.Key, g => g.Select(f => f.Placa).ToList());
+    }
 }

@@ -22,6 +22,9 @@ public class LoginResponseDto
     public string Username { get; set; } = string.Empty;
     public string NombreCompleto { get; set; } = string.Empty;
     public string Rol { get; set; } = string.Empty;
+
+    /// <summary>Foto de perfil, para mostrarla en el encabezado tras entrar.</summary>
+    public string? FotoUrl { get; set; }
 }
 
 /// <summary>USU003 — cambio de contraseña del usuario autenticado.</summary>

@@ -16,11 +16,11 @@ public class ClienteService(
         string? buscar, CancellationToken ct = default)
     {
         var lista = (await clientes.BuscarAsync(buscar, ct)).ToList();
-        var conteo = await clientes.ContarVehiculosPorClienteAsync(
+        var placas = await clientes.ObtenerPlacasPorClienteAsync(
             lista.Select(c => c.ClienteId), ct);
 
         return Result<IEnumerable<ClienteResponseDto>>.Ok(
-            lista.Select(c => Mapear(c, conteo.GetValueOrDefault(c.ClienteId))));
+            lista.Select(c => Mapear(c, placas.GetValueOrDefault(c.ClienteId, []))));
     }
 
     public async Task<Result<ClienteResponseDto>> GetByIdAsync(
@@ -31,8 +31,8 @@ public class ClienteService(
         if (cliente is null)
             return Result<ClienteResponseDto>.NoEncontrado($"No existe el cliente {id}.");
 
-        var conteo = await clientes.ContarVehiculosPorClienteAsync([id], ct);
-        return Result<ClienteResponseDto>.Ok(Mapear(cliente, conteo.GetValueOrDefault(id)));
+        var placas = await clientes.ObtenerPlacasPorClienteAsync([id], ct);
+        return Result<ClienteResponseDto>.Ok(Mapear(cliente, placas.GetValueOrDefault(id, [])));
     }
 
     public async Task<Result<ClienteResponseDto>> CreateAsync(
@@ -67,7 +67,8 @@ public class ClienteService(
 
         await clientes.SaveChangesAsync(ct);
 
-        return Result<ClienteResponseDto>.Ok(Mapear(cliente, 0), "Cliente registrado correctamente.");
+        // Recién creado: todavía no tiene vehículos.
+        return Result<ClienteResponseDto>.Ok(Mapear(cliente, []), "Cliente registrado correctamente.");
     }
 
     public async Task<Result<ClienteResponseDto>> UpdateAsync(
@@ -99,9 +100,9 @@ public class ClienteService(
 
         await clientes.SaveChangesAsync(ct);
 
-        var conteo = await clientes.ContarVehiculosPorClienteAsync([id], ct);
+        var placas = await clientes.ObtenerPlacasPorClienteAsync([id], ct);
         return Result<ClienteResponseDto>.Ok(
-            Mapear(cliente, conteo.GetValueOrDefault(id)), "Cliente actualizado correctamente.");
+            Mapear(cliente, placas.GetValueOrDefault(id, [])), "Cliente actualizado correctamente.");
     }
 
     public async Task<Result<ClienteResponseDto>> CambiarEstadoAsync(
@@ -124,12 +125,12 @@ public class ClienteService(
 
         await clientes.SaveChangesAsync(ct);
 
-        var conteo = await clientes.ContarVehiculosPorClienteAsync([id], ct);
+        var placas = await clientes.ObtenerPlacasPorClienteAsync([id], ct);
         return Result<ClienteResponseDto>.Ok(
-            Mapear(cliente, conteo.GetValueOrDefault(id)), $"Cliente marcado como {dto.Estado}.");
+            Mapear(cliente, placas.GetValueOrDefault(id, [])), $"Cliente marcado como {dto.Estado}.");
     }
 
-    private static ClienteResponseDto Mapear(Cliente c, int cantidadVehiculos) => new()
+    private static ClienteResponseDto Mapear(Cliente c, List<string> placas) => new()
     {
         ClienteId = c.ClienteId,
         Nombre = c.Nombre,
@@ -141,6 +142,7 @@ public class ClienteService(
         Direccion = c.Direccion,
         FechaRegistro = c.FechaRegistro,
         Estado = c.Estado,
-        CantidadVehiculos = cantidadVehiculos
+        CantidadVehiculos = placas.Count,
+        Placas = placas
     };
 }

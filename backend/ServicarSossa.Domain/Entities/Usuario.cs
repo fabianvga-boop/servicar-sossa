@@ -16,6 +16,12 @@ public class Usuario
     public EstadoUsuario Estado { get; set; } = EstadoUsuario.Activo;
     public DateTime FechaRegistro { get; set; } = DateTime.UtcNow;
 
+    /// <summary>
+    /// Nombre físico de la foto de perfil en disco (opcional). Una sola por
+    /// usuario: al subir una nueva se reemplaza la anterior.
+    /// </summary>
+    public string? NombreArchivoFoto { get; set; }
+
     // Navegación
     public Rol Rol { get; set; } = null!;
     public ICollection<Diagnostico> Diagnosticos { get; set; } = [];

@@ -1,0 +1,333 @@
+/* Indicadores del listado: solo dos, así que no se estiran a todo el ancho
+   como los del panel — se mantienen compactos a la izquierda. */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 232px));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.kpi {
+  background: var(--blanco);
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio);
+  padding: 15px 18px 17px;
+}
+
+.kpi-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.kpi-icono { color: var(--gris-400); }
+
+.kpi-etiqueta {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gris-500);
+}
+
+.kpi-valor {
+  font-size: 27px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.kpi-valor.verde { color: var(--verde-600); }
+
+.kpi-extra {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--gris-500);
+  margin-top: 10px;
+}
+
+.kpi-extra .delta {
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: var(--naranja-100);
+  color: #7a5700;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------- Filtros */
+
+.filtros-ordenes {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.buscador {
+  position: relative;
+  width: 268px;
+  max-width: 100%;
+}
+
+.buscador .lupa {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: var(--gris-400);
+  pointer-events: none;
+}
+
+.buscador input { padding-left: 36px; }
+
+/* Los dos campos de fecha se leen como un solo control de rango */
+.rango-fechas {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio-sm);
+  background: var(--gris-50);
+  overflow: hidden;
+}
+
+.rango-fechas input {
+  width: auto;
+  border: none;
+  background: none;
+  padding: 9px 11px;
+  font-size: 13px;
+}
+
+.rango-fechas input:focus {
+  outline: 2px solid var(--brand);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+.rango-fechas .separador {
+  width: 1px;
+  align-self: stretch;
+  background: var(--gris-200);
+  flex-shrink: 0;
+}
+
+.limpiar-fechas {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-right: 3px;
+  border: none;
+  border-radius: var(--radio-sm);
+  background: none;
+  color: var(--gris-400);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.limpiar-fechas:hover {
+  background: var(--gris-100);
+  color: var(--ink-soft);
+}
+
+/* ---------------------------------------------- Encabezados ordenables */
+
+.th-orden {
+  cursor: pointer;
+  user-select: none;
+}
+
+.th-orden:hover { background: var(--gris-100); }
+
+.th-orden.activo {
+  background: var(--gris-100);
+  color: var(--ink);
+}
+
+.th-orden-cara {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.th-orden .flecha { color: var(--gris-400); flex-shrink: 0; }
+.th-orden.activo .flecha { color: var(--brand); }
+
+/* --------------------------------------------------------- Fila y menú */
+
+/* La fila entera abre el detalle: el objetivo de clic es toda la línea y no
+   un enlace de 30 px. */
+tr.fila-clic { cursor: pointer; }
+
+tr.fila-clic:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: -2px;
+}
+
+.celda-menu {
+  position: relative;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radio-sm);
+  background: none;
+  color: var(--gris-400);
+  cursor: pointer;
+}
+
+.menu-btn:hover,
+.menu-btn.abierto {
+  background: var(--gris-200);
+  color: var(--ink-soft);
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% - 6px);
+  right: 12px;
+  z-index: 30;
+  min-width: 186px;
+  padding: 4px;
+  background: var(--blanco);
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio-sm);
+  box-shadow: var(--sombra-md);
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.menu a,
+.menu button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 11px;
+  border: none;
+  border-radius: var(--radio-sm);
+  background: none;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ink-soft);
+  text-align: left;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.menu a:hover,
+.menu button:hover {
+  background: var(--gris-100);
+  text-decoration: none;
+}
+
+/* ------------------------------------------------------------ Retraso */
+
+.chip-retraso {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px 1px 4px;
+  border-radius: 20px;
+  background: var(--naranja-100);
+  color: #7a5700;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Pasada una semana el retraso deja de ser un aviso y pasa a ser un problema */
+.chip-retraso.grave {
+  background: var(--brand-soft);
+  color: var(--brand-dk);
+}
+
+.celda-fecha {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* --------------------------------------------------------- Paginación */
+
+.paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 18px;
+  border-top: 1px solid var(--gris-200);
+  background: var(--gris-50);
+  border-radius: 0 0 var(--radio) var(--radio);
+}
+
+.paginas {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pagina-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio-sm);
+  background: var(--blanco);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.pagina-btn:hover:not(:disabled) { background: var(--gris-100); }
+
+.pagina-btn:disabled {
+  color: var(--gris-400);
+  cursor: not-allowed;
+}
+
+.pagina-btn.actual {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand-dk);
+  font-weight: 700;
+}
+
+.filas-por-pagina {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filas-por-pagina select {
+  width: auto;
+  padding: 6px 30px 6px 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  background-color: var(--blanco);
+}
+
+@media (max-width: 640px) {
+  .paginacion { justify-content: center; }
+  .buscador { width: 100%; }
+}

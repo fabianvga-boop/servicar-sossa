@@ -60,12 +60,19 @@ public class OrdenResponseDto
     public decimal TotalRepuestos { get; set; }
     public decimal Total => TotalServicios + TotalRepuestos;
     public int CantidadMecanicos { get; set; }
+
+    /// <summary>
+    /// Quiénes están asignados. Va también en la fila de la lista —y no solo
+    /// en el detalle— porque la consulta ya trae los mecánicos con su nombre
+    /// (ver OrdenRepository.ConIncludes): mandar solo el conteo desperdiciaba
+    /// un dato que ya había viajado desde la base.
+    /// </summary>
+    public List<OrdenMecanicoResponseDto> Mecanicos { get; set; } = [];
 }
 
 /// <summary>Vista completa de la orden con sus tres detalles.</summary>
 public class OrdenDetalleResponseDto : OrdenResponseDto
 {
-    public List<OrdenMecanicoResponseDto> Mecanicos { get; set; } = [];
     public List<OrdenServicioResponseDto> Servicios { get; set; } = [];
     public List<OrdenRepuestoResponseDto> Repuestos { get; set; } = [];
 }

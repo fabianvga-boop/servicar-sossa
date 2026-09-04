@@ -8,17 +8,28 @@
 </div>
 
 <div class="columnas-pos">
-  <!-- ------------------------------------------------------------- Carrito -->
+  <!-- ------------------------------------------------------------- Catálogo -->
   <div class="tarjeta">
     <div class="tarjeta-encabezado"><h2>Nueva venta</h2></div>
 
     <div class="tarjeta-cuerpo">
-      <input
-        type="search"
-        placeholder="Buscar producto…"
-        [value]="buscarProducto()"
-        (input)="buscarProducto.set($any($event.target).value)"
-      />
+      <div class="buscador-pos">
+        <svg class="buscador-lupa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.4-4.4"/>
+        </svg>
+        <input
+          #campoBusqueda
+          type="search"
+          placeholder="Buscar por nombre o código (REP-012)…"
+          aria-label="Buscar producto por nombre o código"
+          [value]="buscarProducto()"
+          (input)="buscarProducto.set($any($event.target).value)"
+          (keydown)="alTeclearBusqueda($event)"
+        />
+      </div>
+      <p class="buscador-ayuda">
+        <kbd>Enter</kbd> agrega cuando queda un solo producto · <kbd>Esc</kbd> limpia
+      </p>
 
       @if (productosFiltrados().length === 0) {
         <p class="texto-tenue texto-sm mt-1 mb-0">No hay productos que coincidan con la búsqueda.</p>
@@ -32,99 +43,100 @@
               [title]="disponible(repuesto) < 1 ? 'Sin stock disponible' : 'Agregar al carrito'"
               (click)="agregarProducto(repuesto)"
             >
-              @if (repuesto.fotoUrl) {
-                <img [src]="urlArchivo(repuesto.fotoUrl)" [alt]="repuesto.nombre" />
-              } @else {
-                <span class="tarjeta-producto-sin-foto" aria-hidden="true">📦</span>
-              }
-              <span class="tarjeta-producto-nombre">{{ repuesto.nombre }}</span>
-              <span class="tarjeta-producto-precio">{{ repuesto.precioVenta | bs }}</span>
-              <span class="tarjeta-producto-stock">
-                {{ disponible(repuesto) < 1 ? 'Sin stock' : disponible(repuesto) + ' disp.' }}
+              <!-- Stock como insignia en la esquina: se lee de un vistazo y
+                   libera una línea de la tarjeta -->
+              <span
+                class="producto-stock"
+                [class.agotado]="disponible(repuesto) < 1"
+                [attr.aria-label]="disponible(repuesto) + ' disponibles'"
+              >
+                {{ disponible(repuesto) }}
               </span>
+
+              @if (repuesto.fotoUrl) {
+                <img class="producto-foto" [src]="urlArchivo(repuesto.fotoUrl)" [alt]="repuesto.nombre" />
+              } @else {
+                <span class="producto-foto producto-foto-vacia" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 8l9-5 9 5-9 5-9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>
+                  </svg>
+                </span>
+              }
+
+              <span class="producto-nombre">{{ repuesto.nombre }}</span>
+              <span class="producto-precio">{{ repuesto.precioVenta | bs }}</span>
+              <span class="producto-codigo">{{ repuesto.repuestoId }}</span>
             </button>
           }
         </div>
       }
+    </div>
+  </div>
 
-      @if (carrito().length === 0) {
-        <div class="vacio">
-          <div class="vacio-titulo">Carrito vacío</div>
-          <div class="texto-sm">Toque un producto del catálogo para empezar la venta.</div>
-        </div>
-      } @else {
-        <div class="tabla-contenedor mt-1">
-          <table class="tabla">
-            <thead>
-              <tr>
-                <th>Repuesto</th>
-                <th class="num">Cantidad</th>
-                <th class="num">P. unit. (Bs)</th>
-                <th class="num">Subtotal</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (linea of carrito(); track linea.repuesto.repuestoId) {
-                <tr>
-                  <td>
-                    <div class="fila-producto">
-                      @if (linea.repuesto.fotoUrl) {
-                        <img
-                          class="miniatura-producto"
-                          [src]="urlArchivo(linea.repuesto.fotoUrl)"
-                          [alt]="linea.repuesto.nombre"
-                        />
-                      } @else {
-                        <span class="miniatura-producto miniatura-vacia" aria-hidden="true">📦</span>
-                      }
-                      <span>
-                        <span class="texto-fuerte">{{ linea.repuesto.nombre }}</span>
-                        <span class="texto-tenue texto-sm bloque">
-                          stock {{ linea.repuesto.stockActual }}
-                        </span>
-                      </span>
-                    </div>
-                  </td>
-                  <td class="num">
-                    <input
-                      class="entrada-mini"
-                      type="number"
-                      min="1"
-                      [max]="linea.repuesto.stockActual"
-                      [value]="linea.cantidad"
-                      (change)="cambiarCantidad(linea.repuesto.repuestoId, +$any($event.target).value)"
-                    />
-                  </td>
-                  <td class="num">
-                    <input
-                      class="entrada-mini"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      [value]="linea.precioUnitario"
-                      (change)="cambiarPrecio(linea.repuesto.repuestoId, +$any($event.target).value)"
-                    />
-                  </td>
-                  <td class="num texto-fuerte">
-                    {{ linea.cantidad * linea.precioUnitario | bs }}
-                  </td>
-                  <td>
-                    <button
-                      type="button"
-                      class="btn-enlace texto-rojo"
-                      (click)="quitarDelCarrito(linea.repuesto.repuestoId)"
-                    >
-                      Quitar
-                    </button>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
+  <!-- --------------------------------------------------------------- Carrito -->
+  <!-- Siempre a la vista: en mostrador hay que poder leer el total sin scroll -->
+  <aside class="tarjeta carrito-panel">
+    <div class="tarjeta-encabezado">
+      <h2>Carrito</h2>
+      @if (carrito().length > 0) {
+        <span class="texto-tenue texto-sm">{{ articulos() }} artículo(s)</span>
+      }
+    </div>
 
-        <div class="total-caja mt-1">
+    @if (carrito().length === 0) {
+      <div class="vacio">
+        <div class="vacio-titulo">Carrito vacío</div>
+        <div class="texto-sm">Busque un producto o toque una tarjeta del catálogo.</div>
+      </div>
+    } @else {
+      <ul class="carrito-lista">
+        @for (linea of carrito(); track linea.repuesto.repuestoId) {
+          <li class="carrito-linea">
+            <div class="carrito-linea-cabecera">
+              <span class="carrito-nombre">{{ linea.repuesto.nombre }}</span>
+              <button
+                type="button"
+                class="carrito-quitar"
+                [attr.aria-label]="'Quitar ' + linea.repuesto.nombre + ' del carrito'"
+                (click)="quitarDelCarrito(linea.repuesto.repuestoId)"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div class="carrito-linea-cuerpo">
+              <label class="carrito-campo">
+                <span class="carrito-etiqueta">Cant.</span>
+                <input
+                  class="entrada-mini"
+                  type="number"
+                  min="1"
+                  [max]="linea.repuesto.stockActual"
+                  [value]="linea.cantidad"
+                  (change)="cambiarCantidad(linea.repuesto.repuestoId, +$any($event.target).value)"
+                />
+              </label>
+
+              <label class="carrito-campo">
+                <span class="carrito-etiqueta">P. unit.</span>
+                <input
+                  class="entrada-mini"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  [value]="linea.precioUnitario"
+                  (change)="cambiarPrecio(linea.repuesto.repuestoId, +$any($event.target).value)"
+                />
+              </label>
+
+              <span class="carrito-subtotal">{{ linea.cantidad * linea.precioUnitario | bs }}</span>
+            </div>
+          </li>
+        }
+      </ul>
+
+      <div class="carrito-pie">
+        <div class="total-caja">
           <span>{{ articulos() }} artículo(s)</span>
           <span class="total-monto">{{ total() | bs }}</span>
         </div>
@@ -137,16 +149,17 @@
             Cobrar {{ total() | bs }}
           </button>
         </div>
-      }
-    </div>
-  </div>
+      </div>
+    }
+  </aside>
+</div>
 
-  <!-- -------------------------------------------------------- Últimas ventas -->
-  <div class="tarjeta">
-    <div class="tarjeta-encabezado">
-      <h2>Ventas registradas</h2>
-      <span class="texto-tenue texto-sm">{{ ventas().length }} venta(s)</span>
-    </div>
+<!-- -------------------------------------------------------- Últimas ventas -->
+<div class="tarjeta mt-2">
+  <div class="tarjeta-encabezado">
+    <h2>Ventas registradas</h2>
+    <span class="texto-tenue texto-sm">{{ ventas().length }} venta(s)</span>
+  </div>
 
     @if (cargando() || ventas().length === 0) {
       <app-estado-tabla
@@ -165,7 +178,7 @@
               <th class="num">Art.</th>
               <th class="num">Total</th>
               <th>Estado</th>
-              <th></th>
+              <th class="th-acciones">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -204,7 +217,6 @@
         </table>
       </div>
     }
-  </div>
 </div>
 
 @if (panelCobro()) {

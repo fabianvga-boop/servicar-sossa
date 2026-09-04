@@ -2,9 +2,11 @@ import { Component, computed, inject, signal, viewChild } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 import { Rol } from '../core/models/enums';
+import { urlArchivo } from '../core/services/api-base';
 import { AuthService } from '../core/services/auth.service';
 import { ContadoresService } from '../core/services/contadores.service';
 import { BuscadorGlobal } from '../shared/components/buscador-global';
+import { IconoMenu, NombreIconoMenu } from '../shared/components/icono-menu';
 
 /** Contadores que la barra lateral puede mostrar como insignia. */
 type ClaveContador = 'ordenesActivas' | 'comisionesPendientes' | 'stockBajo';
@@ -12,7 +14,7 @@ type ClaveContador = 'ordenesActivas' | 'comisionesPendientes' | 'stockBajo';
 interface EnlaceMenu {
   ruta: string;
   etiqueta: string;
-  icono: string;
+  icono: NombreIconoMenu;
   /** Roles que ven el enlace. Sin definir, lo ven todos. */
   roles?: Rol[];
   /** Contador cuyo valor se dibuja como insignia junto al enlace. */
@@ -27,13 +29,14 @@ interface GrupoMenu {
 /** Shell de la aplicación: barra lateral, encabezado y área de contenido. */
 @Component({
   selector: 'app-layout',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, BuscadorGlobal],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, BuscadorGlobal, IconoMenu],
   templateUrl: './layout.html',
   styleUrl: './layout.css',
 })
 export class Layout {
   protected readonly auth = inject(AuthService);
   protected readonly contadores = inject(ContadoresService);
+  protected readonly urlArchivo = urlArchivo;
 
   private readonly buscador = viewChild.required(BuscadorGlobal);
 
@@ -46,7 +49,7 @@ export class Layout {
       // Sin título: es un solo enlace, no necesita una fila de categoría propia.
       titulo: '',
       enlaces: [
-        { ruta: '/dashboard', etiqueta: 'Panel', icono: '▦' },
+        { ruta: '/dashboard', etiqueta: 'Panel', icono: 'panel' },
       ],
     },
     {
@@ -55,38 +58,38 @@ export class Layout {
         {
           ruta: '/ordenes',
           etiqueta: 'Órdenes de trabajo',
-          icono: '🗂',
+          icono: 'ordenes',
           contador: 'ordenesActivas',
         },
-        { ruta: '/diagnosticos', etiqueta: 'Diagnósticos', icono: '🔧' },
-        { ruta: '/tipos-servicio', etiqueta: 'Catálogo de servicios', icono: '⚙' },
+        { ruta: '/diagnosticos', etiqueta: 'Diagnósticos', icono: 'diagnosticos' },
+        { ruta: '/tipos-servicio', etiqueta: 'Catálogo de servicios', icono: 'catalogo' },
       ],
     },
     {
       titulo: 'Clientes',
       enlaces: [
-        { ruta: '/clientes', etiqueta: 'Clientes', icono: '👤', roles: ['Administrador'] },
-        { ruta: '/vehiculos', etiqueta: 'Vehículos', icono: '🚗' },
+        { ruta: '/clientes', etiqueta: 'Clientes', icono: 'clientes', roles: ['Administrador'] },
+        { ruta: '/vehiculos', etiqueta: 'Vehículos', icono: 'vehiculos' },
       ],
     },
     {
       titulo: 'Almacén',
       enlaces: [
-        { ruta: '/repuestos', etiqueta: 'Repuestos', icono: '📦', contador: 'stockBajo' },
-        { ruta: '/proveedores', etiqueta: 'Proveedores', icono: '🏭', roles: ['Administrador'] },
-        { ruta: '/compras', etiqueta: 'Compras', icono: '🛒', roles: ['Administrador'] },
-        { ruta: '/ventas', etiqueta: 'Punto de venta', icono: '🏪', roles: ['Administrador'] },
+        { ruta: '/repuestos', etiqueta: 'Repuestos', icono: 'repuestos', contador: 'stockBajo' },
+        { ruta: '/proveedores', etiqueta: 'Proveedores', icono: 'proveedores', roles: ['Administrador'] },
+        { ruta: '/compras', etiqueta: 'Compras', icono: 'compras', roles: ['Administrador'] },
+        { ruta: '/ventas', etiqueta: 'Punto de venta', icono: 'ventas', roles: ['Administrador'] },
       ],
     },
     {
       titulo: 'Finanzas',
       enlaces: [
-        { ruta: '/proformas', etiqueta: 'Proformas', icono: '🧾', roles: ['Administrador'] },
-        { ruta: '/pagos', etiqueta: 'Pagos', icono: '💵', roles: ['Administrador'] },
+        { ruta: '/proformas', etiqueta: 'Proformas', icono: 'proformas', roles: ['Administrador'] },
+        { ruta: '/pagos', etiqueta: 'Pagos', icono: 'pagos', roles: ['Administrador'] },
         {
           ruta: '/comisiones',
           etiqueta: 'Comisiones',
-          icono: '%',
+          icono: 'comisiones',
           roles: ['Administrador'],
           contador: 'comisionesPendientes',
         },
@@ -95,9 +98,9 @@ export class Layout {
     {
       titulo: 'Administración',
       enlaces: [
-        { ruta: '/usuarios', etiqueta: 'Usuarios', icono: '🔑', roles: ['Administrador'] },
-        { ruta: '/reportes', etiqueta: 'Reportes', icono: '📊', roles: ['Administrador'] },
-        { ruta: '/auditoria', etiqueta: 'Auditoría', icono: '🕵', roles: ['Administrador'] },
+        { ruta: '/usuarios', etiqueta: 'Usuarios', icono: 'usuarios', roles: ['Administrador'] },
+        { ruta: '/reportes', etiqueta: 'Reportes', icono: 'reportes', roles: ['Administrador'] },
+        { ruta: '/auditoria', etiqueta: 'Auditoría', icono: 'auditoria', roles: ['Administrador'] },
       ],
     },
   ];

@@ -28,6 +28,10 @@ appsettings.Local.json
 # ----------------------------------------------------- Claude Code (local)
 .claude/settings.local.json
 
+# Maquetas de trabajo del canvas de diseño: son borradores, no fuente, y cada
+# archivo publicado pesa ~2,5 MB porque empaqueta el editor entero.
+.design/
+
 # ------------------------------------------------------- CLIs (estado local)
 supabase/.temp/
 .vercel/

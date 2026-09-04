@@ -62,7 +62,9 @@ CREATE TABLE usuarios (
     telefono        VARCHAR(20),
     estado          VARCHAR(20)  NOT NULL DEFAULT 'Activo'
                         CHECK (estado IN ('Activo','Inactivo')),    -- US004 / EstadoUsuario
-    fecha_registro  TIMESTAMPTZ    NOT NULL DEFAULT CURRENT_TIMESTAMP
+    fecha_registro  TIMESTAMPTZ    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- Foto de perfil (opcional): nombre fisico del archivo en disco.
+    nombre_archivo_foto VARCHAR(255)
 );
 
 -- ============================================================================

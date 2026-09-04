@@ -1,7 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { EstadoFactura, EstadoOrden } from '../../core/models/enums';
 import { Factura } from '../../core/models/finanzas.model';
@@ -46,6 +46,7 @@ export class Facturas {
   private readonly servicio = inject(FacturasService);
   private readonly ordenesService = inject(OrdenesService);
   private readonly notificacion = inject(NotificacionService);
+  private readonly ruta = inject(ActivatedRoute);
 
   protected readonly facturas = signal<Factura[]>([]);
   protected readonly ordenes = signal<Orden[]>([]);
@@ -74,14 +75,23 @@ export class Facturas {
   constructor() {
     this.cargar();
 
+    // Llega desde el menú de acciones de una orden ("Cobrar").
+    const ordenId = this.ruta.snapshot.queryParamMap.get('ordenId');
+
     // Solo tiene sentido cobrar trabajo terminado.
-    this.ordenesService.getAll().subscribe((lista) =>
+    this.ordenesService.getAll().subscribe((lista) => {
       this.ordenes.set(
         lista.filter(
           (o) => o.estado === EstadoOrden.Finalizada || o.estado === EstadoOrden.Cerrada,
         ),
-      ),
-    );
+      );
+
+      // Recién con las órdenes cargadas: el selector necesita sus opciones.
+      if (ordenId && this.ordenes().some((o) => o.ordenId === ordenId)) {
+        this.nueva = { ordenId, nitRazonSocial: '' };
+        this.panelNueva.set(true);
+      }
+    });
   }
 
   protected cargar(): void {

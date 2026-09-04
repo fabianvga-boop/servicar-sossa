@@ -23,7 +23,7 @@
               routerLinkActive="activo"
               (click)="cerrarMenu()"
             >
-              <span class="icono">{{ enlace.icono }}</span>
+              <app-icono-menu class="icono" [nombre]="enlace.icono" />
               <span class="crece">{{ enlace.etiqueta }}</span>
 
               <!-- Insignia de pendientes: sin pendientes no se dibuja nada -->
@@ -65,7 +65,12 @@
 
       <div class="usuario">
         <button type="button" class="usuario-btn" (click)="alternarMenuUsuario()">
-          <span class="avatar">{{ iniciales() }}</span>
+          <!-- Foto de perfil si la subió; si no, sus iniciales sobre el rojo de marca -->
+          @if (auth.fotoUrl(); as foto) {
+            <img class="avatar avatar-foto" [src]="urlArchivo(foto)" alt="" />
+          } @else {
+            <span class="avatar">{{ iniciales() }}</span>
+          }
           <span class="usuario-datos">
             <span class="usuario-nombre">{{ auth.nombreCompleto() }}</span>
             <span class="usuario-rol">{{ auth.rol() }}</span>

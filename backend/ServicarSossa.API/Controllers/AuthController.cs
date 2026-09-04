@@ -1,12 +1,16 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ServicarSossa.Application.DTOs.Auth;
+using ServicarSossa.Application.DTOs.Comunes;
+using ServicarSossa.Application.DTOs.Usuarios;
 using ServicarSossa.Application.Interfaces;
 
 namespace ServicarSossa.API.Controllers;
 
-/// <summary>USU002, USU003 — inicio de sesión y cambio de contraseña.</summary>
-public class AuthController(IAuthService service) : ApiControllerBase
+/// <summary>USU002, USU003 — inicio de sesión, contraseña y perfil propio.</summary>
+public class AuthController(
+    IAuthService service,
+    IUsuarioService usuarios) : ApiControllerBase
 {
     /// <summary>USU002 — autentica al usuario y devuelve un JWT.</summary>
     [HttpPost("login")]
@@ -29,13 +33,40 @@ public class AuthController(IAuthService service) : ApiControllerBase
         return result.Success ? Ok(new { mensaje = result.Message }) : Responder(result);
     }
 
-    /// <summary>Devuelve los datos del usuario autenticado a partir del token.</summary>
+    /// <summary>Devuelve los datos del usuario autenticado, incluida su foto.</summary>
     [HttpGet("perfil")]
     [Authorize]
-    public IActionResult Perfil() => Ok(new
+    [ProducesResponseType(typeof(UsuarioResponseDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Perfil(CancellationToken ct)
+        => Responder(await usuarios.GetByIdAsync(UsuarioIdActual, ct));
+
+    // ------------------------------------------------- Foto de perfil
+
+    /// <summary>
+    /// Sube o reemplaza la foto del usuario autenticado (JPG, PNG o WEBP,
+    /// hasta 8 MB). Sin id en la ruta: cada quien solo cambia la suya.
+    /// </summary>
+    [HttpPost("perfil/foto")]
+    [Authorize]
+    [ProducesResponseType(typeof(UsuarioResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> SubirFoto(IFormFile foto, CancellationToken ct)
     {
-        usuarioId = UsuarioIdActual,
-        username = User.Identity?.Name,
-        rol = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value
-    });
+        using var buffer = new MemoryStream();
+        await foto.CopyToAsync(buffer, ct);
+
+        return Responder(await usuarios.SubirFotoAsync(UsuarioIdActual, new SubirFotoDto
+        {
+            Contenido = buffer.ToArray(),
+            NombreOriginal = foto.FileName
+        }, ct));
+    }
+
+    /// <summary>Quita la foto del usuario autenticado; vuelven las iniciales.</summary>
+    [HttpDelete("perfil/foto")]
+    [Authorize]
+    [ProducesResponseType(typeof(UsuarioResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> EliminarFoto(CancellationToken ct)
+        => Responder(await usuarios.EliminarFotoAsync(UsuarioIdActual, ct));
 }

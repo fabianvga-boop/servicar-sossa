@@ -82,4 +82,10 @@ public class ClienteResponseDto
     public DateTime FechaRegistro { get; set; }
     public EstadoCliente Estado { get; set; }
     public int CantidadVehiculos { get; set; }
+
+    /// <summary>
+    /// Placas de sus vehículos. Identifican al cliente mejor que un número:
+    /// en el taller se lo reconoce por el auto que trae.
+    /// </summary>
+    public List<string> Placas { get; set; } = [];
 }

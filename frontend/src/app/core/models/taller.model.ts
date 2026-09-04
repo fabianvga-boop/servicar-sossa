@@ -90,10 +90,11 @@ export interface Orden {
   totalRepuestos: number;
   total: number;
   cantidadMecanicos: number;
+  /** Viene también en la lista: la consulta ya carga los mecánicos con nombre. */
+  mecanicos: OrdenMecanico[];
 }
 
 export interface OrdenDetalle extends Orden {
-  mecanicos: OrdenMecanico[];
   servicios: OrdenServicio[];
   repuestos: OrdenRepuesto[];
 }

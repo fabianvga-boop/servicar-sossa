@@ -54,7 +54,7 @@
   align-items: center;
   justify-content: center;
   aspect-ratio: 4 / 3;
-  border: 1.5px dashed var(--gris-300);
+  border: 1.5px dashed var(--gris-200);
   border-radius: var(--radio-sm);
   color: var(--gris-500);
   font-size: 13px;

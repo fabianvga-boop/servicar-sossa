@@ -1,7 +1,7 @@
 /* ==========================================================================
    Servicar SOSSA — estilos globales
    Paleta e identidad del taller: rojo de marca sobre gris/tinta oscura,
-   tipografía Oswald (títulos) + Inter (texto) + IBM Plex Mono (códigos).
+   tipografía Plus Jakarta Sans (títulos y texto) + IBM Plex Mono (códigos).
    Un único sistema de tokens y componentes base, para que todas las pantallas
    se vean iguales sin repetir CSS en cada módulo.
    ========================================================================== */
@@ -12,54 +12,65 @@
   --brand-dk: #b00500;
   --brand-soft: #fde3e2;
 
-  /* Tinta (fondos oscuros: sidebar, encabezados de documento) */
+  /* Tinta: los dos tonos oscuros del sistema, usados como color de texto.
+     --ink para el texto principal, --ink-soft para el secundario. */
   --ink: #14171c;
   --ink-soft: #3a414e;
 
-  /* Colores de estado, para insignias y avisos */
-  --azul-900: #14171c;
-  --azul-800: #1d2129;
-  --azul-700: #2d6cdf;
+  /* Colores de estado, para insignias y avisos. Cada familia tiene un tono
+     sólido (600, para el texto) y uno suave (100, para el fondo). */
   --azul-600: #2d6cdf;
-  --azul-500: #2d6cdf;
   --azul-100: #e1eafc;
-  --azul-50: #f2f6fe;
 
   --naranja-600: #c68a00;
-  --naranja-500: #c68a00;
   --naranja-100: #fbefd2;
 
   --verde-600: #2f9e52;
   --verde-100: #def3e4;
 
-  --rojo-600: #b00500;
-  --rojo-500: #e10600;
-  --rojo-100: #fde3e2;
+  /* El rojo de estado es el mismo de la marca: se usan --brand* de arriba. */
 
-  --morado-600: #6d4ab8;
-  --morado-100: #ebe4f8;
-
-  /* Neutros */
-  --gris-900: #14171c;
-  --gris-700: #3a414e;
-  --gris-600: #6b7280;
+  /* Neutros claros. El extremo oscuro de la escala son --ink/--ink-soft; no
+     se repite acá para que cada color tenga un solo nombre.
+       500/400 → texto atenuado
+       200     → bordes
+       100/50  → rellenos y superficies secundarias */
   --gris-500: #6b7280;
   --gris-400: #9aa1ab;
-  --gris-300: #dde1e6;
-  --gris-200: #dde1e6;
-  --gris-100: #eef0f2;
-  --gris-50: #fafbfc;
+  --gris-200: #e2e8f0;
+  --gris-100: #eef2f6;
+  --gris-50: #f8fafc;
   --blanco: #ffffff;
+
+  /* Fondo de la aplicación: gris muy claro para que las tarjetas blancas
+     se recorten con su borde sutil, sin necesidad de sombras.
+
+     Es también el fondo del marco (menú lateral y barra superior), y de ahí
+     sale la única regla de color de superficie del sistema:
+       blanco = superficie con datos (tarjetas, modales)
+       gris   = marco de la aplicación (piso, menú, encabezado)
+     Cuando el marco era blanco competía con las tarjetas y el menú se leía
+     como una tarjeta más. */
+  --fondo-app: #f1f5f9;
 
   --radio: 6px;
   --radio-sm: 5px;
   --sombra-sm: 0 1px 2px rgba(20, 23, 28, 0.06);
-  --sombra: 0 1px 2px rgba(20, 23, 28, 0.06), 0 4px 14px rgba(20, 23, 28, 0.05);
   --sombra-md: 0 4px 14px rgba(20, 23, 28, 0.12);
   --sombra-lg: 0 18px 50px rgba(0, 0, 0, 0.35);
 
   --ancho-lateral: 250px;
   --alto-encabezado: 60px;
+
+  /* Sangría lateral compartida: el contenido y el menú arrancan en la misma
+     columna, aunque estén en paneles distintos. */
+  --sangria: 24px;
+
+  /* Etiqueta chica en mayúscula (encabezado de tabla, título de grupo del
+     menú). Vivía duplicada con valores parecidos pero distintos en cada
+     hoja, que es lo que hacía que no se leyeran como la misma pieza. */
+  --etiqueta-tam: 10.5px;
+  --etiqueta-tracking: 0.05em;
 }
 
 * {
@@ -75,21 +86,18 @@ body {
 }
 
 body {
-  font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Plus Jakarta Sans', 'Segoe UI', Roboto, sans-serif;
   font-size: 14px;
   line-height: 1.5;
-  color: var(--gris-900);
-  background: var(--gris-100);
+  color: var(--ink);
+  background: var(--fondo-app);
   -webkit-font-smoothing: antialiased;
 }
 
-/* Títulos en Oswald mayúscula: es la voz tipográfica del taller (placas, marcadores) */
 h1, h2, h3, h4 {
   margin: 0;
-  font-family: 'Oswald', 'Segoe UI', sans-serif;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+  font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
+  font-weight: 700;
   line-height: 1.3;
 }
 
@@ -111,11 +119,12 @@ a:hover {
 
 /* --------------------------------------------------------------- Tarjetas */
 
+/* Tarjeta plana: el borde sutil basta para separarla del fondo; sin sombra
+   la interfaz se ve más limpia y las tablas densas no compiten por atención. */
 .tarjeta {
   background: var(--blanco);
   border: 1px solid var(--gris-200);
   border-radius: var(--radio);
-  box-shadow: var(--sombra-sm);
 }
 
 .tarjeta-cuerpo {
@@ -172,7 +181,7 @@ a:hover {
 /* Acción neutra/cancelar: outline gris, como el "ghost" del taller */
 .btn-secundario {
   background: var(--blanco);
-  border-color: var(--gris-300);
+  border-color: var(--gris-200);
   color: var(--ink-soft);
 }
 .btn-secundario:not(:disabled):hover { background: var(--gris-50); filter: none; }
@@ -234,21 +243,33 @@ select,
 textarea {
   width: 100%;
   padding: 9px 11px;
-  border: 1px solid var(--gris-300);
+  border: 1px solid var(--gris-200);
   border-radius: var(--radio-sm);
   font-size: 14px;
   font-family: inherit;
-  color: var(--gris-900);
+  color: var(--ink);
   background: var(--gris-50);
+  transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--gris-400);
+}
+
+input:hover:not(:disabled):not(:focus),
+select:hover:not(:disabled):not(:focus),
+textarea:hover:not(:disabled):not(:focus) {
+  border-color: var(--gris-400);
 }
 
 input:focus,
 select:focus,
 textarea:focus {
-  outline: 2px solid var(--brand);
-  outline-offset: 1px;
+  outline: none;
   border-color: var(--brand);
   background: var(--blanco);
+  box-shadow: 0 0 0 3px var(--brand-soft);
 }
 
 input:disabled,
@@ -263,15 +284,62 @@ textarea {
   min-height: 72px;
 }
 
+/* Select con flecha propia: reemplaza el widget nativo, que desentona
+   entre navegadores, por uno alineado a los demás controles. */
+select {
+  appearance: none;
+  padding-right: 34px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%236b7280' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 7.5 5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 16px;
+  cursor: pointer;
+}
+
+/* Casillas y radios con el color de marca en vez del azul del sistema */
+input[type='checkbox'],
+input[type='radio'] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--brand);
+  cursor: pointer;
+}
+
 .campo-error {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-size: 11.5px;
+  font-weight: 500;
   color: var(--brand-dk);
+}
+
+.campo-error::before {
+  content: '';
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
+  background-color: var(--brand-dk);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 8v5'/%3E%3Ccircle cx='12' cy='16' r='.5' fill='%23000'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 8v5'/%3E%3Ccircle cx='12' cy='16' r='.5' fill='%23000'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.campo-ayuda {
+  font-size: 11.5px;
+  color: var(--gris-500);
 }
 
 input.invalido,
 select.invalido,
 textarea.invalido {
   border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+input.invalido:focus,
+select.invalido:focus,
+textarea.invalido:focus {
+  background: var(--blanco);
 }
 
 .rejilla {
@@ -280,35 +348,79 @@ textarea.invalido {
   gap: 0 16px;
 }
 
+/* Agrupa un bloque secundario dentro de un formulario largo (p. ej. el
+   vehículo dentro del alta de cliente): lo separa sin abrir un segundo modal. */
+.subseccion {
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1px solid var(--gris-200);
+}
+
+.subseccion-titulo {
+  margin: 0 0 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gris-500);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* Casilla como fila clickeable completa, no solo el cuadrito */
+.casilla {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio-sm);
+  background: var(--gris-50);
+  font-size: 13.5px;
+  cursor: pointer;
+}
+
+.casilla:hover { border-color: var(--gris-400); }
+
 /* ----------------------------------------------------------------- Tablas */
 
 .tabla-contenedor {
   overflow-x: auto;
+  border-radius: 0 0 var(--radio) var(--radio);
 }
 
 table.tabla {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+  font-variant-numeric: tabular-nums;
 }
 
+/* Encabezado claro, en línea con el resto de superficies del sistema:
+   la jerarquía la da el peso y el color del texto, no un bloque oscuro. */
 table.tabla th {
   text-align: left;
-  padding: 10px 14px;
+  padding: 11px 14px;
   background: var(--gris-50);
   border-bottom: 1px solid var(--gris-200);
-  font-size: 10.5px;
+  font-size: var(--etiqueta-tam);
   font-weight: 700;
   color: var(--gris-500);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--etiqueta-tracking);
   white-space: nowrap;
 }
 
 table.tabla td {
-  padding: 11px 14px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--gris-100);
   vertical-align: middle;
+}
+
+table.tabla tbody tr:last-child td {
+  border-bottom: none;
+}
+
+table.tabla tbody tr {
+  transition: background-color 0.1s;
 }
 
 table.tabla tbody tr:hover {
@@ -326,9 +438,195 @@ table.tabla tbody tr.fila-agotada:hover {
   background: var(--brand-soft);
 }
 
+/* ------------------------------------------------- Tablas en pantalla chica
+
+   Con 8-10 columnas en un teléfono se ve poco más de un tercio de la tabla y
+   hay que desplazarse a la derecha sí o sí. Dos ajustes lo hacen llevadero:
+   celdas más compactas (menos scroll) y la primera columna fija (no se pierde
+   de vista a qué registro pertenece lo que se está leyendo). */
+@media (max-width: 900px) {
+  table.tabla { font-size: 12.5px; }
+
+  table.tabla th { padding: 9px 10px; }
+  table.tabla td { padding: 9px 10px; }
+
+  table.tabla th:first-child,
+  table.tabla td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--blanco);
+    /* Sombra en vez de border-right: con border-collapse el borde de una
+       celda sticky se pierde al desplazar. La sombra suave, además, deja
+       claro que el resto de la tabla pasa por debajo de esta columna. */
+    box-shadow: 1px 0 0 var(--gris-200), 4px 0 5px -2px rgba(20, 23, 28, 0.1);
+  }
+
+  table.tabla th:first-child {
+    z-index: 2;
+    background: var(--gris-50);
+  }
+
+  /* La celda fija lleva fondo propio, así que tiene que repetir los fondos
+     de la fila; si no, taparía el hover y el aviso de stock agotado. */
+  table.tabla tbody tr:hover td:first-child {
+    background: var(--gris-50);
+  }
+
+  table.tabla tbody tr.fila-agotada td:first-child {
+    background: #fffafa;
+  }
+
+  table.tabla tbody tr.fila-agotada:hover td:first-child {
+    background: var(--brand-soft);
+  }
+}
+
+/* Columna de acciones: cada acción es su propio botón-píldora en vez de un
+   enlace de texto — se reconoce de un vistazo como algo clickeable, y el
+   color dice de qué tipo de acción se trata sin tener que leerla entera. */
+.acciones {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.acciones .btn-enlace {
+  padding: 5px 11px;
+  border: 1px solid var(--gris-200);
+  border-radius: 20px;
+  background: var(--blanco);
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.acciones .btn-enlace:hover {
+  background: var(--gris-100);
+  border-color: var(--gris-200);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+/* Acción destructiva (anular, desactivar, eliminar): tinte rojo ya en
+   reposo, se llena de rojo sólido al pasar el mouse — la confirmación
+   sigue estando en el modal, esto es solo la señal visual previa. */
+.acciones .btn-enlace.texto-rojo {
+  border-color: var(--brand-soft);
+  background: var(--brand-soft);
+  color: var(--brand-dk);
+}
+
+.acciones .btn-enlace.texto-rojo:hover {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--blanco);
+}
+
+/* Acción positiva (activar, aprobar): mismo tratamiento en verde */
+.acciones .btn-enlace.texto-verde {
+  border-color: var(--verde-100);
+  background: var(--verde-100);
+  color: #1f6b39;
+}
+
+.acciones .btn-enlace.texto-verde:hover {
+  background: var(--verde-600);
+  border-color: var(--verde-600);
+  color: var(--blanco);
+}
+
+table.tabla th.th-acciones {
+  text-align: right;
+}
+
 .num {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------ Grupos de identidad
+
+   Dos variantes del mismo recurso: mostrar QUIÉNES o CUÁLES en vez de un
+   número. Las iniciales identifican al mecánico y la placa al vehículo, que
+   es como se los nombra en el taller. */
+
+.avatares {
+  display: flex;
+  align-items: center;
+}
+
+.avatar-mini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--gris-200);
+  color: var(--ink-soft);
+  font-size: 10px;
+  font-weight: 700;
+  /* El anillo separa los círculos cuando se superponen */
+  box-shadow: 0 0 0 2px var(--blanco);
+}
+
+/* Se solapan para ocupar poco: el orden de pintado deja el primero arriba */
+.avatares .avatar-mini + .avatar-mini { margin-left: -7px; }
+
+.avatar-mini.resto {
+  background: var(--gris-50);
+  border: 1px dashed var(--gris-400);
+  color: var(--gris-500);
+  font-size: 9.5px;
+}
+
+/* La fila del hover cambia de fondo: el anillo lo acompaña */
+table.tabla tbody tr:hover .avatar-mini { box-shadow: 0 0 0 2px var(--gris-50); }
+
+.placas {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.placa-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio-sm);
+  background: var(--gris-50);
+  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+a.placa-chip:hover {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand-dk);
+  text-decoration: none;
+}
+
+.placa-chip.resto {
+  font-family: inherit;
+  letter-spacing: 0;
+  color: var(--gris-500);
+}
+
+/* table.tabla th ya trae text-align:left con más especificidad que .num
+   sola, así que sin este selector el título de una columna numérica
+   quedaba a la izquierda mientras sus valores se leen a la derecha. */
+table.tabla th.num {
+  text-align: right;
 }
 
 /* Códigos alfanuméricos (ORD-001, CLI-002...) en mono, como en el taller real */
@@ -339,10 +637,14 @@ table.tabla tbody tr.fila-agotada:hover {
   color: var(--ink-soft);
 }
 
-.acciones {
-  display: flex;
-  gap: 4px;
-  justify-content: flex-end;
+/* Placa del vehículo: es el identificador que el mecánico busca al recorrer
+   la tabla, así que va en mono y en tinta fuerte para que salte a la vista. */
+.placa {
+  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ink);
 }
 
 /* --------------------------------------------------------------- Insignias */
@@ -356,11 +658,14 @@ table.tabla tbody tr.fila-agotada:hover {
   white-space: nowrap;
 }
 
-.insignia-verde { background: var(--verde-100); color: #1f6b39; }
-.insignia-azul { background: var(--azul-100); color: #1d4ea8; }
-.insignia-naranja { background: var(--naranja-100); color: #8a6300; }
-.insignia-roja { background: var(--brand-soft); color: var(--brand-dk); }
-.insignia-gris { background: var(--gris-200); color: var(--ink-soft); }
+/* Texto oscurecido respecto del tinte de fondo: el caso más flojo era el
+   naranja, que quedaba en 4,75:1 — apenas sobre el mínimo. Ahora el rango va
+   de 5,76:1 a 10,46:1. --punto es el tono sólido del punto de estado. */
+.insignia-verde { background: var(--verde-100); color: #1a5c31; --punto: var(--verde-600); }
+.insignia-azul { background: var(--azul-100); color: #14417f; --punto: var(--azul-600); }
+.insignia-naranja { background: var(--naranja-100); color: #7a5700; --punto: var(--naranja-600); }
+.insignia-roja { background: var(--brand-soft); color: #a00400; --punto: var(--brand); }
+.insignia-gris { background: var(--gris-200); color: #2c323c; --punto: var(--gris-500); }
 
 /* --------------------------------------------------------- Estados vacíos */
 
@@ -429,7 +734,7 @@ table.tabla tbody tr.fila-agotada:hover {
 }
 
 .total-monto {
-  font-family: 'Oswald', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 18px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -516,7 +821,7 @@ table.tabla tbody tr.fila-agotada:hover {
 }
 
 .indicador-mini-valor {
-  font-family: 'Oswald', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 17px;
   font-weight: 600;
   color: var(--ink);

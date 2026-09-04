@@ -28,7 +28,27 @@ type Familia =
  */
 @Component({
   selector: 'app-insignia-estado',
-  template: `<span class="insignia" [class]="clase()">{{ texto() }}</span>`,
+  template: `<span class="insignia" [class]="clase()"><span class="punto"></span>{{ texto() }}</span>`,
+  // El punto sólido agrega un segundo canal además del color: el estado se
+  // distingue aunque el usuario no diferencie bien los tonos. Va acá y no en
+  // .insignia global porque esa clase también rotula cosas que no son estados
+  // (el módulo y el formato en Auditoría y Reportes).
+  styles: `
+    .insignia {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding-left: 8px;
+    }
+
+    .punto {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--punto, currentColor);
+      flex-shrink: 0;
+    }
+  `,
 })
 export class InsigniaEstado {
   readonly familia = input.required<Familia>();
