@@ -109,6 +109,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Estado).HasColumnName("estado").HasMaxLength(20)
                 .HasConversion<string>().IsRequired();
             e.Property(x => x.FechaRegistro).HasColumnName("fecha_registro").IsRequired();
+            e.Property(x => x.NombreArchivoFoto)
+                .HasColumnName("nombre_archivo_foto").HasMaxLength(255);
             e.HasIndex(x => x.Email).IsUnique();
             e.HasIndex(x => x.Username).IsUnique();
             e.HasOne(x => x.Rol).WithMany(r => r.Usuarios)

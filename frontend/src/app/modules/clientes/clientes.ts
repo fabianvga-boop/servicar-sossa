@@ -16,6 +16,9 @@ import { Atajo } from '../../shared/directives/atajo';
 
 const CLAVE_BUSCAR = 'clientes.buscar';
 
+/** Placas que se muestran antes de resumir el resto en un "+N". */
+const MAX_PLACAS = 2;
+
 /** USU006-USU008 — gestión de clientes. */
 @Component({
   selector: 'app-clientes',
@@ -123,6 +126,18 @@ export class Clientes {
     }
 
     return 'Revise el valor ingresado.';
+  }
+
+  /**
+   * Se muestran las primeras placas y el resto se resume en un "+N": con
+   * varias, la celda crecería más que la fila y rompería el ritmo de la tabla.
+   */
+  protected placasVisibles(cliente: Cliente): string[] {
+    return cliente.placas.slice(0, MAX_PLACAS);
+  }
+
+  protected placasRestantes(cliente: Cliente): number {
+    return Math.max(0, cliente.placas.length - MAX_PLACAS);
   }
 
   protected abrirNuevo(): void {

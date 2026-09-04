@@ -11,11 +11,16 @@ import { Modal } from './modal';
   selector: 'app-confirmacion',
   imports: [Modal],
   template: `
-    <app-modal [titulo]="titulo()" [ancho]="440" (cerrar)="cancelar.emit()">
+    <app-modal
+      [titulo]="titulo()"
+      [ancho]="440"
+      [peligroso]="peligroso()"
+      (cerrar)="cancelar.emit()"
+    >
       <p class="mensaje">{{ mensaje() }}</p>
 
       @if (advertencia()) {
-        <p class="advertencia">{{ advertencia() }}</p>
+        <p class="advertencia" [class.grave]="peligroso()">{{ advertencia() }}</p>
       }
 
       <div pie>
@@ -39,7 +44,7 @@ import { Modal } from './modal';
     .mensaje {
       margin: 0;
       font-size: 14px;
-      color: var(--gris-700);
+      color: var(--ink-soft);
     }
 
     .advertencia {
@@ -49,6 +54,13 @@ import { Modal } from './modal';
       border-radius: var(--radio-sm);
       font-size: 12.5px;
       color: #92400e;
+    }
+
+    /* Anular una factura y desactivar un cliente no pesan igual: cuando la
+       acción es irreversible la advertencia va en rojo, no en naranja. */
+    .advertencia.grave {
+      background: var(--brand-soft);
+      color: var(--brand-dk);
     }
   `,
 })

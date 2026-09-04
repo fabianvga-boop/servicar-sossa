@@ -48,7 +48,7 @@
             <th>Mecánico</th>
             <th>Presupuesto</th>
             <th>Estado</th>
-            <th></th>
+            <th class="th-acciones">Acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -57,7 +57,7 @@
               <td class="codigo">{{ diagnostico.diagnosticoId }}</td>
               <td class="texto-sm">{{ diagnostico.fecha | date: 'dd/MM/yyyy HH:mm' }}</td>
               <td>
-                <div class="texto-fuerte">{{ diagnostico.placaVehiculo }}</div>
+                <div class="placa">{{ diagnostico.placaVehiculo }}</div>
                 <div class="texto-tenue texto-sm">{{ diagnostico.nombreCliente }}</div>
               </td>
               <td class="recorte">{{ diagnostico.descripcionFalla }}</td>

@@ -8,8 +8,12 @@ namespace ServicarSossa.Application.Services;
 /// <summary>USU002, USU003 — autenticación con BCrypt + JWT.</summary>
 public class AuthService(
     IUsuarioRepository usuarios,
+    IAlmacenArchivos archivos,
     IJwtTokenGenerator jwt) : IAuthService
 {
+    /// <summary>Misma subcarpeta que usa <see cref="UsuarioService"/>.</summary>
+    private const string SubcarpetaFotos = "usuarios";
+
     public async Task<Result<LoginResponseDto>> LoginAsync(
         LoginRequestDto dto, CancellationToken ct = default)
     {
@@ -38,7 +42,10 @@ public class AuthService(
             UsuarioId = usuario.UsuarioId,
             Username = usuario.Username,
             NombreCompleto = $"{usuario.Nombre} {usuario.Apellido}".Trim(),
-            Rol = usuario.Rol.NombreRol
+            Rol = usuario.Rol.NombreRol,
+            FotoUrl = usuario.NombreArchivoFoto is null
+                ? null
+                : archivos.RutaPublica(SubcarpetaFotos, usuario.NombreArchivoFoto)
         });
     }
 

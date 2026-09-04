@@ -63,14 +63,14 @@
             <th>Año</th>
             <th>Propietario</th>
             <th class="num">Kilometraje</th>
-            <th></th>
+            <th class="th-acciones">Acciones</th>
           </tr>
         </thead>
         <tbody>
           @for (vehiculo of vehiculos(); track vehiculo.vehiculoId) {
             <tr>
               <td class="codigo">{{ vehiculo.vehiculoId }}</td>
-              <td class="texto-fuerte">{{ vehiculo.placa }}</td>
+              <td class="placa">{{ vehiculo.placa }}</td>
               <td>
                 {{ vehiculo.marca }} {{ vehiculo.modelo }}
                 @if (vehiculo.color) {

@@ -5,24 +5,26 @@
 }
 
 .indicador {
-  position: relative;
   background: var(--blanco);
   border: 1px solid var(--gris-200);
   border-radius: var(--radio);
-  box-shadow: var(--sombra-sm);
-  padding: 16px 18px;
+  padding: 15px 18px 17px;
+}
+
+/* Etiqueta e ícono arriba, valor debajo: se lee "qué" antes que "cuánto". */
+.indicador-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
 .indicador-icono {
-  position: absolute;
-  top: 14px;
-  right: 16px;
-  font-size: 16px;
-  opacity: 0.55;
+  color: var(--gris-400);
 }
 
 .indicador-valor {
-  font-family: 'Oswald', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 27px;
   font-weight: 600;
   color: var(--ink);
@@ -35,19 +37,30 @@
 
 .indicador-etiqueta {
   font-size: 12px;
+  font-weight: 500;
   color: var(--gris-500);
-  margin-top: 3px;
 }
 
 /* Único dato de tendencia calculable de forma honesta (ver dashboard.ts) */
 .indicador-extra {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 11px;
-  font-weight: 600;
-  color: var(--verde-600);
-  margin-top: 6px;
+  color: var(--gris-500);
+  margin-top: 10px;
 }
 
-.alerta { border-left: 4px solid var(--naranja-500); }
+.indicador-extra .delta {
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: var(--verde-100);
+  color: #1f6b39;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.alerta { border-left: 4px solid var(--naranja-600); }
 
 /* --------------------------------------------------------- Layout 2 columnas */
 
@@ -126,7 +139,7 @@
 }
 
 .acceso-cantidad {
-  font-family: 'Oswald', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 22px;
   font-weight: 600;
   color: var(--ink);

@@ -7,7 +7,11 @@ public interface IClienteRepository : IRepository<Cliente>
 {
     Task<IEnumerable<Cliente>> BuscarAsync(string? buscar, CancellationToken ct = default);
 
-    /// <summary>Cantidad de vehículos por cliente, calculada en el servidor (GROUP BY).</summary>
-    Task<Dictionary<string, int>> ContarVehiculosPorClienteAsync(
+    /// <summary>
+    /// Placas de los vehículos de cada cliente, en una sola consulta que
+    /// proyecta solo las dos columnas necesarias. La cantidad sale de contar
+    /// la lista, así que reemplaza al viejo GROUP BY sin sumar viajes.
+    /// </summary>
+    Task<Dictionary<string, List<string>>> ObtenerPlacasPorClienteAsync(
         IEnumerable<string> clienteIds, CancellationToken ct = default);
 }

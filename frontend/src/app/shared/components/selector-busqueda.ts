@@ -117,7 +117,7 @@ function normalizar(texto: string): string {
       padding: 0 4px;
     }
 
-    .limpiar:hover { color: var(--gris-700); }
+    .limpiar:hover { color: var(--ink-soft); }
 
     .lista {
       position: absolute;

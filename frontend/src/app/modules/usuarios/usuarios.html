@@ -44,7 +44,7 @@
             <th>Email</th>
             <th>Rol</th>
             <th>Estado</th>
-            <th></th>
+            <th class="th-acciones">Acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -72,6 +72,8 @@
                   <button
                     type="button"
                     class="btn-enlace"
+                    [class.texto-rojo]="usuario.estado === EstadoUsuario.Activo"
+                    [class.texto-verde]="usuario.estado !== EstadoUsuario.Activo"
                     (click)="porCambiarEstado.set(usuario)"
                   >
                     {{ usuario.estado === EstadoUsuario.Activo ? 'Desactivar' : 'Activar' }}

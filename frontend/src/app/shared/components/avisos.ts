@@ -62,13 +62,13 @@ import { NotificacionService } from '../../core/services/notificacion.service';
     }
 
     .aviso-exito { border-left-color: var(--verde-600); }
-    .aviso-error { border-left-color: var(--rojo-600); }
-    .aviso-advertencia { border-left-color: var(--naranja-500); }
+    .aviso-error { border-left-color: var(--brand-dk); }
+    .aviso-advertencia { border-left-color: var(--naranja-600); }
     .aviso-info { border-left-color: var(--azul-600); }
 
     .accion {
       background: none;
-      border: 1px solid var(--gris-300);
+      border: 1px solid var(--gris-200);
       border-radius: var(--radio-sm);
       padding: 3px 9px;
       font-family: inherit;
@@ -92,7 +92,7 @@ import { NotificacionService } from '../../core/services/notificacion.service';
       padding: 0;
     }
 
-    .cerrar:hover { color: var(--gris-700); }
+    .cerrar:hover { color: var(--ink-soft); }
 
     @media (max-width: 480px) {
       .pila { left: 16px; right: 16px; max-width: none; }

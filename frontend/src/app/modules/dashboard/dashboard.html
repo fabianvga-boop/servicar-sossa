@@ -18,27 +18,37 @@
 } @else {
   <div class="indicadores">
     <div class="indicador">
-      <span class="indicador-icono" aria-hidden="true">🗂</span>
+      <div class="indicador-cabecera">
+        <app-icono-menu class="indicador-icono" nombre="ordenes" />
+        <span class="indicador-etiqueta">Órdenes abiertas</span>
+      </div>
       <div class="indicador-valor">{{ abiertas() }}</div>
-      <div class="indicador-etiqueta">Órdenes abiertas</div>
       @if (nuevasEstaSemana() > 0) {
-        <div class="indicador-extra">+{{ nuevasEstaSemana() }} nueva(s) esta semana</div>
+        <div class="indicador-extra">
+          <span class="delta">+{{ nuevasEstaSemana() }}</span> nueva(s) esta semana
+        </div>
       }
     </div>
     <div class="indicador">
-      <span class="indicador-icono" aria-hidden="true">🔧</span>
+      <div class="indicador-cabecera">
+        <app-icono-menu class="indicador-icono" nombre="catalogo" />
+        <span class="indicador-etiqueta">En proceso</span>
+      </div>
       <div class="indicador-valor naranja">{{ enProceso() }}</div>
-      <div class="indicador-etiqueta">En proceso</div>
     </div>
     <div class="indicador">
-      <span class="indicador-icono" aria-hidden="true">✅</span>
+      <div class="indicador-cabecera">
+        <app-icono-menu class="indicador-icono" nombre="completado" />
+        <span class="indicador-etiqueta">Finalizadas por cerrar</span>
+      </div>
       <div class="indicador-valor verde">{{ finalizadas() }}</div>
-      <div class="indicador-etiqueta">Finalizadas por cerrar</div>
     </div>
     <div class="indicador">
-      <span class="indicador-icono" aria-hidden="true">💵</span>
+      <div class="indicador-cabecera">
+        <app-icono-menu class="indicador-icono" nombre="pagos" />
+        <span class="indicador-etiqueta">Trabajo en curso</span>
+      </div>
       <div class="indicador-valor">{{ montoEnCurso() | bs }}</div>
-      <div class="indicador-etiqueta">Trabajo en curso</div>
     </div>
   </div>
 
@@ -77,7 +87,7 @@
                   </td>
                   <td>{{ orden.nombreCliente }}</td>
                   <td>
-                    <span class="texto-fuerte">{{ orden.placaVehiculo }}</span>
+                    <span class="placa">{{ orden.placaVehiculo }}</span>
                     <span class="texto-tenue texto-sm"> · {{ orden.descripcionVehiculo }}</span>
                   </td>
                   <td><app-insignia-estado familia="orden" [valor]="orden.estado" /></td>

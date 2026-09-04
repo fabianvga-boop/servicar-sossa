@@ -42,9 +42,9 @@
             <th>Cliente</th>
             <th>CI / NIT</th>
             <th>Contacto</th>
-            <th class="num">Vehículos</th>
+            <th>Vehículos</th>
             <th>Estado</th>
-            <th></th>
+            <th class="th-acciones">Acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -66,13 +66,32 @@
                 <div class="texto-sm">{{ cliente.telefono || '—' }}</div>
                 <div class="texto-tenue texto-sm">{{ cliente.email || '' }}</div>
               </td>
-              <td class="num">
-                @if (cliente.cantidadVehiculos > 0) {
-                  <a [routerLink]="['/vehiculos']" [queryParams]="{ clienteId: cliente.clienteId }">
-                    {{ cliente.cantidadVehiculos }}
-                  </a>
+              <td>
+                @if (cliente.cantidadVehiculos === 0) {
+                  <span class="texto-tenue texto-sm">Sin vehículos</span>
                 } @else {
-                  <span class="texto-tenue">0</span>
+                  <div class="placas">
+                    @for (placa of placasVisibles(cliente); track placa) {
+                      <a
+                        class="placa-chip"
+                        [routerLink]="['/vehiculos']"
+                        [queryParams]="{ clienteId: cliente.clienteId, buscar: placa }"
+                        [title]="'Ver ' + placa"
+                      >
+                        {{ placa }}
+                      </a>
+                    }
+                    @if (placasRestantes(cliente); as resto) {
+                      <a
+                        class="placa-chip resto"
+                        [routerLink]="['/vehiculos']"
+                        [queryParams]="{ clienteId: cliente.clienteId }"
+                        [title]="'Ver los ' + cliente.cantidadVehiculos + ' vehículos'"
+                      >
+                        +{{ resto }}
+                      </a>
+                    }
+                  </div>
                 }
               </td>
               <td><app-insignia-estado familia="activo" [valor]="cliente.estado" /></td>
@@ -87,6 +106,8 @@
                   <button
                     type="button"
                     class="btn-enlace"
+                    [class.texto-rojo]="cliente.estado === EstadoCliente.Activo"
+                    [class.texto-verde]="cliente.estado !== EstadoCliente.Activo"
                     (click)="confirmarCambioEstado(cliente)"
                   >
                     {{ cliente.estado === EstadoCliente.Activo ? 'Desactivar' : 'Activar' }}
@@ -158,10 +179,9 @@
       </div>
 
       @if (!editando()) {
-        <label class="fila texto-sm mt-1" style="gap: 6px">
+        <label class="casilla mt-1">
           <input
             type="checkbox"
-            style="width: auto"
             [checked]="registrarVehiculo()"
             (change)="registrarVehiculo.set($any($event.target).checked)"
           />
@@ -169,7 +189,8 @@
         </label>
 
         @if (registrarVehiculo()) {
-          <div [formGroup]="formularioVehiculo" class="mt-1">
+          <div [formGroup]="formularioVehiculo" class="subseccion">
+            <p class="subseccion-titulo">Datos del vehículo</p>
             <div class="rejilla">
               <div class="campo">
                 <label for="placaVehiculo">Placa <span class="obligatorio">*</span></label>

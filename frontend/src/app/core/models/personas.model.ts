@@ -54,6 +54,8 @@ export interface Cliente {
   fechaRegistro: string;
   estado: EstadoCliente;
   cantidadVehiculos: number;
+  /** Placas de sus vehículos: identifican al cliente mejor que un número. */
+  placas: string[];
 }
 
 export interface ClienteRequest {

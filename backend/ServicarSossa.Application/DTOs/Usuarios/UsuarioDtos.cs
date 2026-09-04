@@ -82,4 +82,7 @@ public class UsuarioResponseDto
     public string? Telefono { get; set; }
     public EstadoUsuario Estado { get; set; }
     public DateTime FechaRegistro { get; set; }
+
+    /// <summary>Ruta pública de la foto de perfil, o null si no subió ninguna.</summary>
+    public string? FotoUrl { get; set; }
 }

@@ -8,27 +8,96 @@
   }
 </div>
 
-<div class="tarjeta">
-  <div class="tarjeta-encabezado">
-    <select
-      style="max-width: 220px"
-      [value]="estadoFiltro()"
-      (change)="onFiltrarEstado($any($event.target).value)"
-    >
-      <option value="">Todos los estados</option>
-      <option value="0">Abierta</option>
-      <option value="1">En proceso</option>
-      <option value="2">Finalizada</option>
-      <option value="3">Cerrada</option>
-      <option value="4">Cancelada</option>
-    </select>
-    <span class="texto-tenue texto-sm">{{ ordenes().length }} orden(es)</span>
+<!-- ----------------------------------------------------------- Indicadores -->
+<div class="kpis">
+  <div class="kpi">
+    <div class="kpi-cabecera">
+      <svg class="kpi-icono" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M8 3h8l2 4H6l2-4Z" /><path d="M4 7h16v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z" /><path d="M9 12h6" />
+      </svg>
+      <span class="kpi-etiqueta">Órdenes activas</span>
+    </div>
+    <div class="kpi-valor">{{ activas() }}</div>
+    @if (conRetraso() > 0) {
+      <div class="kpi-extra">
+        <span class="delta">{{ conRetraso() }}</span> con retraso
+      </div>
+    }
   </div>
 
-  @if (cargando() || ordenes().length === 0) {
+  <div class="kpi">
+    <div class="kpi-cabecera">
+      <svg class="kpi-icono" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="m5 12 4.5 4.5L19 7.5" />
+      </svg>
+      <span class="kpi-etiqueta">Listas para entregar</span>
+    </div>
+    <div class="kpi-valor verde">{{ listasParaEntregar() }}</div>
+    <div class="kpi-extra">Finalizadas, sin cerrar</div>
+  </div>
+</div>
+
+<div class="tarjeta">
+  <div class="tarjeta-encabezado">
+    <div class="filtros-ordenes">
+      <div class="buscador">
+        <svg class="lupa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="10.5" cy="10.5" r="6.5" /><path d="m20 20-4.4-4.4" />
+        </svg>
+        <input
+          type="search"
+          placeholder="Buscar orden, cliente o placa…"
+          aria-label="Buscar orden, cliente o placa"
+          [value]="buscar()"
+          (input)="onBuscar($any($event.target).value)"
+        />
+      </div>
+
+      <select
+        style="max-width: 190px"
+        aria-label="Filtrar por estado"
+        [value]="estadoFiltro()"
+        (change)="onFiltrarEstado($any($event.target).value)"
+      >
+        <option value="">Todos los estados</option>
+        <option value="0">Abierta</option>
+        <option value="1">En proceso</option>
+        <option value="2">Finalizada</option>
+        <option value="3">Cerrada</option>
+        <option value="4">Cancelada</option>
+      </select>
+
+      <div class="rango-fechas">
+        <input
+          type="date"
+          aria-label="Apertura desde"
+          [value]="desde()"
+          (change)="onDesde($any($event.target).value)"
+        />
+        <span class="separador"></span>
+        <input
+          type="date"
+          aria-label="Apertura hasta"
+          [value]="hasta()"
+          (change)="onHasta($any($event.target).value)"
+        />
+        @if (desde() || hasta()) {
+          <button type="button" class="limpiar-fechas" aria-label="Quitar el rango de fechas" (click)="limpiarFechas()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+            </svg>
+          </button>
+        }
+      </div>
+    </div>
+
+    <span class="texto-tenue texto-sm">{{ totalFiltrado() }} orden(es)</span>
+  </div>
+
+  @if (cargando() || ordenadas().length === 0) {
     <app-estado-tabla
       [cargando]="cargando()"
-      [hayFiltro]="estadoFiltro().length > 0"
+      [hayFiltro]="estadoFiltro().length > 0 || buscar().length > 0 || desde().length > 0 || hasta().length > 0"
       [columnas]="7"
       titulo="Sin órdenes de trabajo"
       descripcion="Las órdenes se generan desde un diagnóstico: registre uno y use 'Generar orden'."
@@ -39,41 +108,210 @@
         <thead>
           <tr>
             <th>Orden</th>
-            <th>Apertura</th>
+
+            <th
+              class="th-orden"
+              [class.activo]="campoOrden() === 'fechaCreacion'"
+              [attr.aria-sort]="campoOrden() === 'fechaCreacion' ? (ascendente() ? 'ascending' : 'descending') : 'none'"
+              (click)="ordenarPor('fechaCreacion')"
+            >
+              <span class="th-orden-cara">
+                Apertura
+                @if (campoOrden() === 'fechaCreacion') {
+                  <svg class="flecha" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    @if (ascendente()) {
+                      <path d="M12 19V5" /><path d="m6 11 6-6 6 6" />
+                    } @else {
+                      <path d="M12 5v14" /><path d="m6 13 6 6 6-6" />
+                    }
+                  </svg>
+                } @else {
+                  <svg class="flecha" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="m7 9 5-5 5 5" /><path d="m7 15 5 5 5-5" />
+                  </svg>
+                }
+              </span>
+            </th>
+
             <th>Cliente</th>
             <th>Vehículo</th>
-            <th class="num">Mecánicos</th>
+            <th>Mecánicos</th>
             <th>Estado</th>
-            <th class="num">Total</th>
-            <th></th>
+
+            <th
+              class="th-orden num"
+              [class.activo]="campoOrden() === 'total'"
+              [attr.aria-sort]="campoOrden() === 'total' ? (ascendente() ? 'ascending' : 'descending') : 'none'"
+              (click)="ordenarPor('total')"
+            >
+              <span class="th-orden-cara">
+                Total
+                @if (campoOrden() === 'total') {
+                  <svg class="flecha" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    @if (ascendente()) {
+                      <path d="M12 19V5" /><path d="m6 11 6-6 6 6" />
+                    } @else {
+                      <path d="M12 5v14" /><path d="m6 13 6 6 6-6" />
+                    }
+                  </svg>
+                } @else {
+                  <svg class="flecha" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="m7 9 5-5 5 5" /><path d="m7 15 5 5 5-5" />
+                  </svg>
+                }
+              </span>
+            </th>
+
+            <th class="th-acciones">Acciones</th>
           </tr>
         </thead>
+
         <tbody>
-          @for (orden of ordenes(); track orden.ordenId) {
-            <tr>
-              <td>
-                <a [routerLink]="['/ordenes', orden.ordenId]" class="codigo">
-                  {{ orden.ordenId }}
-                </a>
+          @for (orden of paginadas(); track orden.ordenId) {
+            <tr
+              class="fila-clic"
+              tabindex="0"
+              [attr.aria-label]="'Abrir la orden ' + orden.ordenId"
+              (click)="abrirDetalle(orden)"
+              (keydown.enter)="abrirDetalle(orden)"
+            >
+              <td class="codigo">{{ orden.ordenId }}</td>
+
+              <td class="texto-sm">
+                <span class="celda-fecha">
+                  {{ orden.fechaCreacion | date: 'dd/MM/yyyy' }}
+                  @if (diasRetraso(orden); as dias) {
+                    <span
+                      class="chip-retraso"
+                      [class.grave]="dias > 7"
+                      [title]="dias + ' día(s) de retraso sobre la fecha estimada'"
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9" /><path d="M12 7.5V12l3 2" />
+                      </svg>
+                      +{{ dias }} d
+                    </span>
+                  }
+                </span>
               </td>
-              <td class="texto-sm">{{ orden.fechaCreacion | date: 'dd/MM/yyyy' }}</td>
+
               <td>{{ orden.nombreCliente }}</td>
+
               <td>
-                <span class="texto-fuerte">{{ orden.placaVehiculo }}</span>
+                <span class="placa">{{ orden.placaVehiculo }}</span>
                 <span class="texto-tenue texto-sm"> · {{ orden.descripcionVehiculo }}</span>
               </td>
-              <td class="num">{{ orden.cantidadMecanicos }}</td>
-              <td><app-insignia-estado familia="orden" [valor]="orden.estado" /></td>
-              <td class="num texto-fuerte">{{ orden.total | bs }}</td>
+
               <td>
-                <div class="acciones">
-                  <a [routerLink]="['/ordenes', orden.ordenId]" class="btn-enlace">Abrir</a>
-                </div>
+                @if (orden.mecanicos.length === 0) {
+                  <span class="texto-tenue">—</span>
+                } @else {
+                  <div class="avatares">
+                    @for (mecanico of mecanicosVisibles(orden); track mecanico.mecanicoId) {
+                      <span class="avatar-mini" [title]="mecanico.nombreMecanico">
+                        {{ iniciales(mecanico.nombreMecanico) }}
+                      </span>
+                    }
+                    @if (mecanicosRestantes(orden); as resto) {
+                      <span class="avatar-mini resto" [title]="resto + ' mecánico(s) más'">
+                        +{{ resto }}
+                      </span>
+                    }
+                  </div>
+                }
+              </td>
+
+              <td><app-insignia-estado familia="orden" [valor]="orden.estado" /></td>
+
+              <td class="num texto-fuerte">{{ orden.total | bs }}</td>
+
+              <!-- El menú no debe disparar la apertura de la fila -->
+              <td class="celda-menu" (click)="$event.stopPropagation()">
+                <button
+                  type="button"
+                  class="menu-btn"
+                  [class.abierto]="menuAbierto() === orden.ordenId"
+                  [attr.aria-expanded]="menuAbierto() === orden.ordenId"
+                  [attr.aria-label]="'Acciones de la orden ' + orden.ordenId"
+                  (click)="alternarMenu($event, orden.ordenId)"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <circle cx="12" cy="5" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="12" cy="19" r="1.7" />
+                  </svg>
+                </button>
+
+                @if (menuAbierto() === orden.ordenId) {
+                  <div class="menu">
+                    <a [routerLink]="['/ordenes', orden.ordenId]">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" /><circle cx="12" cy="12" r="2.8" />
+                      </svg>
+                      Ver detalle
+                    </a>
+
+                    @if (sePuedeFacturar(orden)) {
+                      <a [routerLink]="['/proformas']" [queryParams]="{ ordenId: orden.ordenId }">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <rect x="2.5" y="6" width="19" height="12" rx="2" /><path d="M2.5 10h19" />
+                        </svg>
+                        Cobrar
+                      </a>
+                    }
+                  </div>
+                }
               </td>
             </tr>
           }
         </tbody>
       </table>
+    </div>
+
+    <!-- ------------------------------------------------------- Paginación -->
+    <div class="paginacion">
+      <span class="texto-tenue texto-sm">
+        Mostrando <span class="texto-fuerte">{{ desdeVisible() }}–{{ hastaVisible() }}</span>
+        de <span class="texto-fuerte">{{ totalFiltrado() }}</span>
+      </span>
+
+      <div class="paginas">
+        <button
+          type="button"
+          class="pagina-btn"
+          aria-label="Página anterior"
+          [disabled]="pagina() === 1"
+          (click)="irA(pagina() - 1)"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m14 6-6 6 6 6" />
+          </svg>
+        </button>
+
+        <span class="texto-tenue texto-sm">
+          Página <span class="texto-fuerte">{{ pagina() }}</span> de
+          <span class="texto-fuerte">{{ totalPaginas() }}</span>
+        </span>
+
+        <button
+          type="button"
+          class="pagina-btn"
+          aria-label="Página siguiente"
+          [disabled]="pagina() === totalPaginas()"
+          (click)="irA(pagina() + 1)"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m10 6 6 6-6 6" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="filas-por-pagina">
+        <label class="texto-tenue texto-sm" for="filasOrdenes">Filas por página</label>
+        <select id="filasOrdenes" [value]="filasPorPagina()" (change)="cambiarFilas($any($event.target).value)">
+          @for (opcion of opcionesFilas; track opcion) {
+            <option [value]="opcion">{{ opcion }}</option>
+          }
+        </select>
+      </div>
     </div>
   }
 </div>

@@ -1,4 +1,5 @@
 using ServicarSossa.Application.Common;
+using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Application.DTOs.Usuarios;
 using ServicarSossa.Application.Interfaces;
 using ServicarSossa.Domain.Entities;
@@ -10,9 +11,12 @@ namespace ServicarSossa.Application.Services;
 public class UsuarioService(
     IUsuarioRepository usuarios,
     IRepository<Rol> roles,
+    IAlmacenArchivos archivos,
     IGeneradorId generadorId,
     IAuditor auditor) : IUsuarioService
 {
+    private const string SubcarpetaFotos = "usuarios";
+
     public async Task<Result<IEnumerable<UsuarioResponseDto>>> GetAllAsync(
         string? buscar, CancellationToken ct = default)
     {
@@ -131,7 +135,61 @@ public class UsuarioService(
             Mapear(actualizado!), $"Usuario marcado como {dto.Estado}.");
     }
 
-    private static UsuarioResponseDto Mapear(Usuario u) => new()
+    // --------------------------------------------------- Foto de perfil
+
+    /// <summary>
+    /// Sube o reemplaza la foto de perfil. Una sola por usuario: la nueva
+    /// sustituye a la anterior y el archivo viejo se borra del disco.
+    /// </summary>
+    public async Task<Result<UsuarioResponseDto>> SubirFotoAsync(
+        string id, SubirFotoDto dto, CancellationToken ct = default)
+    {
+        var usuario = await usuarios.FirstOrDefaultAsync(u => u.UsuarioId == id, ct);
+
+        if (usuario is null)
+            return Result<UsuarioResponseDto>.NoEncontrado($"No existe el usuario {id}.");
+
+        var invalida = ValidadorFotos.Validar(dto);
+        if (invalida is not null) return Result<UsuarioResponseDto>.Fail(invalida);
+
+        var anterior = usuario.NombreArchivoFoto;
+
+        usuario.NombreArchivoFoto = await archivos.GuardarAsync(
+            SubcarpetaFotos, id, dto.Contenido, ValidadorFotos.Extension(dto), ct);
+
+        await usuarios.SaveChangesAsync(ct);
+
+        // Si cambió la extensión, el archivo viejo quedaría huérfano en disco.
+        if (anterior is not null && anterior != usuario.NombreArchivoFoto)
+            archivos.Eliminar(SubcarpetaFotos, anterior);
+
+        var actualizado = await usuarios.GetByIdConRolAsync(id, ct);
+        return Result<UsuarioResponseDto>.Ok(Mapear(actualizado!), "Foto actualizada correctamente.");
+    }
+
+    /// <summary>Quita la foto de perfil y vuelve a mostrar las iniciales.</summary>
+    public async Task<Result<UsuarioResponseDto>> EliminarFotoAsync(
+        string id, CancellationToken ct = default)
+    {
+        var usuario = await usuarios.FirstOrDefaultAsync(u => u.UsuarioId == id, ct);
+
+        if (usuario is null)
+            return Result<UsuarioResponseDto>.NoEncontrado($"No existe el usuario {id}.");
+
+        if (usuario.NombreArchivoFoto is null)
+            return Result<UsuarioResponseDto>.Fail("El usuario no tiene foto de perfil.");
+
+        var archivo = usuario.NombreArchivoFoto;
+        usuario.NombreArchivoFoto = null;
+        await usuarios.SaveChangesAsync(ct);
+
+        archivos.Eliminar(SubcarpetaFotos, archivo);
+
+        var actualizado = await usuarios.GetByIdConRolAsync(id, ct);
+        return Result<UsuarioResponseDto>.Ok(Mapear(actualizado!), "Foto eliminada correctamente.");
+    }
+
+    private UsuarioResponseDto Mapear(Usuario u) => new()
     {
         UsuarioId = u.UsuarioId,
         Nombre = u.Nombre,
@@ -142,6 +200,9 @@ public class UsuarioService(
         NombreRol = u.Rol?.NombreRol ?? string.Empty,
         Telefono = u.Telefono,
         Estado = u.Estado,
-        FechaRegistro = u.FechaRegistro
+        FechaRegistro = u.FechaRegistro,
+        FotoUrl = u.NombreArchivoFoto is null
+            ? null
+            : archivos.RutaPublica(SubcarpetaFotos, u.NombreArchivoFoto)
     };
 }

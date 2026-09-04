@@ -4,7 +4,13 @@ import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { CambiarPassword, LoginRequest, LoginResponse, Sesion } from '../models/auth.model';
+import {
+  CambiarPassword,
+  LoginRequest,
+  LoginResponse,
+  PerfilResponse,
+  Sesion,
+} from '../models/auth.model';
 import { Rol } from '../models/enums';
 
 const CLAVE_TOKEN = 'servicar.token';
@@ -29,6 +35,20 @@ export class AuthService {
   readonly rol = computed(() => this._sesion()?.rol ?? null);
   readonly esAdministrador = computed(() => this.rol() === 'Administrador');
   readonly nombreCompleto = computed(() => this._sesion()?.nombreCompleto ?? '');
+  readonly fotoUrl = computed(() => this._sesion()?.fotoUrl ?? null);
+
+  /**
+   * Refresca la foto en la sesión guardada tras subirla o quitarla, para que
+   * el encabezado la muestre sin obligar a cerrar sesión y volver a entrar.
+   */
+  actualizarFoto(fotoUrl: string | null): void {
+    const actual = this._sesion();
+    if (!actual) return;
+
+    const sesion: Sesion = { ...actual, fotoUrl };
+    localStorage.setItem(CLAVE_SESION, JSON.stringify(sesion));
+    this._sesion.set(sesion);
+  }
 
   login(credenciales: LoginRequest): Observable<LoginResponse> {
     return this.http
@@ -41,6 +61,23 @@ export class AuthService {
       `${environment.apiUrl}/auth/cambiar-password`,
       datos,
     );
+  }
+
+  /** Sube la foto de perfil del usuario autenticado y refresca la sesión. */
+  subirFoto(archivo: File): Observable<PerfilResponse> {
+    const cuerpo = new FormData();
+    cuerpo.append('foto', archivo);
+
+    return this.http
+      .post<PerfilResponse>(`${environment.apiUrl}/auth/perfil/foto`, cuerpo)
+      .pipe(tap((perfil) => this.actualizarFoto(perfil.fotoUrl ?? null)));
+  }
+
+  /** Quita la foto de perfil; el encabezado vuelve a mostrar las iniciales. */
+  eliminarFoto(): Observable<PerfilResponse> {
+    return this.http
+      .delete<PerfilResponse>(`${environment.apiUrl}/auth/perfil/foto`)
+      .pipe(tap(() => this.actualizarFoto(null)));
   }
 
   logout(): void {
@@ -66,6 +103,7 @@ export class AuthService {
       nombreCompleto: respuesta.nombreCompleto,
       rol: respuesta.rol,
       expiraEn: new Date(respuesta.expiraEn),
+      fotoUrl: respuesta.fotoUrl ?? null,
     };
 
     localStorage.setItem(CLAVE_TOKEN, respuesta.token);
@@ -92,7 +130,8 @@ export class AuthService {
         return null;
       }
 
-      return { ...datos, expiraEn };
+      // fotoUrl puede faltar en sesiones guardadas antes de existir el campo.
+      return { ...datos, expiraEn, fotoUrl: datos.fotoUrl ?? null };
     } catch {
       return null;
     }

@@ -60,7 +60,7 @@ import { Atajo } from '../../shared/directives/atajo';
                 <th>Teléfono</th>
                 <th>Email</th>
                 <th class="num">Repuestos</th>
-                <th></th>
+                <th class="th-acciones">Acciones</th>
               </tr>
             </thead>
             <tbody>

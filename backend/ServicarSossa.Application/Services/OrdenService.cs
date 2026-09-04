@@ -655,15 +655,6 @@ public class OrdenService(
     {
         var dto = Rellenar(new OrdenDetalleResponseDto(), o);
 
-        dto.Mecanicos = [.. o.Mecanicos.Select(m => new OrdenMecanicoResponseDto
-        {
-            MecanicoId = m.MecanicoId,
-            NombreMecanico = m.Mecanico is null
-                ? string.Empty
-                : $"{m.Mecanico.Nombre} {m.Mecanico.Apellido}".Trim(),
-            FechaAsignacion = m.FechaAsignacion
-        })];
-
         dto.Servicios = [.. o.Servicios.Select(s => new OrdenServicioResponseDto
         {
             OrdenServicioId = s.OrdenServicioId,
@@ -722,6 +713,14 @@ public class OrdenService(
         dto.TotalServicios = o.Servicios.Sum(s => s.Precio);
         dto.TotalRepuestos = o.Repuestos.Sum(r => r.Cantidad * r.PrecioUnitario);
         dto.CantidadMecanicos = o.Mecanicos.Count;
+        dto.Mecanicos = [.. o.Mecanicos.Select(m => new OrdenMecanicoResponseDto
+        {
+            MecanicoId = m.MecanicoId,
+            NombreMecanico = m.Mecanico is null
+                ? string.Empty
+                : $"{m.Mecanico.Nombre} {m.Mecanico.Apellido}".Trim(),
+            FechaAsignacion = m.FechaAsignacion
+        })];
         return dto;
     }
 }
