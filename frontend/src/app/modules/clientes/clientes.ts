@@ -133,11 +133,13 @@ export class Clientes {
    * varias, la celda crecería más que la fila y rompería el ritmo de la tabla.
    */
   protected placasVisibles(cliente: Cliente): string[] {
-    return cliente.placas.slice(0, MAX_PLACAS);
+    // `?? []` cubre la ventana de un despliegue: el frontend puede quedar
+    // arriba antes que la API y recibir todavía respuestas sin `placas`.
+    return (cliente.placas ?? []).slice(0, MAX_PLACAS);
   }
 
   protected placasRestantes(cliente: Cliente): number {
-    return Math.max(0, cliente.placas.length - MAX_PLACAS);
+    return Math.max(0, (cliente.placas ?? []).length - MAX_PLACAS);
   }
 
   protected abrirNuevo(): void {

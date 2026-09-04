@@ -83,11 +83,18 @@ export class OrdenesLista {
   }
 
   protected mecanicosVisibles(orden: Orden): Orden['mecanicos'] {
-    return orden.mecanicos.slice(0, this.MAX_AVATARES);
+    // `?? []` cubre la ventana de un despliegue: el frontend puede quedar
+    // arriba antes que la API y recibir todavía respuestas sin `mecanicos`.
+    return (orden.mecanicos ?? []).slice(0, this.MAX_AVATARES);
   }
 
   protected mecanicosRestantes(orden: Orden): number {
-    return Math.max(0, orden.mecanicos.length - this.MAX_AVATARES);
+    return Math.max(0, (orden.mecanicos ?? []).length - this.MAX_AVATARES);
+  }
+
+  /** Si la API todavía no manda la lista, cae al conteo que sí manda. */
+  protected tieneMecanicos(orden: Orden): boolean {
+    return (orden.mecanicos ?? []).length > 0 || orden.cantidadMecanicos > 0;
   }
 
   // --- Filtro, orden y página ------------------------------------------------
