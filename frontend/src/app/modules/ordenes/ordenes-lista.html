@@ -203,8 +203,11 @@
               </td>
 
               <td>
-                @if (orden.mecanicos.length === 0) {
+                @if (!tieneMecanicos(orden)) {
                   <span class="texto-tenue">—</span>
+                } @else if (mecanicosVisibles(orden).length === 0) {
+                  <!-- La API todavía no manda los nombres: al menos el conteo -->
+                  <span class="texto-tenue">{{ orden.cantidadMecanicos }}</span>
                 } @else {
                   <div class="avatares">
                     @for (mecanico of mecanicosVisibles(orden); track mecanico.mecanicoId) {
