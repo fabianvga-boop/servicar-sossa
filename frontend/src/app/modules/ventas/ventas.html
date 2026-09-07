@@ -7,6 +7,31 @@
   </div>
 </div>
 
+<!-- El historial sale del flujo principal: en la pestaña Terminal, el buscador
+     y el carrito se quedan con todo el alto de la pantalla. -->
+<div class="pestanias-pos mb-2" role="tablist">
+  <button
+    type="button"
+    role="tab"
+    [attr.aria-selected]="pestania() === 'terminal'"
+    [class.activa]="pestania() === 'terminal'"
+    (click)="pestania.set('terminal')"
+  >
+    Terminal de venta
+  </button>
+  <button
+    type="button"
+    role="tab"
+    [attr.aria-selected]="pestania() === 'historial'"
+    [class.activa]="pestania() === 'historial'"
+    (click)="pestania.set('historial')"
+  >
+    Historial del día
+    <span class="pestania-cuenta">{{ ventas().length }}</span>
+  </button>
+</div>
+
+@if (pestania() === 'terminal') {
 <div class="columnas-pos">
   <!-- ------------------------------------------------------------- Catálogo -->
   <div class="tarjeta">
@@ -20,16 +45,31 @@
         <input
           #campoBusqueda
           type="search"
+          maxlength="100"
           placeholder="Buscar por nombre o código (REP-012)…"
           aria-label="Buscar producto por nombre o código"
           [value]="buscarProducto()"
-          (input)="buscarProducto.set($any($event.target).value)"
+          (input)="buscarProducto.set($any($event.target).value); categoriaActiva.set('')"
           (keydown)="alTeclearBusqueda($event)"
         />
       </div>
       <p class="buscador-ayuda">
         <kbd>Enter</kbd> agrega cuando queda un solo producto · <kbd>Esc</kbd> limpia
       </p>
+
+      <!-- Filtros rápidos de ejemplo: reutilizan el buscador de arriba -->
+      <div class="chips-categorias">
+        @for (categoria of categoriasRapidas; track categoria.etiqueta) {
+          <button
+            type="button"
+            class="chip-categoria"
+            [class.activa]="categoriaActiva() === categoria.etiqueta"
+            (click)="filtrarPorCategoria(categoria)"
+          >
+            {{ categoria.etiqueta }}
+          </button>
+        }
+      </div>
 
       @if (productosFiltrados().length === 0) {
         <p class="texto-tenue texto-sm mt-1 mb-0">No hay productos que coincidan con la búsqueda.</p>
@@ -43,16 +83,6 @@
               [title]="disponible(repuesto) < 1 ? 'Sin stock disponible' : 'Agregar al carrito'"
               (click)="agregarProducto(repuesto)"
             >
-              <!-- Stock como insignia en la esquina: se lee de un vistazo y
-                   libera una línea de la tarjeta -->
-              <span
-                class="producto-stock"
-                [class.agotado]="disponible(repuesto) < 1"
-                [attr.aria-label]="disponible(repuesto) + ' disponibles'"
-              >
-                {{ disponible(repuesto) }}
-              </span>
-
               @if (repuesto.fotoUrl) {
                 <img class="producto-foto" [src]="urlArchivo(repuesto.fotoUrl)" [alt]="repuesto.nombre" />
               } @else {
@@ -66,6 +96,22 @@
               <span class="producto-nombre">{{ repuesto.nombre }}</span>
               <span class="producto-precio">{{ repuesto.precioVenta | bs }}</span>
               <span class="producto-codigo">{{ repuesto.repuestoId }}</span>
+
+              <!-- Badge semántico de stock, integrado al pie de la tarjeta:
+                   verde con holgura, naranja para reponer, rojo casi sin stock -->
+              <span
+                class="producto-stock"
+                [class.alto]="nivelStock(disponible(repuesto)) === 'alto'"
+                [class.medio]="nivelStock(disponible(repuesto)) === 'medio'"
+                [class.bajo]="nivelStock(disponible(repuesto)) === 'bajo'"
+                [attr.aria-label]="disponible(repuesto) + ' en stock'"
+              >
+                @if (disponible(repuesto) < 1) {
+                  Agotado
+                } @else {
+                  {{ disponible(repuesto) }} en stock
+                }
+              </span>
             </button>
           }
         </div>
@@ -136,26 +182,24 @@
       </ul>
 
       <div class="carrito-pie">
-        <div class="total-caja">
-          <span>{{ articulos() }} artículo(s)</span>
-          <span class="total-monto">{{ total() | bs }}</span>
+        <div class="carrito-total">
+          <span class="carrito-total-etq">Total · {{ articulos() }} art.</span>
+          <span class="carrito-total-monto">{{ total() | bs }}</span>
         </div>
 
-        <div class="fila-entre mt-1">
-          <button type="button" class="btn btn-secundario" (click)="vaciarCarrito()">
-            Vaciar
-          </button>
-          <button type="button" class="btn btn-exito" (click)="abrirCobro()">
-            Cobrar {{ total() | bs }}
-          </button>
-        </div>
+        <button type="button" class="btn btn-exito btn-cobrar" (click)="abrirCobro()">
+          Cobrar {{ total() | bs }}
+        </button>
+        <button type="button" class="btn-vaciar" (click)="vaciarCarrito()">
+          Vaciar carrito
+        </button>
       </div>
     }
   </aside>
 </div>
-
-<!-- -------------------------------------------------------- Últimas ventas -->
-<div class="tarjeta mt-2">
+} @else {
+<!-- -------------------------------------------------------- Historial del día -->
+<div class="tarjeta">
   <div class="tarjeta-encabezado">
     <h2>Ventas registradas</h2>
     <span class="texto-tenue texto-sm">{{ ventas().length }} venta(s)</span>
@@ -218,6 +262,7 @@
       </div>
     }
 </div>
+}
 
 @if (panelCobro()) {
   <app-modal titulo="Cobrar venta" [ancho]="480" (cerrar)="panelCobro.set(false)">

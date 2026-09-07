@@ -16,16 +16,37 @@
 
 <div class="tarjeta">
   <div class="tarjeta-encabezado">
-    <select
-      style="max-width: 220px"
-      [value]="estadoFiltro()"
-      (change)="onFiltrarEstado($any($event.target).value)"
-    >
-      <option value="">Todos los estados</option>
-      <option value="0">Registrado</option>
-      <option value="1">Revisado</option>
-      <option value="2">Anulado</option>
-    </select>
+    <div class="filtros-diagnosticos">
+      <select
+        style="max-width: 220px"
+        [value]="estadoFiltro()"
+        (change)="onFiltrarEstado($any($event.target).value)"
+      >
+        <option value="">Todos los estados</option>
+        <option value="0">Registrado</option>
+        <option value="1">Revisado</option>
+        <option value="2">Anulado</option>
+      </select>
+
+      <!-- Búsqueda rápida en el propio HTML, sin estado en el componente:
+           `#buscadorDiag` se lee más abajo, dentro del @for, para decidir qué
+           fila mostrar. El (input)="0" no hace nada por sí solo — su único
+           propósito es que Angular vuelva a evaluar la plantilla en cada
+           tecla (sin él, `buscadorDiag.value` no se releería). -->
+      <div class="buscador-con-icono">
+        <svg class="buscador-con-icono-lupa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="10.5" cy="10.5" r="6.5" /><path d="m20 20-4.4-4.4" />
+        </svg>
+        <input
+          #buscadorDiag
+          type="search"
+          maxlength="100"
+          placeholder="Buscar por placa, cliente o falla…"
+          aria-label="Buscar por placa, cliente o falla"
+          (input)="0"
+        />
+      </div>
+    </div>
     <span class="texto-tenue texto-sm">{{ diagnosticos().length }} diagnóstico(s)</span>
   </div>
 
@@ -53,97 +74,115 @@
         </thead>
         <tbody>
           @for (diagnostico of diagnosticos(); track diagnostico.diagnosticoId) {
+            @let terminoBusqueda = buscadorDiag.value.trim().toLowerCase();
+            @let coincideBusqueda =
+              !terminoBusqueda ||
+              diagnostico.placaVehiculo.toLowerCase().includes(terminoBusqueda) ||
+              diagnostico.nombreCliente.toLowerCase().includes(terminoBusqueda) ||
+              diagnostico.descripcionFalla.toLowerCase().includes(terminoBusqueda);
+            @if (coincideBusqueda) {
             <tr>
-              <td class="codigo">{{ diagnostico.diagnosticoId }}</td>
+              <td>
+                <div class="codigo">{{ diagnostico.diagnosticoId }}</div>
+                @if (diagnostico.ordenId) {
+                  <a
+                    [routerLink]="['/ordenes', diagnostico.ordenId]"
+                    class="chip-orden"
+                    [title]="'Ver orden de trabajo ' + diagnostico.ordenId"
+                  >
+                    {{ diagnostico.ordenId }}
+                    <svg class="chip-orden-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M7 17 17 7" /><path d="M8 7h9v9" />
+                    </svg>
+                  </a>
+                }
+              </td>
               <td class="texto-sm">{{ diagnostico.fecha | date: 'dd/MM/yyyy HH:mm' }}</td>
               <td>
-                <div class="placa">{{ diagnostico.placaVehiculo }}</div>
-                <div class="texto-tenue texto-sm">{{ diagnostico.nombreCliente }}</div>
+                <app-placa [valor]="diagnostico.placaVehiculo" />
+                <div class="texto-tenue texto-sm mt-1">{{ diagnostico.nombreCliente }}</div>
               </td>
               <td class="recorte">{{ diagnostico.descripcionFalla }}</td>
               <td class="texto-sm">{{ diagnostico.nombreMecanico }}</td>
               <td>
                 @if (diagnostico.montoEstimado != null) {
-                  <div class="texto-fuerte">{{ diagnostico.montoEstimado | bs }}</div>
-                  <app-insignia-estado
-                    familia="respuestaCliente"
-                    [valor]="diagnostico.respuestaCliente"
-                  />
+                  <div class="presupuesto-caja">
+                    <span class="texto-fuerte">{{ diagnostico.montoEstimado | bs }}</span>
+                    <app-insignia-estado
+                      familia="respuestaCliente"
+                      [valor]="diagnostico.respuestaCliente"
+                    />
+                  </div>
                 } @else {
-                  <span class="texto-tenue texto-sm">Sin estimar</span>
+                  <span class="texto-placeholder">Sin estimar</span>
                 }
               </td>
               <td><app-insignia-estado familia="diagnostico" [valor]="diagnostico.estado" /></td>
               <td>
-                <div class="acciones">
-                  <button type="button" class="btn-enlace" (click)="detalle.set(diagnostico)">
-                    Ver
-                  </button>
-
-                  @if (diagnostico.montoEstimado != null) {
-                    <button
-                      type="button"
-                      class="btn-enlace"
-                      [disabled]="descargando() === diagnostico.diagnosticoId"
-                      (click)="descargarPdf(diagnostico)"
-                    >
-                      {{ descargando() === diagnostico.diagnosticoId ? 'Generando…' : 'PDF' }}
+                <!-- Menú contextual sin JS de componente: <details> nativo maneja el
+                     abrir/cerrar solo, y `name` agrupa todas las filas para que abrir
+                     una cierre cualquier otra que hubiera quedado abierta. -->
+                <details class="menu-contextual" name="menu-diagnostico">
+                  <summary class="btn-icono" title="Más acciones" aria-label="Más acciones">
+                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <circle cx="12" cy="5" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="12" cy="19" r="1.8" />
+                    </svg>
+                  </summary>
+                  <div class="menu-contextual-panel">
+                    <button type="button" (click)="detalle.set(diagnostico)">
+                      Ver detalle
                     </button>
-                  }
 
-                  @if (
-                    puedeResponder(diagnostico) &&
-                    (auth.esAdministrador() || diagnostico.mecanicoId === auth.sesion()?.usuarioId)
-                  ) {
-                    <button
-                      type="button"
-                      class="btn-enlace texto-verde"
-                      (click)="abrirResponder(diagnostico)"
-                    >
-                      Respuesta cliente
-                    </button>
-                  }
-
-                  @if (diagnostico.ordenId) {
-                    <a [routerLink]="['/ordenes', diagnostico.ordenId]" class="btn-enlace">
-                      Ver orden {{ diagnostico.ordenId }}
-                    </a>
-                  } @else if (puedeGenerarOrden(diagnostico) && auth.esAdministrador()) {
-                    <button
-                      type="button"
-                      class="btn-enlace texto-verde"
-                      [disabled]="guardandoOrden()"
-                      title="La orden no se creó sola al aprobar; puede reintentarlo aquí."
-                      (click)="generarOrdenManual(diagnostico)"
-                    >
-                      {{ guardandoOrden() ? 'Creando…' : 'Generar orden' }}
-                    </button>
-                  }
-
-                  @if (puedeEditar(diagnostico)) {
-                    <button type="button" class="btn-enlace" (click)="abrirEditar(diagnostico)">
-                      Editar
-                    </button>
-                    @if (diagnostico.estado === EstadoDiag.Registrado) {
+                    @if (diagnostico.montoEstimado != null) {
                       <button
                         type="button"
-                        class="btn-enlace"
-                        (click)="marcarRevisado(diagnostico)"
+                        [disabled]="descargando() === diagnostico.diagnosticoId"
+                        (click)="descargarPdf(diagnostico)"
                       >
-                        Revisado
+                        {{ descargando() === diagnostico.diagnosticoId ? 'Generando…' : 'Descargar PDF' }}
                       </button>
                     }
-                    <button
-                      type="button"
-                      class="btn-enlace texto-rojo"
-                      (click)="porAnular.set(diagnostico)"
-                    >
-                      Anular
-                    </button>
-                  }
-                </div>
+
+                    @if (
+                      puedeResponder(diagnostico) &&
+                      (auth.esAdministrador() || diagnostico.mecanicoId === auth.sesion()?.usuarioId)
+                    ) {
+                      <button type="button" class="texto-verde" (click)="abrirResponder(diagnostico)">
+                        Respuesta cliente
+                      </button>
+                    }
+
+                    @if (!diagnostico.ordenId && puedeGenerarOrden(diagnostico) && auth.esAdministrador()) {
+                      <button
+                        type="button"
+                        class="texto-verde"
+                        [disabled]="guardandoOrden()"
+                        title="La orden no se creó sola al aprobar; puede reintentarlo aquí."
+                        (click)="generarOrdenManual(diagnostico)"
+                      >
+                        {{ guardandoOrden() ? 'Creando…' : 'Generar orden' }}
+                      </button>
+                    }
+
+                    @if (puedeEditar(diagnostico)) {
+                      <button type="button" (click)="abrirEditar(diagnostico)">
+                        Editar
+                      </button>
+                      @if (diagnostico.estado === EstadoDiag.Registrado) {
+                        <button type="button" (click)="marcarRevisado(diagnostico)">
+                          Marcar revisado
+                        </button>
+                      }
+                      <hr class="menu-separador" />
+                      <button type="button" class="texto-rojo" (click)="porAnular.set(diagnostico)">
+                        Anular
+                      </button>
+                    }
+                  </div>
+                </details>
               </td>
             </tr>
+            }
           }
         </tbody>
       </table>

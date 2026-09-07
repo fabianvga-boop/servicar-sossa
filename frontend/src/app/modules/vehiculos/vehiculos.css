@@ -1,3 +1,36 @@
+/* -------------------------------------------------- Columna "Vehículo" */
+
+.color-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.punto-color {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+
+/* ----------------------------------------------- Columna "Kilometraje" */
+
+.km-valor {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.icono-odometro {
+  width: 14px;
+  height: 14px;
+  color: var(--gris-400);
+  flex-shrink: 0;
+}
+
 /* Galería de fotos del vehículo */
 .galeria-fotos {
   display: grid;

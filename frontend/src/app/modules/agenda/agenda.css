@@ -1,0 +1,202 @@
+/* Aviso de que esto es una maqueta, no una función conectada */
+.aviso-muestra {
+  display: flex;
+  gap: 11px;
+  padding: 12px 16px;
+  background: var(--naranja-100);
+  border: 1px solid #f0dba8;
+  border-radius: var(--radio);
+  color: #7a5700;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.aviso-muestra svg { flex-shrink: 0; margin-top: 1px; }
+
+/* ============================================================ Calendario
+
+   Grilla: una columna de horas + una por día. El truco es que la columna de
+   horas y las columnas de día tienen que medir exactamente lo mismo de alto
+   (mismo alto de fila × misma cantidad de filas) para que un bloque puesto
+   por "top: %" caiga sobre la hora correcta. */
+
+.calendario {
+  display: grid;
+  grid-template-columns: 56px repeat(6, 1fr);
+  overflow-x: auto;
+}
+
+.calendario-esquina,
+.calendario-dia-cabecera {
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--gris-500);
+  background: var(--gris-50);
+  border-bottom: 1px solid var(--gris-200);
+}
+
+.calendario-dia-cabecera { border-left: 1px solid var(--gris-100); }
+
+.calendario-horas {
+  display: flex;
+  flex-direction: column;
+  background: var(--gris-50);
+}
+
+.calendario-hora {
+  height: 44px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 3px;
+  font-size: 10px;
+  color: var(--gris-400);
+  font-variant-numeric: tabular-nums;
+}
+
+.calendario-columna {
+  position: relative;
+  height: 440px; /* 10 horas × 44px — ver HORA_INICIO/HORA_FIN en agenda.ts */
+  border-left: 1px solid var(--gris-100);
+}
+
+.calendario-linea {
+  height: 44px;
+  border-bottom: 1px solid var(--gris-100);
+}
+
+.bloque-cita {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  padding: 4px 6px;
+  border-radius: 5px;
+  border-left: 3px solid transparent;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.bloque-titulo {
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bloque-subtitulo {
+  font-size: 9.5px;
+  line-height: 1.2;
+  opacity: 0.85;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ================================================================ Gantt
+
+   Misma idea, en horizontal: una fila de horas arriba + una fila por
+   mecánico. La columna de nombres es de ancho fijo; el resto se reparte en
+   10 franjas iguales (una por hora). */
+
+.gantt {
+  display: grid;
+  grid-template-columns: 130px repeat(10, minmax(64px, 1fr));
+  overflow-x: auto;
+}
+
+.gantt-esquina,
+.gantt-hora-cabecera {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--gris-500);
+  background: var(--gris-50);
+  border-bottom: 1px solid var(--gris-200);
+  font-variant-numeric: tabular-nums;
+}
+
+.gantt-mecanico {
+  grid-column: 1;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  border-top: 1px solid var(--gris-100);
+  border-right: 1px solid var(--gris-100);
+  background: var(--gris-50);
+}
+
+.gantt-fila {
+  grid-column: 2 / -1;
+  position: relative;
+  display: flex;
+  height: 58px;
+  border-top: 1px solid var(--gris-100);
+}
+
+.gantt-linea {
+  flex: 1;
+  border-right: 1px solid var(--gris-100);
+}
+
+.gantt-linea:last-child { border-right: none; }
+
+.bloque-tarea {
+  position: absolute;
+  top: 7px;
+  bottom: 7px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: 5px;
+  border-left: 3px solid transparent;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ------------------------------------------------------- Colores de bloque
+
+   Mismo lenguaje que las insignias de estado del resto del sistema: no son
+   colores nuevos, son los mismos tres tonos que ya significan lo mismo en
+   todas partes. */
+.bloque-cita.azul, .bloque-tarea.azul {
+  background: var(--azul-100);
+  color: #14417f;
+  border-left-color: var(--azul-600);
+}
+
+.bloque-cita.naranja, .bloque-tarea.naranja {
+  background: var(--naranja-100);
+  color: #7a5700;
+  border-left-color: var(--naranja-600);
+}
+
+.bloque-cita.verde, .bloque-tarea.verde {
+  background: var(--verde-100);
+  color: #1a5c31;
+  border-left-color: var(--verde-600);
+}
+
+@media (max-width: 700px) {
+  .calendario { grid-template-columns: 46px repeat(6, minmax(110px, 1fr)); }
+  .gantt { grid-template-columns: 100px repeat(10, minmax(52px, 1fr)); }
+}

@@ -1,0 +1,52 @@
+/* Texto atenuado exacto pedido para "Sin vehículos": más claro que el gris
+   estándar de `.texto-tenue`, para que se lea como un estado vacío, no como
+   un dato más de la fila. */
+.sin-vehiculos {
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+/* ------------------------------------------------------- Fila de acciones
+   "+ Vehículo" queda como acción secundaria destacada (pill); Editar y
+   Desactivar/Activar se agrupan como íconos compactos en una sola fila. */
+.acciones-cliente {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.chip-accion {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border: 1px solid var(--brand-soft);
+  border-radius: 20px;
+  background: var(--brand-soft);
+  color: var(--brand-dk);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.chip-accion:hover {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--blanco);
+}
+
+/* El <a> solo envuelve a <app-placa> para el enlace: no le agrega look propio */
+.placa-enlace {
+  display: inline-flex;
+  text-decoration: none;
+  border-radius: 5px;
+  transition: box-shadow 0.12s;
+}
+
+.placa-enlace:hover {
+  box-shadow: 0 0 0 2px var(--brand-soft);
+}

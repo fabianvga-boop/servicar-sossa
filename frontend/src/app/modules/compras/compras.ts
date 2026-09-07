@@ -34,6 +34,7 @@ import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
     BolivianosPipe,
   ],
   templateUrl: './compras.html',
+  styleUrl: './compras.css',
 })
 export class Compras {
   private readonly servicio = inject(ComprasService);
@@ -44,11 +45,24 @@ export class Compras {
   private readonly contadores = inject(ContadoresService);
 
   protected readonly compras = signal<Compra[]>([]);
+  /** Universo completo, sin los filtros de la tabla: alimenta solo los KPIs. */
+  protected readonly comprasTodas = signal<Compra[]>([]);
   protected readonly proveedores = signal<Proveedor[]>([]);
   protected readonly repuestos = signal<Repuesto[]>([]);
   protected readonly cargando = signal(true);
   protected readonly proveedorFiltro = signal('');
+  protected readonly desde = signal('');
+  protected readonly hasta = signal('');
+  /** Filtro de texto por código de compra: es local, sobre lo ya cargado. */
+  protected readonly buscarTexto = signal('');
   protected readonly guardando = signal(false);
+
+  protected readonly rangosRapidos = [
+    { clave: 'hoy', etiqueta: 'Hoy' },
+    { clave: 'semana', etiqueta: 'Esta semana' },
+    { clave: 'mes', etiqueta: 'Este mes' },
+  ] as const;
+  protected readonly rangoActivo = signal<string | null>(null);
 
   protected readonly formularioAbierto = signal(false);
   protected readonly detalle = signal<CompraDetalle | null>(null);
@@ -59,6 +73,43 @@ export class Compras {
   protected readonly totalCompra = computed(() =>
     this.lineas().reduce((suma, l) => suma + (l.cantidad || 0) * (l.precioUnitario || 0), 0),
   );
+
+  /** Filtro de texto local (código de compra o nombre del proveedor). */
+  protected readonly comprasFiltradas = computed(() => {
+    const filtro = this.buscarTexto().trim().toLowerCase();
+    const lista = this.compras();
+    if (!filtro) return lista;
+
+    return lista.filter(
+      (c) =>
+        c.compraId.toLowerCase().includes(filtro) ||
+        c.nombreProveedor.toLowerCase().includes(filtro),
+    );
+  });
+
+  // --- KPIs de abastecimiento ------------------------------------------------
+  // Siempre sobre `comprasTodas` (sin los filtros de proveedor/fecha de la
+  // tabla): son un resumen del mes en curso, no de la vista filtrada.
+
+  protected readonly kpiTotalMes = computed(() =>
+    this.comprasDelMes().reduce((suma, c) => suma + c.total, 0),
+  );
+
+  protected readonly kpiRepuestosIngresados = computed(() =>
+    this.comprasDelMes().reduce((suma, c) => suma + c.cantidadLineas, 0),
+  );
+
+  protected readonly kpiProveedoresActivos = computed(
+    () => new Set(this.comprasDelMes().map((c) => c.proveedorId)).size,
+  );
+
+  private comprasDelMes(): Compra[] {
+    const ahora = new Date();
+    return this.comprasTodas().filter((c) => {
+      const fecha = new Date(c.fecha);
+      return fecha.getFullYear() === ahora.getFullYear() && fecha.getMonth() === ahora.getMonth();
+    });
+  }
 
   protected readonly formulario = this.fb.nonNullable.group({
     proveedorId: ['', Validators.required],
@@ -95,18 +146,75 @@ export class Compras {
   protected cargar(): void {
     this.cargando.set(true);
 
-    this.servicio.getAll({ proveedorId: this.proveedorFiltro() || undefined }).subscribe({
-      next: (lista) => {
-        this.compras.set(lista);
-        this.cargando.set(false);
-      },
-      error: () => this.cargando.set(false),
-    });
+    this.servicio
+      .getAll({
+        proveedorId: this.proveedorFiltro() || undefined,
+        desde: this.desde() || undefined,
+        hasta: this.hasta() || undefined,
+      })
+      .subscribe({
+        next: (lista) => {
+          this.compras.set(lista);
+          this.cargando.set(false);
+        },
+        error: () => this.cargando.set(false),
+      });
+
+    // KPIs del mes: siempre sobre el universo completo, no la vista filtrada.
+    this.servicio.getAll({}).subscribe((lista) => this.comprasTodas.set(lista));
   }
 
   protected onFiltrarProveedor(valor: string): void {
     this.proveedorFiltro.set(valor);
     this.cargar();
+  }
+
+  protected onBuscarTexto(valor: string): void {
+    this.buscarTexto.set(valor);
+  }
+
+  protected onFecha(campo: 'desde' | 'hasta', valor: string): void {
+    this.rangoActivo.set(null);
+    (campo === 'desde' ? this.desde : this.hasta).set(valor);
+    this.cargar();
+  }
+
+  /** Chips de rango rápido: calculan desde/hasta y reutilizan el filtro ya soportado por la API. */
+  protected aplicarRango(clave: 'hoy' | 'semana' | 'mes'): void {
+    this.rangoActivo.set(clave);
+    const hoy = this.fechaIso(new Date());
+
+    if (clave === 'hoy') {
+      this.desde.set(hoy);
+    } else if (clave === 'semana') {
+      const ahora = new Date();
+      const diasDesdeElLunes = (ahora.getDay() + 6) % 7; // 0 = lunes … 6 = domingo
+      const inicio = new Date(ahora);
+      inicio.setDate(ahora.getDate() - diasDesdeElLunes);
+      this.desde.set(this.fechaIso(inicio));
+    } else {
+      const ahora = new Date();
+      this.desde.set(this.fechaIso(new Date(ahora.getFullYear(), ahora.getMonth(), 1)));
+    }
+
+    this.hasta.set(hoy);
+    this.cargar();
+  }
+
+  protected limpiarFechas(): void {
+    this.rangoActivo.set(null);
+    this.desde.set('');
+    this.hasta.set('');
+    this.cargar();
+  }
+
+  private fechaIso(fecha: Date): string {
+    return fecha.toISOString().slice(0, 10);
+  }
+
+  /** Singular/plural para el badge de la columna "Líneas". */
+  protected etiquetaLineas(cantidad: number): string {
+    return cantidad === 1 ? '1 ítem' : `${cantidad} ítems`;
   }
 
   private nuevaLinea() {

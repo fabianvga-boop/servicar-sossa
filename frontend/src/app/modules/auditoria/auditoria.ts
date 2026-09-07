@@ -25,6 +25,7 @@ const ENTIDADES = [
   selector: 'app-auditoria',
   imports: [FormsModule, DatePipe, EstadoTabla],
   templateUrl: './auditoria.html',
+  styleUrl: './auditoria.css',
 })
 export class Auditoria {
   private readonly servicio = inject(AuditoriaService);
@@ -76,5 +77,35 @@ export class Auditoria {
 
   protected hayFiltro(): boolean {
     return !!(this.filtro.entidad || this.filtro.accion !== '' || this.filtro.desde || this.filtro.hasta);
+  }
+
+  /** Iniciales para el avatar del usuario: solo presentación. */
+  protected iniciales(nombre: string | null | undefined): string {
+    const partes = (nombre ?? '').trim().split(/\s+/).filter(Boolean);
+    if (partes.length === 0) return '—';
+
+    return partes.length === 1
+      ? partes[0].slice(0, 2).toUpperCase()
+      : (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+  }
+
+  /**
+   * Color de la insignia según el tipo de acción: verde para altas, azul para
+   * cambios, rojo para bajas/anulaciones. Es el mapeo visual de un dato que ya
+   * se muestra, no una regla nueva.
+   */
+  protected claseAccion(accion: AccionAuditoria): string {
+    switch (accion) {
+      case AccionAuditoria.Crear:
+        return 'insignia-verde';
+      case AccionAuditoria.Eliminar:
+      case AccionAuditoria.Anular:
+        return 'insignia-roja';
+      case AccionAuditoria.CambiarEstado:
+        return 'insignia-naranja';
+      default:
+        // Editar, Ajustar
+        return 'insignia-azul';
+    }
   }
 }

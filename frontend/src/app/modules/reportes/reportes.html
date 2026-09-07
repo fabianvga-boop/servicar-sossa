@@ -47,6 +47,23 @@
       </button>
     </div>
 
+    <!-- Filtros rápidos: estructura visual; la lógica de fechas se conecta luego -->
+    @if (periodoAplica) {
+      <div class="rangos-rapidos">
+        <span class="rangos-etiqueta">Rango rápido:</span>
+        @for (rango of rangosRapidos; track rango.clave) {
+          <button
+            type="button"
+            class="chip-rango"
+            [class.activo]="rangoRapido() === rango.clave"
+            (click)="marcarRango(rango.clave)"
+          >
+            {{ rango.etiqueta }}
+          </button>
+        }
+      </div>
+    }
+
     @if (!periodoAplica) {
       <p class="texto-tenue texto-sm mt-2 mb-0">
         El reporte de inventario refleja el estado actual del stock: el rango de fechas no aplica,
@@ -121,28 +138,53 @@
         <span class="texto-tenue texto-sm">Descargar:</span>
         <button
           type="button"
-          class="btn btn-secundario btn-sm"
+          class="btn-exportar pdf"
           [disabled]="exportando()"
           (click)="exportar(FormatoReporte.Pdf)"
         >
+          <span class="exportar-icono" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" />
+            </svg>
+          </span>
           PDF
         </button>
         <button
           type="button"
-          class="btn btn-secundario btn-sm"
+          class="btn-exportar excel"
           [disabled]="exportando()"
           (click)="exportar(FormatoReporte.Excel)"
         >
+          <span class="exportar-icono" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="m9 13 6 5M15 13l-6 5" />
+            </svg>
+          </span>
           Excel
         </button>
         <button
           type="button"
-          class="btn btn-secundario btn-sm"
+          class="btn-exportar csv"
           [disabled]="exportando()"
           (click)="exportar(FormatoReporte.Csv)"
         >
+          <span class="exportar-icono" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M8 13h8M8 17h5" />
+            </svg>
+          </span>
           CSV
         </button>
+      </div>
+    </div>
+
+    <!-- Espacio reservado para un futuro gráfico de resumen (Chart.js) -->
+    <div class="tarjeta-cuerpo">
+      <div class="grafico-marcador">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 3v18h18" /><path d="M18 17V9M13 17V5M8 17v-3" />
+        </svg>
+        <span>Espacio para Gráfico de Resumen</span>
       </div>
     </div>
 

@@ -9,10 +9,6 @@
     <button type="button" class="btn btn-primario" (click)="abrirConfig()">
       + Configurar porcentaje
     </button>
-  } @else if (seleccionadas().size > 0) {
-    <button type="button" class="btn btn-exito" (click)="abrirPagarLote()">
-      Liquidar {{ seleccionadas().size }} comisión(es) — {{ totalSeleccionado() | bs }}
-    </button>
   }
 </div>
 
@@ -43,6 +39,25 @@
 @switch (pestania()) {
   <!-- ================================================== Listado detallado -->
   @case ('comisiones') {
+    <!-- KPIs financieros: montos globales (salen de `resumen`, sin el filtro) -->
+    <div class="kpis-comisiones mb-2">
+      <div class="kpi-comision kpi-pendiente">
+        <span class="kpi-etiqueta">Total pendiente</span>
+        <span class="kpi-valor">{{ kpiTotalPendiente() | bs }}</span>
+        <span class="kpi-pie">Por liquidar a los mecánicos</span>
+      </div>
+      <div class="kpi-comision kpi-pagado">
+        <span class="kpi-etiqueta">Total pagado</span>
+        <span class="kpi-valor">{{ kpiTotalPagado() | bs }}</span>
+        <span class="kpi-pie">Comisiones ya liquidadas</span>
+      </div>
+      <div class="kpi-comision">
+        <span class="kpi-etiqueta">Cantidad pendiente</span>
+        <span class="kpi-valor">{{ kpiCantidadPendiente() }}</span>
+        <span class="kpi-pie">Comisión(es) sin pagar en la vista</span>
+      </div>
+    </div>
+
     <div class="tarjeta">
       <div class="tarjeta-encabezado">
         <div class="fila envuelve">
@@ -107,10 +122,17 @@
                   <td class="codigo">{{ comision.comisionId }}</td>
                   <td class="texto-sm">{{ comision.fechaCalculo | date: 'dd/MM/yyyy' }}</td>
                   <td>
-                    <span class="codigo">{{ comision.ordenId }}</span>
+                    <a class="enlace-orden" [routerLink]="['/ordenes', comision.ordenId]">
+                      {{ comision.ordenId }}
+                    </a>
                     <div class="texto-tenue texto-sm">{{ comision.placaVehiculo }}</div>
                   </td>
-                  <td>{{ comision.nombreMecanico }}</td>
+                  <td>
+                    <span class="celda-mecanico">
+                      <span class="avatar-ini" aria-hidden="true">{{ iniciales(comision.nombreMecanico) }}</span>
+                      <span>{{ comision.nombreMecanico }}</span>
+                    </span>
+                  </td>
                   <td class="num texto-fuerte">{{ comision.monto | bs }}</td>
                   <td>
                     <app-insignia-estado familia="pago" [valor]="comision.estadoPago" />
@@ -122,11 +144,22 @@
                   </td>
                   <td>
                     <div class="acciones">
-                      <button type="button" class="btn-enlace" (click)="alternarDetalle(comision.comisionId)">
-                        {{ expandida() === comision.comisionId ? 'Ocultar' : 'Detalle' }}
+                      <!-- Detalle: acción secundaria, botón de ícono discreto -->
+                      <button
+                        type="button"
+                        class="btn-icono"
+                        [class.abierto]="expandida() === comision.comisionId"
+                        [title]="expandida() === comision.comisionId ? 'Ocultar detalle' : 'Ver detalle'"
+                        [attr.aria-label]="expandida() === comision.comisionId ? 'Ocultar detalle' : 'Ver detalle'"
+                        (click)="alternarDetalle(comision.comisionId)"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path d="m6 9 6 6 6-6" />
+                        </svg>
                       </button>
+                      <!-- Pagar: acción principal cuando está pendiente, botón sólido -->
                       @if (comision.estadoPago === EstadoPago.Pendiente) {
-                        <button type="button" class="btn-enlace" (click)="porPagar.set(comision)">
+                        <button type="button" class="btn btn-exito btn-sm" (click)="porPagar.set(comision)">
                           Pagar
                         </button>
                       }
@@ -170,6 +203,27 @@
         </div>
       }
     </div>
+
+    <!-- Barra de acción en lote: solo aparece con al menos una seleccionada -->
+    @if (seleccionadas().size > 0) {
+      <div class="barra-lote">
+        <div class="barra-lote-info">
+          <span class="barra-lote-cuenta">{{ seleccionadas().size }}</span>
+          <div>
+            <div class="barra-lote-titulo">seleccionada(s)</div>
+            <div class="barra-lote-total">{{ totalSeleccionado() | bs }}</div>
+          </div>
+        </div>
+        <div class="barra-lote-acciones">
+          <button type="button" class="btn-vaciar-sel" (click)="limpiarSeleccion()">
+            Limpiar
+          </button>
+          <button type="button" class="btn btn-exito" (click)="abrirPagarLote()">
+            Pagar seleccionadas
+          </button>
+        </div>
+      </div>
+    }
   }
 
   <!-- ======================================================== Resumen -->

@@ -1,0 +1,70 @@
+/* -------------------------------------------------- Columna Descripción */
+
+/* Recorte a 2 líneas: una descripción larga no debe deformar el alto de la
+   fila. El color gris secundario la separa del nombre del servicio, que es
+   el dato principal de la fila. El texto completo queda accesible en el
+   `title` del span (tooltip nativo del navegador). */
+.descripcion-recorte {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-width: 320px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #6b7280;
+}
+
+/* ---------------------------------------------------- Columna Acciones */
+
+/* Una sola fila de botones de ícono compactos: nowrap evita que "Editar" y
+   "Dar de baja" se apilen verticalmente cuando la columna es angosta. */
+.acciones-iconos {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+
+.btn-icono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  flex-shrink: 0;
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio-sm);
+  background: var(--blanco);
+  color: var(--gris-500);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.btn-icono svg {
+  width: 15px;
+  height: 15px;
+}
+
+.btn-icono:hover {
+  background: var(--gris-50);
+  color: var(--ink);
+  border-color: var(--gris-400);
+}
+
+/* Dar de baja: mismo tinte rojo suave que usa el resto del sistema para
+   acciones destructivas/de bloqueo */
+.btn-icono-peligro:hover {
+  background: var(--brand-soft);
+  color: var(--brand-dk);
+  border-color: var(--brand-soft);
+}
+
+/* Reactivar: acción positiva, tinte verde */
+.btn-icono-exito:hover {
+  background: var(--verde-100);
+  color: #1f6b39;
+  border-color: var(--verde-100);
+}

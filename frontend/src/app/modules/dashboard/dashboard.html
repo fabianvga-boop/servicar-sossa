@@ -28,27 +28,71 @@
           <span class="delta">+{{ nuevasEstaSemana() }}</span> nueva(s) esta semana
         </div>
       }
+
+      <!-- Órdenes abiertas por día, últimos 7 días: la misma lista ya
+           cargada, agrupada — no hay histórico guardado para mostrar más. -->
+      <svg class="chispa" viewBox="0 0 100 32" preserveAspectRatio="none" aria-hidden="true">
+        <path class="chispa-area" [attr.d]="sparkAperturas().area" />
+        <path class="chispa-linea" [attr.d]="sparkAperturas().linea" />
+        <circle class="chispa-punto" [attr.cx]="sparkAperturas().puntoX" [attr.cy]="sparkAperturas().puntoY" r="2.4" />
+      </svg>
     </div>
+
     <div class="indicador">
       <div class="indicador-cabecera">
         <app-icono-menu class="indicador-icono" nombre="catalogo" />
         <span class="indicador-etiqueta">En proceso</span>
       </div>
-      <div class="indicador-valor naranja">{{ enProceso() }}</div>
+      <div class="indicador-fila">
+        <div class="indicador-valor naranja">{{ enProceso() }}</div>
+
+        <!-- Qué parte de lo activo ya pasó de "abierta" a "en trabajo" -->
+        <svg class="anillo" viewBox="0 0 40 40" aria-hidden="true">
+          <circle class="anillo-fondo" cx="20" cy="20" r="16" />
+          <circle
+            class="anillo-progreso naranja"
+            cx="20" cy="20" r="16"
+            [attr.stroke-dasharray]="arcoRecorrido(progresoEnProceso()) + ' ' + circunferenciaAnillo"
+          />
+          <text x="20" y="23.5" class="anillo-texto">{{ progresoEnProceso() }}%</text>
+        </svg>
+      </div>
     </div>
+
     <div class="indicador">
       <div class="indicador-cabecera">
         <app-icono-menu class="indicador-icono" nombre="completado" />
         <span class="indicador-etiqueta">Finalizadas por cerrar</span>
       </div>
-      <div class="indicador-valor verde">{{ finalizadas() }}</div>
+      <div class="indicador-fila">
+        <div class="indicador-valor verde">{{ finalizadas() }}</div>
+
+        <!-- Qué parte del trabajo activo ya llegó a la meta -->
+        <svg class="anillo" viewBox="0 0 40 40" aria-hidden="true">
+          <circle class="anillo-fondo" cx="20" cy="20" r="16" />
+          <circle
+            class="anillo-progreso verde"
+            cx="20" cy="20" r="16"
+            [attr.stroke-dasharray]="arcoRecorrido(progresoFinalizadas()) + ' ' + circunferenciaAnillo"
+          />
+          <text x="20" y="23.5" class="anillo-texto">{{ progresoFinalizadas() }}%</text>
+        </svg>
+      </div>
     </div>
+
     <div class="indicador">
       <div class="indicador-cabecera">
         <app-icono-menu class="indicador-icono" nombre="pagos" />
         <span class="indicador-etiqueta">Trabajo en curso</span>
       </div>
       <div class="indicador-valor">{{ montoEnCurso() | bs }}</div>
+
+      <!-- Valor de lo abierto cada día, últimos 7 días -->
+      <svg class="chispa" viewBox="0 0 100 32" preserveAspectRatio="none" aria-hidden="true">
+        <path class="chispa-area" [attr.d]="sparkMonto().area" />
+        <path class="chispa-linea" [attr.d]="sparkMonto().linea" />
+        <circle class="chispa-punto" [attr.cx]="sparkMonto().puntoX" [attr.cy]="sparkMonto().puntoY" r="2.4" />
+      </svg>
     </div>
   </div>
 
@@ -87,8 +131,10 @@
                   </td>
                   <td>{{ orden.nombreCliente }}</td>
                   <td>
-                    <span class="placa">{{ orden.placaVehiculo }}</span>
-                    <span class="texto-tenue texto-sm"> · {{ orden.descripcionVehiculo }}</span>
+                    <div class="celda-vehiculo">
+                      <app-placa [valor]="orden.placaVehiculo" />
+                      <span class="texto-tenue texto-sm">{{ orden.descripcionVehiculo }}</span>
+                    </div>
                   </td>
                   <td><app-insignia-estado familia="orden" [valor]="orden.estado" /></td>
                   <td class="num">{{ orden.total | bs }}</td>

@@ -2,7 +2,9 @@ import { DatePipe } from '@angular/common';
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { catchError, of } from 'rxjs';
 
+import { ConfirmarSalida } from '../../core/guards/confirmar-salida.guard';
 import {
   ETIQUETAS,
   EstadoOrden,
@@ -11,7 +13,7 @@ import {
   OrigenRepuesto,
 } from '../../core/models/enums';
 import { Repuesto } from '../../core/models/inventario.model';
-import { Usuario } from '../../core/models/personas.model';
+import { Usuario, VehiculoFoto } from '../../core/models/personas.model';
 import {
   OrdenDetalle as OrdenDetalleModel,
   OrdenRepuesto,
@@ -19,18 +21,22 @@ import {
   TipoServicio,
 } from '../../core/models/taller.model';
 import { AuthService } from '../../core/services/auth.service';
+import { urlArchivo } from '../../core/services/api-base';
 import { ContadoresService } from '../../core/services/contadores.service';
 import { RepuestosService } from '../../core/services/inventario.service';
 import { NotificacionService } from '../../core/services/notificacion.service';
 import { OrdenesService } from '../../core/services/ordenes.service';
 import { TiposServicioService } from '../../core/services/taller.service';
 import { UsuariosService } from '../../core/services/usuarios.service';
+import { VehiculosService } from '../../core/services/vehiculos.service';
 import { Confirmacion } from '../../shared/components/confirmacion';
 import { InsigniaEstado } from '../../shared/components/insignia-estado';
 import { Migas } from '../../shared/components/migas';
 import { Modal } from '../../shared/components/modal';
 import { Paso, Pasos } from '../../shared/components/pasos';
+import { Placa } from '../../shared/components/placa';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
+import { SiTieneRol } from '../../shared/directives/si-tiene-rol';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 
 /** Un requisito que la orden debe cumplir para poder avanzar de etapa. */
@@ -52,13 +58,19 @@ interface Requisito {
     InsigniaEstado,
     Migas,
     Pasos,
+    Placa,
     SelectorBusqueda,
+    SiTieneRol,
     BolivianosPipe,
   ],
   templateUrl: './orden-detalle.html',
   styleUrl: './orden-detalle.css',
+  host: {
+    // Cierre de la pestaña/navegador: el guard de ruta no alcanza a interceptarlo.
+    '(window:beforeunload)': 'alCerrarPestania($event)',
+  },
 })
-export class OrdenDetalle {
+export class OrdenDetalle implements ConfirmarSalida {
   /** Llega de la ruta `/ordenes/:id` vía withComponentInputBinding. */
   readonly id = input.required<string>();
 
@@ -66,6 +78,7 @@ export class OrdenDetalle {
   private readonly usuariosService = inject(UsuariosService);
   private readonly tiposServicioService = inject(TiposServicioService);
   private readonly repuestosService = inject(RepuestosService);
+  private readonly vehiculosService = inject(VehiculosService);
   private readonly notificacion = inject(NotificacionService);
   private readonly contadores = inject(ContadoresService);
   protected readonly auth = inject(AuthService);
@@ -73,6 +86,12 @@ export class OrdenDetalle {
   protected readonly orden = signal<OrdenDetalleModel | null>(null);
   protected readonly cargando = signal(true);
   protected readonly procesando = signal(false);
+
+  // Fotos del vehículo (mismas que gestiona el módulo Vehículos): acá se ven
+  // nada más, de sólo lectura — subir o borrar sigue viviendo en Vehículos.
+  protected readonly fotosVehiculo = signal<VehiculoFoto[]>([]);
+  protected readonly galeriaAbierta = signal(false);
+  protected readonly urlArchivo = urlArchivo;
 
   protected readonly mecanicos = signal<Usuario[]>([]);
   protected readonly catalogo = signal<TipoServicio[]>([]);
@@ -293,6 +312,19 @@ export class OrdenDetalle {
     })),
   );
 
+  /**
+   * Iniciales para el avatar del mecánico. Es solo presentación: deriva un par
+   * de letras del nombre ya cargado, sin tocar datos ni lógica.
+   */
+  protected iniciales(nombre: string | null | undefined): string {
+    const partes = (nombre ?? '').trim().split(/\s+/).filter(Boolean);
+    if (partes.length === 0) return '—';
+
+    return partes.length === 1
+      ? partes[0].slice(0, 2).toUpperCase()
+      : (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+  }
+
   constructor() {
     // `id` es un input de ruta: Angular recién lo asigna después del
     // constructor, así que leerlo aquí directamente dispararía NG0950.
@@ -319,14 +351,28 @@ export class OrdenDetalle {
 
   private cargar(id: string): void {
     this.cargando.set(true);
+    this.fotosVehiculo.set([]);
 
     this.servicio.getById(id).subscribe({
       next: (orden) => {
         this.orden.set(orden);
         this.cargando.set(false);
+
+        // Solo de vistazo acá; si no hay fotos o falla la carga, el
+        // encabezado muestra el ícono de vehículo sin foto y ya — no vale la
+        // pena molestar con un aviso de error por una carga secundaria.
+        this.vehiculosService
+          .getFotos(orden.vehiculoId)
+          .pipe(catchError(() => of([] as VehiculoFoto[])))
+          .subscribe((fotos) => this.fotosVehiculo.set(fotos));
       },
       error: () => this.cargando.set(false),
     });
+  }
+
+  protected abrirGaleriaVehiculo(): void {
+    if (this.fotosVehiculo().length === 0) return;
+    this.galeriaAbierta.set(true);
   }
 
   /** Todas las operaciones del detalle devuelven la orden completa actualizada. */
@@ -615,5 +661,25 @@ export class OrdenDetalle {
           .subscribe(this.aplicar('Repuesto restaurado en la orden.'));
       }),
     );
+  }
+
+  // --- Protección de salida (CAPA 1.3) --------------------------------------
+
+  /** Cualquier panel abierto puede tener datos tipeados que se perderían al salir. */
+  hayCambiosSinGuardar(): boolean {
+    return (
+      this.panelMecanico() ||
+      this.panelServicio() ||
+      this.panelRepuesto() ||
+      this.porCerrar() ||
+      this.porCancelar()
+    );
+  }
+
+  protected alCerrarPestania(evento: BeforeUnloadEvent): void {
+    if (!this.hayCambiosSinGuardar()) return;
+
+    evento.preventDefault();
+    evento.returnValue = '';
   }
 }

@@ -5,14 +5,16 @@
 
 /* ------------------------------------------------------- Barra lateral */
 
+/* Riel de identidad: el único bloque oscuro del sistema, y a propósito.
+   Un neutro cálido (no un segundo rojo) para que conviva con la marca en
+   vez de competir con ella. La barra superior y el resto del marco siguen
+   en el gris claro de --fondo-app. */
 .lateral {
   width: var(--ancho-lateral);
   flex-shrink: 0;
-  /* Marco, no contenido: comparte el gris del piso para que el blanco quede
-     reservado a las tarjetas (ver la regla en --fondo-app). */
-  background: var(--fondo-app);
-  border-right: 1px solid var(--gris-200);
-  color: var(--ink-soft);
+  background: var(--sidebar-fondo);
+  border-right: 1px solid var(--sidebar-borde);
+  color: var(--blanco);
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -32,17 +34,18 @@
   height: var(--alto-encabezado);
   display: flex;
   align-items: center;
+  justify-content: center;
   padding: 0 var(--sangria);
-  border-bottom: 1px solid var(--gris-200);
+  border-bottom: 1px solid var(--sidebar-borde);
   margin-bottom: 2px;
   flex-shrink: 0;
 }
 
-/* Limitado por alto (no por ancho) para que entre en la franja del
-   encabezado; el ancho lo resuelve la proporción del archivo. */
+/* Centrado y limitado por alto (no por ancho): el ancho lo resuelve la
+   proporción del archivo, así crece sin deformarse dentro de la franja. */
 .marca-logo {
   max-width: 100%;
-  max-height: 40px;
+  max-height: 50px;
   width: auto;
   height: auto;
   display: block;
@@ -60,16 +63,15 @@
 
 .grupo { margin-bottom: 0; }
 
-/* Misma pieza que el encabezado de una tabla: comparten tokens para que no
-   vuelvan a separarse. El gris más oscuro, además, saca a estas etiquetas
-   del contraste insuficiente que tenían en 10px sobre blanco. */
+/* Comparte tam/tracking con el encabezado de tabla (misma pieza tipográfica
+   en todo el sistema); el color es propio del riel oscuro. */
 .grupo-titulo {
   padding: 9px var(--sangria) 3px;
   font-size: var(--etiqueta-tam);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: var(--etiqueta-tracking);
-  color: var(--gris-500);
+  color: var(--sidebar-tenue);
   line-height: 1.2;
 }
 
@@ -82,47 +84,46 @@
   display: flex;
   align-items: center;
   gap: 11px;
-  margin: 0 calc(var(--sangria) / 2);
-  padding: 7px calc(var(--sangria) / 2);
+  margin: 1px calc(var(--sangria) / 2);
+  padding: 9px calc(var(--sangria) / 2);
   border-radius: var(--radio-sm);
-  color: var(--ink-soft);
+  color: var(--blanco);
   font-size: 13.5px;
   font-weight: 500;
   line-height: 1.2;
   text-decoration: none;
 }
 
-/* Sobre el marco gris el enlace se aclara en vez de oscurecerse: contra
-   #f1f5f9 el gris-100 quedaba a 3 unidades y el hover desaparecía. */
 .enlace:hover {
-  background: var(--blanco);
-  color: var(--ink);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--blanco);
   text-decoration: none;
 }
 
-/* Activo en rojo de marca sobre su tinte suave: mantiene la identidad
-   del taller sin recurrir al fondo oscuro. */
+/* Activo como píldora sólida en rojo de marca: sobre el riel oscuro el rojo
+   deja de ser decoración y pasa a decir dónde estás. El botón primario de
+   la zona de contenido sigue siendo el único rojo de ese lado. */
 .enlace.activo {
-  background: var(--brand-soft);
-  color: var(--brand-dk);
+  background: var(--brand);
+  color: var(--blanco);
   font-weight: 600;
 }
 
 .icono {
-  color: var(--gris-400);
+  color: var(--sidebar-tenue);
   flex-shrink: 0;
 }
 
-.enlace:hover .icono { color: var(--ink-soft); }
-.enlace.activo .icono { color: var(--brand); }
+.enlace:hover .icono { color: var(--blanco); }
+.enlace.activo .icono { color: var(--blanco); }
 
 /* Insignia de pendientes: dice cuánto trabajo espera sin tener que entrar */
 .contador {
   min-width: 19px;
   padding: 1px 6px;
   border-radius: 10px;
-  background: var(--gris-200);
-  color: var(--ink-soft);
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--blanco);
   font-size: 10.5px;
   font-weight: 700;
   text-align: center;

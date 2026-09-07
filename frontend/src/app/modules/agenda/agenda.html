@@ -1,0 +1,109 @@
+<div class="fila-entre envuelve mb-2">
+  <div>
+    <h1>Agenda</h1>
+    <p class="texto-tenue texto-sm mb-0">Calendario de diagnósticos y ocupación de mecánicos</p>
+  </div>
+</div>
+
+<!-- El componente base pedido, con datos de ejemplo: el modelo real no tiene
+     inicio ni fin para dibujar un bloque de verdad (ver el comentario en
+     agenda.ts). No hay nada acá conectado al taller todavía. -->
+<div class="aviso-muestra mb-2">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+    <path d="M12 9v4" /><path d="M12 17h.01" />
+  </svg>
+  <div>
+    <span class="texto-fuerte">Vista de ejemplo, sin datos reales.</span>
+    El sistema no guarda hora de inicio ni duración de un diagnóstico o una asignación —
+    solo el instante en que se registran. Los bloques de acá son ilustrativos, para validar
+    el diseño antes de decidir si se agregan esos campos al modelo real.
+  </div>
+</div>
+
+<div class="pestanias mb-2">
+  <button type="button" [class.activa]="pestania() === 'calendario'" (click)="cambiarPestania('calendario')">
+    Calendario
+  </button>
+  <button type="button" [class.activa]="pestania() === 'mecanicos'" (click)="cambiarPestania('mecanicos')">
+    Mecánicos
+  </button>
+</div>
+
+@if (pestania() === 'calendario') {
+  <!-- ------------------------------------------------------- Calendario semanal -->
+  <div class="tarjeta">
+    <div class="tarjeta-cuerpo" style="padding: 0">
+      <div class="calendario">
+        <div class="calendario-esquina"></div>
+        @for (dia of dias; track dia) {
+          <div class="calendario-dia-cabecera">{{ dia }}</div>
+        }
+
+        <div class="calendario-horas">
+          @for (hora of horas; track hora) {
+            <div class="calendario-hora">{{ etiquetaHora(hora) }}</div>
+          }
+        </div>
+
+        @for (dia of dias; track dia; let i = $index) {
+          <div class="calendario-columna">
+            @for (hora of horas; track hora) {
+              <div class="calendario-linea"></div>
+            }
+
+            @for (cita of citasDelDia(i); track cita.titulo + cita.horaInicio) {
+              <div
+                class="bloque-cita"
+                [class.azul]="cita.color === 'azul'"
+                [class.naranja]="cita.color === 'naranja'"
+                [class.verde]="cita.color === 'verde'"
+                [style.top.%]="topPct(cita.horaInicio)"
+                [style.height.%]="altoPct(cita.horaInicio, cita.horaFin)"
+                [title]="cita.titulo + ' — ' + cita.subtitulo"
+              >
+                <span class="bloque-titulo">{{ cita.titulo }}</span>
+                <span class="bloque-subtitulo">{{ cita.subtitulo }}</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+} @else {
+  <!-- --------------------------------------------------- Gantt de mecánicos -->
+  <div class="tarjeta">
+    <div class="tarjeta-cuerpo" style="padding: 0">
+      <div class="gantt">
+        <div class="gantt-esquina"></div>
+        @for (hora of horas; track hora) {
+          <div class="gantt-hora-cabecera">{{ etiquetaHora(hora) }}</div>
+        }
+
+        @for (mecanico of mecanicos; track mecanico) {
+          <div class="gantt-mecanico">{{ mecanico }}</div>
+          <div class="gantt-fila">
+            @for (hora of horas; track hora) {
+              <div class="gantt-linea"></div>
+            }
+
+            @for (tarea of tareasDelMecanico(mecanico); track tarea.titulo + tarea.horaInicio) {
+              <div
+                class="bloque-tarea"
+                [class.azul]="tarea.color === 'azul'"
+                [class.naranja]="tarea.color === 'naranja'"
+                [class.verde]="tarea.color === 'verde'"
+                [style.left.%]="leftPct(tarea.horaInicio)"
+                [style.width.%]="anchoPct(tarea.horaInicio, tarea.horaFin)"
+                [title]="tarea.titulo + ' — ' + mecanico"
+              >
+                {{ tarea.titulo }}
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}
