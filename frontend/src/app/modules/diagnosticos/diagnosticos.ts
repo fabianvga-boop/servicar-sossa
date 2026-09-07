@@ -129,6 +129,51 @@ export class Diagnosticos {
     this.cargar();
   }
 
+  /**
+   * Posiciona el menú contextual (⋮) al abrirse. La tabla vive dentro de un
+   * contenedor con `overflow-x: auto` que, por spec de CSS, también recorta en
+   * vertical: un menú `absolute` quedaría atrapado (y con pocas filas obligaba
+   * a hacer scroll dentro de la tarjeta para verlo entero). Se lo pasa a
+   * `position: fixed`, que escapa cualquier contenedor con overflow, y se
+   * decide arriba/abajo según el espacio libre en la ventana. Es solo
+   * presentación: no toca datos ni la lógica del diagnóstico.
+   */
+  protected posicionarMenu(evento: Event): void {
+    const detalle = evento.currentTarget as HTMLDetailsElement;
+    const panel = detalle.querySelector<HTMLElement>('.menu-contextual-panel');
+    if (!panel) return;
+
+    // Al cerrar, se limpian los estilos en línea para volver al CSS por defecto.
+    if (!detalle.open) {
+      panel.style.cssText = '';
+      return;
+    }
+
+    const boton = detalle.querySelector<HTMLElement>('summary');
+    if (!boton) return;
+
+    const r = boton.getBoundingClientRect();
+    const ancho = panel.offsetWidth || 190;
+    const alto = panel.offsetHeight || 200;
+    const margen = 8;
+
+    const izquierda = Math.max(margen, r.right - ancho);
+    const cabeAbajo = r.bottom + alto + margen <= window.innerHeight;
+
+    panel.style.position = 'fixed';
+    panel.style.left = `${izquierda}px`;
+    panel.style.right = 'auto';
+    panel.style.top = `${cabeAbajo ? r.bottom + 4 : r.top - alto - 4}px`;
+    panel.style.bottom = 'auto';
+    panel.style.zIndex = '60';
+
+    // Un menú fijo no acompaña el scroll de la fila: se cierra al desplazarse.
+    window.addEventListener('scroll', () => (detalle.open = false), {
+      once: true,
+      capture: true,
+    });
+  }
+
   protected invalido(control: string): boolean {
     const campo = this.formulario.get(control);
     return !!campo && campo.invalid && (campo.touched || campo.dirty);

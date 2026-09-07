@@ -122,7 +122,7 @@
                 <!-- Menú contextual sin JS de componente: <details> nativo maneja el
                      abrir/cerrar solo, y `name` agrupa todas las filas para que abrir
                      una cierre cualquier otra que hubiera quedado abierta. -->
-                <details class="menu-contextual" name="menu-diagnostico">
+                <details class="menu-contextual" name="menu-diagnostico" (toggle)="posicionarMenu($event)">
                   <summary class="btn-icono" title="Más acciones" aria-label="Más acciones">
                     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                       <circle cx="12" cy="5" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="12" cy="19" r="1.8" />
