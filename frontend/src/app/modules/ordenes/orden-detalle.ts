@@ -23,6 +23,7 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 import { urlArchivo } from '../../core/services/api-base';
 import { ContadoresService } from '../../core/services/contadores.service';
+import { ComisionesService } from '../../core/services/finanzas.service';
 import { RepuestosService } from '../../core/services/inventario.service';
 import { NotificacionService } from '../../core/services/notificacion.service';
 import { OrdenesService } from '../../core/services/ordenes.service';
@@ -79,6 +80,7 @@ export class OrdenDetalle implements ConfirmarSalida {
   private readonly tiposServicioService = inject(TiposServicioService);
   private readonly repuestosService = inject(RepuestosService);
   private readonly vehiculosService = inject(VehiculosService);
+  private readonly comisionesService = inject(ComisionesService);
   private readonly notificacion = inject(NotificacionService);
   private readonly contadores = inject(ContadoresService);
   protected readonly auth = inject(AuthService);
@@ -96,6 +98,20 @@ export class OrdenDetalle implements ConfirmarSalida {
   protected readonly mecanicos = signal<Usuario[]>([]);
   protected readonly catalogo = signal<TipoServicio[]>([]);
   protected readonly repuestos = signal<Repuesto[]>([]);
+
+  /**
+   * Mecánicos con porcentaje de comisión configurado (> 0). Sirve solo para
+   * avisar al asignar: si un mecánico no está acá, se puede asignar igual pero
+   * no generará comisión al cerrar mientras no se le configure el porcentaje.
+   */
+  protected readonly mecanicosConComision = signal<Set<string>>(new Set());
+  private readonly configComisionCargada = signal(false);
+
+  /** true si el mecánico no genera comisión hoy (sin `%` configurado). */
+  protected sinComisionConfigurada(mecanicoId: string): boolean {
+    // Mientras la config no cargó, no se avisa nada para no dar un falso positivo.
+    return this.configComisionCargada() && !this.mecanicosConComision().has(mecanicoId);
+  }
 
   // Diálogos
   protected readonly panelMecanico = signal(false);
@@ -346,6 +362,14 @@ export class OrdenDetalle implements ConfirmarSalida {
       );
       this.tiposServicioService.getAll().subscribe((lista) => this.catalogo.set(lista));
       this.repuestosService.getAll().subscribe((lista) => this.repuestos.set(lista));
+
+      // Porcentajes configurados: solo para avisar al asignar un mecánico sin comisión.
+      this.comisionesService.getConfiguraciones().subscribe((configs) => {
+        this.mecanicosConComision.set(
+          new Set(configs.filter((c) => c.porcentaje > 0).map((c) => c.mecanicoId)),
+        );
+        this.configComisionCargada.set(true);
+      });
     }
   }
 
@@ -451,10 +475,28 @@ export class OrdenDetalle implements ConfirmarSalida {
   protected asignarMecanico(): void {
     if (!this.mecanicoSeleccionado) return;
 
+    // Se capturan antes de limpiar la selección, para el aviso posterior.
+    const mecanicoId = this.mecanicoSeleccionado;
+    const nombre =
+      this.mecanicos().find((m) => m.usuarioId === mecanicoId)?.nombreCompleto ?? 'El mecánico';
+    const sinComision = this.sinComisionConfigurada(mecanicoId);
+
     this.procesando.set(true);
-    this.servicio
-      .asignarMecanico(this.id(), this.mecanicoSeleccionado)
-      .subscribe(this.aplicar('Mecánico asignado.'));
+
+    const aplicar = this.aplicar('Mecánico asignado.');
+    this.servicio.asignarMecanico(this.id(), mecanicoId).subscribe({
+      next: (orden) => {
+        aplicar.next(orden);
+        // Aviso no bloqueante: se asignó igual, pero conviene configurar el %.
+        if (sinComision) {
+          this.notificacion.advertencia(
+            `${nombre} no tiene porcentaje de comisión configurado: no generará comisión ` +
+              'al cerrar la orden mientras no se lo configure en Comisiones → Porcentajes.',
+          );
+        }
+      },
+      error: aplicar.error,
+    });
 
     this.mecanicoSeleccionado = '';
   }
