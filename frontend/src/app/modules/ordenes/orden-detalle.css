@@ -143,6 +143,26 @@
   padding: 3px 0;
 }
 
+/* Aviso al asignar un mecánico sin porcentaje de comisión: informa, no bloquea */
+.aviso-comision {
+  display: flex;
+  gap: 7px;
+  margin-top: 7px;
+  padding: 8px 10px;
+  border-radius: var(--radio-sm);
+  background: var(--naranja-100);
+  color: #7a5700;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.aviso-comision svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
 /* ------------------------------------------- Tarjetas de diagnóstico */
 
 .bloque-diagnostico {
