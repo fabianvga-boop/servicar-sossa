@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 
 import { Proveedor } from '../../core/models/inventario.model';
 import { ProveedoresService } from '../../core/services/inventario.service';
@@ -12,162 +13,9 @@ import { Atajo } from '../../shared/directives/atajo';
 /** USU028 — gestión de proveedores. */
 @Component({
   selector: 'app-proveedores',
-  imports: [ReactiveFormsModule, Modal, Confirmacion, EstadoTabla, Atajo],
-  template: `
-    <div class="fila-entre envuelve mb-2">
-      <div>
-        <h1>Proveedores</h1>
-        <p class="texto-tenue texto-sm mb-0">Abastecedores de repuestos del taller</p>
-      </div>
-      <button
-        type="button"
-        class="btn btn-primario"
-        appAtajo="n"
-        title="Atajo: tecla N"
-        (click)="abrirNuevo()"
-      >
-        + Nuevo proveedor
-      </button>
-    </div>
-
-    <div class="tarjeta">
-      <div class="tarjeta-encabezado">
-        <input
-          type="search"
-          placeholder="Buscar por nombre o contacto…"
-          style="max-width: 320px"
-          [value]="buscar()"
-          (input)="onBuscar($any($event.target).value)"
-        />
-        <span class="texto-tenue texto-sm">{{ proveedores().length }} registro(s)</span>
-      </div>
-
-      @if (cargando() || proveedores().length === 0) {
-        <app-estado-tabla
-          [cargando]="cargando()"
-          [hayFiltro]="buscar().length > 0"
-          titulo="Sin proveedores registrados"
-          descripcion="Registre un proveedor para poder cargar compras de repuestos."
-        />
-      } @else {
-        <div class="tabla-contenedor">
-          <table class="tabla">
-            <thead>
-              <tr>
-                <th>Código</th>
-                <th>Proveedor</th>
-                <th>Contacto</th>
-                <th>Teléfono</th>
-                <th>Email</th>
-                <th class="num">Repuestos</th>
-                <th class="th-acciones">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (proveedor of proveedores(); track proveedor.proveedorId) {
-                <tr>
-                  <td class="codigo">{{ proveedor.proveedorId }}</td>
-                  <td class="texto-fuerte">{{ proveedor.nombre }}</td>
-                  <td>{{ proveedor.contacto || '—' }}</td>
-                  <td>{{ proveedor.telefono || '—' }}</td>
-                  <td class="texto-sm">{{ proveedor.email || '—' }}</td>
-                  <td class="num">{{ proveedor.cantidadRepuestos }}</td>
-                  <td>
-                    <div class="acciones">
-                      <button type="button" class="btn-enlace" (click)="abrirEditar(proveedor)">
-                        Editar
-                      </button>
-                      <button
-                        type="button"
-                        class="btn-enlace texto-rojo"
-                        (click)="porEliminar.set(proveedor)"
-                      >
-                        Eliminar
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      }
-    </div>
-
-    @if (formularioAbierto()) {
-      <app-modal
-        [titulo]="editando() ? 'Editar proveedor' : 'Nuevo proveedor'"
-        (cerrar)="cerrarFormulario()"
-      >
-        <form [formGroup]="formulario" id="form-proveedor" (ngSubmit)="guardar()">
-          <div class="campo">
-            <label for="nombre">Nombre <span class="obligatorio">*</span></label>
-            <input id="nombre" formControlName="nombre" [class.invalido]="invalido('nombre')" />
-            @if (invalido('nombre')) {
-              <span class="campo-error">El nombre es obligatorio.</span>
-            }
-          </div>
-
-          <div class="rejilla">
-            <div class="campo">
-              <label for="contacto">Persona de contacto</label>
-              <input id="contacto" formControlName="contacto" />
-            </div>
-
-            <div class="campo">
-              <label for="telefono">Teléfono</label>
-              <input id="telefono" formControlName="telefono" />
-            </div>
-          </div>
-
-          <div class="campo">
-            <label for="email">Email</label>
-            <input
-              id="email"
-              type="email"
-              formControlName="email"
-              [class.invalido]="invalido('email')"
-            />
-            @if (invalido('email')) {
-              <span class="campo-error">El formato del email no es válido.</span>
-            }
-          </div>
-
-          <div class="campo">
-            <label for="direccion">Dirección</label>
-            <input id="direccion" formControlName="direccion" />
-          </div>
-        </form>
-
-        <div pie>
-          <button type="button" class="btn btn-secundario" (click)="cerrarFormulario()">
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            form="form-proveedor"
-            class="btn btn-primario"
-            [disabled]="guardando()"
-          >
-            {{ guardando() ? 'Guardando…' : 'Guardar' }}
-          </button>
-        </div>
-      </app-modal>
-    }
-
-    @if (porEliminar(); as proveedor) {
-      <app-confirmacion
-        titulo="Eliminar proveedor"
-        [mensaje]="'¿Eliminar a ' + proveedor.nombre + '?'"
-        advertencia="Solo se puede eliminar si no tiene repuestos ni compras asociadas."
-        textoConfirmar="Eliminar"
-        [peligroso]="true"
-        [procesando]="guardando()"
-        (confirmar)="eliminar()"
-        (cancelar)="porEliminar.set(null)"
-      />
-    }
-  `,
+  imports: [ReactiveFormsModule, RouterLink, Modal, Confirmacion, EstadoTabla, Atajo],
+  templateUrl: './proveedores.html',
+  styleUrl: './proveedores.css',
 })
 export class Proveedores {
   private readonly servicio = inject(ProveedoresService);
@@ -215,6 +63,17 @@ export class Proveedores {
   protected invalido(control: string): boolean {
     const campo = this.formulario.get(control);
     return !!campo && campo.invalid && campo.touched;
+  }
+
+  /**
+   * Enlace directo a un chat de WhatsApp para pedir repuestos al instante. El
+   * teléfono se guarda como texto libre: acá solo se limpia para armar la
+   * URL — si no trae código de país se asume Bolivia (+591).
+   */
+  protected linkWhatsapp(telefono: string): string {
+    const digitos = telefono.replace(/\D/g, '');
+    const conCodigo = digitos.startsWith('591') ? digitos : `591${digitos}`;
+    return `https://wa.me/${conCodigo}`;
   }
 
   protected abrirNuevo(): void {

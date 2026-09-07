@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -19,11 +19,43 @@ import { VehiculosService } from '../../core/services/vehiculos.service';
 import { Esqueleto } from '../../shared/components/esqueleto';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { Modal } from '../../shared/components/modal';
+import { Placa } from '../../shared/components/placa';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
 import { Atajo } from '../../shared/directives/atajo';
+import { SiTieneRol } from '../../shared/directives/si-tiene-rol';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 
 const CLAVE_BUSCAR = 'vehiculos.buscar';
+
+/**
+ * Paleta aproximada para el bullet junto al nombre del color: es una ayuda
+ * visual, no un dato normalizado del sistema (el color se guarda como texto
+ * libre). Un nombre no reconocido cae a un gris neutro en vez de fallar.
+ */
+const COLORES_VEHICULO: Record<string, string> = {
+  negro: '#1f2328',
+  blanco: '#f8fafc',
+  gris: '#9ca3af',
+  plata: '#c7ccd1',
+  plomo: '#9ca3af',
+  rojo: '#dc2626',
+  azul: '#2563eb',
+  verde: '#16a34a',
+  amarillo: '#eab308',
+  naranja: '#ea580c',
+  marron: '#78350f',
+  marrón: '#78350f',
+  cafe: '#78350f',
+  café: '#78350f',
+  beige: '#d6c7a1',
+  dorado: '#ca8a04',
+  celeste: '#38bdf8',
+  vino: '#7f1d1d',
+  morado: '#7c3aed',
+  violeta: '#7c3aed',
+  rosado: '#ec4899',
+  rosa: '#ec4899',
+};
 
 /** USU009-USU011 — gestión de vehículos. */
 @Component({
@@ -31,11 +63,14 @@ const CLAVE_BUSCAR = 'vehiculos.buscar';
   imports: [
     ReactiveFormsModule,
     DatePipe,
+    DecimalPipe,
     Modal,
     EstadoTabla,
     SelectorBusqueda,
     Atajo,
+    SiTieneRol,
     Esqueleto,
+    Placa,
     BolivianosPipe,
   ],
   templateUrl: './vehiculos.html',
@@ -147,6 +182,14 @@ export class Vehiculos {
   protected onFiltrarCliente(valor: string): void {
     this.clienteFiltro.set(valor);
     this.cargar();
+  }
+
+  /** Color aproximado para el bullet de la columna "Vehículo"; ver COLORES_VEHICULO. */
+  protected colorPunto(nombre: string | null | undefined): string {
+    if (!nombre) return 'transparent';
+
+    const clave = nombre.trim().toLowerCase();
+    return COLORES_VEHICULO[clave] ?? '#9ca3af';
   }
 
   protected invalido(control: string): boolean {

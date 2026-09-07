@@ -15,6 +15,7 @@ import { OrdenesService } from '../../core/services/ordenes.service';
 import { Esqueleto } from '../../shared/components/esqueleto';
 import { IconoMenu } from '../../shared/components/icono-menu';
 import { InsigniaEstado } from '../../shared/components/insignia-estado';
+import { Placa } from '../../shared/components/placa';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 
 /** Tarjeta de acceso directo al trabajo que espera al usuario. */
@@ -33,6 +34,46 @@ interface AccesoDirecto {
 
 const DIAS_TENDENCIA = 7;
 
+/** Un punto de la serie diaria: cuántas órdenes se abrieron ese día y por cuánto. */
+interface PuntoDiario {
+  conteo: number;
+  monto: number;
+  esHoy: boolean;
+}
+
+/** Trazo de un sparkline: la línea, el relleno bajo la línea y dónde va el punto de hoy. */
+interface Sparkline {
+  linea: string;
+  area: string;
+  puntoX: number;
+  puntoY: number;
+}
+
+const RADIO_ANILLO = 16;
+const CIRCUNFERENCIA_ANILLO = 2 * Math.PI * RADIO_ANILLO;
+
+/**
+ * Arma el trazo SVG de un sparkline a partir de una serie de valores. Sin
+ * librería: es una polilínea simple sobre un viewBox fijo de 100×32.
+ */
+function construirSparkline(valores: number[]): Sparkline {
+  const max = Math.max(...valores, 1); // evita dividir por 0 con la serie en cero
+  const n = valores.length;
+  const paso = n > 1 ? 100 / (n - 1) : 0;
+
+  const puntos = valores.map((v, i) => {
+    const x = i * paso;
+    const y = 28 - (v / max) * 24;
+    return { x, y };
+  });
+
+  const linea = puntos.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' L');
+  const area = `M0,30 L${linea} L100,30 Z`;
+  const ultimo = puntos[puntos.length - 1];
+
+  return { linea: `M${linea}`, area, puntoX: ultimo.x, puntoY: ultimo.y };
+}
+
 /**
  * Panel de inicio. Muestra el trabajo en curso y las alertas que exigen
  * acción: órdenes activas, comisiones por liquidar y repuestos por reponer.
@@ -42,7 +83,7 @@ const DIAS_TENDENCIA = 7;
  */
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterLink, Esqueleto, IconoMenu, InsigniaEstado, BolivianosPipe],
+  imports: [RouterLink, Esqueleto, IconoMenu, InsigniaEstado, Placa, BolivianosPipe],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
 })
@@ -95,6 +136,69 @@ export class Dashboard {
     const limite = Date.now() - DIAS_TENDENCIA * 24 * 60 * 60 * 1000;
     return this.ordenes().filter((o) => new Date(o.fechaCreacion).getTime() >= limite).length;
   });
+
+  /**
+   * Los sparklines de las tarjetas no son un dato nuevo: son la misma lista
+   * de órdenes ya cargada, agrupada día por día. No hay histórico guardado
+   * en el backend — esto es lo único que se puede mostrar como tendencia
+   * sin inventar un dato que el sistema no tiene.
+   */
+  protected readonly serieDiaria = computed<PuntoDiario[]>(() => {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    const dias: PuntoDiario[] = [];
+
+    for (let i = DIAS_TENDENCIA - 1; i >= 0; i--) {
+      const inicio = new Date(hoy);
+      inicio.setDate(inicio.getDate() - i);
+      const fin = new Date(inicio);
+      fin.setDate(fin.getDate() + 1);
+
+      const delDia = this.ordenes().filter((o) => {
+        const t = new Date(o.fechaCreacion).getTime();
+        return t >= inicio.getTime() && t < fin.getTime();
+      });
+
+      dias.push({
+        conteo: delDia.length,
+        monto: delDia.reduce((suma, o) => suma + o.total, 0),
+        esHoy: i === 0,
+      });
+    }
+
+    return dias;
+  });
+
+  protected readonly sparkAperturas = computed(() =>
+    construirSparkline(this.serieDiaria().map((d) => d.conteo)),
+  );
+
+  protected readonly sparkMonto = computed(() =>
+    construirSparkline(this.serieDiaria().map((d) => d.monto)),
+  );
+
+  /**
+   * Cuánto de lo activo ya pasó de "recién abierta" a "en trabajo" — un
+   * vistazo a si el taller está arrancando órdenes o avanzándolas.
+   */
+  protected readonly progresoEnProceso = computed(() => {
+    const base = this.abiertas() + this.enProceso();
+    return base === 0 ? 0 : Math.round((this.enProceso() / base) * 100);
+  });
+
+  /** Cuánto del trabajo activo ya llegó a la meta: listo para entregar. */
+  protected readonly progresoFinalizadas = computed(() => {
+    const base = this.abiertas() + this.enProceso() + this.finalizadas();
+    return base === 0 ? 0 : Math.round((this.finalizadas() / base) * 100);
+  });
+
+  protected readonly circunferenciaAnillo = CIRCUNFERENCIA_ANILLO;
+
+  /** Longitud del arco recorrido, para el stroke-dasharray del anillo. */
+  protected arcoRecorrido(porcentaje: number): number {
+    return (porcentaje / 100) * CIRCUNFERENCIA_ANILLO;
+  }
 
   /**
    * Atajos al trabajo que realmente espera. Solo se listan los que tienen algo

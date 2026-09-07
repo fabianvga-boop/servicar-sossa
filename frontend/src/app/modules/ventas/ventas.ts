@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { Component, ElementRef, afterNextRender, computed, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
+import { ConfirmarSalida } from '../../core/guards/confirmar-salida.guard';
 import { EstadoCliente, EstadoVenta, ETIQUETAS, MetodoPago } from '../../core/models/enums';
 import { Repuesto, Venta } from '../../core/models/inventario.model';
 import { Cliente } from '../../core/models/personas.model';
@@ -45,8 +46,12 @@ interface LineaCarrito {
   ],
   templateUrl: './ventas.html',
   styleUrl: './ventas.css',
+  host: {
+    // Cierre de la pestaña/navegador: el guard de ruta no alcanza a interceptarlo.
+    '(window:beforeunload)': 'alCerrarPestania($event)',
+  },
 })
-export class Ventas {
+export class Ventas implements ConfirmarSalida {
   private readonly servicio = inject(VentasService);
   private readonly repuestosService = inject(RepuestosService);
   private readonly clientesService = inject(ClientesService);
@@ -68,6 +73,39 @@ export class Ventas {
 
   /** Filtro de texto sobre la grilla de productos. */
   protected readonly buscarProducto = signal('');
+
+  /** Pestaña activa del terminal: solo presentación, no toca la venta ni la API. */
+  protected readonly pestania = signal<'terminal' | 'historial'>('terminal');
+
+  /**
+   * Chips de categoría rápida. El modelo de repuesto no tiene un campo
+   * "categoría", así que estos son accesos directos al buscador que ya existe:
+   * cada chip llena el filtro de texto con un término de ejemplo y reutiliza
+   * `productosFiltrados`, sin inventar un dato que el sistema no guarda.
+   */
+  protected readonly categoriasRapidas = [
+    { etiqueta: 'Todos', termino: '' },
+    { etiqueta: 'Aceites', termino: 'aceite' },
+    { etiqueta: 'Filtros', termino: 'filtro' },
+    { etiqueta: 'Frenos', termino: 'freno' },
+  ];
+  protected readonly categoriaActiva = signal('Todos');
+
+  protected filtrarPorCategoria(categoria: { etiqueta: string; termino: string }): void {
+    this.categoriaActiva.set(categoria.etiqueta);
+    this.buscarProducto.set(categoria.termino);
+  }
+
+  /**
+   * Color del badge de stock, según cuánto queda disponible: verde con holgura,
+   * naranja cuando conviene reponer, rojo cuando casi no hay. Es solo el mapeo
+   * visual del stock real que ya se muestra.
+   */
+  protected nivelStock(disponible: number): 'alto' | 'medio' | 'bajo' {
+    if (disponible < 5) return 'bajo';
+    if (disponible <= 10) return 'medio';
+    return 'alto';
+  }
 
   /** El buscador es el punto de partida del flujo: recibe el foco al entrar. */
   private readonly campoBusqueda = viewChild<ElementRef<HTMLInputElement>>('campoBusqueda');
@@ -326,5 +364,21 @@ export class Ventas {
         this.porAnular.set(null);
       },
     });
+  }
+
+  // --- Protección de salida (CAPA 1.3) --------------------------------------
+
+  /** El carrito vive solo en memoria: navegar afuera con ítems adentro los pierde. */
+  hayCambiosSinGuardar(): boolean {
+    return this.carrito().length > 0;
+  }
+
+  protected alCerrarPestania(evento: BeforeUnloadEvent): void {
+    if (!this.hayCambiosSinGuardar()) return;
+
+    // Ambas líneas son necesarias: distintos navegadores leen una u otra
+    // para decidir si muestran el diálogo nativo de "¿Salir del sitio?".
+    evento.preventDefault();
+    evento.returnValue = '';
   }
 }

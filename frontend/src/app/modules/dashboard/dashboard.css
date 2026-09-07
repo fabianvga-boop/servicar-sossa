@@ -1,3 +1,9 @@
+.celda-vehiculo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .indicadores {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
@@ -61,6 +67,79 @@
 }
 
 .alerta { border-left: 4px solid var(--naranja-600); }
+
+/* ------------------------------------------------- Tendencia (sparkline)
+
+   Sube y baja según cuántas órdenes se abrieron cada día de la semana: es
+   la misma lista que ya carga la tarjeta, agrupada por día. Al no haber
+   histórico guardado en el backend, esto es lo único que se puede mostrar
+   como tendencia sin inventar un dato que el sistema no tiene. */
+.chispa {
+  display: block;
+  width: 100%;
+  height: 30px;
+  margin-top: 10px;
+}
+
+.chispa-area {
+  fill: var(--azul-100);
+  opacity: 0.7;
+}
+
+.chispa-linea {
+  fill: none;
+  stroke: var(--azul-600);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chispa-punto {
+  fill: var(--azul-600);
+}
+
+/* --------------------------------------------------- Anillo de progreso
+
+   Acompaña al número, no lo reemplaza: dice qué fracción de lo activo ya
+   avanzó de una etapa a la siguiente. */
+.indicador-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.anillo {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.anillo-fondo {
+  fill: none;
+  stroke: var(--gris-200);
+  stroke-width: 4;
+}
+
+.anillo-progreso {
+  fill: none;
+  stroke-width: 4;
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: 20px 20px;
+  transition: stroke-dasharray 0.3s ease;
+}
+
+.anillo-progreso.naranja { stroke: var(--naranja-600); }
+.anillo-progreso.verde { stroke: var(--verde-600); }
+
+.anillo-texto {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 9.5px;
+  font-weight: 700;
+  text-anchor: middle;
+  fill: var(--ink-soft);
+}
 
 /* --------------------------------------------------------- Layout 2 columnas */
 

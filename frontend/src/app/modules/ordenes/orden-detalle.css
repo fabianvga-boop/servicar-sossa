@@ -1,8 +1,126 @@
-h1 {
+/* ---------------------------------------------- Encabezado / contexto */
+
+.cabecera-orden {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cabecera-titulo {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.cabecera-titulo h1 { margin: 0; }
+
+/* Bloque de contexto principal: la placa manda, luego vehículo y cliente */
+.contexto-orden {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* Miniatura de la foto del vehículo, del mismo alto que la placa grande para
+   que ambas se lean como un solo bloque de identificación. Sin fotos
+   cargadas, cae a un ícono de auto — no queda un hueco vacío. */
+.foto-vehiculo-mini {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio);
+  background: var(--gris-50);
+  color: var(--gris-400);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: default;
+}
+
+.foto-vehiculo-mini svg {
+  width: 26px;
+  height: 26px;
+}
+
+.foto-vehiculo-mini img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.foto-vehiculo-mini.clicable {
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.foto-vehiculo-mini.clicable:hover {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-soft);
+}
+
+.foto-vehiculo-contador {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  padding: 1px 5px;
+  border-radius: 20px;
+  background: rgba(20, 23, 28, 0.72);
+  color: var(--blanco);
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+/* Grilla de fotos dentro del modal de sólo lectura */
+.galeria-fotos-orden {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.galeria-fotos-orden img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: var(--radio-sm);
+  border: 1px solid var(--gris-200);
+  background: var(--gris-100);
+}
+
+.contexto-datos {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.contexto-vehiculo {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.contexto-cliente {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.contexto-cliente svg {
+  width: 16px;
+  height: 16px;
+  color: var(--gris-400);
+  flex-shrink: 0;
 }
 
 .columnas {
@@ -23,6 +141,87 @@ h1 {
   justify-content: space-between;
   font-size: 13px;
   padding: 3px 0;
+}
+
+/* ------------------------------------------- Tarjetas de diagnóstico */
+
+.bloque-diagnostico {
+  padding: 11px 13px;
+  background: var(--naranja-100);
+  border: 1px solid #f0dba8;
+  border-radius: var(--radio);
+}
+
+.bloque-diagnostico + .bloque-diagnostico { margin-top: 10px; }
+
+.bloque-etiqueta {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #7a5700;
+  margin-bottom: 4px;
+}
+
+/* El valor ingresado por el usuario pesa más que su etiqueta */
+.bloque-valor {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--ink);
+  white-space: pre-line;
+}
+
+/* ------------------------------------------------- Avatares e íconos */
+
+.avatar-ini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--brand-soft);
+  color: var(--brand-dk);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.avatar-ini.avatar-md {
+  width: 34px;
+  height: 34px;
+  font-size: 12px;
+}
+
+.celda-mecanico {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mecanico-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* Ícono al lado de cada etiqueta de fecha en el Resumen */
+.datos dt {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.dato-icono {
+  width: 14px;
+  height: 14px;
+  color: var(--gris-400);
+  flex-shrink: 0;
 }
 
 /* Checklist de lo que falta para avanzar de etapa */

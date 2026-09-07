@@ -18,6 +18,7 @@ import { Confirmacion } from '../../shared/components/confirmacion';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { InsigniaEstado } from '../../shared/components/insignia-estado';
 import { Modal } from '../../shared/components/modal';
+import { Placa } from '../../shared/components/placa';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
 import { Atajo } from '../../shared/directives/atajo';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
@@ -43,6 +44,7 @@ const CLAVE_FILTRO = 'diagnosticos.estado';
     Confirmacion,
     EstadoTabla,
     InsigniaEstado,
+    Placa,
     SelectorBusqueda,
     Atajo,
     BolivianosPipe,

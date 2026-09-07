@@ -147,15 +147,23 @@
   color: var(--gris-500);
 }
 
+/* Teclas con aspecto mecánico: tapa clara, borde y sombra inferior que dan
+   relieve, texto monoespaciado como en un teclado real. */
 .buscador-ayuda kbd {
-  font-family: inherit;
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--ink-soft);
-  background: var(--gris-50);
-  border: 1px solid var(--gris-200);
-  border-radius: 4px;
-  padding: 2px 5px;
+  display: inline-block;
+  min-width: 16px;
+  text-align: center;
+  font-family: 'IBM Plex Mono', 'Consolas', ui-monospace, monospace;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ink);
+  background: linear-gradient(180deg, var(--blanco), var(--gris-50));
+  border: 1px solid var(--gris-300);
+  border-bottom-width: 3px;
+  border-radius: 5px;
+  padding: 3px 6px 2px;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
 }
 
 /* Catálogo de productos: tarjetas clickeables que suman al carrito.
@@ -165,7 +173,6 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
   gap: 10px;
-  max-height: 460px;
   overflow-y: auto;
   padding: 2px;
 }
@@ -203,24 +210,22 @@
   background: var(--gris-50);
 }
 
+/* Badge de stock integrado al pie de la tarjeta (ya no flota en la esquina).
+   El color comunica el nivel de un vistazo: verde holgado, naranja para
+   reponer, rojo casi sin stock. */
 .producto-stock {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  min-width: 20px;
-  padding: 1px 6px;
+  margin-top: 2px;
+  padding: 2px 9px;
   border-radius: 20px;
-  background: var(--verde-100);
-  color: #1f6b39;
   font-size: 10.5px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.producto-stock.agotado {
-  background: var(--brand-soft);
-  color: var(--brand-dk);
-}
+.producto-stock.alto { background: var(--verde-100); color: #1f6b39; }
+.producto-stock.medio { background: var(--naranja-100); color: #7a5700; }
+.producto-stock.bajo { background: var(--brand-soft); color: var(--brand-dk); }
 
 .producto-foto {
   width: 68px;
@@ -272,4 +277,142 @@
   text-align: right;
   padding: 4px 6px;
   font-size: 13px;
+}
+
+/* ------------------------------------------------ Pestañas del terminal */
+.pestanias-pos {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--gris-200);
+}
+
+.pestanias-pos button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 16px;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--gris-500);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.pestanias-pos button:hover { color: var(--ink); }
+
+.pestanias-pos button.activa {
+  color: var(--brand-dk);
+  border-bottom-color: var(--brand);
+}
+
+.pestania-cuenta {
+  min-width: 18px;
+  padding: 1px 6px;
+  border-radius: 20px;
+  background: var(--gris-200);
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.pestanias-pos button.activa .pestania-cuenta {
+  background: var(--brand-soft);
+  color: var(--brand-dk);
+}
+
+/* ------------------------------------------- Chips de categoría rápida */
+.chips-categorias {
+  display: flex;
+  gap: 7px;
+  margin-top: 10px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+
+.chip-categoria {
+  flex-shrink: 0;
+  padding: 5px 13px;
+  border: 1px solid var(--gris-200);
+  border-radius: 20px;
+  background: var(--blanco);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.chip-categoria:hover {
+  border-color: var(--gris-400);
+  color: var(--ink);
+}
+
+.chip-categoria.activa {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--blanco);
+}
+
+/* ----------------------------------------------- Pie del carrito (cobro) */
+.carrito-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.carrito-total-etq {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--gris-500);
+}
+
+.carrito-total-monto {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/* Botón de cobrar masivo: ancho completo, alto contraste */
+.btn-cobrar {
+  width: 100%;
+  padding: 13px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* Vaciar es secundario: no compite con Cobrar */
+.btn-vaciar {
+  width: 100%;
+  margin-top: 8px;
+  padding: 7px;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--gris-500);
+  cursor: pointer;
+  border-radius: var(--radio-sm);
+}
+
+.btn-vaciar:hover { color: var(--brand-dk); background: var(--gris-50); }
+
+/* En la pestaña Terminal el catálogo aprovecha el alto liberado por el historial */
+.catalogo-pos { max-height: calc(100vh - 340px); }
+
+@media (max-width: 1000px) {
+  .catalogo-pos { max-height: 460px; }
 }

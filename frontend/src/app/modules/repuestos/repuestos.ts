@@ -13,6 +13,7 @@ import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { Modal } from '../../shared/components/modal';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
 import { Atajo } from '../../shared/directives/atajo';
+import { SiTieneRol } from '../../shared/directives/si-tiene-rol';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 
 const CLAVE_BUSCAR = 'repuestos.buscar';
@@ -27,6 +28,7 @@ const CLAVE_STOCK_BAJO = 'repuestos.stockBajo';
     EstadoTabla,
     SelectorBusqueda,
     Atajo,
+    SiTieneRol,
     BolivianosPipe,
   ],
   templateUrl: './repuestos.html',
@@ -47,6 +49,8 @@ export class Repuestos {
   protected readonly cargando = signal(true);
   protected readonly buscar = signal('');
   protected readonly soloStockBajo = signal(false);
+  /** Llega por URL desde la ficha de un proveedor (?proveedorId=…), sin selector propio. */
+  protected readonly proveedorFiltro = signal('');
   protected readonly guardando = signal(false);
 
   protected readonly editando = signal<Repuesto | null>(null);
@@ -81,6 +85,13 @@ export class Repuestos {
     })),
   );
 
+  /** Nombre a mostrar en el chip de filtro activo; cae al código si aún no cargó el catálogo. */
+  protected readonly nombreProveedorFiltro = computed(() => {
+    const id = this.proveedorFiltro();
+    if (!id) return '';
+    return this.proveedores().find((p) => p.proveedorId === id)?.nombre ?? id;
+  });
+
   constructor() {
     // El panel enlaza aquí con ?stockBajo=true desde la alerta de reposición, y
     // el buscador global con ?buscar=… Si no viene nada por URL se restaura el
@@ -92,6 +103,9 @@ export class Repuestos {
       parametros.get('stockBajo') === 'true' ||
         (!parametros.has('stockBajo') && this.preferencias.leer(CLAVE_STOCK_BAJO, false)),
     );
+    // El badge "Repuestos" de la ficha de un proveedor enlaza aquí con
+    // ?proveedorId=…: es un filtro de paso, no se guarda como preferencia.
+    this.proveedorFiltro.set(parametros.get('proveedorId') ?? '');
 
     this.cargar();
 
@@ -107,6 +121,7 @@ export class Repuestos {
       .getAll({
         buscar: this.buscar() || undefined,
         soloStockBajo: this.soloStockBajo() || undefined,
+        proveedorId: this.proveedorFiltro() || undefined,
       })
       .subscribe({
         next: (lista) => {
@@ -126,6 +141,11 @@ export class Repuestos {
   protected alternarStockBajo(): void {
     this.soloStockBajo.update((v) => !v);
     this.preferencias.guardar(CLAVE_STOCK_BAJO, this.soloStockBajo());
+    this.cargar();
+  }
+
+  protected limpiarFiltroProveedor(): void {
+    this.proveedorFiltro.set('');
     this.cargar();
   }
 

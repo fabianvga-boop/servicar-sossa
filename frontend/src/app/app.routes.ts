@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 
 import { authGuard, invitadoGuard } from './core/guards/auth.guard';
+import { confirmarSalidaGuard } from './core/guards/confirmar-salida.guard';
 
 /**
  * Rutas de la aplicación.
@@ -43,6 +44,13 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./modules/diagnosticos/diagnosticos').then((m) => m.Diagnosticos),
       },
+      // Maqueta de calendario/Gantt con datos de ejemplo (ver agenda.ts):
+      // el modelo real no tiene inicio/fin para dibujar un bloque de verdad,
+      // así que a propósito no tiene entrada en el menú todavía.
+      {
+        path: 'agenda',
+        loadComponent: () => import('./modules/agenda/agenda').then((m) => m.Agenda),
+      },
       {
         path: 'tipos-servicio',
         loadComponent: () =>
@@ -80,6 +88,8 @@ export const routes: Routes = [
       {
         path: 'ventas',
         canActivate: [authGuard(['Administrador'])],
+        // El carrito de mostrador se arma en memoria: no se pierde por salir sin querer.
+        canDeactivate: [confirmarSalidaGuard],
         loadComponent: () => import('./modules/ventas/ventas').then((m) => m.Ventas),
       },
 

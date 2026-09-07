@@ -5,6 +5,7 @@ import { Rol } from '../core/models/enums';
 import { urlArchivo } from '../core/services/api-base';
 import { AuthService } from '../core/services/auth.service';
 import { ContadoresService } from '../core/services/contadores.service';
+import { InactividadService } from '../core/services/inactividad.service';
 import { BuscadorGlobal } from '../shared/components/buscador-global';
 import { IconoMenu, NombreIconoMenu } from '../shared/components/icono-menu';
 
@@ -36,6 +37,7 @@ interface GrupoMenu {
 export class Layout {
   protected readonly auth = inject(AuthService);
   protected readonly contadores = inject(ContadoresService);
+  private readonly inactividad = inject(InactividadService);
   protected readonly urlArchivo = urlArchivo;
 
   private readonly buscador = viewChild.required(BuscadorGlobal);
@@ -122,6 +124,9 @@ export class Layout {
 
   constructor() {
     this.contadores.refrescar();
+    // El layout solo existe mientras hay sesión: es el punto justo para
+    // empezar a vigilar la inactividad (CAPA 2.3).
+    this.inactividad.iniciar();
   }
 
   /** Valor de la insignia de un enlace; 0 se trata como "nada que mostrar". */
@@ -156,6 +161,7 @@ export class Layout {
 
   protected salir(): void {
     this.menuUsuarioAbierto.set(false);
+    this.inactividad.detener();
     this.auth.logout();
   }
 

@@ -29,11 +29,22 @@ public class CompraRepository(AppDbContext context)
         if (!string.IsNullOrWhiteSpace(proveedorId))
             query = query.Where(c => c.ProveedorId == proveedorId);
 
+        // `Fecha` es timestamptz: Npgsql exige Kind=Utc, y el binding de la query
+        // string llega con Kind=Unspecified (lanzaría ArgumentException si se
+        // comparara tal cual). `.Date` además descarta cualquier hora que haya
+        // llegado por error, ya que el filtro es por día completo.
         if (desde.HasValue)
-            query = query.Where(c => c.Fecha >= desde.Value);
+        {
+            var inicio = DateTime.SpecifyKind(desde.Value.Date, DateTimeKind.Utc);
+            query = query.Where(c => c.Fecha >= inicio);
+        }
 
         if (hasta.HasValue)
-            query = query.Where(c => c.Fecha <= hasta.Value);
+        {
+            // El filtro "hasta" incluye todo el día indicado (mismo criterio que auditoría).
+            var limite = DateTime.SpecifyKind(hasta.Value.Date.AddDays(1), DateTimeKind.Utc);
+            query = query.Where(c => c.Fecha < limite);
+        }
 
         return await query.OrderByDescending(c => c.Fecha).ToListAsync(ct);
     }

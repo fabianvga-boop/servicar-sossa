@@ -1,6 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 
 import { EstadoPago, EstadoUsuario } from '../../core/models/enums';
 import { Comision, ComisionConfig, ResumenComisiones } from '../../core/models/finanzas.model';
@@ -26,6 +27,7 @@ const CLAVE_FILTRO = 'comisiones.estadoPago';
   selector: 'app-comisiones',
   imports: [
     FormsModule,
+    RouterLink,
     DatePipe,
     Modal,
     Confirmacion,
@@ -35,6 +37,7 @@ const CLAVE_FILTRO = 'comisiones.estadoPago';
     BolivianosPipe,
   ],
   templateUrl: './comisiones.html',
+  styleUrl: './comisiones.css',
 })
 export class Comisiones {
   private readonly servicio = inject(ComisionesService);
@@ -74,6 +77,29 @@ export class Comisiones {
   protected readonly pendientes = computed(() =>
     this.comisiones().filter((c) => c.estadoPago === EstadoPago.Pendiente),
   );
+
+  /**
+   * KPIs de la barra superior. Los montos salen de `resumen()`, que se carga
+   * sin el filtro de la tabla, así que son globales y no cambian al filtrar el
+   * listado. Es solo lectura de datos ya cargados; no agrega llamadas.
+   */
+  protected readonly kpiTotalPendiente = computed(() =>
+    this.resumen().reduce((suma, r) => suma + r.totalPendiente, 0),
+  );
+  protected readonly kpiTotalPagado = computed(() =>
+    this.resumen().reduce((suma, r) => suma + r.totalPagado, 0),
+  );
+  protected readonly kpiCantidadPendiente = computed(() => this.pendientes().length);
+
+  /** Iniciales para el avatar del mecánico: solo presentación. */
+  protected iniciales(nombre: string | null | undefined): string {
+    const partes = (nombre ?? '').trim().split(/\s+/).filter(Boolean);
+    if (partes.length === 0) return '—';
+
+    return partes.length === 1
+      ? partes[0].slice(0, 2).toUpperCase()
+      : (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+  }
 
   protected readonly totalSeleccionado = computed(() => {
     const ids = this.seleccionadas();
@@ -166,6 +192,10 @@ export class Comisiones {
 
   protected alternarDetalle(comisionId: string): void {
     this.expandida.update((actual) => (actual === comisionId ? null : comisionId));
+  }
+
+  protected limpiarSeleccion(): void {
+    this.seleccionadas.set(new Set());
   }
 
   protected seleccionarTodasPendientes(): void {

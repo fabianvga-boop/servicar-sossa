@@ -1,0 +1,187 @@
+/* ============================================ KPIs financieros (top bar) */
+.kpis-comisiones {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.kpi-comision {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px 16px;
+  background: var(--blanco);
+  border: 1px solid var(--gris-200);
+  border-left: 4px solid var(--gris-300);
+  border-radius: var(--radio);
+}
+
+/* El borde izquierdo y el monto llevan el color del significado financiero */
+.kpi-comision.kpi-pendiente { border-left-color: var(--naranja-600); }
+.kpi-comision.kpi-pagado { border-left-color: var(--verde-600); }
+
+.kpi-etiqueta {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--gris-500);
+}
+
+.kpi-valor {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.kpi-comision.kpi-pendiente .kpi-valor { color: #7a5700; }
+.kpi-comision.kpi-pagado .kpi-valor { color: #1f6b39; }
+
+.kpi-pie {
+  font-size: 11.5px;
+  color: var(--gris-500);
+}
+
+@media (max-width: 720px) {
+  .kpis-comisiones { grid-template-columns: 1fr; }
+}
+
+/* =================================================== Enlace a la orden */
+.enlace-orden {
+  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--azul-600);
+  text-decoration: none;
+}
+
+.enlace-orden:hover {
+  color: #14417f;
+  text-decoration: underline;
+}
+
+/* =============================================== Avatar del mecánico */
+.celda-mecanico {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.avatar-ini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--brand-soft);
+  color: var(--brand-dk);
+  font-size: 9.5px;
+  font-weight: 700;
+}
+
+/* =========================================== Botón de ícono (Detalle) */
+.btn-icono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio-sm);
+  background: var(--blanco);
+  color: var(--gris-500);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.btn-icono:hover {
+  background: var(--gris-50);
+  color: var(--ink);
+  border-color: var(--gris-400);
+}
+
+.btn-icono svg {
+  width: 15px;
+  height: 15px;
+  transition: transform 0.15s;
+}
+
+/* La flecha apunta hacia arriba cuando el detalle está desplegado */
+.btn-icono.abierto svg { transform: rotate(180deg); }
+
+/* ================================= Barra de acción en lote (flotante) */
+.barra-lote {
+  position: sticky;
+  bottom: 16px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: var(--ink);
+  color: var(--blanco);
+  border-radius: var(--radio);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+}
+
+.barra-lote-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.barra-lote-cuenta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 8px;
+  border-radius: 50%;
+  background: var(--brand);
+  color: var(--blanco);
+  font-size: 15px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.barra-lote-titulo {
+  font-size: 11.5px;
+  color: var(--gris-300);
+  line-height: 1.2;
+}
+
+.barra-lote-total {
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.barra-lote-acciones {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-vaciar-sel {
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gris-300);
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: var(--radio-sm);
+}
+
+.btn-vaciar-sel:hover { color: var(--blanco); background: rgba(255, 255, 255, 0.1); }

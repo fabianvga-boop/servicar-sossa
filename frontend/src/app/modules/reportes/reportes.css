@@ -23,3 +23,92 @@
 @media (max-width: 760px) {
   .filtros { grid-template-columns: 1fr; }
 }
+
+/* ------------------------------------------------ Chips de rango rápido */
+.rangos-rapidos {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.rangos-etiqueta {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--gris-500);
+}
+
+.chip-rango {
+  padding: 5px 13px;
+  border: 1px solid var(--gris-200);
+  border-radius: 20px;
+  background: var(--blanco);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.chip-rango:hover { border-color: var(--gris-400); color: var(--ink); }
+
+.chip-rango.activo {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--blanco);
+}
+
+/* -------------------------------------------- Botones de exportación */
+.btn-exportar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1.5px solid var(--gris-300);
+  border-radius: var(--radio-sm);
+  background: var(--blanco);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.btn-exportar:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.exportar-icono {
+  display: inline-flex;
+}
+
+.exportar-icono svg { width: 15px; height: 15px; }
+
+/* Colores de marca universales por formato */
+.btn-exportar.pdf { border-color: #e6b4b2; color: var(--brand-dk); }
+.btn-exportar.pdf:not(:disabled):hover { background: var(--brand-soft); border-color: var(--brand); }
+
+.btn-exportar.excel { border-color: #a7d3b4; color: #1f6b39; }
+.btn-exportar.excel:not(:disabled):hover { background: var(--verde-100); border-color: var(--verde-600); }
+
+.btn-exportar.csv { border-color: var(--gris-400); color: var(--ink); }
+.btn-exportar.csv:not(:disabled):hover { background: var(--gris-100); border-color: var(--ink-soft); }
+
+/* ------------------------------------- Marcador de gráfico (futuro) */
+.grafico-marcador {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 300px;
+  border: 2px dashed var(--gris-200);
+  border-radius: var(--radio);
+  background: var(--gris-50);
+  color: var(--gris-400);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.grafico-marcador svg { width: 40px; height: 40px; }

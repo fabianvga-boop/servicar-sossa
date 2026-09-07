@@ -80,9 +80,25 @@ export class AuthService {
       .pipe(tap(() => this.actualizarFoto(null)));
   }
 
+  /**
+   * Cierra la sesión y limpia absolutamente todo lo que pudiera quedar en el
+   * navegador: el token, la sesión y también las preferencias de filtros
+   * (`servicar.pref.*`) que cada listado va guardando. El taller comparte
+   * computadoras entre turnos, así que no basta con borrar el token — un
+   * siguiente usuario no debe heredar ni el rastro de qué buscaba el anterior.
+   */
   logout(): void {
     localStorage.removeItem(CLAVE_TOKEN);
     localStorage.removeItem(CLAVE_SESION);
+
+    for (const clave of Object.keys(localStorage)) {
+      if (clave.startsWith('servicar.')) localStorage.removeItem(clave);
+    }
+
+    // Nada del sistema guarda ahí hoy, pero si algo lo hiciera en el futuro,
+    // un logout debe llevárselo igual: es el cierre de sesión, no un cierre parcial.
+    sessionStorage.clear();
+
     this._sesion.set(null);
     void this.router.navigate(['/login']);
   }

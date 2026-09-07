@@ -12,6 +12,7 @@ import { Confirmacion } from '../../shared/components/confirmacion';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { InsigniaEstado } from '../../shared/components/insignia-estado';
 import { Modal } from '../../shared/components/modal';
+import { Placa } from '../../shared/components/placa';
 import { Atajo } from '../../shared/directives/atajo';
 
 const CLAVE_BUSCAR = 'clientes.buscar';
@@ -29,9 +30,11 @@ const MAX_PLACAS = 2;
     Confirmacion,
     EstadoTabla,
     InsigniaEstado,
+    Placa,
     Atajo,
   ],
   templateUrl: './clientes.html',
+  styleUrl: './clientes.css',
 })
 export class Clientes {
   private readonly servicio = inject(ClientesService);
@@ -140,6 +143,17 @@ export class Clientes {
 
   protected placasRestantes(cliente: Cliente): number {
     return Math.max(0, (cliente.placas ?? []).length - MAX_PLACAS);
+  }
+
+  /**
+   * Enlace directo a un chat de WhatsApp. El teléfono se guarda como texto
+   * libre en el sistema: acá solo se limpia para armar la URL — si no trae
+   * código de país se asume Bolivia (+591). El dato guardado no se toca.
+   */
+  protected linkWhatsapp(telefono: string): string {
+    const digitos = telefono.replace(/\D/g, '');
+    const conCodigo = digitos.startsWith('591') ? digitos : `591${digitos}`;
+    return `https://wa.me/${conCodigo}`;
   }
 
   protected abrirNuevo(): void {

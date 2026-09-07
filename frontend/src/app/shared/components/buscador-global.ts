@@ -57,6 +57,7 @@ function normalizar(texto: string): string {
               #campo
               type="text"
               autocomplete="off"
+              maxlength="100"
               placeholder="Buscar orden, cliente, placa o repuesto…"
               aria-label="Búsqueda global"
               [value]="consulta()"

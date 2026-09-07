@@ -16,25 +16,85 @@
   </button>
 </div>
 
+<!-- ------------------------------------------- KPIs de abastecimiento -->
+<div class="kpis-compras mb-2">
+  <div class="kpi-compra">
+    <span class="kpi-etiqueta">Total compras del mes</span>
+    <span class="kpi-valor">{{ kpiTotalMes() | bs }}</span>
+  </div>
+  <div class="kpi-compra">
+    <span class="kpi-etiqueta">Repuestos ingresados</span>
+    <span class="kpi-valor">{{ kpiRepuestosIngresados() }}</span>
+    <span class="kpi-pie">Líneas de repuesto este mes</span>
+  </div>
+  <div class="kpi-compra">
+    <span class="kpi-etiqueta">Proveedores activos</span>
+    <span class="kpi-valor">{{ kpiProveedoresActivos() }}</span>
+    <span class="kpi-pie">Con compras este mes</span>
+  </div>
+</div>
+
 <div class="tarjeta">
   <div class="tarjeta-encabezado">
-    <select
-      style="max-width: 260px"
-      [value]="proveedorFiltro()"
-      (change)="onFiltrarProveedor($any($event.target).value)"
-    >
-      <option value="">Todos los proveedores</option>
-      @for (proveedor of proveedores(); track proveedor.proveedorId) {
-        <option [value]="proveedor.proveedorId">{{ proveedor.nombre }}</option>
-      }
-    </select>
-    <span class="texto-tenue texto-sm">{{ compras().length }} compra(s)</span>
+    <div class="filtros-compras">
+      <input
+        type="search"
+        maxlength="100"
+        placeholder="Buscar por código de compra o proveedor…"
+        style="max-width: 260px"
+        [value]="buscarTexto()"
+        (input)="onBuscarTexto($any($event.target).value)"
+      />
+
+      <select
+        style="max-width: 220px"
+        [value]="proveedorFiltro()"
+        (change)="onFiltrarProveedor($any($event.target).value)"
+      >
+        <option value="">Todos los proveedores</option>
+        @for (proveedor of proveedores(); track proveedor.proveedorId) {
+          <option [value]="proveedor.proveedorId">{{ proveedor.nombre }}</option>
+        }
+      </select>
+
+      <input
+        type="date"
+        style="max-width: 150px"
+        [value]="desde()"
+        (change)="onFecha('desde', $any($event.target).value)"
+      />
+      <input
+        type="date"
+        style="max-width: 150px"
+        [value]="hasta()"
+        (change)="onFecha('hasta', $any($event.target).value)"
+      />
+    </div>
+
+    <span class="texto-tenue texto-sm">{{ comprasFiltradas().length }} compra(s)</span>
   </div>
 
-  @if (cargando() || compras().length === 0) {
+  <div class="chips-rango-compras">
+    <span class="rangos-etiqueta">Periodo rápido:</span>
+    @for (rango of rangosRapidos; track rango.clave) {
+      <button
+        type="button"
+        class="chip-rango"
+        [class.activo]="rangoActivo() === rango.clave"
+        (click)="aplicarRango(rango.clave)"
+      >
+        {{ rango.etiqueta }}
+      </button>
+    }
+    @if (desde() || hasta()) {
+      <button type="button" class="btn-enlace" (click)="limpiarFechas()">Limpiar fechas</button>
+    }
+  </div>
+
+  @if (cargando() || comprasFiltradas().length === 0) {
     <app-estado-tabla
       [cargando]="cargando()"
-      [hayFiltro]="proveedorFiltro().length > 0"
+      [hayFiltro]="proveedorFiltro().length > 0 || buscarTexto().length > 0 || desde().length > 0"
       titulo="Sin compras registradas"
       descripcion="Registre una compra para ingresar repuestos al inventario."
     />
@@ -53,18 +113,33 @@
           </tr>
         </thead>
         <tbody>
-          @for (compra of compras(); track compra.compraId) {
+          @for (compra of comprasFiltradas(); track compra.compraId) {
             <tr>
               <td class="codigo">{{ compra.compraId }}</td>
               <td class="texto-sm">{{ compra.fecha | date: 'dd/MM/yyyy HH:mm' }}</td>
               <td class="texto-fuerte">{{ compra.nombreProveedor }}</td>
               <td class="texto-sm">{{ compra.nombreUsuario }}</td>
-              <td class="num">{{ compra.cantidadLineas }}</td>
+              <td class="num">
+                <span
+                  class="badge-lineas"
+                  [title]="etiquetaLineas(compra.cantidadLineas) + ' — abra el detalle para ver el desglose'"
+                >
+                  {{ etiquetaLineas(compra.cantidadLineas) }}
+                </span>
+              </td>
               <td class="num texto-fuerte">{{ compra.total | bs }}</td>
               <td>
-                <div class="acciones">
-                  <button type="button" class="btn-enlace" (click)="verDetalle(compra)">
-                    Ver detalle
+                <div class="acciones-iconos">
+                  <button
+                    type="button"
+                    class="btn-icono"
+                    title="Ver detalle"
+                    aria-label="Ver detalle de la compra"
+                    (click)="verDetalle(compra)"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z" /><circle cx="12" cy="12" r="3" />
+                    </svg>
                   </button>
                 </div>
               </td>

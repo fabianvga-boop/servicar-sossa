@@ -7,44 +7,42 @@
 
 <div class="tarjeta">
   <div class="tarjeta-encabezado">
-    <div class="fila envuelve" style="gap: 10px">
-      <select
-        style="max-width: 180px"
-        [(ngModel)]="filtro.entidad"
-        (ngModelChange)="cargar()"
-      >
-        <option value="">Todos los módulos</option>
-        @for (entidad of entidades; track entidad) {
-          <option [value]="entidad">{{ entidad }}</option>
-        }
-      </select>
+    <!-- Todos los filtros en una sola fila ordenada; las fechas no saltan de línea -->
+    <div class="filtros-auditoria">
+      <label class="filtro-campo">
+        <span class="filtro-etiqueta">Módulo</span>
+        <select [(ngModel)]="filtro.entidad" (ngModelChange)="cargar()">
+          <option value="">Todos los módulos</option>
+          @for (entidad of entidades; track entidad) {
+            <option [value]="entidad">{{ entidad }}</option>
+          }
+        </select>
+      </label>
 
-      <select
-        style="max-width: 160px"
-        [(ngModel)]="filtro.accion"
-        (ngModelChange)="cargar()"
-      >
-        <option value="">Toda acción</option>
-        @for (accion of acciones; track accion.valor) {
-          <option [value]="accion.valor">{{ accion.etiqueta }}</option>
-        }
-      </select>
+      <label class="filtro-campo">
+        <span class="filtro-etiqueta">Acción</span>
+        <select [(ngModel)]="filtro.accion" (ngModelChange)="cargar()">
+          <option value="">Toda acción</option>
+          @for (accion of acciones; track accion.valor) {
+            <option [value]="accion.valor">{{ accion.etiqueta }}</option>
+          }
+        </select>
+      </label>
 
-      <input
-        type="date"
-        style="max-width: 160px"
-        [(ngModel)]="filtro.desde"
-        (ngModelChange)="cargar()"
-      />
-      <input
-        type="date"
-        style="max-width: 160px"
-        [(ngModel)]="filtro.hasta"
-        (ngModelChange)="cargar()"
-      />
+      <label class="filtro-campo">
+        <span class="filtro-etiqueta">Desde</span>
+        <input type="date" [(ngModel)]="filtro.desde" (ngModelChange)="cargar()" />
+      </label>
+
+      <label class="filtro-campo">
+        <span class="filtro-etiqueta">Hasta</span>
+        <input type="date" [(ngModel)]="filtro.hasta" (ngModelChange)="cargar()" />
+      </label>
 
       @if (hayFiltro()) {
-        <button type="button" class="btn-enlace" (click)="limpiarFiltros()">Limpiar filtros</button>
+        <button type="button" class="btn-enlace filtro-limpiar" (click)="limpiarFiltros()">
+          Limpiar filtros
+        </button>
       }
     </div>
     <span class="texto-tenue texto-sm">{{ filas().length }} registro(s)</span>
@@ -73,9 +71,14 @@
           @for (fila of filas(); track fila.auditoriaId) {
             <tr>
               <td class="texto-sm">{{ fila.fecha | date: 'dd/MM/yyyy HH:mm' }}</td>
-              <td class="texto-sm">{{ fila.nombreUsuario }}</td>
               <td>
-                <span class="insignia insignia-gris">
+                <span class="celda-usuario">
+                  <span class="avatar-ini" aria-hidden="true">{{ iniciales(fila.nombreUsuario) }}</span>
+                  <span class="texto-sm">{{ fila.nombreUsuario }}</span>
+                </span>
+              </td>
+              <td>
+                <span class="insignia" [class]="claseAccion(fila.accion)">
                   {{ ETIQUETAS.accionAuditoria[fila.accion] }} {{ fila.entidad }}
                 </span>
               </td>

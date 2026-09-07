@@ -41,6 +41,22 @@ export class Reportes {
     hasta: this.hoy(),
   };
 
+  /**
+   * Chips de rango rápido. Por pedido expreso, aquí solo va la estructura visual
+   * y el estado del chip activo: la lógica de fechas la conecta el usuario luego.
+   * Marcar un chip no toca todavía `filtros.desde/hasta`.
+   */
+  protected readonly rangosRapidos = [
+    { clave: 'hoy', etiqueta: 'Hoy' },
+    { clave: 'semana', etiqueta: 'Esta semana' },
+    { clave: 'mes', etiqueta: 'Este mes' },
+  ] as const;
+  protected readonly rangoRapido = signal<string | null>(null);
+
+  protected marcarRango(clave: string): void {
+    this.rangoRapido.set(clave);
+  }
+
   constructor() {
     this.generar();
     this.cargarBitacora();

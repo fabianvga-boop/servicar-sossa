@@ -3,17 +3,16 @@
     <h1>Vehículos</h1>
     <p class="texto-tenue texto-sm mb-0">Vehículos registrados por cliente</p>
   </div>
-  @if (auth.esAdministrador()) {
-    <button
-      type="button"
-      class="btn btn-primario"
-      appAtajo="n"
-      title="Atajo: tecla N"
-      (click)="abrirNuevo()"
-    >
-      + Nuevo vehículo
-    </button>
-  }
+  <button
+    *appSiRol="['Administrador']"
+    type="button"
+    class="btn btn-primario"
+    appAtajo="n"
+    title="Atajo: tecla N"
+    (click)="abrirNuevo()"
+  >
+    + Nuevo vehículo
+  </button>
 </div>
 
 <div class="tarjeta">
@@ -21,26 +20,26 @@
     <div class="fila envuelve">
       <input
         type="search"
+        maxlength="100"
         placeholder="Buscar por placa, marca o modelo…"
         style="max-width: 280px"
         [value]="buscar()"
         (input)="onBuscar($any($event.target).value)"
       />
 
-      @if (auth.esAdministrador()) {
-        <select
-          style="max-width: 240px"
-          [value]="clienteFiltro()"
-          (change)="onFiltrarCliente($any($event.target).value)"
-        >
-          <option value="">Todos los clientes</option>
-          @for (cliente of clientes(); track cliente.clienteId) {
-            <option [value]="cliente.clienteId">
-              {{ cliente.razonSocial || cliente.nombre + ' ' + (cliente.apellido || '') }}
-            </option>
-          }
-        </select>
-      }
+      <select
+        *appSiRol="['Administrador']"
+        style="max-width: 240px"
+        [value]="clienteFiltro()"
+        (change)="onFiltrarCliente($any($event.target).value)"
+      >
+        <option value="">Todos los clientes</option>
+        @for (cliente of clientes(); track cliente.clienteId) {
+          <option [value]="cliente.clienteId">
+            {{ cliente.razonSocial || cliente.nombre + ' ' + (cliente.apellido || '') }}
+          </option>
+        }
+      </select>
     </div>
     <span class="texto-tenue texto-sm">{{ vehiculos().length }} vehículo(s)</span>
   </div>
@@ -70,29 +69,62 @@
           @for (vehiculo of vehiculos(); track vehiculo.vehiculoId) {
             <tr>
               <td class="codigo">{{ vehiculo.vehiculoId }}</td>
-              <td class="placa">{{ vehiculo.placa }}</td>
               <td>
-                {{ vehiculo.marca }} {{ vehiculo.modelo }}
+                <app-placa [valor]="vehiculo.placa" />
+              </td>
+              <td>
+                <div class="texto-fuerte">{{ vehiculo.marca }} {{ vehiculo.modelo }}</div>
                 @if (vehiculo.color) {
-                  <span class="texto-tenue texto-sm"> · {{ vehiculo.color }}</span>
+                  <span class="color-inline">
+                    <span
+                      class="punto-color"
+                      [style.background]="colorPunto(vehiculo.color)"
+                      aria-hidden="true"
+                    ></span>
+                    <span class="texto-tenue texto-sm">{{ vehiculo.color }}</span>
+                  </span>
                 }
               </td>
               <td>{{ vehiculo.anio || '—' }}</td>
               <td>{{ vehiculo.nombreCliente }}</td>
-              <td class="num">{{ vehiculo.kilometraje ?? 0 }} km</td>
+              <td class="num">
+                <span class="km-valor">
+                  <svg class="icono-odometro" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="m12 14 4-4" /><path d="M3.34 19a10 10 0 1 1 17.32 0" />
+                  </svg>
+                  {{ vehiculo.kilometraje ?? 0 | number }} km
+                </span>
+              </td>
               <td>
-                <div class="acciones">
+                <div class="acciones-iconos">
                   <button type="button" class="btn-enlace" (click)="abrirHistorial(vehiculo)">
                     Historial
                   </button>
-                  <button type="button" class="btn-enlace" (click)="abrirGaleria(vehiculo)">
-                    Fotos
+                  <button
+                    type="button"
+                    class="btn-icono"
+                    title="Fotos"
+                    aria-label="Ver fotos del vehículo"
+                    (click)="abrirGaleria(vehiculo)"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z" />
+                      <circle cx="12" cy="13" r="3" />
+                    </svg>
                   </button>
-                  @if (auth.esAdministrador()) {
-                    <button type="button" class="btn-enlace" (click)="abrirEditar(vehiculo)">
-                      Editar
-                    </button>
-                  }
+                  <!-- *appSiRol quita el botón del DOM para quien no sea Administrador -->
+                  <button
+                    *appSiRol="['Administrador']"
+                    type="button"
+                    class="btn-icono"
+                    title="Editar"
+                    aria-label="Editar vehículo"
+                    (click)="abrirEditar(vehiculo)"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                    </svg>
+                  </button>
                 </div>
               </td>
             </tr>
@@ -286,32 +318,29 @@
       <app-esqueleto [filas]="1" [columnas]="3" />
     } @else {
       <div class="galeria-fotos">
-        @if (auth.esAdministrador()) {
-          <label class="galeria-subir">
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              [disabled]="subiendoFoto()"
-              (change)="onArchivoSeleccionado($event)"
-            />
-            {{ subiendoFoto() ? 'Subiendo…' : '+ Agregar foto' }}
-          </label>
-        }
+        <label *appSiRol="['Administrador']" class="galeria-subir">
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            [disabled]="subiendoFoto()"
+            (change)="onArchivoSeleccionado($event)"
+          />
+          {{ subiendoFoto() ? 'Subiendo…' : '+ Agregar foto' }}
+        </label>
 
         @for (foto of fotos(); track foto.fotoId) {
           <div class="galeria-item">
             <img [src]="urlArchivo(foto.url)" alt="Foto del vehículo {{ vehiculo.placa }}" />
-            @if (auth.esAdministrador()) {
-              <button
-                type="button"
-                class="galeria-item-quitar"
-                title="Eliminar foto"
-                [disabled]="eliminandoFoto() === foto.fotoId"
-                (click)="eliminarFoto(foto)"
-              >
-                ×
-              </button>
-            }
+            <button
+              *appSiRol="['Administrador']"
+              type="button"
+              class="galeria-item-quitar"
+              title="Eliminar foto"
+              [disabled]="eliminandoFoto() === foto.fotoId"
+              (click)="eliminarFoto(foto)"
+            >
+              ×
+            </button>
           </div>
         }
 

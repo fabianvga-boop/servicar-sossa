@@ -71,6 +71,15 @@
      hoja, que es lo que hacía que no se leyeran como la misma pieza. */
   --etiqueta-tam: 10.5px;
   --etiqueta-tracking: 0.05em;
+
+  /* Menú lateral: un neutro CÁLIDO, no un segundo rojo — así no compite con
+     el rojo de marca ni pelea con él como el gris azulado del resto del
+     sistema. Enlaces en blanco puro sobre --sidebar-fondo: 16,28:1. Las
+     etiquetas de grupo en --sidebar-tenue: 7,02:1. Ambos muy por encima
+     del mínimo de accesibilidad. */
+  --sidebar-fondo: #241f1e;
+  --sidebar-borde: #3a3230;
+  --sidebar-tenue: #b3a8a4;
 }
 
 * {
@@ -541,6 +550,274 @@ table.tabla th.th-acciones {
   text-align: right;
 }
 
+/* --------------------------------------- Acciones compactas (íconos)
+   Fila de botones de ícono para columnas "Acciones" densas: evita que dos o
+   tres acciones de texto se apilen verticalmente en una columna angosta.
+   Reutilizada por vehículos, clientes, compras y proveedores. */
+.acciones-iconos {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+
+/* Un botón de texto (ej. "Historial") conviviendo en la misma fila que
+   íconos: mismo alto, para que no baile la línea base. */
+.acciones-iconos .btn-enlace {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 7px;
+  white-space: nowrap;
+}
+
+.btn-icono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  flex-shrink: 0;
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio-sm);
+  background: var(--blanco);
+  color: var(--gris-500);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.btn-icono svg {
+  width: 15px;
+  height: 15px;
+}
+
+.btn-icono:hover {
+  background: var(--gris-50);
+  color: var(--ink);
+  border-color: var(--gris-400);
+}
+
+/* Acción destructiva/de bloqueo: tinte rojo suave, igual que el resto del sistema */
+.btn-icono-peligro:hover {
+  background: var(--brand-soft);
+  color: var(--brand-dk);
+  border-color: var(--brand-soft);
+}
+
+/* Acción positiva (reactivar): tinte verde */
+.btn-icono-exito:hover {
+  background: var(--verde-100);
+  color: #1f6b39;
+  border-color: var(--verde-100);
+}
+
+/* ------------------------------------------- Contacto rápido (teléfono/email)
+   Mismo componente en Clientes y Proveedores: el teléfono con un acceso
+   directo a WhatsApp, el correo con su enlace mailto. */
+.contacto-lineas {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.contacto-linea {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.icono-contacto {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  color: var(--gris-400);
+  text-decoration: none;
+  transition: background 0.12s, color 0.12s;
+}
+
+.icono-contacto svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Verde de marca de WhatsApp: es la única excepción al lenguaje de color del
+   sistema, porque identifica una acción hacia un servicio externo puntual. */
+.icono-contacto.whatsapp { color: #25d366; }
+.icono-contacto.whatsapp:hover { background: #e4f9ec; }
+
+.icono-contacto.correo:hover { background: var(--gris-100); color: var(--ink); }
+
+/* ------------------------------------------------- Placeholder atenuado
+   Mismo tono neutro para cualquier "sin dato" que deba leerse como vacío,
+   no como un valor más de la fila (ej. "Sin estimar", "Sin vehículos"). */
+.texto-placeholder {
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+/* -------------------------------------------------- Chip de orden vinculada
+   Enlace pequeño hacia la orden de trabajo que nació de un diagnóstico,
+   pensado para ir debajo de un código (DIA-000 → ORD-000), no dentro de la
+   columna de acciones. */
+.chip-orden {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 4px;
+  padding: 2px 7px;
+  border: 1px solid var(--azul-100);
+  border-radius: 20px;
+  background: var(--azul-100);
+  color: #14417f;
+  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.chip-orden:hover {
+  background: var(--azul-600);
+  border-color: var(--azul-600);
+  color: var(--blanco);
+  text-decoration: none;
+}
+
+.chip-orden-icono {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+}
+
+/* --------------------------------------------------- Presupuesto + badge */
+.presupuesto-caja {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+/* ---------------------------------------------- Buscador con lupa inline
+   Mismo lenguaje visual que el buscador del punto de venta: ícono superpuesto
+   a la izquierda del campo, para no gastar una columna aparte en la etiqueta. */
+.buscador-con-icono {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+  max-width: 320px;
+}
+
+.buscador-con-icono-lupa {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 15px;
+  height: 15px;
+  color: var(--gris-400);
+  pointer-events: none;
+}
+
+.buscador-con-icono input {
+  width: 100%;
+  padding-left: 32px;
+}
+
+.filtros-diagnosticos {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+/* ------------------------------------------------------- Menú contextual
+   <details>/<summary> nativo: no necesita un signal en el componente para
+   abrir/cerrar, y `name` (puesto en el HTML) agrupa las filas para que abrir
+   un menú cierre cualquier otro que hubiera quedado abierto. */
+.menu-contextual {
+  position: relative;
+  display: inline-block;
+}
+
+.menu-contextual > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.menu-contextual > summary::-webkit-details-marker,
+.menu-contextual > summary::marker {
+  display: none;
+  content: '';
+}
+
+.menu-contextual > summary svg {
+  width: 16px;
+  height: 16px;
+}
+
+.menu-contextual-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  min-width: 190px;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  background: var(--blanco);
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio-sm);
+  box-shadow: var(--sombra-md);
+}
+
+.menu-contextual-panel button,
+.menu-contextual-panel a {
+  display: block;
+  width: 100%;
+  padding: 8px 11px;
+  border: none;
+  background: none;
+  border-radius: var(--radio-sm);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  color: var(--ink-soft);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.menu-contextual-panel button:hover,
+.menu-contextual-panel a:hover {
+  background: var(--gris-100);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.menu-contextual-panel button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.menu-contextual-panel .texto-verde:hover { background: var(--verde-100); }
+.menu-contextual-panel .texto-rojo:hover { background: var(--brand-soft); }
+
+.menu-separador {
+  border: none;
+  border-top: 1px solid var(--gris-100);
+  margin: 4px 2px;
+}
+
 .num {
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -635,16 +912,6 @@ table.tabla th.num {
   font-size: 11.5px;
   font-weight: 600;
   color: var(--ink-soft);
-}
-
-/* Placa del vehículo: es el identificador que el mecánico busca al recorrer
-   la tabla, así que va en mono y en tinta fuerte para que salte a la vista. */
-.placa {
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
-  font-size: 12.5px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--ink);
 }
 
 /* --------------------------------------------------------------- Insignias */
