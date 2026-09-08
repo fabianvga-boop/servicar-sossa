@@ -12,6 +12,7 @@ import {
   EstadoUsuario,
   OrigenRepuesto,
 } from '../../core/models/enums';
+import { Factura } from '../../core/models/finanzas.model';
 import { Repuesto } from '../../core/models/inventario.model';
 import { Usuario, VehiculoFoto } from '../../core/models/personas.model';
 import {
@@ -23,7 +24,7 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 import { urlArchivo } from '../../core/services/api-base';
 import { ContadoresService } from '../../core/services/contadores.service';
-import { ComisionesService } from '../../core/services/finanzas.service';
+import { ComisionesService, FacturasService } from '../../core/services/finanzas.service';
 import { RepuestosService } from '../../core/services/inventario.service';
 import { NotificacionService } from '../../core/services/notificacion.service';
 import { OrdenesService } from '../../core/services/ordenes.service';
@@ -81,6 +82,7 @@ export class OrdenDetalle implements ConfirmarSalida {
   private readonly repuestosService = inject(RepuestosService);
   private readonly vehiculosService = inject(VehiculosService);
   private readonly comisionesService = inject(ComisionesService);
+  private readonly facturasService = inject(FacturasService);
   private readonly notificacion = inject(NotificacionService);
   private readonly contadores = inject(ContadoresService);
   protected readonly auth = inject(AuthService);
@@ -98,6 +100,13 @@ export class OrdenDetalle implements ConfirmarSalida {
   protected readonly mecanicos = signal<Usuario[]>([]);
   protected readonly catalogo = signal<TipoServicio[]>([]);
   protected readonly repuestos = signal<Repuesto[]>([]);
+
+  /**
+   * Proforma/factura de cobro de la orden, si ya se emitió. Alimenta el estado
+   * de cobro del Resumen: ¿ya pagó el cliente o queda saldo? Es la pregunta
+   * clave al entregar el auto. Null mientras no exista documento de cobro.
+   */
+  protected readonly factura = signal<Factura | null>(null);
 
   /**
    * Mecánicos con porcentaje de comisión configurado (> 0). Sirve solo para
@@ -204,11 +213,15 @@ export class OrdenDetalle implements ConfirmarSalida {
 
     // Una orden cancelada se congela donde estaba: ninguna etapa queda "actual".
     const cancelada = estado === EstadoOrden.Cancelada;
+    // Cerrada es un final exitoso: la última etapa se marca como completada
+    // (verde con tilde), no como "actual" (marcador de marca). El rojo/marca
+    // queda reservado para el aviso de Cancelada, que no alarma en un cierre OK.
+    const cerradaExitosa = estado === EstadoOrden.Cerrada;
 
     return etapas.map((etapa) => ({
       etiqueta: etapa.etiqueta,
-      completado: !cancelada && estado > etapa.valor,
-      actual: !cancelada && estado === etapa.valor,
+      completado: !cancelada && (estado > etapa.valor || cerradaExitosa),
+      actual: !cancelada && !cerradaExitosa && estado === etapa.valor,
     }));
   });
 
@@ -376,6 +389,7 @@ export class OrdenDetalle implements ConfirmarSalida {
   private cargar(id: string): void {
     this.cargando.set(true);
     this.fotosVehiculo.set([]);
+    this.factura.set(null);
 
     this.servicio.getById(id).subscribe({
       next: (orden) => {
@@ -389,9 +403,22 @@ export class OrdenDetalle implements ConfirmarSalida {
           .getFotos(orden.vehiculoId)
           .pipe(catchError(() => of([] as VehiculoFoto[])))
           .subscribe((fotos) => this.fotosVehiculo.set(fotos));
+
+        // Estado de cobro: se consulta la proforma de la orden si existe. Es
+        // una carga secundaria; si falla, el Resumen simplemente no muestra el
+        // badge de cobro en vez de romper la vista.
+        this.facturasService
+          .getAll({ ordenId: id })
+          .pipe(catchError(() => of([] as Factura[])))
+          .subscribe((facturas) => this.factura.set(facturas[0] ?? null));
       },
       error: () => this.cargando.set(false),
     });
+  }
+
+  /** Imprime la orden como nota de entrega (el CSS de impresión oculta el cromo). */
+  protected imprimir(): void {
+    window.print();
   }
 
   protected abrirGaleriaVehiculo(): void {

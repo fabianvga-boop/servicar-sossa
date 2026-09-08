@@ -1214,3 +1214,35 @@ table.tabla th.num {
   color: var(--gris-400);
   margin-top: 1px;
 }
+
+/* ------------------------------------------------------------- Impresión */
+
+/* Al imprimir (o guardar como PDF) una vista, se oculta el cromo de la app
+   —barra lateral, encabezado, buscador— y todo lo marcado como no-imprimir
+   (botones de acción, enlaces de navegación). Queda solo el contenido, apto
+   como nota de entrega. */
+@media print {
+  .lateral,
+  .encabezado,
+  .cortina,
+  app-buscador-global,
+  .no-imprimir {
+    display: none !important;
+  }
+
+  .contenido {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  /* Evita que una tarjeta se parta entre dos hojas */
+  .tarjeta {
+    box-shadow: none;
+    border-color: var(--gris-300);
+    break-inside: avoid;
+  }
+}
