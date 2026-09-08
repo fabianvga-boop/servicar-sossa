@@ -21,6 +21,7 @@ import { Modal } from '../../shared/components/modal';
 import { Placa } from '../../shared/components/placa';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
 import { Atajo } from '../../shared/directives/atajo';
+import { EnfocarError } from '../../shared/directives/enfocar-error';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 
 const CLAVE_FILTRO = 'diagnosticos.estado';
@@ -47,6 +48,7 @@ const CLAVE_FILTRO = 'diagnosticos.estado';
     Placa,
     SelectorBusqueda,
     Atajo,
+    EnfocarError,
     BolivianosPipe,
   ],
   templateUrl: './diagnosticos.html',

@@ -22,6 +22,7 @@ import { Modal } from '../../shared/components/modal';
 import { Placa } from '../../shared/components/placa';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
 import { Atajo } from '../../shared/directives/atajo';
+import { EnfocarError } from '../../shared/directives/enfocar-error';
 import { SiTieneRol } from '../../shared/directives/si-tiene-rol';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 import {
@@ -45,6 +46,7 @@ const CLAVE_BUSCAR = 'vehiculos.buscar';
     EstadoTabla,
     SelectorBusqueda,
     Atajo,
+    EnfocarError,
     SiTieneRol,
     Esqueleto,
     Placa,

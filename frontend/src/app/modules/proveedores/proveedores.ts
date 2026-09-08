@@ -9,11 +9,12 @@ import { Confirmacion } from '../../shared/components/confirmacion';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { Modal } from '../../shared/components/modal';
 import { Atajo } from '../../shared/directives/atajo';
+import { EnfocarError } from '../../shared/directives/enfocar-error';
 
 /** USU028 — gestión de proveedores. */
 @Component({
   selector: 'app-proveedores',
-  imports: [ReactiveFormsModule, RouterLink, Modal, Confirmacion, EstadoTabla, Atajo],
+  imports: [ReactiveFormsModule, RouterLink, Modal, Confirmacion, EstadoTabla, Atajo, EnfocarError],
   templateUrl: './proveedores.html',
   styleUrl: './proveedores.css',
 })

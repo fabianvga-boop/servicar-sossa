@@ -19,6 +19,7 @@ import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { Modal } from '../../shared/components/modal';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
 import { Atajo } from '../../shared/directives/atajo';
+import { EnfocarError } from '../../shared/directives/enfocar-error';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 
 /** USU029 — registro de compras a proveedores. */
@@ -31,6 +32,7 @@ import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
     EstadoTabla,
     SelectorBusqueda,
     Atajo,
+    EnfocarError,
     BolivianosPipe,
   ],
   templateUrl: './compras.html',
