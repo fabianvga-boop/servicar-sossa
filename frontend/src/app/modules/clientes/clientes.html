@@ -250,7 +250,17 @@
             <div class="rejilla">
               <div class="campo">
                 <label for="placaVehiculo">Placa <span class="obligatorio">*</span></label>
-                <input id="placaVehiculo" formControlName="placa" />
+                <input
+                  id="placaVehiculo"
+                  formControlName="placa"
+                  autocomplete="off"
+                  autocapitalize="characters"
+                  style="text-transform: uppercase"
+                  (input)="onPlacaInput($any($event.target).value)"
+                />
+                @if (placaActual().trim()) {
+                  <span class="vista-previa-placa"><app-placa [valor]="placaActual()" /></span>
+                }
               </div>
               <div class="campo">
                 <label for="anioVehiculo">Año</label>
@@ -267,18 +277,63 @@
             <div class="rejilla">
               <div class="campo">
                 <label for="marcaVehiculo">Marca <span class="obligatorio">*</span></label>
-                <input id="marcaVehiculo" formControlName="marca" />
+                <input
+                  id="marcaVehiculo"
+                  formControlName="marca"
+                  list="lista-marcas-cli"
+                  autocomplete="off"
+                  (input)="onMarcaInput($any($event.target).value)"
+                />
+                <datalist id="lista-marcas-cli">
+                  @for (m of marcasSugeridas(); track m) {
+                    <option [value]="m"></option>
+                  }
+                </datalist>
               </div>
               <div class="campo">
                 <label for="modeloVehiculo">Modelo <span class="obligatorio">*</span></label>
-                <input id="modeloVehiculo" formControlName="modelo" />
+                <input
+                  id="modeloVehiculo"
+                  formControlName="modelo"
+                  list="lista-modelos-cli"
+                  autocomplete="off"
+                />
+                <datalist id="lista-modelos-cli">
+                  @for (m of modelosSugeridos(); track m) {
+                    <option [value]="m"></option>
+                  }
+                </datalist>
               </div>
             </div>
 
             <div class="rejilla">
               <div class="campo">
                 <label for="colorVehiculo">Color</label>
-                <input id="colorVehiculo" formControlName="color" />
+                <input
+                  id="colorVehiculo"
+                  formControlName="color"
+                  list="lista-colores-cli"
+                  autocomplete="off"
+                />
+                <datalist id="lista-colores-cli">
+                  @for (c of coloresSugeridos(); track c) {
+                    <option [value]="c"></option>
+                  }
+                </datalist>
+                <div class="chips-color">
+                  @for (c of COLORES_RAPIDOS; track c) {
+                    <button
+                      type="button"
+                      class="chip-color"
+                      [class.activo]="formularioVehiculo.controls.color.value === c"
+                      [attr.aria-pressed]="formularioVehiculo.controls.color.value === c"
+                      (click)="elegirColor(c)"
+                    >
+                      <span class="punto-color" [style.background]="colorPunto(c)" aria-hidden="true"></span>
+                      {{ c }}
+                    </button>
+                  }
+                </div>
               </div>
               <div class="campo">
                 <label for="kilometrajeVehiculo">Kilometraje</label>

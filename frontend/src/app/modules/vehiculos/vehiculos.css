@@ -7,13 +7,7 @@
   margin-top: 2px;
 }
 
-.punto-color {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  flex-shrink: 0;
-}
+/* `.punto-color` es global (styles.css): lo comparten chips y listados. */
 
 /* ----------------------------------------------- Columna "Kilometraje" */
 

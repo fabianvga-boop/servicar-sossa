@@ -1,9 +1,9 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { EstadoCliente } from '../../core/models/enums';
-import { Cliente } from '../../core/models/personas.model';
+import { Cliente, Vehiculo } from '../../core/models/personas.model';
 import { ClientesService } from '../../core/services/clientes.service';
 import { NotificacionService } from '../../core/services/notificacion.service';
 import { PreferenciasService } from '../../core/services/preferencias.service';
@@ -14,6 +14,13 @@ import { InsigniaEstado } from '../../shared/components/insignia-estado';
 import { Modal } from '../../shared/components/modal';
 import { Placa } from '../../shared/components/placa';
 import { Atajo } from '../../shared/directives/atajo';
+import {
+  COLORES_RAPIDOS,
+  colorPunto,
+  coloresSugeridos,
+  marcasSugeridas,
+  modelosSugeridos,
+} from '../../shared/vehiculo-sugerencias';
 
 const CLAVE_BUSCAR = 'clientes.buscar';
 
@@ -60,6 +67,25 @@ export class Clientes {
 
   protected readonly EstadoCliente = EstadoCliente;
 
+  // --- Alta rápida de vehículo: escribir menos (ver vehiculo-sugerencias) ---
+  /** Vehículos ya registrados, solo para alimentar las listas de sugerencias. */
+  private readonly vehiculosExistentes = signal<Vehiculo[]>([]);
+  /** Espejo reactivo de la placa: alimenta la vista previa en vivo. */
+  protected readonly placaActual = signal('');
+  /** Espejo reactivo de la marca: acota los modelos sugeridos a esa marca. */
+  protected readonly marcaActual = signal('');
+
+  protected readonly COLORES_RAPIDOS = COLORES_RAPIDOS;
+  protected readonly colorPunto = colorPunto;
+
+  protected readonly marcasSugeridas = computed(() => marcasSugeridas(this.vehiculosExistentes()));
+  protected readonly modelosSugeridos = computed(() =>
+    modelosSugeridos(this.vehiculosExistentes(), this.marcaActual()),
+  );
+  protected readonly coloresSugeridos = computed(() =>
+    coloresSugeridos(this.vehiculosExistentes()),
+  );
+
   protected readonly formulario = this.fb.nonNullable.group({
     nombre: ['', [Validators.required, Validators.maxLength(100)]],
     apellido: ['', Validators.maxLength(100)],
@@ -89,6 +115,9 @@ export class Clientes {
     this.buscar.set(desdeUrl ?? this.preferencias.leer(CLAVE_BUSCAR, ''));
 
     this.cargar();
+
+    // Solo para las listas de sugerencias del alta rápida de vehículo.
+    this.vehiculosService.getAll().subscribe((lista) => this.vehiculosExistentes.set(lista));
   }
 
   protected cargar(): void {
@@ -160,8 +189,30 @@ export class Clientes {
     this.editando.set(null);
     this.formulario.reset();
     this.registrarVehiculo.set(false);
-    this.formularioVehiculo.reset({ kilometraje: 0 });
+    // El año casi siempre es el actual: se ofrece hecho y solo se corrige si no.
+    this.formularioVehiculo.reset({ kilometraje: 0, anio: new Date().getFullYear() });
+    this.placaActual.set('');
+    this.marcaActual.set('');
     this.formularioAbierto.set(true);
+  }
+
+  /** Las placas bolivianas van en mayúsculas: se normaliza al escribir. */
+  protected onPlacaInput(valor: string): void {
+    const mayus = valor.toUpperCase();
+    this.formularioVehiculo.controls.placa.setValue(mayus);
+    this.placaActual.set(mayus);
+  }
+
+  protected onMarcaInput(valor: string): void {
+    this.marcaActual.set(valor);
+  }
+
+  /** Color de un clic, sin teclear. */
+  protected elegirColor(color: string): void {
+    const control = this.formularioVehiculo.controls.color;
+    // Volver a tocar el mismo color lo quita: sigue siendo un campo opcional.
+    control.setValue(control.value === color ? '' : color);
+    control.markAsDirty();
   }
 
   protected abrirEditar(cliente: Cliente): void {
