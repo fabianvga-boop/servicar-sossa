@@ -14,6 +14,7 @@ import { InsigniaEstado } from '../../shared/components/insignia-estado';
 import { Modal } from '../../shared/components/modal';
 import { Placa } from '../../shared/components/placa';
 import { Atajo } from '../../shared/directives/atajo';
+import { EnfocarError } from '../../shared/directives/enfocar-error';
 import {
   COLORES_RAPIDOS,
   colorPunto,
@@ -39,6 +40,7 @@ const MAX_PLACAS = 2;
     InsigniaEstado,
     Placa,
     Atajo,
+    EnfocarError,
   ],
   templateUrl: './clientes.html',
   styleUrl: './clientes.css',

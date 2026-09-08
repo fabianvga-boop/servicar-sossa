@@ -10,11 +10,12 @@ import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { InsigniaEstado } from '../../shared/components/insignia-estado';
 import { Modal } from '../../shared/components/modal';
 import { Atajo } from '../../shared/directives/atajo';
+import { EnfocarError } from '../../shared/directives/enfocar-error';
 
 /** USU001-USU005 — gestión de usuarios del sistema. */
 @Component({
   selector: 'app-usuarios',
-  imports: [ReactiveFormsModule, Modal, Confirmacion, EstadoTabla, InsigniaEstado, Atajo],
+  imports: [ReactiveFormsModule, Modal, Confirmacion, EstadoTabla, InsigniaEstado, Atajo, EnfocarError],
   templateUrl: './usuarios.html',
 })
 export class Usuarios {

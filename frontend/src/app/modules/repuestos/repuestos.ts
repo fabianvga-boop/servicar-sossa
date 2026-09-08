@@ -13,6 +13,7 @@ import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { Modal } from '../../shared/components/modal';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
 import { Atajo } from '../../shared/directives/atajo';
+import { EnfocarError } from '../../shared/directives/enfocar-error';
 import { SiTieneRol } from '../../shared/directives/si-tiene-rol';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 
@@ -28,6 +29,7 @@ const CLAVE_STOCK_BAJO = 'repuestos.stockBajo';
     EstadoTabla,
     SelectorBusqueda,
     Atajo,
+    EnfocarError,
     SiTieneRol,
     BolivianosPipe,
   ],

@@ -9,6 +9,7 @@ import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { InsigniaEstado } from '../../shared/components/insignia-estado';
 import { Modal } from '../../shared/components/modal';
 import { Atajo } from '../../shared/directives/atajo';
+import { EnfocarError } from '../../shared/directives/enfocar-error';
 import { SiTieneRol } from '../../shared/directives/si-tiene-rol';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 
@@ -21,6 +22,7 @@ import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
     EstadoTabla,
     InsigniaEstado,
     Atajo,
+    EnfocarError,
     SiTieneRol,
     BolivianosPipe,
   ],
