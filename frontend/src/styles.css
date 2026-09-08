@@ -441,6 +441,33 @@ textarea.invalido:focus {
   height: 12px;
 }
 
+/* Chips de sugerencia genéricos (p. ej. márgenes de precio): un clic
+   rellena el campo con un valor calculado, sin teclear. */
+.chips-sugeridos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.chip-sugerido {
+  padding: 4px 11px;
+  border: 1px solid var(--gris-200);
+  border-radius: 20px;
+  background: var(--blanco);
+  font: inherit;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: border-color 0.12s, background-color 0.12s, color 0.12s;
+}
+
+.chip-sugerido:hover {
+  border-color: var(--brand);
+  color: var(--brand-dk);
+}
+
 /* ----------------------------------------------------------------- Tablas */
 
 .tabla-contenedor {

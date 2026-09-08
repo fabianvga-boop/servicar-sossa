@@ -67,6 +67,29 @@ export class Repuestos {
   protected readonly archivoFoto = signal<File | null>(null);
   protected readonly previsualizacionFoto = signal<string | null>(null);
 
+  // --- Precio de venta por margen: calcular en vez de teclear ---------------
+  /** Márgenes de un clic sobre el precio de compra. */
+  protected readonly MARGENES = [20, 30, 40, 50];
+  /** Espejos reactivos de los precios para la lectura del margen. */
+  protected readonly precioCompraActual = signal(0);
+  protected readonly precioVentaActual = signal(0);
+
+  /** Margen resultante (%) mientras ambos precios sean válidos; si no, null. */
+  protected readonly margenActual = computed(() => {
+    const compra = this.precioCompraActual();
+    const venta = this.precioVentaActual();
+    if (compra <= 0 || venta <= 0) return null;
+    return Math.round(((venta - compra) / compra) * 100);
+  });
+
+  /** Nombres ya registrados para autocompletar y evitar duplicados. */
+  protected readonly nombresSugeridos = computed(() => {
+    const nombres = this.repuestos()
+      .map((r) => r.nombre?.trim())
+      .filter((n): n is string => !!n);
+    return [...new Set(nombres)].sort((a, b) => a.localeCompare(b));
+  });
+
   protected readonly formulario = this.fb.nonNullable.group({
     nombre: ['', [Validators.required, Validators.maxLength(150)]],
     descripcion: ['', Validators.maxLength(255)],
@@ -181,6 +204,8 @@ export class Repuestos {
     this.formulario.controls.stockActual.enable();
     this.archivoFoto.set(null);
     this.previsualizacionFoto.set(null);
+    this.precioCompraActual.set(0);
+    this.precioVentaActual.set(0);
     this.formularioAbierto.set(true);
   }
 
@@ -200,7 +225,30 @@ export class Repuestos {
     this.formulario.controls.stockActual.disable();
     this.archivoFoto.set(null);
     this.previsualizacionFoto.set(repuesto.fotoUrl ? this.urlArchivo(repuesto.fotoUrl) : null);
+    this.precioCompraActual.set(repuesto.precioCompra ?? 0);
+    this.precioVentaActual.set(repuesto.precioVenta ?? 0);
     this.formularioAbierto.set(true);
+  }
+
+  protected onPrecioCompraInput(valor: string): void {
+    this.precioCompraActual.set(+valor || 0);
+  }
+
+  protected onPrecioVentaInput(valor: string): void {
+    this.precioVentaActual.set(+valor || 0);
+  }
+
+  /** Calcula el precio de venta aplicando un margen sobre el de compra. */
+  protected aplicarMargen(porcentaje: number): void {
+    const compra = this.precioCompraActual();
+    if (compra <= 0) {
+      this.notificacion.advertencia('Ingrese primero el precio de compra.');
+      return;
+    }
+    const venta = Math.round(compra * (1 + porcentaje / 100) * 100) / 100;
+    this.formulario.controls.precioVenta.setValue(venta);
+    this.formulario.controls.precioVenta.markAsDirty();
+    this.precioVentaActual.set(venta);
   }
 
   protected cerrarFormulario(): void {
