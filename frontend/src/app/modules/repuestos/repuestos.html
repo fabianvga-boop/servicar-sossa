@@ -273,6 +273,17 @@
 
     <div pie>
       <button type="button" class="btn btn-secundario" (click)="cerrarFormulario()">Cancelar</button>
+      @if (!editando()) {
+        <button
+          type="submit"
+          form="form-repuesto"
+          class="btn btn-secundario"
+          [disabled]="guardando()"
+          (click)="marcarCrearOtro()"
+        >
+          Guardar y crear otro
+        </button>
+      }
       <button type="submit" form="form-repuesto" class="btn btn-primario" [disabled]="guardando()">
         {{ guardando() ? 'Guardando…' : 'Guardar' }}
       </button>

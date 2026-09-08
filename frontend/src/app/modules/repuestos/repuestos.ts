@@ -194,7 +194,11 @@ export class Repuestos {
     return 'Revise el valor ingresado.';
   }
 
-  protected abrirNuevo(): void {
+  /** Cuando está activo, tras guardar se limpia el formulario en vez de cerrarlo. */
+  private crearOtro = false;
+
+  /** Deja el formulario listo para un alta nueva, sin abrir ni cerrar el modal. */
+  private reiniciarFormulario(): void {
     this.editando.set(null);
     this.formulario.reset({
       stockActual: 0,
@@ -208,7 +212,16 @@ export class Repuestos {
     this.previsualizacionFoto.set(null);
     this.precioCompraActual.set(0);
     this.precioVentaActual.set(0);
+  }
+
+  protected abrirNuevo(): void {
+    this.reiniciarFormulario();
     this.formularioAbierto.set(true);
+  }
+
+  /** Marca que, al guardar, el modal siga abierto para cargar otro repuesto. */
+  protected marcarCrearOtro(): void {
+    this.crearOtro = true;
   }
 
   protected abrirEditar(repuesto: Repuesto): void {
@@ -283,6 +296,7 @@ export class Repuestos {
 
   protected guardar(): void {
     if (this.formulario.invalid) {
+      this.crearOtro = false;
       this.formulario.markAllAsTouched();
       return;
     }
@@ -322,16 +336,30 @@ export class Repuestos {
           this.finalizarGuardado(enEdicion !== null);
         }
       },
-      error: () => this.guardando.set(false),
+      error: () => {
+        this.crearOtro = false;
+        this.guardando.set(false);
+      },
     });
   }
 
   private finalizarGuardado(actualizando: boolean): void {
+    // "Crear otro" solo aplica a un alta; en edición siempre se cierra.
+    const seguir = this.crearOtro && !actualizando;
+    this.crearOtro = false;
+
     this.notificacion.exito(
       actualizando ? 'Repuesto actualizado.' : 'Repuesto registrado correctamente.',
     );
     this.guardando.set(false);
-    this.cerrarFormulario();
+
+    if (seguir) {
+      // El modal sigue abierto y listo para el siguiente repuesto.
+      this.reiniciarFormulario();
+    } else {
+      this.cerrarFormulario();
+    }
+
     this.cargar();
     // El stock mínimo pudo cambiar: la insignia del menú debe seguirlo.
     this.contadores.refrescar();
