@@ -77,10 +77,18 @@ export class Proveedores {
     return `https://wa.me/${conCodigo}`;
   }
 
+  /** Cuando está activo, tras guardar se limpia el formulario en vez de cerrarlo. */
+  private crearOtro = false;
+
   protected abrirNuevo(): void {
     this.editando.set(null);
     this.formulario.reset();
     this.formularioAbierto.set(true);
+  }
+
+  /** Marca que, al guardar, el modal siga abierto para cargar otro proveedor. */
+  protected marcarCrearOtro(): void {
+    this.crearOtro = true;
   }
 
   protected abrirEditar(proveedor: Proveedor): void {
@@ -102,6 +110,7 @@ export class Proveedores {
 
   protected guardar(): void {
     if (this.formulario.invalid) {
+      this.crearOtro = false;
       this.formulario.markAllAsTouched();
       return;
     }
@@ -116,14 +125,26 @@ export class Proveedores {
 
     peticion.subscribe({
       next: () => {
+        // "Crear otro" solo aplica a un alta; en edición siempre se cierra.
+        const seguir = this.crearOtro && !enEdicion;
+        this.crearOtro = false;
         this.notificacion.exito(
           enEdicion ? 'Proveedor actualizado.' : 'Proveedor registrado correctamente.',
         );
         this.guardando.set(false);
-        this.cerrarFormulario();
+        if (seguir) {
+          // El modal sigue abierto y listo para el siguiente proveedor.
+          this.editando.set(null);
+          this.formulario.reset();
+        } else {
+          this.cerrarFormulario();
+        }
         this.cargar();
       },
-      error: () => this.guardando.set(false),
+      error: () => {
+        this.crearOtro = false;
+        this.guardando.set(false);
+      },
     });
   }
 

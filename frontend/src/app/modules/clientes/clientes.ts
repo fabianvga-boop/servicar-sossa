@@ -187,7 +187,11 @@ export class Clientes {
     return `https://wa.me/${conCodigo}`;
   }
 
-  protected abrirNuevo(): void {
+  /** Cuando está activo, tras guardar se limpia el formulario en vez de cerrarlo. */
+  private crearOtro = false;
+
+  /** Deja el formulario listo para un alta nueva, sin abrir ni cerrar el modal. */
+  private reiniciarFormulario(): void {
     this.editando.set(null);
     this.formulario.reset();
     this.registrarVehiculo.set(false);
@@ -195,7 +199,30 @@ export class Clientes {
     this.formularioVehiculo.reset({ kilometraje: 0, anio: new Date().getFullYear() });
     this.placaActual.set('');
     this.marcaActual.set('');
+  }
+
+  protected abrirNuevo(): void {
+    this.reiniciarFormulario();
     this.formularioAbierto.set(true);
+  }
+
+  /** Marca que, al guardar, el modal siga abierto para cargar otro cliente. */
+  protected marcarCrearOtro(): void {
+    this.crearOtro = true;
+  }
+
+  /** Cierra el modal, o lo reinicia si se pidió "crear otro" (solo en alta). */
+  private finalizarExito(mensaje: string): void {
+    const seguir = this.crearOtro && !this.editando();
+    this.crearOtro = false;
+    this.notificacion.exito(mensaje);
+    this.guardando.set(false);
+    if (seguir) {
+      this.reiniciarFormulario();
+    } else {
+      this.cerrarFormulario();
+    }
+    this.cargar();
   }
 
   /** Las placas bolivianas van en mayúsculas: se normaliza al escribir. */
@@ -246,6 +273,7 @@ export class Clientes {
 
   protected guardar(): void {
     if (this.formulario.invalid) {
+      this.crearOtro = false;
       this.formulario.markAllAsTouched();
       return;
     }
@@ -256,6 +284,7 @@ export class Clientes {
     const datosVehiculo = this.formularioVehiculo.getRawValue();
 
     if (conVehiculo && (!datosVehiculo.placa || !datosVehiculo.marca || !datosVehiculo.modelo)) {
+      this.crearOtro = false;
       this.formularioVehiculo.markAllAsTouched();
       this.notificacion.advertencia('Complete placa, marca y modelo del vehículo, o desmarque la opción.');
       return;
@@ -272,25 +301,20 @@ export class Clientes {
     peticion.subscribe({
       next: (cliente) => {
         if (!conVehiculo) {
-          this.notificacion.exito(
+          this.finalizarExito(
             enEdicion ? 'Cliente actualizado.' : 'Cliente registrado correctamente.',
           );
-          this.guardando.set(false);
-          this.cerrarFormulario();
-          this.cargar();
           return;
         }
 
         // Encadenado: el vehículo se crea recién con el ID que acaba de asignar el backend.
         this.vehiculosService.crear({ clienteId: cliente.clienteId, ...datosVehiculo }).subscribe({
           next: () => {
-            this.notificacion.exito('Cliente y vehículo registrados correctamente.');
-            this.guardando.set(false);
-            this.cerrarFormulario();
-            this.cargar();
+            this.finalizarExito('Cliente y vehículo registrados correctamente.');
           },
           error: () => {
             // El cliente sí quedó creado: avisar para que complete el vehículo aparte.
+            this.crearOtro = false;
             this.notificacion.advertencia(
               `Cliente ${cliente.clienteId} registrado, pero el vehículo no se pudo guardar. Agréguelo desde Vehículos.`,
             );
@@ -300,7 +324,10 @@ export class Clientes {
           },
         });
       },
-      error: () => this.guardando.set(false),
+      error: () => {
+        this.crearOtro = false;
+        this.guardando.set(false);
+      },
     });
   }
 
