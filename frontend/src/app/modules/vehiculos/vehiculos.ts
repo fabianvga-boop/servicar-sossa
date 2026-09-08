@@ -24,38 +24,15 @@ import { OpcionSelector, SelectorBusqueda } from '../../shared/components/select
 import { Atajo } from '../../shared/directives/atajo';
 import { SiTieneRol } from '../../shared/directives/si-tiene-rol';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
+import {
+  COLORES_RAPIDOS,
+  colorPunto,
+  coloresSugeridos,
+  marcasSugeridas,
+  modelosSugeridos,
+} from '../../shared/vehiculo-sugerencias';
 
 const CLAVE_BUSCAR = 'vehiculos.buscar';
-
-/**
- * Paleta aproximada para el bullet junto al nombre del color: es una ayuda
- * visual, no un dato normalizado del sistema (el color se guarda como texto
- * libre). Un nombre no reconocido cae a un gris neutro en vez de fallar.
- */
-const COLORES_VEHICULO: Record<string, string> = {
-  negro: '#1f2328',
-  blanco: '#f8fafc',
-  gris: '#9ca3af',
-  plata: '#c7ccd1',
-  plomo: '#9ca3af',
-  rojo: '#dc2626',
-  azul: '#2563eb',
-  verde: '#16a34a',
-  amarillo: '#eab308',
-  naranja: '#ea580c',
-  marron: '#78350f',
-  marrón: '#78350f',
-  cafe: '#78350f',
-  café: '#78350f',
-  beige: '#d6c7a1',
-  dorado: '#ca8a04',
-  celeste: '#38bdf8',
-  vino: '#7f1d1d',
-  morado: '#7c3aed',
-  violeta: '#7c3aed',
-  rosado: '#ec4899',
-  rosa: '#ec4899',
-};
 
 /** USU009-USU011 — gestión de vehículos. */
 @Component({
@@ -96,6 +73,14 @@ export class Vehiculos {
   protected readonly editando = signal<Vehiculo | null>(null);
   protected readonly formularioAbierto = signal(false);
 
+  /** Espejo reactivo de la placa: alimenta la vista previa en vivo. */
+  protected readonly placaActual = signal('');
+  /** Espejo reactivo de la marca: acota los modelos sugeridos a esa marca. */
+  protected readonly marcaActual = signal('');
+
+  protected readonly COLORES_RAPIDOS = COLORES_RAPIDOS;
+  protected readonly colorPunto = colorPunto;
+
   protected readonly historialDe = signal<Vehiculo | null>(null);
   protected readonly historial = signal<HistorialVehiculo | null>(null);
   protected readonly cargandoHistorial = signal(false);
@@ -119,6 +104,13 @@ export class Vehiculos {
     numChasis: ['', Validators.maxLength(50)],
     kilometraje: [0, Validators.min(0)],
   });
+
+  /** Escribir menos = elegir de la lista; ver `vehiculo-sugerencias`. */
+  protected readonly marcasSugeridas = computed(() => marcasSugeridas(this.vehiculos()));
+  protected readonly modelosSugeridos = computed(() =>
+    modelosSugeridos(this.vehiculos(), this.marcaActual()),
+  );
+  protected readonly coloresSugeridos = computed(() => coloresSugeridos(this.vehiculos()));
 
   /** El taller puede tener cientos de clientes: un `<select>` no escala. */
   protected readonly opcionesCliente = computed<OpcionSelector[]>(() =>
@@ -184,14 +176,6 @@ export class Vehiculos {
     this.cargar();
   }
 
-  /** Color aproximado para el bullet de la columna "Vehículo"; ver COLORES_VEHICULO. */
-  protected colorPunto(nombre: string | null | undefined): string {
-    if (!nombre) return 'transparent';
-
-    const clave = nombre.trim().toLowerCase();
-    return COLORES_VEHICULO[clave] ?? '#9ca3af';
-  }
-
   protected invalido(control: string): boolean {
     const campo = this.formulario.get(control);
     return !!campo && campo.invalid && (campo.touched || campo.dirty);
@@ -215,8 +199,15 @@ export class Vehiculos {
 
   protected abrirNuevo(): void {
     this.editando.set(null);
-    this.formulario.reset({ kilometraje: 0, clienteId: this.clienteFiltro() });
+    // El año casi siempre es el actual: se ofrece hecho y solo se corrige si no.
+    this.formulario.reset({
+      kilometraje: 0,
+      clienteId: this.clienteFiltro(),
+      anio: new Date().getFullYear(),
+    });
     this.formulario.controls.clienteId.enable();
+    this.placaActual.set('');
+    this.marcaActual.set('');
     this.formularioAbierto.set(true);
   }
 
@@ -233,10 +224,31 @@ export class Vehiculos {
       numChasis: vehiculo.numChasis ?? '',
       kilometraje: vehiculo.kilometraje ?? 0,
     });
+    this.placaActual.set(vehiculo.placa ?? '');
+    this.marcaActual.set(vehiculo.marca ?? '');
 
     // El propietario no se reasigna desde aquí: el backend no lo permite.
     this.formulario.controls.clienteId.disable();
     this.formularioAbierto.set(true);
+  }
+
+  /** Las placas bolivianas van en mayúsculas: se normaliza al escribir. */
+  protected onPlacaInput(valor: string): void {
+    const mayus = valor.toUpperCase();
+    this.formulario.controls.placa.setValue(mayus);
+    this.placaActual.set(mayus);
+  }
+
+  protected onMarcaInput(valor: string): void {
+    this.marcaActual.set(valor);
+  }
+
+  /** Color de un clic, sin teclear. */
+  protected elegirColor(color: string): void {
+    const control = this.formulario.controls.color;
+    // Volver a tocar el mismo color lo quita: sigue siendo un campo opcional.
+    control.setValue(control.value === color ? '' : color);
+    control.markAsDirty();
   }
 
   protected cerrarFormulario(): void {

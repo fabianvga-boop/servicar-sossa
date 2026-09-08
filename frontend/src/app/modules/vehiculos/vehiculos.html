@@ -161,7 +161,18 @@
       <div class="rejilla">
         <div class="campo">
           <label for="placa">Placa <span class="obligatorio">*</span></label>
-          <input id="placa" formControlName="placa" [class.invalido]="invalido('placa')" />
+          <input
+            id="placa"
+            formControlName="placa"
+            autocomplete="off"
+            autocapitalize="characters"
+            style="text-transform: uppercase"
+            [class.invalido]="invalido('placa')"
+            (input)="onPlacaInput($any($event.target).value)"
+          />
+          @if (placaActual().trim()) {
+            <span class="vista-previa-placa"><app-placa [valor]="placaActual()" /></span>
+          }
           @if (error('placa'); as mensaje) {
             <span class="campo-error">{{ mensaje }}</span>
           } @else {
@@ -181,6 +192,8 @@
           />
           @if (error('anio'); as mensaje) {
             <span class="campo-error">{{ mensaje }}</span>
+          } @else {
+            <span class="texto-tenue texto-sm">Se ofrece el año actual; cámbielo si no.</span>
           }
         </div>
       </div>
@@ -188,15 +201,40 @@
       <div class="rejilla">
         <div class="campo">
           <label for="marca">Marca <span class="obligatorio">*</span></label>
-          <input id="marca" formControlName="marca" [class.invalido]="invalido('marca')" />
+          <input
+            id="marca"
+            formControlName="marca"
+            list="lista-marcas"
+            autocomplete="off"
+            [class.invalido]="invalido('marca')"
+            (input)="onMarcaInput($any($event.target).value)"
+          />
+          <datalist id="lista-marcas">
+            @for (m of marcasSugeridas(); track m) {
+              <option [value]="m"></option>
+            }
+          </datalist>
           @if (error('marca'); as mensaje) {
             <span class="campo-error">{{ mensaje }}</span>
+          } @else {
+            <span class="texto-tenue texto-sm">Elija de la lista o escriba una nueva.</span>
           }
         </div>
 
         <div class="campo">
           <label for="modelo">Modelo <span class="obligatorio">*</span></label>
-          <input id="modelo" formControlName="modelo" [class.invalido]="invalido('modelo')" />
+          <input
+            id="modelo"
+            formControlName="modelo"
+            list="lista-modelos"
+            autocomplete="off"
+            [class.invalido]="invalido('modelo')"
+          />
+          <datalist id="lista-modelos">
+            @for (m of modelosSugeridos(); track m) {
+              <option [value]="m"></option>
+            }
+          </datalist>
           @if (error('modelo'); as mensaje) {
             <span class="campo-error">{{ mensaje }}</span>
           }
@@ -206,7 +244,26 @@
       <div class="rejilla">
         <div class="campo">
           <label for="color">Color</label>
-          <input id="color" formControlName="color" />
+          <input id="color" formControlName="color" list="lista-colores" autocomplete="off" />
+          <datalist id="lista-colores">
+            @for (c of coloresSugeridos(); track c) {
+              <option [value]="c"></option>
+            }
+          </datalist>
+          <div class="chips-color">
+            @for (c of COLORES_RAPIDOS; track c) {
+              <button
+                type="button"
+                class="chip-color"
+                [class.activo]="formulario.controls.color.value === c"
+                [attr.aria-pressed]="formulario.controls.color.value === c"
+                (click)="elegirColor(c)"
+              >
+                <span class="punto-color" [style.background]="colorPunto(c)" aria-hidden="true"></span>
+                {{ c }}
+              </button>
+            }
+          </div>
         </div>
 
         <div class="campo">
