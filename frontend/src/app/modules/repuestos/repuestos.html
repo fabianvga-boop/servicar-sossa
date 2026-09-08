@@ -125,7 +125,18 @@
     <form [formGroup]="formulario" id="form-repuesto" (ngSubmit)="guardar()">
       <div class="campo">
         <label for="nombre">Nombre <span class="obligatorio">*</span></label>
-        <input id="nombre" formControlName="nombre" [class.invalido]="invalido('nombre')" />
+        <input
+          id="nombre"
+          formControlName="nombre"
+          list="lista-repuestos"
+          autocomplete="off"
+          [class.invalido]="invalido('nombre')"
+        />
+        <datalist id="lista-repuestos">
+          @for (n of nombresSugeridos(); track n) {
+            <option [value]="n"></option>
+          }
+        </datalist>
         @if (error('nombre'); as mensaje) {
           <span class="campo-error">{{ mensaje }}</span>
         }
@@ -175,6 +186,7 @@
             step="0.01"
             formControlName="precioCompra"
             [class.invalido]="invalido('precioCompra')"
+            (input)="onPrecioCompraInput($any($event.target).value)"
           />
           @if (error('precioCompra'); as mensaje) {
             <span class="campo-error">{{ mensaje }}</span>
@@ -194,12 +206,25 @@
             step="0.01"
             formControlName="precioVenta"
             [class.invalido]="invalido('precioVenta')"
+            (input)="onPrecioVentaInput($any($event.target).value)"
           />
+          <!-- Calcular el precio de venta con un clic, sin sacar la cuenta. -->
+          <div class="chips-sugeridos">
+            @for (m of MARGENES; track m) {
+              <button type="button" class="chip-sugerido" (click)="aplicarMargen(m)">
+                +{{ m }}%
+              </button>
+            }
+          </div>
           @if (error('precioVenta'); as mensaje) {
             <span class="campo-error">{{ mensaje }}</span>
+          } @else if (margenActual() !== null) {
+            <span class="texto-tenue texto-sm">
+              Margen sobre la compra: <strong>{{ margenActual() }}%</strong>.
+            </span>
           } @else {
             <span class="texto-tenue texto-sm">
-              Lo que se cobra. Se usa en órdenes y en el punto de venta.
+              Aplique un margen sobre la compra o escríbalo a mano.
             </span>
           }
         </div>
