@@ -11,6 +11,7 @@ namespace ServicarSossa.Application.Services;
 public class RepuestoService(
     IRepuestoRepository repuestos,
     IProveedorRepository proveedores,
+    ICompraRepository compras,
     IAlmacenArchivos archivos,
     IGeneradorId generadorId,
     IAuditor auditor) : IRepuestoService
@@ -212,6 +213,36 @@ public class RepuestoService(
 
         var actualizado = await repuestos.GetByIdConProveedorAsync(id, ct);
         return Result<RepuestoResponseDto>.Ok(Mapear(actualizado!), "Foto eliminada correctamente.");
+    }
+
+    public async Task<Result<ProcedenciaRepuestoDto>> GetProcedenciaAsync(
+        string id, CancellationToken ct = default)
+    {
+        var repuesto = await repuestos.GetByIdConProveedorAsync(id, ct);
+
+        if (repuesto is null)
+            return Result<ProcedenciaRepuestoDto>.NoEncontrado($"No existe el repuesto {id}.");
+
+        var detalles = await compras.HistorialPorRepuestoAsync(id, ct);
+
+        var lineas = detalles.Select(d => new CompraRepuestoLineaDto
+        {
+            CompraId = d.CompraId,
+            Fecha = d.Compra.Fecha,
+            ProveedorId = d.Compra.ProveedorId,
+            NombreProveedor = d.Compra.Proveedor?.Nombre ?? string.Empty,
+            Cantidad = d.Cantidad,
+            PrecioUnitario = d.PrecioUnitario
+        }).ToList();
+
+        return Result<ProcedenciaRepuestoDto>.Ok(new ProcedenciaRepuestoDto
+        {
+            RepuestoId = repuesto.RepuestoId,
+            StockActual = repuesto.StockActual,
+            TotalComprado = lineas.Sum(l => l.Cantidad),
+            CantidadCompras = lineas.Count,
+            Compras = lineas
+        });
     }
 
     private async Task<Result<RepuestoResponseDto>?> ValidarProveedorAsync(

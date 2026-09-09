@@ -90,3 +90,35 @@ public class RepuestoResponseDto
     /// <summary>Valor de reposición del inventario: lo que costaría volver a comprar el stock actual.</summary>
     public decimal ValorInventario => StockActual * PrecioCompra;
 }
+
+/// <summary>
+/// Procedencia del stock de un repuesto: cuántas unidades ingresaron por compras
+/// registradas (con proveedor) y su historial. Sirve para distinguir el stock
+/// respaldado por una compra a proveedor del stock inicial o de ajustes que se
+/// cargó sin proveedor. No es un desglose por unidad (eso exigiría lotes), sino
+/// el acumulado histórico de compras.
+/// </summary>
+public class ProcedenciaRepuestoDto
+{
+    public string RepuestoId { get; set; } = string.Empty;
+    public int StockActual { get; set; }
+
+    /// <summary>Unidades ingresadas por compras registradas (acumulado histórico).</summary>
+    public int TotalComprado { get; set; }
+
+    /// <summary>Cantidad de compras que incluyeron este repuesto.</summary>
+    public int CantidadCompras { get; set; }
+
+    public List<CompraRepuestoLineaDto> Compras { get; set; } = [];
+}
+
+/// <summary>Una línea del historial de compras de un repuesto.</summary>
+public class CompraRepuestoLineaDto
+{
+    public string CompraId { get; set; } = string.Empty;
+    public DateTime Fecha { get; set; }
+    public string ProveedorId { get; set; } = string.Empty;
+    public string NombreProveedor { get; set; } = string.Empty;
+    public int Cantidad { get; set; }
+    public decimal PrecioUnitario { get; set; }
+}

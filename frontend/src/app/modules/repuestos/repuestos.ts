@@ -1,8 +1,9 @@
+import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 
-import { Proveedor, Repuesto } from '../../core/models/inventario.model';
+import { ProcedenciaRepuesto, Proveedor, Repuesto } from '../../core/models/inventario.model';
 import { urlArchivo } from '../../core/services/api-base';
 import { AuthService } from '../../core/services/auth.service';
 import { ContadoresService } from '../../core/services/contadores.service';
@@ -25,6 +26,7 @@ const CLAVE_STOCK_BAJO = 'repuestos.stockBajo';
   selector: 'app-repuestos',
   imports: [
     ReactiveFormsModule,
+    DatePipe,
     Modal,
     EstadoTabla,
     SelectorBusqueda,
@@ -64,6 +66,11 @@ export class Repuestos {
   protected readonly fotoDe = signal<Repuesto | null>(null);
   protected readonly subiendoFoto = signal(false);
   protected readonly urlArchivo = urlArchivo;
+
+  // Procedencia del stock (historial de compras del repuesto).
+  protected readonly procedenciaDe = signal<Repuesto | null>(null);
+  protected readonly procedencia = signal<ProcedenciaRepuesto | null>(null);
+  protected readonly cargandoProcedencia = signal(false);
 
   // Foto elegida en el propio formulario de alta/edición, antes de guardar.
   protected readonly archivoFoto = signal<File | null>(null);
@@ -363,6 +370,27 @@ export class Repuestos {
     this.cargar();
     // El stock mínimo pudo cambiar: la insignia del menú debe seguirlo.
     this.contadores.refrescar();
+  }
+
+  // --- Procedencia del stock -------------------------------------------------
+
+  protected abrirProcedencia(repuesto: Repuesto): void {
+    this.procedenciaDe.set(repuesto);
+    this.procedencia.set(null);
+    this.cargandoProcedencia.set(true);
+
+    this.servicio.procedencia(repuesto.repuestoId).subscribe({
+      next: (datos) => {
+        this.procedencia.set(datos);
+        this.cargandoProcedencia.set(false);
+      },
+      error: () => this.cargandoProcedencia.set(false),
+    });
+  }
+
+  protected cerrarProcedencia(): void {
+    this.procedenciaDe.set(null);
+    this.procedencia.set(null);
   }
 
   protected abrirAjuste(repuesto: Repuesto): void {

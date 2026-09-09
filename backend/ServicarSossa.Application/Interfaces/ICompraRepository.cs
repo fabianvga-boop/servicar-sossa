@@ -11,4 +11,8 @@ public interface ICompraRepository : IRepository<Compra>
         string? proveedorId, DateTime? desde, DateTime? hasta, CancellationToken ct = default);
 
     Task AgregarDetalleAsync(CompraDetalle detalle, CancellationToken ct = default);
+
+    /// <summary>Líneas de compra de un repuesto (con su compra y proveedor), más recientes primero.</summary>
+    Task<IEnumerable<CompraDetalle>> HistorialPorRepuestoAsync(
+        string repuestoId, CancellationToken ct = default);
 }

@@ -174,3 +174,41 @@
   color: var(--gris-500);
   font-size: 13px;
 }
+
+/* -------------------------------------------- Procedencia del stock */
+
+.procedencia-resumen {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.procedencia-caja {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 14px;
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio);
+  background: var(--gris-50);
+}
+
+/* El bloque de lo comprado (con proveedor) se distingue con un filo verde */
+.procedencia-con-proveedor {
+  border-left: 3px solid var(--verde-600);
+}
+
+.procedencia-valor {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.procedencia-etq {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gris-500);
+  line-height: 1.3;
+}

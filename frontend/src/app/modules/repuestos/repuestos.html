@@ -107,6 +107,9 @@
             <button type="button" class="btn-enlace" (click)="abrirAjuste(repuesto)">
               Stock
             </button>
+            <button type="button" class="btn-enlace" (click)="abrirProcedencia(repuesto)">
+              Procedencia
+            </button>
             <button type="button" class="btn-enlace" (click)="abrirFoto(repuesto)">
               Foto
             </button>
@@ -326,6 +329,70 @@
       >
         {{ guardando() ? 'Guardando…' : 'Ajustar' }}
       </button>
+    </div>
+  </app-modal>
+}
+
+@if (procedenciaDe(); as repuesto) {
+  <app-modal
+    titulo="Procedencia de {{ repuesto.nombre }}"
+    [ancho]="560"
+    (cerrar)="cerrarProcedencia()"
+  >
+    @if (cargandoProcedencia()) {
+      <p class="texto-tenue mb-0">Cargando historial de compras…</p>
+    } @else if (procedencia(); as p) {
+      <p class="campo-ayuda mb-2">
+        Proveedor habitual:
+        <strong>{{ repuesto.nombreProveedor || 'Sin proveedor asignado' }}</strong>
+      </p>
+
+      <!-- Distingue el stock respaldado por compras del inicial/ajustes sin proveedor -->
+      <div class="procedencia-resumen mb-2">
+        <div class="procedencia-caja">
+          <span class="procedencia-valor">{{ p.stockActual }}</span>
+          <span class="procedencia-etq">Stock actual</span>
+        </div>
+        <div class="procedencia-caja procedencia-con-proveedor">
+          <span class="procedencia-valor">{{ p.totalComprado }}</span>
+          <span class="procedencia-etq">Ingresado por compras (con proveedor)</span>
+        </div>
+      </div>
+
+      @if (p.cantidadCompras === 0) {
+        <p class="texto-tenue texto-sm mb-0">
+          Este repuesto no tiene compras registradas: su stock proviene del registro inicial o de
+          ajustes, sin un proveedor asociado. Al registrar una compra se le asignará el proveedor.
+        </p>
+      } @else {
+        <h3 class="mb-1">Historial de compras</h3>
+        <div class="tabla-contenedor">
+          <table class="tabla">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Proveedor</th>
+                <th class="num">Cantidad</th>
+                <th class="num">Precio unit.</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (c of p.compras; track c.compraId) {
+                <tr>
+                  <td>{{ c.fecha | date: 'dd/MM/yyyy' }}</td>
+                  <td>{{ c.nombreProveedor }}</td>
+                  <td class="num">{{ c.cantidad }}</td>
+                  <td class="num">{{ c.precioUnitario | bs }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+
+    <div pie>
+      <button type="button" class="btn btn-secundario" (click)="cerrarProcedencia()">Cerrar</button>
     </div>
   </app-modal>
 }
