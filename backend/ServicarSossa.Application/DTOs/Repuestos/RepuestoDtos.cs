@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using ServicarSossa.Domain.Enums;
 
 namespace ServicarSossa.Application.DTOs.Repuestos;
 
@@ -63,6 +64,14 @@ public class AjustarStockDto
 {
     [Range(0, int.MaxValue, ErrorMessage = "El stock no puede ser negativo.")]
     public int StockActual { get; set; }
+
+    /// <summary>Motivo del ajuste: conteo físico, merma/rotura, corrección u otro.</summary>
+    public TipoAjusteStock Tipo { get; set; } = TipoAjusteStock.ConteoFisico;
+
+    /// <summary>Justificación en texto libre; queda registrada en la auditoría.</summary>
+    [Required(ErrorMessage = "Indique el motivo del ajuste.")]
+    [MaxLength(255)]
+    public string Motivo { get; set; } = string.Empty;
 }
 
 /// <summary>Salida pública de un repuesto.</summary>
@@ -110,6 +119,18 @@ public class ProcedenciaRepuestoDto
     public int CantidadCompras { get; set; }
 
     public List<CompraRepuestoLineaDto> Compras { get; set; } = [];
+
+    /// <summary>Ajustes manuales de stock (desde la auditoría), más recientes primero.</summary>
+    public List<AjusteRepuestoDto> Ajustes { get; set; } = [];
+}
+
+/// <summary>Un ajuste manual de stock registrado en la auditoría.</summary>
+public class AjusteRepuestoDto
+{
+    public DateTime Fecha { get; set; }
+    /// <summary>Texto del registro: de cuánto a cuánto, tipo y motivo.</summary>
+    public string Descripcion { get; set; } = string.Empty;
+    public string Usuario { get; set; } = string.Empty;
 }
 
 /// <summary>Una línea del historial de compras de un repuesto.</summary>

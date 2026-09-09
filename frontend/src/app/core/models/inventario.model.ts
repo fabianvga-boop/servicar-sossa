@@ -108,6 +108,14 @@ export interface ProcedenciaRepuesto {
   totalComprado: number;
   cantidadCompras: number;
   compras: CompraRepuestoLinea[];
+  /** Ajustes manuales de stock (desde la auditoría), más recientes primero. */
+  ajustes: AjusteRepuesto[];
+}
+
+export interface AjusteRepuesto {
+  fecha: string;
+  descripcion: string;
+  usuario: string;
 }
 
 export interface CompraRepuestoLinea {

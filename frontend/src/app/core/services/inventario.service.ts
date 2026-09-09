@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { EstadoVenta } from '../models/enums';
+import { EstadoVenta, TipoAjusteStock } from '../models/enums';
 import {
   Compra,
   CompraDetalle,
@@ -76,9 +76,14 @@ export class RepuestosService extends ApiBase {
     return this.http.put<Repuesto>(this.url(id), datos);
   }
 
-  /** Ajuste manual de inventario (conteo físico, merma). */
-  ajustarStock(id: string, stockActual: number): Observable<Repuesto> {
-    return this.http.patch<Repuesto>(this.url(id, 'stock'), { stockActual });
+  /** Ajuste manual de inventario (conteo físico, merma). El motivo queda en la auditoría. */
+  ajustarStock(
+    id: string,
+    stockActual: number,
+    tipo: TipoAjusteStock,
+    motivo: string,
+  ): Observable<Repuesto> {
+    return this.http.patch<Repuesto>(this.url(id, 'stock'), { stockActual, tipo, motivo });
   }
 
   eliminar(id: string): Observable<{ mensaje: string }> {
