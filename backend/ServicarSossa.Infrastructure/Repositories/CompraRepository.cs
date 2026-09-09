@@ -51,4 +51,13 @@ public class CompraRepository(AppDbContext context)
 
     public async Task AgregarDetalleAsync(CompraDetalle detalle, CancellationToken ct = default)
         => await Context.CompraDetalles.AddAsync(detalle, ct);
+
+    public async Task<IEnumerable<CompraDetalle>> HistorialPorRepuestoAsync(
+        string repuestoId, CancellationToken ct = default)
+        => await Context.CompraDetalles
+            .Include(d => d.Compra).ThenInclude(c => c.Proveedor)
+            .AsNoTracking()
+            .Where(d => d.RepuestoId == repuestoId)
+            .OrderByDescending(d => d.Compra.Fecha)
+            .ToListAsync(ct);
 }

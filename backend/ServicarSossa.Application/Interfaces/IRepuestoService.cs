@@ -31,4 +31,7 @@ public interface IRepuestoService
         string id, SubirFotoDto dto, CancellationToken ct = default);
 
     Task<Result<RepuestoResponseDto>> EliminarFotoAsync(string id, CancellationToken ct = default);
+
+    /// <summary>Procedencia del stock: cuánto entró por compras (con proveedor) y su historial.</summary>
+    Task<Result<ProcedenciaRepuestoDto>> GetProcedenciaAsync(string id, CancellationToken ct = default);
 }

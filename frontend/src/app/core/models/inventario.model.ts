@@ -96,6 +96,29 @@ export interface CompraLineaRequest {
   precioUnitario: number;
 }
 
+/**
+ * Procedencia del stock de un repuesto: cuánto entró por compras (con proveedor)
+ * y el historial de esas compras. Permite distinguir el stock respaldado por
+ * compras del stock inicial o de ajustes cargado sin proveedor.
+ */
+export interface ProcedenciaRepuesto {
+  repuestoId: string;
+  stockActual: number;
+  /** Unidades ingresadas por compras registradas (acumulado histórico). */
+  totalComprado: number;
+  cantidadCompras: number;
+  compras: CompraRepuestoLinea[];
+}
+
+export interface CompraRepuestoLinea {
+  compraId: string;
+  fecha: string;
+  proveedorId: string;
+  nombreProveedor: string;
+  cantidad: number;
+  precioUnitario: number;
+}
+
 // -------------------------------------------- Punto de venta (mostrador)
 
 export interface Venta {

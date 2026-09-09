@@ -77,6 +77,17 @@ public class RepuestosController(IRepuestoService service) : ApiControllerBase
         return result.Success ? Ok(new { mensaje = result.Message }) : Responder(result);
     }
 
+    /// <summary>
+    /// Procedencia del stock: cuántas unidades ingresaron por compras (con
+    /// proveedor) y el historial de esas compras. Distingue el stock respaldado
+    /// por compras del inicial/ajustes cargado sin proveedor.
+    /// </summary>
+    [HttpGet("{id}/procedencia")]
+    [ProducesResponseType(typeof(ProcedenciaRepuestoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Procedencia(string id, CancellationToken ct)
+        => Responder(await service.GetProcedenciaAsync(id, ct));
+
     // ------------------------------------------------- Foto del producto
 
     /// <summary>

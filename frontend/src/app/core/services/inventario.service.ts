@@ -6,6 +6,7 @@ import {
   Compra,
   CompraDetalle,
   CompraRequest,
+  ProcedenciaRepuesto,
   Proveedor,
   ProveedorRequest,
   Repuesto,
@@ -59,6 +60,11 @@ export class RepuestosService extends ApiBase {
 
   getById(id: string): Observable<Repuesto> {
     return this.obtener<Repuesto>(id);
+  }
+
+  /** Procedencia del stock: cuánto entró por compras (con proveedor) y su historial. */
+  procedencia(id: string): Observable<ProcedenciaRepuesto> {
+    return this.http.get<ProcedenciaRepuesto>(this.url(id, 'procedencia'));
   }
 
   crear(datos: RepuestoRequest): Observable<Repuesto> {

@@ -109,6 +109,13 @@ public class CompraService(
                 // El último precio pagado pasa a ser el costo de referencia del repuesto.
                 // El precio de venta no se toca: lo fija el taller, no el proveedor.
                 repuesto.PrecioCompra = linea.PrecioUnitario;
+
+                // Si el repuesto todavía no tiene proveedor habitual, la primera
+                // compra lo adopta como tal. No se pisa uno ya definido: una compra
+                // ocasional a otro proveedor no debe cambiar al habitual (eso se
+                // hace a mano desde la ficha del repuesto).
+                if (string.IsNullOrWhiteSpace(repuesto.ProveedorId))
+                    repuesto.ProveedorId = dto.ProveedorId;
             }
 
             await repuestos.SaveChangesAsync(token);
