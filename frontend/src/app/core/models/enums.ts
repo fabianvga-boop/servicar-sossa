@@ -88,6 +88,14 @@ export enum TipoReporte {
   Ordenes = 3,
 }
 
+/** Motivo de un ajuste manual de stock; debe coincidir con el backend. */
+export enum TipoAjusteStock {
+  ConteoFisico = 0,
+  MermaRotura = 1,
+  Correccion = 2,
+  Otro = 3,
+}
+
 export enum AccionAuditoria {
   Crear = 0,
   Editar = 1,

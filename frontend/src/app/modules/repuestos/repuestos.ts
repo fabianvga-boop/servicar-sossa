@@ -3,6 +3,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 
+import { TipoAjusteStock } from '../../core/models/enums';
 import { ProcedenciaRepuesto, Proveedor, Repuesto } from '../../core/models/inventario.model';
 import { urlArchivo } from '../../core/services/api-base';
 import { AuthService } from '../../core/services/auth.service';
@@ -61,6 +62,16 @@ export class Repuestos {
   protected readonly formularioAbierto = signal(false);
   protected readonly ajustando = signal<Repuesto | null>(null);
   protected readonly nuevoStock = signal(0);
+  protected readonly tipoAjuste = signal<TipoAjusteStock>(TipoAjusteStock.ConteoFisico);
+  protected readonly motivoAjuste = signal('');
+
+  /** Opciones del selector de motivo del ajuste. */
+  protected readonly TIPOS_AJUSTE = [
+    { valor: TipoAjusteStock.ConteoFisico, etiqueta: 'Conteo físico' },
+    { valor: TipoAjusteStock.MermaRotura, etiqueta: 'Merma o rotura' },
+    { valor: TipoAjusteStock.Correccion, etiqueta: 'Corrección de error' },
+    { valor: TipoAjusteStock.Otro, etiqueta: 'Otro' },
+  ];
 
   // Foto del producto (opcional).
   protected readonly fotoDe = signal<Repuesto | null>(null);
@@ -396,24 +407,40 @@ export class Repuestos {
   protected abrirAjuste(repuesto: Repuesto): void {
     this.ajustando.set(repuesto);
     this.nuevoStock.set(repuesto.stockActual);
+    this.tipoAjuste.set(TipoAjusteStock.ConteoFisico);
+    this.motivoAjuste.set('');
   }
 
   protected confirmarAjuste(): void {
     const repuesto = this.ajustando();
     if (!repuesto) return;
 
+    // El motivo es obligatorio: un ajuste de stock sin justificación no debería
+    // poder registrarse (queda en la auditoría del repuesto).
+    if (!this.motivoAjuste().trim()) {
+      this.notificacion.advertencia('Indique el motivo del ajuste.');
+      return;
+    }
+
     this.guardando.set(true);
 
-    this.servicio.ajustarStock(repuesto.repuestoId, this.nuevoStock()).subscribe({
-      next: () => {
-        this.notificacion.exito('Stock ajustado correctamente.');
-        this.guardando.set(false);
-        this.ajustando.set(null);
-        this.cargar();
-        this.contadores.refrescar();
-      },
-      error: () => this.guardando.set(false),
-    });
+    this.servicio
+      .ajustarStock(
+        repuesto.repuestoId,
+        this.nuevoStock(),
+        this.tipoAjuste(),
+        this.motivoAjuste().trim(),
+      )
+      .subscribe({
+        next: () => {
+          this.notificacion.exito('Stock ajustado correctamente.');
+          this.guardando.set(false);
+          this.ajustando.set(null);
+          this.cargar();
+          this.contadores.refrescar();
+        },
+        error: () => this.guardando.set(false),
+      });
   }
 
   // --- Foto del producto (opcional) ------------------------------------------

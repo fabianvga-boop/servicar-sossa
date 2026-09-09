@@ -49,3 +49,10 @@ public enum FormatoReporte { Pdf, Excel, Csv }
 
 /// <summary>Acción registrada en la bitácora de auditoría (tabla auditoria).</summary>
 public enum AccionAuditoria { Crear, Editar, Eliminar, Anular, Ajustar, CambiarEstado }
+
+/// <summary>
+/// Motivo de un ajuste manual de stock. No se persiste como columna: viaja en
+/// el DTO y queda escrito en la descripción del registro de auditoría, para
+/// justificar por qué el stock subió o bajó fuera de compras/ventas/órdenes.
+/// </summary>
+public enum TipoAjusteStock { ConteoFisico, MermaRotura, Correccion, Otro }

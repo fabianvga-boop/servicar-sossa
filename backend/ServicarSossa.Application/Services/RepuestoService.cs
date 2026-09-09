@@ -12,10 +12,20 @@ public class RepuestoService(
     IRepuestoRepository repuestos,
     IProveedorRepository proveedores,
     ICompraRepository compras,
+    IAuditoriaRepository auditoria,
     IAlmacenArchivos archivos,
     IGeneradorId generadorId,
     IAuditor auditor) : IRepuestoService
 {
+    /// <summary>Etiqueta legible del motivo de un ajuste, para la auditoría.</summary>
+    private static string EtiquetaTipoAjuste(TipoAjusteStock tipo) => tipo switch
+    {
+        TipoAjusteStock.ConteoFisico => "Conteo físico",
+        TipoAjusteStock.MermaRotura => "Merma o rotura",
+        TipoAjusteStock.Correccion => "Corrección",
+        _ => "Otro",
+    };
+
     private const string SubcarpetaFotos = "repuestos";
     public async Task<Result<IEnumerable<RepuestoResponseDto>>> GetAllAsync(
         string? buscar, string? proveedorId, bool soloStockBajo, CancellationToken ct = default)
@@ -126,9 +136,14 @@ public class RepuestoService(
 
         repuesto.StockActual = dto.StockActual;
 
+        // El motivo queda escrito en la bitácora: un aumento/baja de stock no
+        // puede ser arbitrario, siempre dice por qué (conteo, merma, corrección…).
+        var signo = dto.StockActual > anterior ? "+" : "";
+        var motivo = dto.Motivo.Trim();
         await auditor.RegistrarAsync(
             usuarioId, AccionAuditoria.Ajustar, "Repuesto", id,
-            $"Ajustó el stock de '{repuesto.Nombre}' de {anterior} a {dto.StockActual} unidades.", ct);
+            $"Ajustó el stock de '{repuesto.Nombre}' de {anterior} a {dto.StockActual} " +
+            $"({signo}{dto.StockActual - anterior}) — {EtiquetaTipoAjuste(dto.Tipo)}: {motivo}", ct);
 
         await repuestos.SaveChangesAsync(ct);
 
@@ -235,13 +250,27 @@ public class RepuestoService(
             PrecioUnitario = d.PrecioUnitario
         }).ToList();
 
+        // Ajustes manuales del repuesto: se leen de la bitácora de auditoría.
+        var registros = await auditoria.BuscarAsync(
+            "Repuesto", id, null, AccionAuditoria.Ajustar, null, null, ct);
+
+        var ajustes = registros.Select(a => new AjusteRepuestoDto
+        {
+            Fecha = a.Fecha,
+            Descripcion = a.Descripcion,
+            Usuario = a.Usuario is null
+                ? string.Empty
+                : $"{a.Usuario.Nombre} {a.Usuario.Apellido}".Trim()
+        }).ToList();
+
         return Result<ProcedenciaRepuestoDto>.Ok(new ProcedenciaRepuestoDto
         {
             RepuestoId = repuesto.RepuestoId,
             StockActual = repuesto.StockActual,
             TotalComprado = lineas.Sum(l => l.Cantidad),
             CantidadCompras = lineas.Count,
-            Compras = lineas
+            Compras = lineas,
+            Ajustes = ajustes
         });
     }
 

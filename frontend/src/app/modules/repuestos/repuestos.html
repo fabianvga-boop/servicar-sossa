@@ -312,6 +312,32 @@
       />
     </div>
 
+    <div class="campo">
+      <label for="tipoAjuste">Motivo del ajuste</label>
+      <select
+        id="tipoAjuste"
+        [value]="tipoAjuste()"
+        (change)="tipoAjuste.set(+$any($event.target).value)"
+      >
+        @for (t of TIPOS_AJUSTE; track t.valor) {
+          <option [value]="t.valor">{{ t.etiqueta }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="campo">
+      <label for="motivoAjuste">Detalle <span class="obligatorio">*</span></label>
+      <input
+        id="motivoAjuste"
+        type="text"
+        maxlength="255"
+        placeholder="Ej. Conteo físico de fin de mes / se rompieron 2 unidades"
+        [value]="motivoAjuste()"
+        (input)="motivoAjuste.set($any($event.target).value)"
+      />
+      <span class="campo-ayuda">Queda registrado en la auditoría del repuesto, junto al antes y después.</span>
+    </div>
+
     <p class="texto-tenue texto-sm mb-0">
       Use esta opción solo para corregir diferencias por conteo físico, merma o rotura.
       Las compras y el cierre de órdenes mueven el stock automáticamente.
@@ -335,12 +361,12 @@
 
 @if (procedenciaDe(); as repuesto) {
   <app-modal
-    titulo="Procedencia de {{ repuesto.nombre }}"
+    titulo="Movimientos de {{ repuesto.nombre }}"
     [ancho]="560"
     (cerrar)="cerrarProcedencia()"
   >
     @if (cargandoProcedencia()) {
-      <p class="texto-tenue mb-0">Cargando historial de compras…</p>
+      <p class="texto-tenue mb-0">Cargando movimientos…</p>
     } @else if (procedencia(); as p) {
       <p class="campo-ayuda mb-2">
         Proveedor habitual:
@@ -388,6 +414,20 @@
             </tbody>
           </table>
         </div>
+      }
+
+      @if (p.ajustes.length > 0) {
+        <h3 class="mb-1 mt-2">Ajustes de stock</h3>
+        <ul class="lista-ajustes">
+          @for (a of p.ajustes; track a.fecha + a.descripcion) {
+            <li>
+              <span class="ajuste-desc">{{ a.descripcion }}</span>
+              <span class="ajuste-meta">
+                {{ a.fecha | date: 'dd/MM/yyyy HH:mm' }} · {{ a.usuario }}
+              </span>
+            </li>
+          }
+        </ul>
       }
     }
 
