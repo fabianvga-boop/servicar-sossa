@@ -26,12 +26,12 @@ import { Component, computed, input } from '@angular/core';
     .fila {
       display: flex;
       gap: 14px;
-      padding: 13px 14px;
+      padding: 14px 16px;
       border-bottom: 1px solid var(--gris-100);
     }
 
     .bloque {
-      height: 11px;
+      height: 12px;
       border-radius: 4px;
       background: linear-gradient(
         90deg,

@@ -67,10 +67,17 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   );
 };
 
-/** Extrae el mensaje del backend, que responde `{ mensaje: "..." }`. */
+/**
+ * Extrae el mensaje del backend, que responde `{ mensaje: "..." }`.
+ *
+ * Nunca se muestra al usuario un código o término técnico (status HTTP,
+ * "statusText", stack): quien usa el sistema no tiene por qué saber qué es
+ * un 500 o un "Internal Server Error". El detalle técnico, si existe, queda
+ * en la consola del navegador por si alguien necesita reportarlo.
+ */
 function mensajeDeError(error: HttpErrorResponse): string {
   if (error.status === 0) {
-    return 'No se pudo contactar al servidor. Verifique que la API esté en ejecución.';
+    return 'No se pudo conectar con el sistema. Revise que tenga conexión a la red del taller.';
   }
 
   const cuerpo = error.error;
@@ -86,5 +93,7 @@ function mensajeDeError(error: HttpErrorResponse): string {
 
   if (cuerpo?.title) return cuerpo.title;
 
-  return `Error ${error.status}: ${error.statusText || 'ocurrió un problema inesperado.'}`;
+  console.error('Error sin mensaje legible del backend:', error);
+
+  return 'Ocurrió un problema inesperado. Intente nuevamente; si sigue pasando, avise al administrador.';
 }
