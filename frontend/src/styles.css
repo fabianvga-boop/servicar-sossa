@@ -53,23 +53,25 @@
      como una tarjeta más. */
   --fondo-app: #f1f5f9;
 
-  --radio: 6px;
-  --radio-sm: 5px;
+  /* Radios un poco más generosos: esquinas más suaves leen como una
+     interfaz más amigable/cercana que el look "SaaS" cuadrado. */
+  --radio: 8px;
+  --radio-sm: 7px;
   --sombra-sm: 0 1px 2px rgba(20, 23, 28, 0.06);
   --sombra-md: 0 4px 14px rgba(20, 23, 28, 0.12);
   --sombra-lg: 0 18px 50px rgba(0, 0, 0, 0.35);
 
-  --ancho-lateral: 250px;
-  --alto-encabezado: 60px;
+  --ancho-lateral: 264px;
+  --alto-encabezado: 66px;
 
   /* Sangría lateral compartida: el contenido y el menú arrancan en la misma
      columna, aunque estén en paneles distintos. */
-  --sangria: 24px;
+  --sangria: 26px;
 
   /* Etiqueta chica en mayúscula (encabezado de tabla, título de grupo del
      menú). Vivía duplicada con valores parecidos pero distintos en cada
      hoja, que es lo que hacía que no se leyeran como la misma pieza. */
-  --etiqueta-tam: 10.5px;
+  --etiqueta-tam: 11.5px;
   --etiqueta-tracking: 0.05em;
 
   /* Menú lateral: un neutro CÁLIDO, no un segundo rojo — así no compite con
@@ -96,8 +98,12 @@ body {
 
 body {
   font-family: 'Plus Jakarta Sans', 'Segoe UI', Roboto, sans-serif;
-  font-size: 14px;
-  line-height: 1.5;
+  /* Base más grande a propósito: el sistema lo usa personal de taller no
+     necesariamente habituado a computadoras, y una base de 14px + jerarquía
+     comprimida exige demasiado esfuerzo de lectura. 15.5px con buen
+     interlineado se lee cómodo sin sacrificar demasiada densidad. */
+  font-size: 15.5px;
+  line-height: 1.6;
   color: var(--ink);
   background: var(--fondo-app);
   -webkit-font-smoothing: antialiased;
@@ -110,9 +116,9 @@ h1, h2, h3, h4 {
   line-height: 1.3;
 }
 
-h1 { font-size: 21px; }
-h2 { font-size: 16px; }
-h3 { font-size: 14px; }
+h1 { font-size: 24px; }
+h2 { font-size: 18px; }
+h3 { font-size: 15.5px; }
 
 a {
   color: var(--brand);
@@ -128,20 +134,22 @@ a:hover {
 
 /* --------------------------------------------------------------- Tarjetas */
 
-/* Tarjeta plana: el borde sutil basta para separarla del fondo; sin sombra
-   la interfaz se ve más limpia y las tablas densas no compiten por atención. */
+/* Tarjeta con una sombra muy suave además del borde: el borde solo se sentía
+   plano/técnico; un poco de profundidad la hace leer como una superficie
+   física (una hoja) en vez de un simple recuadro. */
 .tarjeta {
   background: var(--blanco);
   border: 1px solid var(--gris-200);
   border-radius: var(--radio);
+  box-shadow: var(--sombra-sm);
 }
 
 .tarjeta-cuerpo {
-  padding: 18px;
+  padding: 20px;
 }
 
 .tarjeta-encabezado {
-  padding: 14px 18px;
+  padding: 16px 20px;
   border-bottom: 1px solid var(--gris-200);
   display: flex;
   align-items: center;
@@ -161,31 +169,37 @@ a:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 9px 16px;
+  gap: 7px;
+  /* Objetivo táctil más grande: fácil de acertar con el dedo o con el mouse
+     sin apuntar con precisión, clave para quien no maneja mucho una PC. */
+  padding: 11px 20px;
   border: 1px solid transparent;
   border-radius: var(--radio-sm);
-  font-size: 13px;
+  font-size: 14.5px;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
   white-space: nowrap;
-  transition: background-color 0.15s, border-color 0.15s, color 0.15s, filter 0.15s;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s, filter 0.15s, box-shadow 0.15s, transform 0.1s;
 }
 
 .btn:not(:disabled):hover { filter: brightness(0.94); }
+.btn:not(:disabled):active { transform: translateY(1px); }
 
 .btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
 
-/* Acción principal: rojo de marca, sólido */
+/* Acción principal: rojo de marca, sólido, con una sombra tenue del mismo
+   color — se lee como el botón "elevado" de la pantalla, el que hay que
+   tocar para avanzar. */
 .btn-primario {
   background: var(--brand);
   color: var(--blanco);
+  box-shadow: 0 2px 8px rgba(225, 6, 0, 0.28);
 }
-.btn-primario:not(:disabled):hover { background: var(--brand-dk); filter: none; }
+.btn-primario:not(:disabled):hover { background: var(--brand-dk); filter: none; box-shadow: 0 3px 10px rgba(225, 6, 0, 0.34); }
 
 /* Acción neutra/cancelar: outline gris, como el "ghost" del taller */
 .btn-secundario {
@@ -210,16 +224,16 @@ a:hover {
 .btn-exito:not(:disabled):hover { background: #227a3f; filter: none; }
 
 .btn-sm {
-  padding: 6px 12px;
-  font-size: 12px;
+  padding: 7px 14px;
+  font-size: 13px;
 }
 
 .btn-enlace {
   background: none;
   border: none;
   color: var(--brand-dk);
-  padding: 4px 6px;
-  font-size: 12px;
+  padding: 5px 7px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
@@ -236,7 +250,7 @@ a:hover {
 }
 
 .campo label {
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--ink-soft);
   text-transform: uppercase;
@@ -251,10 +265,10 @@ input,
 select,
 textarea {
   width: 100%;
-  padding: 9px 11px;
+  padding: 11px 13px;
   border: 1px solid var(--gris-200);
   border-radius: var(--radio-sm);
-  font-size: 14px;
+  font-size: 15px;
   font-family: inherit;
   color: var(--ink);
   background: var(--gris-50);
@@ -308,8 +322,8 @@ select {
 /* Casillas y radios con el color de marca en vez del azul del sistema */
 input[type='checkbox'],
 input[type='radio'] {
-  width: 15px;
-  height: 15px;
+  width: 17px;
+  height: 17px;
   accent-color: var(--brand);
   cursor: pointer;
 }
@@ -318,7 +332,7 @@ input[type='radio'] {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-weight: 500;
   color: var(--brand-dk);
 }
@@ -334,7 +348,7 @@ input[type='radio'] {
 }
 
 .campo-ayuda {
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: var(--gris-500);
 }
 
@@ -379,11 +393,11 @@ textarea.invalido:focus {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 11px;
+  padding: 11px 13px;
   border: 1px solid var(--gris-200);
   border-radius: var(--radio-sm);
   background: var(--gris-50);
-  font-size: 13.5px;
+  font-size: 14.5px;
   cursor: pointer;
 }
 
@@ -478,7 +492,7 @@ textarea.invalido:focus {
 table.tabla {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 14px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -486,7 +500,7 @@ table.tabla {
    la jerarquía la da el peso y el color del texto, no un bloque oscuro. */
 table.tabla th {
   text-align: left;
-  padding: 11px 14px;
+  padding: 13px 16px;
   background: var(--gris-50);
   border-bottom: 1px solid var(--gris-200);
   font-size: var(--etiqueta-tam);
@@ -498,7 +512,7 @@ table.tabla th {
 }
 
 table.tabla td {
-  padding: 12px 14px;
+  padding: 13px 16px;
   border-bottom: 1px solid var(--gris-100);
   vertical-align: middle;
 }
@@ -646,8 +660,8 @@ table.tabla th.th-acciones {
 .acciones-iconos .btn-enlace {
   display: inline-flex;
   align-items: center;
-  height: 30px;
-  padding: 0 7px;
+  height: 33px;
+  padding: 0 8px;
   white-space: nowrap;
 }
 
@@ -655,8 +669,8 @@ table.tabla th.th-acciones {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 33px;
+  height: 33px;
   padding: 0;
   flex-shrink: 0;
   border: 1px solid var(--gris-200);
@@ -668,8 +682,8 @@ table.tabla th.th-acciones {
 }
 
 .btn-icono svg {
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
 }
 
 .btn-icono:hover {
@@ -739,7 +753,7 @@ table.tabla th.th-acciones {
    Mismo tono neutro para cualquier "sin dato" que deba leerse como vacío,
    no como un valor más de la fila (ej. "Sin estimar", "Sin vehículos"). */
 .texto-placeholder {
-  font-size: 13px;
+  font-size: 14px;
   color: #9ca3af;
 }
 
@@ -864,12 +878,12 @@ table.tabla th.th-acciones {
 .menu-contextual-panel a {
   display: block;
   width: 100%;
-  padding: 8px 11px;
+  padding: 9px 12px;
   border: none;
   background: none;
   border-radius: var(--radio-sm);
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   text-align: left;
   color: var(--ink-soft);
   text-decoration: none;
@@ -997,9 +1011,9 @@ table.tabla th.num {
 
 .insignia {
   display: inline-block;
-  padding: 3px 10px;
+  padding: 4px 12px;
   border-radius: 20px;
-  font-size: 10.5px;
+  font-size: 11.5px;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -1031,7 +1045,7 @@ table.tabla th.num {
   padding: 32px;
   text-align: center;
   color: var(--gris-500);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 /* --------------------------------------------------------------- Pestañas */
@@ -1047,8 +1061,8 @@ table.tabla th.num {
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
-  padding: 10px 15px;
-  font-size: 12.5px;
+  padding: 12px 17px;
+  font-size: 13.5px;
   font-weight: 600;
   font-family: inherit;
   color: var(--gris-500);
@@ -1070,18 +1084,18 @@ table.tabla th.num {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 14px 18px;
   background: var(--gris-50);
   border-top: 2px solid var(--ink);
   border-radius: 0 0 var(--radio-sm) var(--radio-sm);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--ink);
 }
 
 .total-monto {
   font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -1092,15 +1106,15 @@ table.tabla th.num {
 .datos {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 7px 16px;
+  gap: 8px 16px;
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .datos dt {
   color: var(--gris-500);
   white-space: nowrap;
-  font-size: 10.5px;
+  font-size: 11.5px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   font-weight: 700;
@@ -1110,10 +1124,10 @@ table.tabla th.num {
 /* Texto libre (fallas, observaciones): respeta los saltos de línea */
 .parrafo {
   margin: 0;
-  font-size: 13.5px;
+  font-size: 14.5px;
   color: var(--ink-soft);
   white-space: pre-wrap;
-  line-height: 1.55;
+  line-height: 1.6;
 }
 
 /* Celda de tabla con texto largo: una línea con puntos suspensivos */

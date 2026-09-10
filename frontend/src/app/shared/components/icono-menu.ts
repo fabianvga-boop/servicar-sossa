@@ -127,8 +127,8 @@ export type NombreIconoMenu =
       justify-content: center;
     }
     svg {
-      width: 17px;
-      height: 17px;
+      width: 19px;
+      height: 19px;
       flex-shrink: 0;
     }
   `,
