@@ -54,7 +54,7 @@ import { Esqueleto } from './esqueleto';
         </div>
 
         <div class="texto-sm">
-          {{ hayFiltro() ? 'Pruebe con otro criterio de búsqueda.' : descripcion() }}
+          {{ hayFiltro() ? 'Pruebe buscando con otras palabras.' : descripcion() }}
         </div>
       </div>
     }
@@ -64,15 +64,15 @@ import { Esqueleto } from './esqueleto';
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 42px;
-      height: 42px;
-      margin: 0 auto 10px;
+      width: 46px;
+      height: 46px;
+      margin: 0 auto 12px;
       border-radius: 50%;
       background: var(--gris-100);
       color: var(--gris-400);
     }
 
-    .vacio-icono svg { width: 20px; height: 20px; }
+    .vacio-icono svg { width: 22px; height: 22px; }
   `,
 })
 export class EstadoTabla {

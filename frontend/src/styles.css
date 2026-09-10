@@ -1030,15 +1030,16 @@ table.tabla th.num {
 /* --------------------------------------------------------- Estados vacíos */
 
 .vacio {
-  padding: 40px 20px;
+  padding: 44px 20px;
   text-align: center;
   color: var(--gris-500);
 }
 
 .vacio-titulo {
+  font-size: 15.5px;
   font-weight: 600;
   color: var(--ink-soft);
-  margin-bottom: 4px;
+  margin-bottom: 5px;
 }
 
 .cargando {
@@ -1147,7 +1148,7 @@ table.tabla th.num {
 .envuelve { flex-wrap: wrap; }
 
 .texto-tenue { color: var(--gris-500); }
-.texto-sm { font-size: 12px; }
+.texto-sm { font-size: 13px; }
 .texto-fuerte { font-weight: 600; }
 .texto-rojo { color: var(--brand-dk); }
 .texto-verde { color: var(--verde-600); }
