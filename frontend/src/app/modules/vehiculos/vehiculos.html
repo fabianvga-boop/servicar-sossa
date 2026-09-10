@@ -152,7 +152,7 @@
           [invalido]="invalido('clienteId')"
         />
         @if (editando()) {
-          <span class="texto-tenue texto-sm">El propietario no se puede reasignar.</span>
+          <span class="campo-ayuda">El propietario no se puede reasignar.</span>
         } @else if (error('clienteId'); as mensaje) {
           <span class="campo-error">{{ mensaje }}</span>
         }
@@ -176,7 +176,7 @@
           @if (error('placa'); as mensaje) {
             <span class="campo-error">{{ mensaje }}</span>
           } @else {
-            <span class="texto-tenue texto-sm">No puede repetirse entre vehículos.</span>
+            <span class="campo-ayuda">No puede repetirse entre vehículos.</span>
           }
         </div>
 
@@ -193,7 +193,7 @@
           @if (error('anio'); as mensaje) {
             <span class="campo-error">{{ mensaje }}</span>
           } @else {
-            <span class="texto-tenue texto-sm">Se ofrece el año actual; cámbielo si no.</span>
+            <span class="campo-ayuda">Se ofrece el año actual; cámbielo si no.</span>
           }
         </div>
       </div>
@@ -217,7 +217,7 @@
           @if (error('marca'); as mensaje) {
             <span class="campo-error">{{ mensaje }}</span>
           } @else {
-            <span class="texto-tenue texto-sm">Elija de la lista o escriba una nueva.</span>
+            <span class="campo-ayuda">Elija de la lista o escriba una nueva.</span>
           }
         </div>
 

@@ -43,16 +43,18 @@ import { Modal } from './modal';
   styles: `
     .mensaje {
       margin: 0;
-      font-size: 14px;
+      font-size: 15px;
+      line-height: 1.5;
       color: var(--ink-soft);
     }
 
     .advertencia {
       margin: 12px 0 0;
-      padding: 10px 12px;
+      padding: 11px 13px;
       background: var(--naranja-100);
       border-radius: var(--radio-sm);
-      font-size: 12.5px;
+      font-size: 13.5px;
+      line-height: 1.45;
       color: #92400e;
     }
 

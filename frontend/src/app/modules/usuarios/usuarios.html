@@ -143,10 +143,12 @@
         <div class="campo">
           <label for="username">Usuario <span class="obligatorio">*</span></label>
           <input id="username" formControlName="username" [class.invalido]="invalido('username')" />
-          @if (editando()) {
-            <span class="texto-tenue texto-sm">El nombre de usuario no se puede cambiar.</span>
-          } @else if (invalido('username')) {
+          @if (invalido('username')) {
             <span class="campo-error">El usuario es obligatorio.</span>
+          } @else if (editando()) {
+            <span class="campo-ayuda">El nombre de usuario no se puede cambiar.</span>
+          } @else {
+            <span class="campo-ayuda">Con esto va a iniciar sesión. Sin espacios ni tildes.</span>
           }
         </div>
 
@@ -177,6 +179,8 @@
             />
             @if (invalido('password')) {
               <span class="campo-error">Mínimo 8 caracteres.</span>
+            } @else {
+              <span class="campo-ayuda">Mínimo 8 caracteres. La persona podrá cambiarla después desde su perfil.</span>
             }
           </div>
         }

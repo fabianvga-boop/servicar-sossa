@@ -207,7 +207,7 @@
           [invalido]="invalido('vehiculoId')"
         />
         @if (editando()) {
-          <span class="texto-tenue texto-sm">El vehículo no se puede cambiar.</span>
+          <span class="campo-ayuda">El vehículo no se puede cambiar.</span>
         } @else if (invalido('vehiculoId')) {
           <span class="campo-error">Seleccione el vehículo diagnosticado.</span>
         }
@@ -247,7 +247,7 @@
           formControlName="montoEstimado"
           placeholder="Presupuesto aproximado para el cliente"
         />
-        <span class="texto-tenue texto-sm">
+        <span class="campo-ayuda">
           Aproximado. Es el número que se le presenta al cliente para que apruebe o rechace;
           el cliente debe aprobarlo antes de poder generar la orden.
         </span>
