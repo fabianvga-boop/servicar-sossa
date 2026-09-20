@@ -1,7 +1,7 @@
 <div class="fila-entre envuelve mb-2">
   <div>
     <h1>Pagos</h1>
-    <p class="texto-tenue texto-sm mb-0">Cobros registrados contra facturas emitidas</p>
+    <p class="texto-tenue texto-sm mb-0">Cobros registrados contra proformas emitidas</p>
   </div>
   <button
     type="button"
@@ -26,7 +26,7 @@
         <option [value]="metodo.valor">{{ metodo.etiqueta }}</option>
       }
     </select>
-    <span class="texto-tenue texto-sm">{{ pagos().length }} pago(s)</span>
+    <span class="texto-tenue texto-sm">{{ totalRegistros() }} pago(s)</span>
   </div>
 
   @if (cargando() || pagos().length === 0) {
@@ -34,7 +34,7 @@
       [cargando]="cargando()"
       [hayFiltro]="metodoFiltro().length > 0"
       titulo="Sin pagos registrados"
-      descripcion="Registre el cobro de una factura emitida."
+      descripcion="Registre el cobro de una proforma emitida."
     />
   } @else {
     <div class="tabla-contenedor">
@@ -43,7 +43,7 @@
           <tr>
             <th>Código</th>
             <th>Fecha</th>
-            <th>Factura</th>
+            <th>Proforma</th>
             <th>Cliente</th>
             <th>Método</th>
             <th>Referencia</th>
@@ -56,7 +56,7 @@
             <tr>
               <td class="codigo">{{ pago.pagoId }}</td>
               <td class="texto-sm">{{ pago.fechaPago | date: 'dd/MM/yyyy HH:mm' }}</td>
-              <td class="codigo">{{ pago.facturaId }}</td>
+              <td class="codigo">{{ pago.proformaId }}</td>
               <td>{{ pago.nombreCliente }}</td>
               <td>
                 <span class="insignia insignia-azul">{{ etiquetaMetodo(pago.metodoPago) }}</span>
@@ -64,13 +64,17 @@
               <td class="texto-sm texto-tenue">{{ pago.referencia || '—' }}</td>
               <td class="num texto-fuerte">{{ pago.monto | bs }}</td>
               <td>
-                <div class="acciones">
+                <div class="acciones-iconos">
                   <button
                     type="button"
-                    class="btn-enlace texto-rojo"
+                    class="btn-icono btn-icono-peligro"
+                    title="Revertir"
+                    aria-label="Revertir pago"
                     (click)="porRevertir.set(pago)"
                   >
-                    Revertir
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M3 7v6h6" /><path d="M3.51 13a9 9 0 1 0 2.13-9.36L3 7" />
+                    </svg>
                   </button>
                 </div>
               </td>
@@ -79,32 +83,41 @@
         </tbody>
       </table>
     </div>
+
+    <app-paginador
+      [pagina]="pagina()"
+      [totalPaginas]="totalPaginas()"
+      [totalRegistros]="totalRegistros()"
+      [tamanoPagina]="tamanoPagina()"
+      (cambiarPagina)="cambiarPagina($event)"
+      (cambiarTamano)="cambiarTamano($event)"
+    />
   }
 </div>
 
 @if (panelNuevo()) {
   <app-modal titulo="Registrar pago" (cerrar)="panelNuevo.set(false)">
-    @if (facturasCobrables().length === 0) {
+    @if (proformasCobrables().length === 0) {
       <p class="texto-tenue mb-0">
-        No hay facturas emitidas con saldo pendiente. Emita una factura antes de registrar un pago.
+        No hay proformas emitidas con saldo pendiente. Emita una proforma antes de registrar un pago.
       </p>
     } @else {
       <div class="campo">
-        <label for="facturaPago">Factura</label>
+        <label for="proformaPago">Proforma</label>
         <app-selector-busqueda
-          idCampo="facturaPago"
-          name="facturaPago"
+          idCampo="proformaPago"
+          name="proformaPago"
           marcador="Escriba el código o el cliente…"
-          [opciones]="opcionesFactura()"
-          [(ngModel)]="nuevo.facturaId"
-          (seleccion)="onFacturaSeleccionada()"
+          [opciones]="opcionesProforma()"
+          [(ngModel)]="nuevo.proformaId"
+          (seleccion)="onProformaSeleccionada()"
         />
       </div>
 
-      @if (facturaElegida(); as factura) {
+      @if (proformaElegida(); as proforma) {
         <div class="total-caja mb-2">
           <span>Saldo pendiente</span>
-          <span class="total-monto">{{ factura.saldoPendiente | bs }}</span>
+          <span class="total-monto">{{ proforma.saldoPendiente | bs }}</span>
         </div>
       }
 
@@ -150,7 +163,7 @@
       <button
         type="button"
         class="btn btn-primario"
-        [disabled]="procesando() || facturasCobrables().length === 0"
+        [disabled]="procesando() || proformasCobrables().length === 0"
         (click)="registrar()"
       >
         {{ procesando() ? 'Registrando…' : 'Registrar pago' }}
@@ -163,7 +176,7 @@
   <app-confirmacion
     titulo="Revertir pago"
     [mensaje]="'¿Revertir el pago ' + pago.pagoId + ' de ' + (pago.monto | bs) + '?'"
-    advertencia="El pago se elimina del registro y el saldo de la factura vuelve a aumentar. Use esto solo para corregir un error de carga."
+    advertencia="El pago se elimina del registro y el saldo de la proforma vuelve a aumentar. Use esto solo para corregir un error de carga."
     textoConfirmar="Revertir"
     [peligroso]="true"
     [procesando]="procesando()"

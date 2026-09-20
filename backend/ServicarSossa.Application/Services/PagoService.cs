@@ -1,4 +1,5 @@
 using ServicarSossa.Application.Common;
+using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Application.DTOs.Pagos;
 using ServicarSossa.Application.Interfaces;
 using ServicarSossa.Domain.Entities;
@@ -6,23 +7,31 @@ using ServicarSossa.Domain.Enums;
 
 namespace ServicarSossa.Application.Services;
 
-/// <summary>USU037 — registro de pagos de clientes contra facturas.</summary>
+/// <summary>USU037 — registro de pagos de clientes contra proformas.</summary>
 public class PagoService(
     IPagoRepository pagos,
-    IFacturaRepository facturas,
+    IProformaRepository proformas,
     IGeneradorId generadorId,
     IAuditor auditor) : IPagoService
 {
-    public async Task<Result<IEnumerable<PagoResponseDto>>> GetAllAsync(
-        string? facturaId, string? clienteId, MetodoPago? metodoPago,
-        DateTime? desde, DateTime? hasta, CancellationToken ct = default)
+    public async Task<Result<ResultadoPaginadoDto<PagoResponseDto>>> GetAllAsync(
+        string? proformaId, string? clienteId, MetodoPago? metodoPago,
+        DateTime? desde, DateTime? hasta, int pagina, int tamanoPagina, CancellationToken ct = default)
     {
         if (desde.HasValue && hasta.HasValue && desde > hasta)
-            return Result<IEnumerable<PagoResponseDto>>.Fail(
+            return Result<ResultadoPaginadoDto<PagoResponseDto>>.Fail(
                 "La fecha inicial no puede ser posterior a la final.");
 
-        var lista = await pagos.BuscarAsync(facturaId, clienteId, metodoPago, desde, hasta, ct);
-        return Result<IEnumerable<PagoResponseDto>>.Ok(lista.Select(Mapear));
+        var (items, total) = await pagos.BuscarAsync(
+            proformaId, clienteId, metodoPago, desde, hasta, pagina, tamanoPagina, ct);
+
+        return Result<ResultadoPaginadoDto<PagoResponseDto>>.Ok(new ResultadoPaginadoDto<PagoResponseDto>
+        {
+            Items = items.Select(Mapear),
+            TotalRegistros = total,
+            Pagina = pagina,
+            TamanoPagina = tamanoPagina
+        });
     }
 
     public async Task<Result<PagoResponseDto>> GetByIdAsync(
@@ -36,24 +45,24 @@ public class PagoService(
     }
 
     public async Task<Result<PagoResponseDto>> CreateAsync(
-        PagoRequestDto dto, CancellationToken ct = default)
+        PagoRequestDto dto, string usuarioId, CancellationToken ct = default)
     {
-        var factura = await facturas.FirstOrDefaultAsync(f => f.FacturaId == dto.FacturaId, ct);
+        var proforma = await proformas.FirstOrDefaultAsync(f => f.ProformaId == dto.ProformaId, ct);
 
-        if (factura is null)
-            return Result<PagoResponseDto>.Fail($"La factura {dto.FacturaId} no existe.");
+        if (proforma is null)
+            return Result<PagoResponseDto>.Fail($"La proforma {dto.ProformaId} no existe.");
 
-        // Cobrar contra una factura anulada dejaría el dinero sin respaldo documental.
-        if (factura.Estado == EstadoFactura.Anulada)
+        // Cobrar contra una proforma anulada dejaría el dinero sin respaldo documental.
+        if (proforma.Estado == EstadoProforma.Anulada)
             return Result<PagoResponseDto>.Fail(
-                $"La factura {dto.FacturaId} está anulada: no admite pagos.");
+                $"La proforma {dto.ProformaId} está anulada: no admite pagos.");
 
-        var pagadoHastaAhora = await pagos.TotalPagadoAsync(dto.FacturaId, ct);
-        var saldo = factura.Total - pagadoHastaAhora;
+        var pagadoHastaAhora = await pagos.TotalPagadoAsync(dto.ProformaId, ct);
+        var saldo = proforma.Total - pagadoHastaAhora;
 
         if (saldo <= 0)
             return Result<PagoResponseDto>.Conflicto(
-                $"La factura {dto.FacturaId} ya está saldada (Bs {factura.Total:N2}).");
+                $"La proforma {dto.ProformaId} ya está saldada (Bs {proforma.Total:N2}).");
 
         if (dto.Monto > saldo)
             return Result<PagoResponseDto>.Fail(
@@ -62,7 +71,7 @@ public class PagoService(
         var pago = new Pago
         {
             PagoId = await generadorId.SiguienteAsync<Pago>("PAG", ct),
-            FacturaId = dto.FacturaId,
+            ProformaId = dto.ProformaId,
             Monto = dto.Monto,
             FechaPago = DateTime.UtcNow,
             MetodoPago = dto.MetodoPago,
@@ -70,13 +79,19 @@ public class PagoService(
         };
 
         await pagos.AddAsync(pago, ct);
+
+        await auditor.RegistrarAsync(
+            usuarioId, AccionAuditoria.Crear, "Pago", pago.PagoId,
+            $"Registró el pago {pago.PagoId} de Bs {pago.Monto:N2} ({pago.MetodoPago}) " +
+            $"contra la proforma {dto.ProformaId}.", ct);
+
         await pagos.SaveChangesAsync(ct);
 
         var creado = await pagos.GetByIdCompletoAsync(pago.PagoId, ct);
         var nuevoSaldo = saldo - dto.Monto;
 
         var mensaje = nuevoSaldo <= 0
-            ? $"Pago registrado. La factura {dto.FacturaId} queda saldada."
+            ? $"Pago registrado. La proforma {dto.ProformaId} queda saldada."
             : $"Pago registrado. Saldo pendiente: Bs {nuevoSaldo:N2}.";
 
         return Result<PagoResponseDto>.Ok(Mapear(creado!), mensaje);
@@ -104,16 +119,16 @@ public class PagoService(
     private static PagoResponseDto Mapear(Pago p) => new()
     {
         PagoId = p.PagoId,
-        FacturaId = p.FacturaId,
-        OrdenId = p.Factura?.OrdenId ?? string.Empty,
-        NombreCliente = p.Factura?.Orden?.Cliente is null
+        ProformaId = p.ProformaId,
+        OrdenId = p.Proforma?.OrdenId ?? string.Empty,
+        NombreCliente = p.Proforma?.Orden?.Cliente is null
             ? string.Empty
-            : $"{p.Factura.Orden.Cliente.Nombre} {p.Factura.Orden.Cliente.Apellido}".Trim(),
+            : $"{p.Proforma.Orden.Cliente.Nombre} {p.Proforma.Orden.Cliente.Apellido}".Trim(),
         Monto = p.Monto,
         FechaPago = p.FechaPago,
         MetodoPago = p.MetodoPago,
         Referencia = p.Referencia,
-        TotalFactura = p.Factura?.Total ?? 0m,
-        TotalPagadoFactura = p.Factura?.Pagos.Sum(x => x.Monto) ?? 0m
+        TotalProforma = p.Proforma?.Total ?? 0m,
+        TotalPagadoProforma = p.Proforma?.Pagos.Sum(x => x.Monto) ?? 0m
     };
 }

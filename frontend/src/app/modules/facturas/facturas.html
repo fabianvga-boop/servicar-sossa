@@ -1,0 +1,101 @@
+<div class="fila-entre envuelve mb-2">
+  <div>
+    <h1>Facturas</h1>
+    <p class="texto-tenue texto-sm mb-0">Comprobantes fiscales emitidos ante el SIN</p>
+  </div>
+</div>
+
+<!-- Sin NIT habilitado el módulo no puede emitir. Se explica en vez de ofrecer
+     un botón que va a fallar, y se remite al documento que sí corresponde. -->
+@if (estadoModulo(); as estado) {
+  @if (!estado.emisionHabilitada) {
+    <div class="banner-info mb-2">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" /><path d="M12 16v-4" /><path d="M12 8h.01" />
+      </svg>
+      <span>
+        {{ estado.motivo }}
+        <a routerLink="/proformas">Ir a Proformas</a>
+      </span>
+    </div>
+  }
+}
+
+<div class="tarjeta">
+  <div class="tarjeta-encabezado">
+    <span class="texto-tenue texto-sm">{{ totalRegistros() }} factura(s)</span>
+  </div>
+
+  @if (cargando() || facturas().length === 0) {
+    <app-estado-tabla
+      [cargando]="cargando()"
+      titulo="Sin facturas emitidas"
+      descripcion="Acá van a aparecer los comprobantes fiscales cuando el taller esté habilitado ante Impuestos."
+    />
+  } @else {
+    <div class="tabla-contenedor">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Emisión</th>
+            <th>Origen</th>
+            <th>Cliente</th>
+            <th class="num">Total</th>
+            <th>CUF</th>
+            <th>Estado SIAT</th>
+            <th class="th-acciones">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (factura of facturas(); track factura.facturaId) {
+            <tr>
+              <td class="codigo">{{ factura.facturaId }}</td>
+              <td class="texto-sm">{{ factura.fechaEmision | date: 'dd/MM/yyyy' }}</td>
+              <td class="texto-sm">
+                @if (factura.ordenId) {
+                  <a [routerLink]="['/ordenes', factura.ordenId]">{{ factura.ordenId }}</a>
+                } @else {
+                  <span>{{ factura.ventaId }}</span>
+                  <span class="insignia insignia-gris ml-1">Mostrador</span>
+                }
+              </td>
+              <td>{{ factura.nombreCliente }}</td>
+              <td class="num">{{ factura.total | bs }}</td>
+              <td class="texto-sm codigo">{{ factura.cuf ?? '—' }}</td>
+              <td>
+                <span class="insignia">{{ factura.estadoSiat }}</span>
+                @if (factura.mensajeServicio) {
+                  <div class="texto-tenue texto-sm">{{ factura.mensajeServicio }}</div>
+                }
+              </td>
+              <td>
+                <div class="acciones">
+                  @if (factura.tieneXml) {
+                    <button type="button" class="btn-enlace" (click)="descargarXml(factura, false)">
+                      XML
+                    </button>
+                    <button type="button" class="btn-enlace" (click)="descargarXml(factura, true)">
+                      XML firmado
+                    </button>
+                  } @else {
+                    <span class="texto-tenue texto-sm">Sin XML</span>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <app-paginador
+      [pagina]="pagina()"
+      [totalPaginas]="totalPaginas()"
+      [totalRegistros]="totalRegistros()"
+      [tamanoPagina]="tamanoPagina()"
+      (cambiarPagina)="cambiarPagina($event)"
+      (cambiarTamano)="cambiarTamano($event)"
+    />
+  }
+</div>

@@ -17,7 +17,7 @@
 <div class="tarjeta">
   <div class="tarjeta-encabezado">
     <select
-      style="max-width: 220px"
+      class="filtro-ancho-md"
       [value]="estadoFiltro()"
       (change)="onFiltrarEstado($any($event.target).value)"
     >
@@ -25,10 +25,10 @@
       <option value="0">Emitidas</option>
       <option value="1">Anuladas</option>
     </select>
-    <span class="texto-tenue texto-sm">{{ facturas().length }} proforma(s)</span>
+    <span class="texto-tenue texto-sm">{{ totalRegistros() }} proforma(s)</span>
   </div>
 
-  @if (cargando() || facturas().length === 0) {
+  @if (cargando() || proformas().length === 0) {
     <app-estado-tabla
       [cargando]="cargando()"
       [hayFiltro]="estadoFiltro().length > 0"
@@ -53,51 +53,51 @@
           </tr>
         </thead>
         <tbody>
-          @for (factura of facturas(); track factura.facturaId) {
+          @for (proforma of proformas(); track proforma.proformaId) {
             <tr>
-              <td class="codigo">{{ factura.facturaId }}</td>
-              <td class="texto-sm">{{ factura.fechaEmision | date: 'dd/MM/yyyy' }}</td>
+              <td class="codigo">{{ proforma.proformaId }}</td>
+              <td class="texto-sm">{{ proforma.fechaEmision | date: 'dd/MM/yyyy' }}</td>
               <td>
-                <a [routerLink]="['/ordenes', factura.ordenId]" class="codigo">
-                  {{ factura.ordenId }}
+                <a [routerLink]="['/ordenes', proforma.ordenId]" class="codigo">
+                  {{ proforma.ordenId }}
                 </a>
               </td>
               <td>
-                <div>{{ factura.nombreCliente }}</div>
-                <div class="texto-tenue texto-sm">{{ factura.placaVehiculo }}</div>
+                <div>{{ proforma.nombreCliente }}</div>
+                <div class="texto-tenue texto-sm">{{ proforma.placaVehiculo }}</div>
               </td>
-              <td class="texto-sm">{{ factura.nitRazonSocial || '—' }}</td>
-              <td class="num texto-fuerte">{{ factura.total | bs }}</td>
-              <td class="num">{{ factura.totalPagado | bs }}</td>
+              <td class="texto-sm">{{ proforma.nitRazonSocial || '—' }}</td>
+              <td class="num texto-fuerte">{{ proforma.total | bs }}</td>
+              <td class="num">{{ proforma.totalPagado | bs }}</td>
               <td class="num">
-                @if (factura.estaSaldada) {
+                @if (proforma.estaSaldada) {
                   <span class="insignia insignia-verde">Saldada</span>
                 } @else {
-                  <span class="texto-rojo">{{ factura.saldoPendiente | bs }}</span>
+                  <span class="texto-rojo">{{ proforma.saldoPendiente | bs }}</span>
                 }
               </td>
-              <td><app-insignia-estado familia="factura" [valor]="factura.estado" /></td>
+              <td><app-insignia-estado familia="proforma" [valor]="proforma.estado" /></td>
               <td>
                 <div class="acciones-iconos">
                   <button
                     type="button"
                     class="btn-icono"
-                    [disabled]="descargando() === factura.facturaId"
-                    [title]="descargando() === factura.facturaId ? 'Generando…' : 'Descargar PDF'"
+                    [disabled]="descargando() === proforma.proformaId"
+                    [title]="descargando() === proforma.proformaId ? 'Generando…' : 'Descargar PDF'"
                     aria-label="Descargar el comprobante en PDF"
-                    (click)="descargarPdf(factura)"
+                    (click)="descargarPdf(proforma)"
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                       <path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" />
                     </svg>
                   </button>
-                  @if (factura.estado === EstadoFactura.Emitida && factura.totalPagado === 0) {
+                  @if (proforma.estado === EstadoProforma.Emitida && proforma.totalPagado === 0) {
                     <button
                       type="button"
                       class="btn-icono btn-icono-peligro"
                       title="Anular"
                       aria-label="Anular proforma"
-                      (click)="porAnular.set(factura)"
+                      (click)="porAnular.set(proforma)"
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
@@ -111,16 +111,25 @@
         </tbody>
       </table>
     </div>
+
+    <app-paginador
+      [pagina]="pagina()"
+      [totalPaginas]="totalPaginas()"
+      [totalRegistros]="totalRegistros()"
+      [tamanoPagina]="tamanoPagina()"
+      (cambiarPagina)="cambiarPagina($event)"
+      (cambiarTamano)="cambiarTamano($event)"
+    />
   }
 </div>
 
 @if (panelNueva()) {
   <app-modal titulo="Emitir proforma" (cerrar)="panelNueva.set(false)">
     <div class="campo">
-      <label for="ordenFactura">Orden de trabajo</label>
+      <label for="ordenProforma">Orden de trabajo</label>
       <app-selector-busqueda
-        idCampo="ordenFactura"
-        name="ordenFactura"
+        idCampo="ordenProforma"
+        name="ordenProforma"
         marcador="Escriba el código, placa o cliente…"
         [opciones]="opcionesOrden()"
         [(ngModel)]="nueva.ordenId"
@@ -131,10 +140,10 @@
     </div>
 
     <div class="campo">
-      <label for="nitFactura">NIT / Razón social</label>
+      <label for="nitProforma">NIT / Razón social</label>
       <input
-        id="nitFactura"
-        name="nitFactura"
+        id="nitProforma"
+        name="nitProforma"
         [(ngModel)]="nueva.nitRazonSocial"
         placeholder="Datos de facturación del cliente"
       />
@@ -151,10 +160,10 @@
   </app-modal>
 }
 
-@if (porAnular(); as factura) {
+@if (porAnular(); as proforma) {
   <app-confirmacion
     titulo="Anular proforma"
-    [mensaje]="'¿Anular la proforma ' + factura.facturaId + ' por ' + (factura.total | bs) + '?'"
+    [mensaje]="'¿Anular la proforma ' + proforma.proformaId + ' por ' + (proforma.total | bs) + '?'"
     advertencia="Una proforma anulada no se puede reactivar. Solo se puede anular si no tiene pagos registrados."
     textoConfirmar="Anular proforma"
     [peligroso]="true"
