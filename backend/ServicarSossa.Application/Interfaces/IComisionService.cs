@@ -1,5 +1,6 @@
 using ServicarSossa.Application.Common;
 using ServicarSossa.Application.DTOs.Comisiones;
+using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Domain.Enums;
 
 namespace ServicarSossa.Application.Interfaces;
@@ -20,12 +21,12 @@ public interface IComisionService
 
     /// <summary>Crea o actualiza el porcentaje del mecánico (upsert).</summary>
     Task<Result<ComisionConfigResponseDto>> EstablecerConfiguracionAsync(
-        string mecanicoId, ComisionConfigRequestDto dto, CancellationToken ct = default);
+        string mecanicoId, ComisionConfigRequestDto dto, string usuarioId, CancellationToken ct = default);
 
     // --- Consulta (USU032, USU033) ------------------------------------------
-    Task<Result<IEnumerable<ComisionResponseDto>>> GetAllAsync(
+    Task<Result<ResultadoPaginadoDto<ComisionResponseDto>>> GetAllAsync(
         string? mecanicoId, string? ordenId, EstadoPago? estadoPago,
-        DateTime? desde, DateTime? hasta, CancellationToken ct = default);
+        DateTime? desde, DateTime? hasta, int pagina, int tamanoPagina, CancellationToken ct = default);
 
     Task<Result<ComisionResponseDto>> GetByIdAsync(string id, CancellationToken ct = default);
 
@@ -34,12 +35,12 @@ public interface IComisionService
         DateTime? desde, DateTime? hasta, CancellationToken ct = default);
 
     // --- Pago (USU034) -------------------------------------------------------
-    Task<Result<ComisionResponseDto>> PagarAsync(string id, CancellationToken ct = default);
+    Task<Result<ComisionResponseDto>> PagarAsync(string id, string usuarioId, CancellationToken ct = default);
 
     /// <summary>
     /// Liquidación de varias comisiones a la vez (planilla del periodo), con el
     /// desglose de adelantos descontados y el neto pagado.
     /// </summary>
     Task<Result<LiquidacionResultadoDto>> PagarLoteAsync(
-        PagarComisionesLoteDto dto, CancellationToken ct = default);
+        PagarComisionesLoteDto dto, string usuarioId, CancellationToken ct = default);
 }

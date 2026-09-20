@@ -1,5 +1,6 @@
 using ServicarSossa.Application.Common;
 using ServicarSossa.Application.DTOs.Compras;
+using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Application.Interfaces;
 using ServicarSossa.Domain.Entities;
 using ServicarSossa.Domain.Enums;
@@ -15,20 +16,27 @@ public class CompraService(
     IUnitOfWork unitOfWork,
     IAuditor auditor) : ICompraService
 {
-    public async Task<Result<IEnumerable<CompraResponseDto>>> GetAllAsync(
-        string? proveedorId, DateTime? desde, DateTime? hasta, CancellationToken ct = default)
+    public async Task<Result<ResultadoPaginadoDto<CompraResponseDto>>> GetAllAsync(
+        string? proveedorId, DateTime? desde, DateTime? hasta,
+        int pagina, int tamanoPagina, CancellationToken ct = default)
     {
         if (desde.HasValue && hasta.HasValue && desde > hasta)
-            return Result<IEnumerable<CompraResponseDto>>.Fail(
+            return Result<ResultadoPaginadoDto<CompraResponseDto>>.Fail(
                 "La fecha inicial no puede ser posterior a la final.");
 
         if (!string.IsNullOrWhiteSpace(proveedorId)
             && !await proveedores.ExistsAsync(p => p.ProveedorId == proveedorId, ct))
-            return Result<IEnumerable<CompraResponseDto>>.NoEncontrado(
+            return Result<ResultadoPaginadoDto<CompraResponseDto>>.NoEncontrado(
                 $"No existe el proveedor {proveedorId}.");
 
-        var lista = await compras.BuscarAsync(proveedorId, desde, hasta, ct);
-        return Result<IEnumerable<CompraResponseDto>>.Ok(lista.Select(MapearResumen));
+        var (items, total) = await compras.BuscarAsync(proveedorId, desde, hasta, pagina, tamanoPagina, ct);
+        return Result<ResultadoPaginadoDto<CompraResponseDto>>.Ok(new ResultadoPaginadoDto<CompraResponseDto>
+        {
+            Items = items.Select(MapearResumen),
+            TotalRegistros = total,
+            Pagina = pagina,
+            TamanoPagina = tamanoPagina
+        });
     }
 
     public async Task<Result<CompraDetalleResponseDto>> GetByIdAsync(

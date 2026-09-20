@@ -25,8 +25,8 @@ public interface IReporteRepository
 
     Task AgregarBitacoraAsync(ReporteGenerado reporte, CancellationToken ct = default);
 
-    Task<IEnumerable<ReporteGenerado>> GetBitacoraAsync(
-        string? tipoReporte, CancellationToken ct = default);
+    Task<(IEnumerable<ReporteGenerado> Items, int Total)> GetBitacoraAsync(
+        string? tipoReporte, int pagina, int tamanoPagina, CancellationToken ct = default);
 
     Task<int> GuardarAsync(CancellationToken ct = default);
 }

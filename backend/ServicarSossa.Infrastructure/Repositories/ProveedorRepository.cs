@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using ServicarSossa.Application.Interfaces;
 using ServicarSossa.Domain.Entities;
 using ServicarSossa.Infrastructure.Data;
+using ServicarSossa.Infrastructure.Extensions;
 
 namespace ServicarSossa.Infrastructure.Repositories;
 
@@ -9,8 +10,8 @@ namespace ServicarSossa.Infrastructure.Repositories;
 public class ProveedorRepository(AppDbContext context)
     : Repository<Proveedor>(context), IProveedorRepository
 {
-    public async Task<IEnumerable<Proveedor>> BuscarAsync(
-        string? buscar, CancellationToken ct = default)
+    public async Task<(IEnumerable<Proveedor> Items, int Total)> BuscarAsync(
+        string? buscar, int pagina, int tamanoPagina, CancellationToken ct = default)
     {
         var query = Set.AsNoTracking();
 
@@ -22,7 +23,7 @@ public class ProveedorRepository(AppDbContext context)
                 EF.Functions.ILike(p.Contacto ?? "", termino));
         }
 
-        return await query.OrderBy(p => p.Nombre).ToListAsync(ct);
+        return await query.OrderBy(p => p.Nombre).ToPagedListAsync(pagina, tamanoPagina, ct);
     }
 
     public async Task<Dictionary<string, int>> ContarRepuestosPorProveedorAsync(

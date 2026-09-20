@@ -1,4 +1,5 @@
 using ServicarSossa.Application.Common;
+using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Application.DTOs.TiposServicio;
 
 namespace ServicarSossa.Application.Interfaces;
@@ -7,17 +8,17 @@ namespace ServicarSossa.Application.Interfaces;
 public interface ITipoServicioService
 {
     /// <param name="soloActivos">true para poblar selectores: oculta los dados de baja.</param>
-    Task<Result<IEnumerable<TipoServicioResponseDto>>> GetAllAsync(
-        string? buscar, bool soloActivos, CancellationToken ct = default);
+    Task<Result<ResultadoPaginadoDto<TipoServicioResponseDto>>> GetAllAsync(
+        string? buscar, bool soloActivos, int pagina, int tamanoPagina, CancellationToken ct = default);
 
     Task<Result<TipoServicioResponseDto>> GetByIdAsync(string id, CancellationToken ct = default);
 
     Task<Result<TipoServicioResponseDto>> CreateAsync(
-        TipoServicioRequestDto dto, CancellationToken ct = default);
+        TipoServicioRequestDto dto, string usuarioId, CancellationToken ct = default);
 
     Task<Result<TipoServicioResponseDto>> UpdateAsync(
-        string id, TipoServicioUpdateDto dto, CancellationToken ct = default);
+        string id, TipoServicioUpdateDto dto, string usuarioId, CancellationToken ct = default);
 
     Task<Result<TipoServicioResponseDto>> CambiarEstadoAsync(
-        string id, CambiarEstadoServicioDto dto, CancellationToken ct = default);
+        string id, CambiarEstadoServicioDto dto, string usuarioId, CancellationToken ct = default);
 }

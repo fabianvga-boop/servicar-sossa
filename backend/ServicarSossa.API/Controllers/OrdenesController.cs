@@ -16,7 +16,7 @@ public class OrdenesController(IOrdenService service) : ApiControllerBase
 {
     // ====================================================================== ORDEN
 
-    /// <summary>Lista órdenes filtrables por cliente, vehículo, mecánico o estado.</summary>
+    /// <summary>USU024 — lista órdenes filtrables por cliente, vehículo, mecánico o estado.</summary>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<OrdenResponseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll(
@@ -26,6 +26,18 @@ public class OrdenesController(IOrdenService service) : ApiControllerBase
         [FromQuery] EstadoOrden? estado,
         CancellationToken ct = default)
         => Responder(await service.GetAllAsync(clienteId, vehiculoId, mecanicoId, estado, ct));
+
+    /// <summary>Escribir menos: nombres de servicios "fuera de catálogo" ya usados antes.</summary>
+    [HttpGet("sugerencias/servicios-libres")]
+    [ProducesResponseType(typeof(IEnumerable<string>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetNombresServicioLibre(CancellationToken ct)
+        => Responder(await service.GetNombresServicioLibreAsync(ct));
+
+    /// <summary>Escribir menos: descripciones de repuestos "fuera de inventario" ya usadas antes.</summary>
+    [HttpGet("sugerencias/repuestos-libres")]
+    [ProducesResponseType(typeof(IEnumerable<string>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetDescripcionesRepuestoLibre(CancellationToken ct)
+        => Responder(await service.GetDescripcionesRepuestoLibreAsync(ct));
 
     /// <summary>Detalle completo de la orden: mecánicos, servicios y repuestos.</summary>
     [HttpGet("{id}")]
@@ -56,7 +68,7 @@ public class OrdenesController(IOrdenService service) : ApiControllerBase
         => Responder(await service.UpdateAsync(id, dto, ct));
 
     /// <summary>
-    /// USU024, USU025 — avanza el estado de la orden. Pasar a <c>Cerrada</c>
+    /// USU023, USU025 — avanza el estado de la orden. Pasar a <c>Cerrada</c>
     /// descuenta el stock de los repuestos y calcula las comisiones de los mecánicos.
     /// </summary>
     [HttpPatch("{id}/estado")]
@@ -90,7 +102,11 @@ public class OrdenesController(IOrdenService service) : ApiControllerBase
 
     // ================================================================== SERVICIOS
 
-    /// <summary>USU023 — registra un servicio ejecutado dentro de la orden.</summary>
+    /// <summary>
+    /// USU013 — registra un servicio ejecutado dentro de la orden. Es la mitad
+    /// de USU013 que no se construyó en el Sprint 3: allí se entregó el catálogo
+    /// (tipos_servicio) y aquí el registro del servicio realmente ejecutado.
+    /// </summary>
     [HttpPost("{id}/servicios")]
     [Authorize(Roles = "Administrador")]
     [ProducesResponseType(typeof(OrdenDetalleResponseDto), StatusCodes.Status200OK)]
@@ -99,7 +115,11 @@ public class OrdenesController(IOrdenService service) : ApiControllerBase
         string id, [FromBody] OrdenServicioRequestDto dto, CancellationToken ct)
         => Responder(await service.AgregarServicioAsync(id, dto, ct));
 
-    /// <summary>Marca el avance de un servicio (Pendiente → EnProceso → Completado).</summary>
+    /// <summary>
+    /// USU023 — el mecánico marca el avance de su servicio
+    /// (Pendiente → EnProceso → Completado). Es el único endpoint del módulo
+    /// que el rol Mecanico puede ejecutar: el resto es del Administrador.
+    /// </summary>
     [HttpPatch("{id}/servicios/{ordenServicioId}/estado")]
     [ProducesResponseType(typeof(OrdenDetalleResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

@@ -5,7 +5,8 @@ namespace ServicarSossa.Application.Interfaces;
 /// <summary>Repositorio de clientes con las consultas que el genérico no cubre.</summary>
 public interface IClienteRepository : IRepository<Cliente>
 {
-    Task<IEnumerable<Cliente>> BuscarAsync(string? buscar, CancellationToken ct = default);
+    Task<(IEnumerable<Cliente> Items, int Total)> BuscarAsync(
+        string? buscar, int pagina, int tamanoPagina, CancellationToken ct = default);
 
     /// <summary>
     /// Placas de los vehículos de cada cliente, en una sola consulta que

@@ -10,5 +10,6 @@ public interface IUsuarioRepository : IRepository<Usuario>
 {
     Task<Usuario?> GetByUsernameConRolAsync(string username, CancellationToken ct = default);
     Task<Usuario?> GetByIdConRolAsync(string usuarioId, CancellationToken ct = default);
-    Task<IEnumerable<Usuario>> GetAllConRolAsync(string? buscar, CancellationToken ct = default);
+    Task<(IEnumerable<Usuario> Items, int Total)> GetAllConRolAsync(
+        string? buscar, int pagina, int tamanoPagina, CancellationToken ct = default);
 }

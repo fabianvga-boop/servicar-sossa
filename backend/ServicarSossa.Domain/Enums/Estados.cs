@@ -15,7 +15,15 @@ public enum EstadoServicio { Activo, Inactivo }
 
 public enum EstadoOrden { Abierta, EnProceso, Finalizada, Cerrada, Cancelada }
 
+/// <summary>Estado del comprobante fiscal SIAT (tabla facturas).</summary>
 public enum EstadoFactura { Emitida, Anulada }
+
+/// <summary>
+/// Estado del documento de cobro del taller (tabla proformas). Mismos valores
+/// que <see cref="EstadoFactura"/>, pero son documentos distintos: separarlos
+/// evita que un cambio en el ciclo fiscal arrastre al operativo.
+/// </summary>
+public enum EstadoProforma { Emitida, Anulada }
 
 /// <summary>Estado de una venta de mostrador (tabla ventas).</summary>
 public enum EstadoVenta { Emitida, Anulada }
@@ -56,3 +64,14 @@ public enum AccionAuditoria { Crear, Editar, Eliminar, Anular, Ajustar, CambiarE
 /// justificar por qué el stock subió o bajó fuera de compras/ventas/órdenes.
 /// </summary>
 public enum TipoAjusteStock { ConteoFisico, MermaRotura, Correccion, Otro }
+
+/// <summary>
+/// Silueta vectorial a usar para el diagrama del vehículo (diagnóstico/orden).
+/// No se persiste como columna: se infiere de Marca/Modelo vía
+/// <see cref="ServicarSossa.Domain.Catalogos.CatalogoCarrocerias"/> en cada respuesta,
+/// así que agregar un tipo nuevo no requiere migración de BD.
+/// </summary>
+public enum TipoCarroceria { Sedan, Suv, Pickup, Furgon, Moto, Camion, Hatchback, Generico }
+
+/// <summary>Estado de una zona del vehículo marcada sobre el diagrama (tabla vehiculo_zonas).</summary>
+public enum EstadoZonaVehiculo { Ok, Atencion, EnReparacion }

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Application.DTOs.TiposServicio;
 using ServicarSossa.Application.Interfaces;
 
@@ -18,12 +19,14 @@ public class TiposServicioController(ITipoServicioService service) : ApiControll
     /// oculta los dados de baja, que es lo que necesitan los selectores del frontend.
     /// </summary>
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<TipoServicioResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResultadoPaginadoDto<TipoServicioResponseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll(
         [FromQuery] string? buscar,
         [FromQuery] bool soloActivos = true,
+        [FromQuery] int pagina = 1,
+        [FromQuery] int tamanoPagina = 20,
         CancellationToken ct = default)
-        => Responder(await service.GetAllAsync(buscar, soloActivos, ct));
+        => Responder(await service.GetAllAsync(buscar, soloActivos, pagina, tamanoPagina, ct));
 
     /// <summary>Obtiene un servicio por su código (SER-000).</summary>
     [HttpGet("{id}")]
@@ -40,7 +43,7 @@ public class TiposServicioController(ITipoServicioService service) : ApiControll
     public async Task<IActionResult> Create(
         [FromBody] TipoServicioRequestDto dto, CancellationToken ct)
     {
-        var result = await service.CreateAsync(dto, ct);
+        var result = await service.CreateAsync(dto, UsuarioIdActual, ct);
         return ResponderCreado(result, nameof(GetById), new { id = result.Data?.ServicioId });
     }
 
@@ -51,7 +54,7 @@ public class TiposServicioController(ITipoServicioService service) : ApiControll
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(
         string id, [FromBody] TipoServicioUpdateDto dto, CancellationToken ct)
-        => Responder(await service.UpdateAsync(id, dto, ct));
+        => Responder(await service.UpdateAsync(id, dto, UsuarioIdActual, ct));
 
     /// <summary>Habilita o deshabilita el servicio (baja lógica: preserva el histórico).</summary>
     [HttpPatch("{id}/estado")]
@@ -60,5 +63,5 @@ public class TiposServicioController(ITipoServicioService service) : ApiControll
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> CambiarEstado(
         string id, [FromBody] CambiarEstadoServicioDto dto, CancellationToken ct)
-        => Responder(await service.CambiarEstadoAsync(id, dto, ct));
+        => Responder(await service.CambiarEstadoAsync(id, dto, UsuarioIdActual, ct));
 }

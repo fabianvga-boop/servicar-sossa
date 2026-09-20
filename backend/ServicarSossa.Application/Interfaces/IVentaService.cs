@@ -1,4 +1,5 @@
 using ServicarSossa.Application.Common;
+using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Application.DTOs.Ventas;
 using ServicarSossa.Domain.Enums;
 
@@ -10,9 +11,9 @@ namespace ServicarSossa.Application.Interfaces;
 /// </summary>
 public interface IVentaService
 {
-    Task<Result<IEnumerable<VentaResponseDto>>> GetAllAsync(
+    Task<Result<ResultadoPaginadoDto<VentaResponseDto>>> GetAllAsync(
         string? clienteId, EstadoVenta? estado,
-        DateTime? desde, DateTime? hasta, CancellationToken ct = default);
+        DateTime? desde, DateTime? hasta, int pagina, int tamanoPagina, CancellationToken ct = default);
 
     Task<Result<VentaResponseDto>> GetByIdAsync(string id, CancellationToken ct = default);
 

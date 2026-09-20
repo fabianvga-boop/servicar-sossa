@@ -1,4 +1,5 @@
 using ServicarSossa.Application.Common;
+using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Application.DTOs.Proveedores;
 
 namespace ServicarSossa.Application.Interfaces;
@@ -6,8 +7,8 @@ namespace ServicarSossa.Application.Interfaces;
 /// <summary>USU028 — gestión de proveedores.</summary>
 public interface IProveedorService
 {
-    Task<Result<IEnumerable<ProveedorResponseDto>>> GetAllAsync(
-        string? buscar, CancellationToken ct = default);
+    Task<Result<ResultadoPaginadoDto<ProveedorResponseDto>>> GetAllAsync(
+        string? buscar, int pagina, int tamanoPagina, CancellationToken ct = default);
 
     Task<Result<ProveedorResponseDto>> GetByIdAsync(string id, CancellationToken ct = default);
 

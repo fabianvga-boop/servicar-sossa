@@ -1,5 +1,6 @@
 using ServicarSossa.Application.Common;
 using ServicarSossa.Application.DTOs.Clientes;
+using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Application.Interfaces;
 using ServicarSossa.Domain.Entities;
 using ServicarSossa.Domain.Enums;
@@ -12,15 +13,21 @@ public class ClienteService(
     IGeneradorId generadorId,
     IAuditor auditor) : IClienteService
 {
-    public async Task<Result<IEnumerable<ClienteResponseDto>>> GetAllAsync(
-        string? buscar, CancellationToken ct = default)
+    public async Task<Result<ResultadoPaginadoDto<ClienteResponseDto>>> GetAllAsync(
+        string? buscar, int pagina, int tamanoPagina, CancellationToken ct = default)
     {
-        var lista = (await clientes.BuscarAsync(buscar, ct)).ToList();
+        var (items, total) = await clientes.BuscarAsync(buscar, pagina, tamanoPagina, ct);
+        var lista = items.ToList();
         var placas = await clientes.ObtenerPlacasPorClienteAsync(
             lista.Select(c => c.ClienteId), ct);
 
-        return Result<IEnumerable<ClienteResponseDto>>.Ok(
-            lista.Select(c => Mapear(c, placas.GetValueOrDefault(c.ClienteId, []))));
+        return Result<ResultadoPaginadoDto<ClienteResponseDto>>.Ok(new ResultadoPaginadoDto<ClienteResponseDto>
+        {
+            Items = lista.Select(c => Mapear(c, placas.GetValueOrDefault(c.ClienteId, []))),
+            TotalRegistros = total,
+            Pagina = pagina,
+            TamanoPagina = tamanoPagina
+        });
     }
 
     public async Task<Result<ClienteResponseDto>> GetByIdAsync(

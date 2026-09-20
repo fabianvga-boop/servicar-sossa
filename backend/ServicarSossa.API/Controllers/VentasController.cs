@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Application.DTOs.Ventas;
 using ServicarSossa.Application.Interfaces;
 using ServicarSossa.Domain.Enums;
@@ -15,14 +16,16 @@ public class VentasController(IVentaService service) : ApiControllerBase
 {
     /// <summary>Lista ventas filtrables por cliente, estado y periodo.</summary>
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<VentaResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResultadoPaginadoDto<VentaResponseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll(
         [FromQuery] string? clienteId,
         [FromQuery] EstadoVenta? estado,
         [FromQuery] DateTime? desde,
         [FromQuery] DateTime? hasta,
+        [FromQuery] int pagina = 1,
+        [FromQuery] int tamanoPagina = 20,
         CancellationToken ct = default)
-        => Responder(await service.GetAllAsync(clienteId, estado, desde, hasta, ct));
+        => Responder(await service.GetAllAsync(clienteId, estado, desde, hasta, pagina, tamanoPagina, ct));
 
     /// <summary>Totales del periodo, para el cierre de caja del mostrador.</summary>
     [HttpGet("resumen")]

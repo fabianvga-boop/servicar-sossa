@@ -7,7 +7,7 @@ using ServicarSossa.Application.Interfaces;
 
 namespace ServicarSossa.API.Controllers;
 
-/// <summary>USU002, USU003 — inicio de sesión, contraseña y perfil propio.</summary>
+/// <summary>Autenticación y perfil propio — base técnica del Sprint 1, sin historia de usuario numerada propia (ver Sprint Goal de USU001–USU005).</summary>
 public class AuthController(
     IAuthService service,
     IUsuarioService usuarios) : ApiControllerBase

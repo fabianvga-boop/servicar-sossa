@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ServicarSossa.Application.DTOs.Comisiones;
+using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Application.Interfaces;
 using ServicarSossa.Domain.Enums;
 
@@ -38,23 +39,34 @@ public class ComisionesController(IComisionService service) : ApiControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> EstablecerConfiguracion(
         string mecanicoId, [FromBody] ComisionConfigRequestDto dto, CancellationToken ct)
-        => Responder(await service.EstablecerConfiguracionAsync(mecanicoId, dto, ct));
+        => Responder(await service.EstablecerConfiguracionAsync(mecanicoId, dto, UsuarioIdActual, ct));
 
     // ================================================================= CONSULTA
 
-    /// <summary>USU032, USU033 — comisiones filtrables por mecánico, orden, estado y periodo.</summary>
+    /// <summary>
+    /// USU032 — comisiones filtrables por mecánico, orden, estado y periodo.
+    /// Ojo: la historia está escrita para el Mecánico ("consultar mis comisiones"),
+    /// pero el controlador completo exige rol Administrador; ver Sprint Review.
+    /// </summary>
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<ComisionResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResultadoPaginadoDto<ComisionResponseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll(
         [FromQuery] string? mecanicoId,
         [FromQuery] string? ordenId,
         [FromQuery] EstadoPago? estadoPago,
         [FromQuery] DateTime? desde,
         [FromQuery] DateTime? hasta,
+        [FromQuery] int pagina = 1,
+        [FromQuery] int tamanoPagina = 20,
         CancellationToken ct = default)
-        => Responder(await service.GetAllAsync(mecanicoId, ordenId, estadoPago, desde, hasta, ct));
+        => Responder(await service.GetAllAsync(
+            mecanicoId, ordenId, estadoPago, desde, hasta, pagina, tamanoPagina, ct));
 
-    /// <summary>USU033 — totales pendientes y pagados por mecánico en el periodo.</summary>
+    /// <summary>
+    /// USU034 — totales pendientes y pagados por mecánico en el periodo: es el
+    /// reporte de comisiones. El cálculo automático (USU033) no vive aquí, sino
+    /// en <c>OrdenService.CerrarOrdenAsync</c>, al cerrar la orden.
+    /// </summary>
     [HttpGet("resumen")]
     [ProducesResponseType(typeof(IEnumerable<ResumenComisionesDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetResumen(
@@ -70,18 +82,25 @@ public class ComisionesController(IComisionService service) : ApiControllerBase
 
     // ===================================================================== PAGO
 
-    /// <summary>USU034 — marca la comisión como pagada. La operación es irreversible.</summary>
+    /// <summary>
+    /// Marca la comisión como pagada. La operación es irreversible.
+    /// Sin historia numerada propia: la liquidación se añadió más allá del
+    /// backlog de la Épica 7, que solo preveía reportarlas (USU034).
+    /// </summary>
     [HttpPatch("{id}/pagar")]
     [ProducesResponseType(typeof(ComisionResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Pagar(string id, CancellationToken ct)
-        => Responder(await service.PagarAsync(id, ct));
+        => Responder(await service.PagarAsync(id, UsuarioIdActual, ct));
 
-    /// <summary>USU034 — liquida varias comisiones de una vez (planilla del periodo).</summary>
+    /// <summary>
+    /// Liquida varias comisiones de una vez (planilla del periodo).
+    /// Sin historia numerada propia, igual que el pago individual.
+    /// </summary>
     [HttpPost("pagar-lote")]
     [ProducesResponseType(typeof(LiquidacionResultadoDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> PagarLote(
         [FromBody] PagarComisionesLoteDto dto, CancellationToken ct)
-        => Responder(await service.PagarLoteAsync(dto, ct));
+        => Responder(await service.PagarLoteAsync(dto, UsuarioIdActual, ct));
 }

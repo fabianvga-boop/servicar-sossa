@@ -5,7 +5,7 @@ using ServicarSossa.Domain.Enums;
 
 namespace ServicarSossa.Application.Services;
 
-/// <summary>USU002, USU003 — autenticación con BCrypt + JWT.</summary>
+/// <summary>Autenticación con BCrypt + JWT — base técnica del Sprint 1, sin historia de usuario numerada propia.</summary>
 public class AuthService(
     IUsuarioRepository usuarios,
     IAlmacenArchivos archivos,

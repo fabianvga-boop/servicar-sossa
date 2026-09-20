@@ -4,9 +4,11 @@ using Microsoft.Extensions.DependencyInjection;
 using ServicarSossa.Application.Common;
 using ServicarSossa.Application.Interfaces;
 using ServicarSossa.Application.Services;
+using ServicarSossa.Domain.Enums;
 using ServicarSossa.Infrastructure.Archivos;
 using ServicarSossa.Infrastructure.Comprobantes;
 using ServicarSossa.Infrastructure.Data;
+using ServicarSossa.Infrastructure.Facturacion;
 using ServicarSossa.Infrastructure.Reportes;
 using ServicarSossa.Infrastructure.Repositories;
 using ServicarSossa.Infrastructure.Services;
@@ -45,6 +47,7 @@ public static class DependencyInjection
         services.AddScoped<ICompraRepository, CompraRepository>();
         services.AddScoped<IComisionRepository, ComisionRepository>();
         services.AddScoped<IComisionConfigRepository, ComisionConfigRepository>();
+        services.AddScoped<IProformaRepository, ProformaRepository>();
         services.AddScoped<IFacturaRepository, FacturaRepository>();
         services.AddScoped<IVentaRepository, VentaRepository>();
         services.AddScoped<IPagoRepository, PagoRepository>();
@@ -54,6 +57,13 @@ public static class DependencyInjection
 
         // Identidad del taller para los comprobantes (sección "Taller").
         services.Configure<TallerOptions>(config.GetSection(TallerOptions.Seccion));
+
+        // --- Emisión de comprobantes (Strategy) -------------------------------
+        // Una línea de appsettings decide si cada cobro termina en un recibo
+        // interno o en una factura electrónica del SIAT. La lógica de ventas no
+        // se entera: solo conoce IEmisorComprobante.
+        services.Configure<FacturacionOptions>(config.GetSection(FacturacionOptions.Seccion));
+        RegistrarEmisorComprobantes(services, config);
 
         // --- Servicios de infraestructura -------------------------------------
         services.AddScoped<IGeneradorId, GeneradorId>();
@@ -68,6 +78,7 @@ public static class DependencyInjection
         services.AddScoped<IUsuarioService, UsuarioService>();           // Sprint 1
         services.AddScoped<IClienteService, ClienteService>();           // Sprint 2
         services.AddScoped<IVehiculoService, VehiculoService>();         // Sprint 2
+        services.AddScoped<IPlantillaVehiculoService, PlantillaVehiculoService>(); // Diagrama del vehículo
         services.AddScoped<ITipoServicioService, TipoServicioService>(); // Sprint 3
         services.AddScoped<IDiagnosticoService, DiagnosticoService>();   // Sprint 3
         services.AddScoped<IOrdenService, OrdenService>();               // Sprint 4
@@ -75,12 +86,53 @@ public static class DependencyInjection
         services.AddScoped<IRepuestoService, RepuestoService>();         // Sprint 5
         services.AddScoped<ICompraService, CompraService>();             // Sprint 5
         services.AddScoped<IComisionService, ComisionService>();         // Sprint 6
-        services.AddScoped<IFacturaService, FacturaService>();           // Sprint 7
+        services.AddScoped<IProformaService, ProformaService>();         // Sprint 7 — cobro del taller
+        services.AddScoped<IFacturaService, FacturaService>();           // Facturación electrónica SIAT
         services.AddScoped<IVentaService, VentaService>();               // Punto de venta
         services.AddScoped<IPagoService, PagoService>();                 // Sprint 7
         services.AddScoped<IReporteService, ReporteService>();           // Sprint 8
         services.AddScoped<IAuditoriaService, AuditoriaService>();       // Bitácora de auditoría
 
         return services;
+    }
+
+    /// <summary>
+    /// Elige el emisor según <c>Facturacion:Modo</c>.
+    ///
+    /// En modo SIAT_ONLINE se valida la configuración acá y no en la primera
+    /// venta: si falta el NIT o la API key, es mejor que el sistema no arranque
+    /// a que arranque y recién falle con un cliente esperando su factura.
+    /// </summary>
+    private static void RegistrarEmisorComprobantes(
+        IServiceCollection services, IConfiguration config)
+    {
+        var opciones = config.GetSection(FacturacionOptions.Seccion).Get<FacturacionOptions>()
+            ?? new FacturacionOptions();
+
+        if (opciones.ModoResuelto == ModoFacturacion.Interno)
+        {
+            services.AddScoped<IEmisorComprobante, EmisorInterno>();
+            return;
+        }
+
+        var faltantes = new List<string>();
+        if (string.IsNullOrWhiteSpace(opciones.Siat.Nit)) faltantes.Add("Facturacion:Siat:Nit");
+        if (string.IsNullOrWhiteSpace(opciones.Siat.ApiKey)) faltantes.Add("Facturacion:Siat:ApiKey");
+        if (string.IsNullOrWhiteSpace(opciones.Siat.CodigoSistema)) faltantes.Add("Facturacion:Siat:CodigoSistema");
+        if (string.IsNullOrWhiteSpace(opciones.Siat.UrlBase)) faltantes.Add("Facturacion:Siat:UrlBase");
+
+        if (faltantes.Count > 0)
+            throw new InvalidOperationException(
+                "Facturacion:Modo está en 'SIAT_ONLINE' pero falta configurar: " +
+                string.Join(", ", faltantes) + ". " +
+                "Complete esos valores o vuelva a 'INTERNAL' para seguir emitiendo recibos internos.");
+
+        // El esqueleto está, pero los pasos que hablan con el SIN todavía no.
+        // Arrancar igual significaría vender sin emitir la factura que
+        // corresponde: se corta acá, con el detalle de lo que falta.
+        throw new InvalidOperationException(
+            "Facturacion:Modo está en 'SIAT_ONLINE', pero la integración con el SIAT " +
+            "aún no está implementada (ver EmisorSiatFacturacion: CUFD, CUF, XML, firma y envío). " +
+            "Implemente esos pasos antes de activar el modo, o vuelva a 'INTERNAL'.");
     }
 }

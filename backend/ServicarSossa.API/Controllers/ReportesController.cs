@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Application.DTOs.Reportes;
 using ServicarSossa.Application.Interfaces;
 using ServicarSossa.Domain.Enums;
@@ -53,10 +54,13 @@ public class ReportesController(IReporteService service) : ApiControllerBase
         return File(archivo.Contenido, archivo.TipoContenido, archivo.NombreArchivo);
     }
 
-    /// <summary>Historial de reportes emitidos (últimos 200).</summary>
+    /// <summary>Historial de reportes emitidos.</summary>
     [HttpGet("bitacora")]
-    [ProducesResponseType(typeof(IEnumerable<ReporteGeneradoResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResultadoPaginadoDto<ReporteGeneradoResponseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetBitacora(
-        [FromQuery] string? tipoReporte, CancellationToken ct = default)
-        => Responder(await service.GetBitacoraAsync(tipoReporte, ct));
+        [FromQuery] string? tipoReporte,
+        [FromQuery] int pagina = 1,
+        [FromQuery] int tamanoPagina = 20,
+        CancellationToken ct = default)
+        => Responder(await service.GetBitacoraAsync(tipoReporte, pagina, tamanoPagina, ct));
 }

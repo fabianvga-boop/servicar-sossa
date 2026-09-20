@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using ServicarSossa.Application.Interfaces;
 using ServicarSossa.Domain.Entities;
 using ServicarSossa.Infrastructure.Data;
+using ServicarSossa.Infrastructure.Extensions;
 
 namespace ServicarSossa.Infrastructure.Repositories;
 
@@ -15,8 +16,9 @@ public class RepuestoRepository(AppDbContext context)
                     .AsNoTracking()
                     .FirstOrDefaultAsync(r => r.RepuestoId == repuestoId, ct);
 
-    public async Task<IEnumerable<Repuesto>> BuscarAsync(
-        string? buscar, string? proveedorId, bool soloStockBajo, CancellationToken ct = default)
+    public async Task<(IEnumerable<Repuesto> Items, int Total)> BuscarAsync(
+        string? buscar, string? proveedorId, bool soloStockBajo,
+        int pagina, int tamanoPagina, CancellationToken ct = default)
     {
         var query = Set.Include(r => r.Proveedor).AsNoTracking();
 
@@ -34,7 +36,7 @@ public class RepuestoRepository(AppDbContext context)
                 EF.Functions.ILike(r.Descripcion ?? "", termino));
         }
 
-        return await query.OrderBy(r => r.Nombre).ToListAsync(ct);
+        return await query.OrderBy(r => r.Nombre).ToPagedListAsync(pagina, tamanoPagina, ct);
     }
 
     public async Task<bool> TieneMovimientosAsync(

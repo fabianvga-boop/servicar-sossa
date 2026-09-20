@@ -3,6 +3,7 @@ using ServicarSossa.Application.Interfaces;
 using ServicarSossa.Domain.Entities;
 using ServicarSossa.Domain.Enums;
 using ServicarSossa.Infrastructure.Data;
+using ServicarSossa.Infrastructure.Extensions;
 
 namespace ServicarSossa.Infrastructure.Repositories;
 
@@ -10,8 +11,8 @@ namespace ServicarSossa.Infrastructure.Repositories;
 public class TipoServicioRepository(AppDbContext context)
     : Repository<TipoServicio>(context), ITipoServicioRepository
 {
-    public async Task<IEnumerable<TipoServicio>> BuscarAsync(
-        string? buscar, bool soloActivos, CancellationToken ct = default)
+    public async Task<(IEnumerable<TipoServicio> Items, int Total)> BuscarAsync(
+        string? buscar, bool soloActivos, int pagina, int tamanoPagina, CancellationToken ct = default)
     {
         var query = Set.AsNoTracking();
 
@@ -26,6 +27,6 @@ public class TipoServicioRepository(AppDbContext context)
                 EF.Functions.ILike(s.Descripcion ?? "", termino));
         }
 
-        return await query.OrderBy(s => s.Nombre).ToListAsync(ct);
+        return await query.OrderBy(s => s.Nombre).ToPagedListAsync(pagina, tamanoPagina, ct);
     }
 }

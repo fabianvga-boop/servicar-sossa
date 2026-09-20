@@ -1,13 +1,14 @@
 using ServicarSossa.Application.Common;
 using ServicarSossa.Application.DTOs.Clientes;
+using ServicarSossa.Application.DTOs.Comunes;
 
 namespace ServicarSossa.Application.Interfaces;
 
 /// <summary>USU006, USU007, USU008 — CRUD de clientes.</summary>
 public interface IClienteService
 {
-    Task<Result<IEnumerable<ClienteResponseDto>>> GetAllAsync(
-        string? buscar, CancellationToken ct = default);
+    Task<Result<ResultadoPaginadoDto<ClienteResponseDto>>> GetAllAsync(
+        string? buscar, int pagina, int tamanoPagina, CancellationToken ct = default);
 
     Task<Result<ClienteResponseDto>> GetByIdAsync(string id, CancellationToken ct = default);
 

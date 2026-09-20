@@ -1,22 +1,25 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Application.DTOs.Usuarios;
 using ServicarSossa.Application.Interfaces;
 
 namespace ServicarSossa.API.Controllers;
 
 /// <summary>
-/// USU001, USU003, USU004, USU005 — gestión de usuarios.
+/// USU001–USU005 — gestión de usuarios.
 /// Todo el módulo es exclusivo del rol Administrador.
 /// </summary>
 [Authorize(Roles = "Administrador")]
 public class UsuariosController(IUsuarioService service) : ApiControllerBase
 {
-    /// <summary>Lista usuarios, opcionalmente filtrados por nombre, usuario o email.</summary>
+    /// <summary>USU002 — lista usuarios, opcionalmente filtrados por nombre, usuario o email.</summary>
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<UsuarioResponseDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAll([FromQuery] string? buscar, CancellationToken ct)
-        => Responder(await service.GetAllAsync(buscar, ct));
+    [ProducesResponseType(typeof(ResultadoPaginadoDto<UsuarioResponseDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAll(
+        [FromQuery] string? buscar, [FromQuery] int pagina = 1, [FromQuery] int tamanoPagina = 20,
+        CancellationToken ct = default)
+        => Responder(await service.GetAllAsync(buscar, pagina, tamanoPagina, ct));
 
     /// <summary>Obtiene un usuario por su código (USU-000).</summary>
     [HttpGet("{id}")]

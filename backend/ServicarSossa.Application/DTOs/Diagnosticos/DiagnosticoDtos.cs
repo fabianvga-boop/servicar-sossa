@@ -84,3 +84,62 @@ public class DiagnosticoResponseDto
     /// <summary>Orden generada a partir de este diagnóstico, si ya se generó una.</summary>
     public string? OrdenId { get; set; }
 }
+
+// ------------------------------------------------------- Diagnóstico asistido
+
+/// <summary>
+/// Sugerencias de servicios, repuestos y precio para una falla reportada,
+/// calculadas a partir de diagnósticos históricos con una descripción similar
+/// que sí llegaron a convertirse en orden de trabajo. Sin IA externa: la
+/// similitud se calcula por coincidencia de palabras clave (ver
+/// <c>DiagnosticoService.CalcularSimilitud</c>), así que el resultado es
+/// siempre explicable ("se basó en estos N casos parecidos").
+/// </summary>
+public class SugerenciaDiagnosticoDto
+{
+    /// <summary>Cuántos diagnósticos históricos similares se usaron para calcular esto.</summary>
+    public int BasadoEnCasos { get; set; }
+
+    public List<SugerenciaServicioDto> Servicios { get; set; } = [];
+    public List<SugerenciaRepuestoDto> Repuestos { get; set; } = [];
+
+    public decimal? PrecioMinimo { get; set; }
+    public decimal? PrecioMaximo { get; set; }
+    public decimal? PrecioPromedio { get; set; }
+
+    /// <summary>Los casos históricos que más se parecen, más similar primero.</summary>
+    public List<CasoSimilarDto> CasosSimilares { get; set; } = [];
+}
+
+public class SugerenciaServicioDto
+{
+    /// <summary>Null cuando el servicio no proviene del catálogo (se registró suelto).</summary>
+    public string? ServicioId { get; set; }
+    public string Nombre { get; set; } = string.Empty;
+
+    /// <summary>En cuántos de los casos similares apareció este servicio.</summary>
+    public int Frecuencia { get; set; }
+
+    /// <summary>Frecuencia / BasadoEnCasos, en porcentaje (0-100).</summary>
+    public double Porcentaje { get; set; }
+    public decimal PrecioPromedio { get; set; }
+}
+
+public class SugerenciaRepuestoDto
+{
+    /// <summary>Null cuando el repuesto no proviene del inventario.</summary>
+    public string? RepuestoId { get; set; }
+    public string Nombre { get; set; } = string.Empty;
+    public int Frecuencia { get; set; }
+    public double Porcentaje { get; set; }
+    public decimal PrecioUnitarioPromedio { get; set; }
+}
+
+public class CasoSimilarDto
+{
+    public string DiagnosticoId { get; set; } = string.Empty;
+    public string DescripcionFalla { get; set; } = string.Empty;
+
+    /// <summary>0 a 1: qué tan parecida es la falla reportada a esta.</summary>
+    public double Similitud { get; set; }
+}

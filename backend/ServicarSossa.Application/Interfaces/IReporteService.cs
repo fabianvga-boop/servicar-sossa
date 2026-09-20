@@ -1,4 +1,5 @@
 using ServicarSossa.Application.Common;
+using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Application.DTOs.Reportes;
 using ServicarSossa.Domain.Enums;
 
@@ -21,8 +22,8 @@ public interface IReporteService
         FormatoReporte formato, string usuarioId, CancellationToken ct = default);
 
     /// <summary>Historial de reportes emitidos.</summary>
-    Task<Result<IEnumerable<ReporteGeneradoResponseDto>>> GetBitacoraAsync(
-        string? tipoReporte, CancellationToken ct = default);
+    Task<Result<ResultadoPaginadoDto<ReporteGeneradoResponseDto>>> GetBitacoraAsync(
+        string? tipoReporte, int pagina, int tamanoPagina, CancellationToken ct = default);
 }
 
 /// <summary>

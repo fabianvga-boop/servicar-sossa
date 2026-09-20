@@ -5,7 +5,8 @@ namespace ServicarSossa.Application.Interfaces;
 /// <summary>Repositorio de proveedores.</summary>
 public interface IProveedorRepository : IRepository<Proveedor>
 {
-    Task<IEnumerable<Proveedor>> BuscarAsync(string? buscar, CancellationToken ct = default);
+    Task<(IEnumerable<Proveedor> Items, int Total)> BuscarAsync(
+        string? buscar, int pagina, int tamanoPagina, CancellationToken ct = default);
 
     Task<Dictionary<string, int>> ContarRepuestosPorProveedorAsync(
         IEnumerable<string> proveedorIds, CancellationToken ct = default);

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using ServicarSossa.Application.Interfaces;
 using ServicarSossa.Domain.Entities;
 using ServicarSossa.Infrastructure.Data;
+using ServicarSossa.Infrastructure.Extensions;
 
 namespace ServicarSossa.Infrastructure.Repositories;
 
@@ -9,8 +10,8 @@ namespace ServicarSossa.Infrastructure.Repositories;
 public class ClienteRepository(AppDbContext context)
     : Repository<Cliente>(context), IClienteRepository
 {
-    public async Task<IEnumerable<Cliente>> BuscarAsync(
-        string? buscar, CancellationToken ct = default)
+    public async Task<(IEnumerable<Cliente> Items, int Total)> BuscarAsync(
+        string? buscar, int pagina, int tamanoPagina, CancellationToken ct = default)
     {
         var query = Set.AsNoTracking();
 
@@ -24,7 +25,7 @@ public class ClienteRepository(AppDbContext context)
                 EF.Functions.ILike(c.CiNit, termino));
         }
 
-        return await query.OrderBy(c => c.ClienteId).ToListAsync(ct);
+        return await query.OrderBy(c => c.ClienteId).ToPagedListAsync(pagina, tamanoPagina, ct);
     }
 
     public async Task<Dictionary<string, List<string>>> ObtenerPlacasPorClienteAsync(

@@ -27,16 +27,26 @@ public class RepuestoService(
     };
 
     private const string SubcarpetaFotos = "repuestos";
-    public async Task<Result<IEnumerable<RepuestoResponseDto>>> GetAllAsync(
-        string? buscar, string? proveedorId, bool soloStockBajo, CancellationToken ct = default)
+    public async Task<Result<ResultadoPaginadoDto<RepuestoResponseDto>>> GetAllAsync(
+        string? buscar, string? proveedorId, bool soloStockBajo,
+        int pagina, int tamanoPagina, CancellationToken ct = default)
     {
         if (!string.IsNullOrWhiteSpace(proveedorId)
             && !await proveedores.ExistsAsync(p => p.ProveedorId == proveedorId, ct))
-            return Result<IEnumerable<RepuestoResponseDto>>.NoEncontrado(
+            return Result<ResultadoPaginadoDto<RepuestoResponseDto>>.NoEncontrado(
                 $"No existe el proveedor {proveedorId}.");
 
-        var lista = await repuestos.BuscarAsync(buscar, proveedorId, soloStockBajo, ct);
-        return Result<IEnumerable<RepuestoResponseDto>>.Ok(lista.Select(Mapear));
+        var (items, total) = await repuestos.BuscarAsync(
+            buscar, proveedorId, soloStockBajo, pagina, tamanoPagina, ct);
+
+        return Result<ResultadoPaginadoDto<RepuestoResponseDto>>.Ok(
+            new ResultadoPaginadoDto<RepuestoResponseDto>
+            {
+                Items = items.Select(Mapear),
+                TotalRegistros = total,
+                Pagina = pagina,
+                TamanoPagina = tamanoPagina
+            });
     }
 
     public async Task<Result<RepuestoResponseDto>> GetByIdAsync(

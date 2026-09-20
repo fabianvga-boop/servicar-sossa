@@ -8,8 +8,9 @@ namespace ServicarSossa.Application.Interfaces;
 public interface IRepuestoService
 {
     /// <param name="soloStockBajo">USU030 — alerta de reposición.</param>
-    Task<Result<IEnumerable<RepuestoResponseDto>>> GetAllAsync(
-        string? buscar, string? proveedorId, bool soloStockBajo, CancellationToken ct = default);
+    Task<Result<ResultadoPaginadoDto<RepuestoResponseDto>>> GetAllAsync(
+        string? buscar, string? proveedorId, bool soloStockBajo,
+        int pagina, int tamanoPagina, CancellationToken ct = default);
 
     Task<Result<RepuestoResponseDto>> GetByIdAsync(string id, CancellationToken ct = default);
 
