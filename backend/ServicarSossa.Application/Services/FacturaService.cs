@@ -1,5 +1,5 @@
 using ServicarSossa.Application.Common;
-using ServicarSossa.Application.DTOs.Comprobantes;
+using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Application.DTOs.Facturas;
 using ServicarSossa.Application.Interfaces;
 using ServicarSossa.Domain.Entities;
@@ -7,24 +7,42 @@ using ServicarSossa.Domain.Enums;
 
 namespace ServicarSossa.Application.Services;
 
-/// <summary>USU038 — emisión y anulación de facturas (documento "Proforma" del taller).</summary>
+/// <summary>
+/// Facturación electrónica: el comprobante FISCAL ante el SIN.
+///
+/// No duplica al cobro: el dinero se registra contra la proforma. Acá solo se
+/// produce y se archiva el documento que exige Impuestos, con su CUF y su XML.
+///
+/// Todo lo específico del protocolo SIAT vive detrás de
+/// <see cref="IEmisorComprobante"/>; este servicio solo decide qué se factura,
+/// valida que se pueda, y persiste lo que el emisor devuelve.
+/// </summary>
 public class FacturaService(
     IFacturaRepository facturas,
     IOrdenRepository ordenes,
-    IGeneradorComprobantes generadorComprobantes,
+    IVentaRepository ventas,
+    IEmisorComprobante emisor,
     IGeneradorId generadorId,
     IAuditor auditor) : IFacturaService
 {
-    public async Task<Result<IEnumerable<FacturaResponseDto>>> GetAllAsync(
-        string? ordenId, string? clienteId, EstadoFactura? estado,
-        DateTime? desde, DateTime? hasta, CancellationToken ct = default)
+    public async Task<Result<ResultadoPaginadoDto<FacturaResponseDto>>> GetAllAsync(
+        string? ordenId, string? ventaId, EstadoFactura? estado, EstadoSiat? estadoSiat,
+        DateTime? desde, DateTime? hasta, int pagina, int tamanoPagina, CancellationToken ct = default)
     {
         if (desde.HasValue && hasta.HasValue && desde > hasta)
-            return Result<IEnumerable<FacturaResponseDto>>.Fail(
+            return Result<ResultadoPaginadoDto<FacturaResponseDto>>.Fail(
                 "La fecha inicial no puede ser posterior a la final.");
 
-        var lista = await facturas.BuscarAsync(ordenId, clienteId, estado, desde, hasta, ct);
-        return Result<IEnumerable<FacturaResponseDto>>.Ok(lista.Select(Mapear));
+        var (items, total) = await facturas.BuscarAsync(
+            ordenId, ventaId, estado, estadoSiat, desde, hasta, pagina, tamanoPagina, ct);
+
+        return Result<ResultadoPaginadoDto<FacturaResponseDto>>.Ok(new ResultadoPaginadoDto<FacturaResponseDto>
+        {
+            Items = items.Select(Mapear),
+            TotalRegistros = total,
+            Pagina = pagina,
+            TamanoPagina = tamanoPagina
+        });
     }
 
     public async Task<Result<FacturaResponseDto>> GetByIdAsync(
@@ -37,57 +55,84 @@ public class FacturaService(
             : Result<FacturaResponseDto>.Ok(Mapear(factura));
     }
 
-    public async Task<Result<FacturaResponseDto>> CreateAsync(
-        FacturaRequestDto dto, CancellationToken ct = default)
+    public Result<EstadoFacturacionDto> GetEstadoFacturacion()
+        => Result<EstadoFacturacionDto>.Ok(new EstadoFacturacionDto
+        {
+            Modo = emisor.Modo,
+            EmisionHabilitada = emisor.Modo == ModoFacturacion.SiatEnLinea,
+            Motivo = emisor.Modo == ModoFacturacion.SiatEnLinea
+                ? null
+                : "El taller no tiene facturación electrónica habilitada. " +
+                  "El cobro se documenta con proformas."
+        });
+
+    public async Task<Result<FacturaResponseDto>> EmitirAsync(
+        FacturaRequestDto dto, string usuarioId, CancellationToken ct = default)
     {
-        var orden = await ordenes.GetDetalleAsync(dto.OrdenId, ct);
+        var solicitud = await ArmarSolicitudAsync(dto, ct);
 
-        if (orden is null)
-            return Result<FacturaResponseDto>.Fail($"La orden {dto.OrdenId} no existe.");
+        if (!solicitud.Success || solicitud.Data is null)
+            return Result<FacturaResponseDto>.Fail(solicitud.Message!, solicitud.Error);
 
-        // Solo se factura trabajo terminado.
-        if (orden.Estado is not (EstadoOrden.Finalizada or EstadoOrden.Cerrada))
-            return Result<FacturaResponseDto>.Fail(
-                $"La orden está {orden.Estado}. Solo se puede facturar una orden " +
-                "Finalizada o Cerrada.");
+        // Una sola factura vigente por documento: evita facturar dos veces lo mismo.
+        var yaFacturado = await facturas.FirstOrDefaultAsync(
+            f => f.Estado == EstadoFactura.Emitida
+                 && ((dto.OrdenId != null && f.OrdenId == dto.OrdenId)
+                     || (dto.VentaId != null && f.VentaId == dto.VentaId)), ct);
 
-        // Una sola factura vigente por orden evita la doble facturación.
-        var vigente = await facturas.FirstOrDefaultAsync(
-            f => f.OrdenId == dto.OrdenId && f.Estado == EstadoFactura.Emitida, ct);
-
-        if (vigente is not null)
+        if (yaFacturado is not null)
             return Result<FacturaResponseDto>.Conflicto(
-                $"La orden {dto.OrdenId} ya tiene la factura {vigente.FacturaId} emitida. " +
+                $"Ese documento ya tiene la factura {yaFacturado.FacturaId} emitida. " +
                 "Anúlela antes de emitir otra.");
 
-        var total = orden.Servicios.Sum(s => s.Precio)
-                  + orden.Repuestos.Sum(r => r.Cantidad * r.PrecioUnitario);
+        var emision = await emisor.EmitirAsync(solicitud.Data, ct);
 
-        if (total <= 0)
-            return Result<FacturaResponseDto>.Fail(
-                "El total a facturar es cero: la orden no tiene servicios ni repuestos.");
+        // En modo interno el emisor rechaza: no hay NIT habilitado y la factura
+        // fiscal no puede existir. El mensaje ya explica qué usar en su lugar.
+        if (!emision.Success || emision.Data is null)
+            return Result<FacturaResponseDto>.Fail(emision.Message!, emision.Error);
+
+        var resultado = emision.Data;
 
         var factura = new Factura
         {
             FacturaId = await generadorId.SiguienteAsync<Factura>("FAC", ct),
             OrdenId = dto.OrdenId,
+            VentaId = dto.VentaId,
             FechaEmision = DateTime.UtcNow,
             NitRazonSocial = string.IsNullOrWhiteSpace(dto.NitRazonSocial)
                 ? null
                 : dto.NitRazonSocial.Trim(),
-            Total = total,
-            Estado = EstadoFactura.Emitida
+            Total = solicitud.Data.Total,
+            MetodoPagoId = solicitud.Data.CodigoMetodoPagoSin,
+            Estado = EstadoFactura.Emitida,
+
+            NumeroFactura = resultado.NumeroFactura,
+            Cuf = resultado.Cuf,
+            Cufd = resultado.Cufd,
+            CodigoRecepcion = resultado.CodigoRecepcion,
+            EstadoSiat = resultado.EstadoSiat,
+            XmlGenerado = resultado.XmlGenerado,
+            XmlFirmado = resultado.XmlFirmado,
+            FechaEmisionSiat = resultado.FechaEmisionSiat,
+            MensajeServicio = resultado.Mensaje
         };
 
         await facturas.AddAsync(factura, ct);
+
+        await auditor.RegistrarAsync(
+            usuarioId, AccionAuditoria.Crear, "Factura", factura.FacturaId,
+            $"Emitió la factura {factura.FacturaId} por Bs {factura.Total:N2} " +
+            $"({factura.EstadoSiat}).", ct);
+
         await facturas.SaveChangesAsync(ct);
 
         var creada = await facturas.GetByIdCompletaAsync(factura.FacturaId, ct);
-        return Result<FacturaResponseDto>.Ok(Mapear(creada!), "Factura emitida correctamente.");
+        return Result<FacturaResponseDto>.Ok(Mapear(creada!), resultado.Mensaje ?? "Factura emitida.");
     }
 
     public async Task<Result<FacturaResponseDto>> AnularAsync(
-        string id, string usuarioId, CancellationToken ct = default)
+        string id, string? motivo, string usuarioId, CancellationToken ct = default)
     {
         var factura = await facturas.FirstOrDefaultAsync(f => f.FacturaId == id, ct);
 
@@ -97,72 +142,107 @@ public class FacturaService(
         if (factura.Estado == EstadoFactura.Anulada)
             return Result<FacturaResponseDto>.Fail($"La factura {id} ya está anulada.");
 
-        // Anular con dinero cobrado dejaría los pagos sin respaldo documental.
-        if (await facturas.TienePagosAsync(id, ct))
-            return Result<FacturaResponseDto>.Conflicto(
-                "No se puede anular la factura: tiene pagos registrados. " +
-                "Revierta primero los pagos.");
+        var anulacion = await emisor.AnularAsync(new DTOs.Facturacion.SolicitudAnulacionDto
+        {
+            Origen = factura.OrdenId is not null
+                ? OrigenComprobante.OrdenTrabajo
+                : OrigenComprobante.Mostrador,
+            DocumentoId = factura.OrdenId ?? factura.VentaId ?? id,
+            Motivo = motivo
+        }, ct);
+
+        if (!anulacion.Success)
+            return Result<FacturaResponseDto>.Fail(anulacion.Message!, anulacion.Error);
 
         factura.Estado = EstadoFactura.Anulada;
+        factura.EstadoSiat = EstadoSiat.Anulada;
+        factura.MensajeServicio = anulacion.Data?.Mensaje ?? motivo;
 
         await auditor.RegistrarAsync(
             usuarioId, AccionAuditoria.Anular, "Factura", id,
-            $"Anuló la factura {id}.", ct);
+            $"Anuló la factura {id}." + (motivo is null ? "" : $" Motivo: {motivo}"), ct);
 
         await facturas.SaveChangesAsync(ct);
 
         var anulada = await facturas.GetByIdCompletaAsync(id, ct);
-        return Result<FacturaResponseDto>.Ok(Mapear(anulada!), "Factura anulada correctamente.");
+        return Result<FacturaResponseDto>.Ok(Mapear(anulada!), "Factura anulada.");
+    }
+
+    public async Task<Result<string>> GetXmlAsync(
+        string id, bool firmado, CancellationToken ct = default)
+    {
+        var factura = await facturas.FirstOrDefaultAsync(f => f.FacturaId == id, ct);
+
+        if (factura is null)
+            return Result<string>.NoEncontrado($"No existe la factura {id}.");
+
+        var xml = firmado ? factura.XmlFirmado : factura.XmlGenerado;
+
+        return string.IsNullOrWhiteSpace(xml)
+            ? Result<string>.NoEncontrado(
+                $"La factura {id} no tiene XML {(firmado ? "firmado" : "generado")}.")
+            : Result<string>.Ok(xml);
     }
 
     /// <summary>
-    /// Arma el comprobante en el momento leyendo la orden: no se guarda el PDF.
-    /// Es seguro porque una orden Finalizada o Cerrada ya no admite cambios en
-    /// sus servicios ni repuestos, así que el detalle impreso siempre coincide
-    /// con el total que quedó registrado en la factura.
+    /// Traduce "facturar la orden X" o "facturar la venta Y" a la solicitud
+    /// neutra que entiende el emisor, validando que el documento exista y esté
+    /// en condiciones de facturarse.
     /// </summary>
-    public async Task<Result<ArchivoComprobanteDto>> GetPdfAsync(
-        string id, CancellationToken ct = default)
+    private async Task<Result<DTOs.Facturacion.SolicitudEmisionDto>> ArmarSolicitudAsync(
+        FacturaRequestDto dto, CancellationToken ct)
     {
-        var factura = await facturas.GetByIdCompletaAsync(id, ct);
+        if (!string.IsNullOrWhiteSpace(dto.OrdenId))
+        {
+            var orden = await ordenes.GetDetalleAsync(dto.OrdenId, ct);
 
-        if (factura is null)
-            return Result<ArchivoComprobanteDto>.NoEncontrado($"No existe la factura {id}.");
+            if (orden is null)
+                return Result<DTOs.Facturacion.SolicitudEmisionDto>.NoEncontrado(
+                    $"La orden {dto.OrdenId} no existe.");
 
-        var orden = await ordenes.GetDetalleAsync(factura.OrdenId, ct);
+            if (orden.Estado is not (EstadoOrden.Finalizada or EstadoOrden.Cerrada))
+                return Result<DTOs.Facturacion.SolicitudEmisionDto>.Fail(
+                    $"La orden está {orden.Estado}. Solo se factura una orden Finalizada o Cerrada.");
 
-        if (orden is null)
-            return Result<ArchivoComprobanteDto>.Fail(
-                $"La orden {factura.OrdenId} de la factura ya no existe.");
+            return Result<DTOs.Facturacion.SolicitudEmisionDto>.Ok(
+                ArmadorComprobantes.SolicitudDesdeOrden(orden, dto.NitRazonSocial));
+        }
 
-        var comprobante = ArmadorComprobantes.DesdeOrden(orden);
+        var venta = await ventas.GetByIdCompletaAsync(dto.VentaId!, ct);
 
-        comprobante.Numero = factura.FacturaId;
-        comprobante.FechaEmision = factura.FechaEmision;
-        comprobante.Estado = factura.Estado.ToString();
-        comprobante.NitRazonSocial = factura.NitRazonSocial;
-        comprobante.Total = factura.Total;
+        if (venta is null)
+            return Result<DTOs.Facturacion.SolicitudEmisionDto>.NoEncontrado(
+                $"La venta {dto.VentaId} no existe.");
 
-        var pagado = factura.Pagos.Sum(p => p.Monto);
-        comprobante.TotalPagado = pagado;
-        comprobante.SaldoPendiente = factura.Total - pagado;
+        if (venta.Estado == EstadoVenta.Anulada)
+            return Result<DTOs.Facturacion.SolicitudEmisionDto>.Fail(
+                $"La venta {dto.VentaId} está anulada: no se puede facturar.");
 
-        return Result<ArchivoComprobanteDto>.Ok(generadorComprobantes.Generar(comprobante));
+        return Result<DTOs.Facturacion.SolicitudEmisionDto>.Ok(
+            ArmadorComprobantes.SolicitudDesdeVenta(venta));
     }
 
     private static FacturaResponseDto Mapear(Factura f) => new()
     {
         FacturaId = f.FacturaId,
         OrdenId = f.OrdenId,
+        VentaId = f.VentaId,
         PlacaVehiculo = f.Orden?.Vehiculo?.Placa ?? string.Empty,
-        ClienteId = f.Orden?.ClienteId ?? string.Empty,
-        NombreCliente = f.Orden?.Cliente is null
-            ? string.Empty
-            : $"{f.Orden.Cliente.Nombre} {f.Orden.Cliente.Apellido}".Trim(),
+        NombreCliente = f.Orden?.Cliente is not null
+            ? $"{f.Orden.Cliente.Nombre} {f.Orden.Cliente.Apellido}".Trim()
+            : (f.Venta?.Cliente is not null
+                ? $"{f.Venta.Cliente.Nombre} {f.Venta.Cliente.Apellido}".Trim()
+                : "Cliente de mostrador"),
         FechaEmision = f.FechaEmision,
         NitRazonSocial = f.NitRazonSocial,
         Total = f.Total,
         Estado = f.Estado,
-        TotalPagado = f.Pagos.Sum(p => p.Monto)
+        NumeroFactura = f.NumeroFactura,
+        Cuf = f.Cuf,
+        CodigoRecepcion = f.CodigoRecepcion,
+        EstadoSiat = f.EstadoSiat,
+        FechaEmisionSiat = f.FechaEmisionSiat,
+        MensajeServicio = f.MensajeServicio,
+        TieneXml = !string.IsNullOrWhiteSpace(f.XmlGenerado)
     };
 }
