@@ -2,6 +2,7 @@ using ServicarSossa.Application.Common;
 using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Application.DTOs.Vehiculos;
 using ServicarSossa.Application.Interfaces;
+using ServicarSossa.Domain.Catalogos;
 using ServicarSossa.Domain.Entities;
 using ServicarSossa.Domain.Enums;
 
@@ -14,21 +15,31 @@ public class VehiculoService(
     IDiagnosticoRepository diagnosticos,
     IOrdenRepository ordenes,
     IRepository<VehiculoFoto> fotos,
+    IRepository<VehiculoZonaObservacion> zonas,
+    IRepository<PlantillaVehiculo> plantillas,
     IAlmacenArchivos archivos,
     IGeneradorId generadorId,
     IAuditor auditor) : IVehiculoService
 {
     private const string SubcarpetaFotos = "vehiculos";
-    public async Task<Result<IEnumerable<VehiculoResponseDto>>> GetAllAsync(
-        string? buscar, string? clienteId, CancellationToken ct = default)
+    private const string SubcarpetaPlantillas = "plantillas-vehiculo";
+    public async Task<Result<ResultadoPaginadoDto<VehiculoResponseDto>>> GetAllAsync(
+        string? buscar, string? clienteId, int pagina, int tamanoPagina, CancellationToken ct = default)
     {
         if (!string.IsNullOrWhiteSpace(clienteId)
             && !await clientes.ExistsAsync(c => c.ClienteId == clienteId, ct))
-            return Result<IEnumerable<VehiculoResponseDto>>.NoEncontrado(
+            return Result<ResultadoPaginadoDto<VehiculoResponseDto>>.NoEncontrado(
                 $"No existe el cliente {clienteId}.");
 
-        var lista = await vehiculos.BuscarAsync(buscar, clienteId, ct);
-        return Result<IEnumerable<VehiculoResponseDto>>.Ok(lista.Select(Mapear));
+        var (items, total) = await vehiculos.BuscarAsync(buscar, clienteId, pagina, tamanoPagina, ct);
+        var mapaPlantillas = await CargarPlantillasAsync(ct);
+        return Result<ResultadoPaginadoDto<VehiculoResponseDto>>.Ok(new ResultadoPaginadoDto<VehiculoResponseDto>
+        {
+            Items = items.Select(v => Mapear(v, mapaPlantillas)),
+            TotalRegistros = total,
+            Pagina = pagina,
+            TamanoPagina = tamanoPagina
+        });
     }
 
     public async Task<Result<VehiculoResponseDto>> GetByIdAsync(
@@ -38,7 +49,7 @@ public class VehiculoService(
 
         return vehiculo is null
             ? Result<VehiculoResponseDto>.NoEncontrado($"No existe el vehículo {id}.")
-            : Result<VehiculoResponseDto>.Ok(Mapear(vehiculo));
+            : Result<VehiculoResponseDto>.Ok(Mapear(vehiculo, await CargarPlantillasAsync(ct)));
     }
 
     public async Task<Result<VehiculoResponseDto>> CreateAsync(
@@ -77,7 +88,8 @@ public class VehiculoService(
         await vehiculos.SaveChangesAsync(ct);
 
         var creado = await vehiculos.GetByIdConClienteAsync(vehiculo.VehiculoId, ct);
-        return Result<VehiculoResponseDto>.Ok(Mapear(creado!), "Vehículo registrado correctamente.");
+        return Result<VehiculoResponseDto>.Ok(
+            Mapear(creado!, await CargarPlantillasAsync(ct)), "Vehículo registrado correctamente.");
     }
 
     public async Task<Result<VehiculoResponseDto>> UpdateAsync(
@@ -110,7 +122,8 @@ public class VehiculoService(
         await vehiculos.SaveChangesAsync(ct);
 
         var actualizado = await vehiculos.GetByIdConClienteAsync(id, ct);
-        return Result<VehiculoResponseDto>.Ok(Mapear(actualizado!), "Vehículo actualizado correctamente.");
+        return Result<VehiculoResponseDto>.Ok(
+            Mapear(actualizado!, await CargarPlantillasAsync(ct)), "Vehículo actualizado correctamente.");
     }
 
     /// <summary>
@@ -228,6 +241,59 @@ public class VehiculoService(
         return Result<bool>.Ok(true, "Foto eliminada correctamente.");
     }
 
+    // --- Zonas (diagrama vectorial) ---------------------------------------------
+
+    public async Task<Result<IEnumerable<VehiculoZonaResponseDto>>> GetZonasAsync(
+        string vehiculoId, CancellationToken ct = default)
+    {
+        if (!await vehiculos.ExistsAsync(v => v.VehiculoId == vehiculoId, ct))
+            return Result<IEnumerable<VehiculoZonaResponseDto>>.NoEncontrado(
+                $"No existe el vehículo {vehiculoId}.");
+
+        var lista = await zonas.FindAsync(z => z.VehiculoId == vehiculoId, ct);
+        return Result<IEnumerable<VehiculoZonaResponseDto>>.Ok(
+            lista.OrderByDescending(z => z.FechaRegistro).Select(MapearZona));
+    }
+
+    public async Task<Result<VehiculoZonaResponseDto>> RegistrarZonaAsync(
+        string vehiculoId, RegistrarZonaDto dto, string usuarioId, CancellationToken ct = default)
+    {
+        if (!await vehiculos.ExistsAsync(v => v.VehiculoId == vehiculoId, ct))
+            return Result<VehiculoZonaResponseDto>.NoEncontrado($"No existe el vehículo {vehiculoId}.");
+
+        var zona = new VehiculoZonaObservacion
+        {
+            ZonaObsId = await generadorId.SiguienteAsync<VehiculoZonaObservacion>("ZNA", ct),
+            VehiculoId = vehiculoId,
+            OrdenId = string.IsNullOrWhiteSpace(dto.OrdenId) ? null : dto.OrdenId,
+            Zona = dto.Zona.Trim(),
+            Estado = dto.Estado,
+            Detalle = string.IsNullOrWhiteSpace(dto.Detalle) ? null : dto.Detalle.Trim(),
+            FechaRegistro = DateTime.UtcNow
+        };
+
+        await zonas.AddAsync(zona, ct);
+
+        await auditor.RegistrarAsync(
+            usuarioId, AccionAuditoria.Editar, "Vehiculo", vehiculoId,
+            $"Marcó la zona '{zona.Zona}' como {zona.Estado} en el diagrama del vehículo.", ct);
+
+        await zonas.SaveChangesAsync(ct);
+
+        return Result<VehiculoZonaResponseDto>.Ok(MapearZona(zona), "Zona registrada correctamente.");
+    }
+
+    private static VehiculoZonaResponseDto MapearZona(VehiculoZonaObservacion z) => new()
+    {
+        ZonaObsId = z.ZonaObsId,
+        VehiculoId = z.VehiculoId,
+        OrdenId = z.OrdenId,
+        Zona = z.Zona,
+        Estado = z.Estado.ToString(),
+        Detalle = z.Detalle,
+        FechaRegistro = z.FechaRegistro
+    };
+
     private VehiculoFotoResponseDto MapearFoto(VehiculoFoto f) => new()
     {
         FotoId = f.FotoId,
@@ -239,7 +305,21 @@ public class VehiculoService(
     private static decimal Total(OrdenTrabajo o)
         => o.Servicios.Sum(s => s.Precio) + o.Repuestos.Sum(r => r.Cantidad * r.PrecioUnitario);
 
-    private static VehiculoResponseDto Mapear(Vehiculo v) => new()
+    /// <summary>
+    /// Biblioteca de plantillas completa (pensada para ser chica: unas pocas
+    /// decenas de modelos reales del taller), como diccionario Marca|Modelo en
+    /// minúsculas para resolver el SVG específico de cada vehículo sin una
+    /// consulta por fila.
+    /// </summary>
+    private async Task<Dictionary<string, string>> CargarPlantillasAsync(CancellationToken ct)
+    {
+        var lista = await plantillas.GetAllAsync(ct);
+        return lista.ToDictionary(
+            p => $"{p.Marca}|{p.Modelo}".ToLowerInvariant(),
+            p => archivos.RutaPublica(SubcarpetaPlantillas, p.NombreArchivo));
+    }
+
+    private static VehiculoResponseDto Mapear(Vehiculo v, Dictionary<string, string> mapaPlantillas) => new()
     {
         VehiculoId = v.VehiculoId,
         ClienteId = v.ClienteId,
@@ -254,6 +334,8 @@ public class VehiculoService(
         NumMotor = v.NumMotor,
         NumChasis = v.NumChasis,
         Kilometraje = v.Kilometraje,
-        FechaRegistro = v.FechaRegistro
+        FechaRegistro = v.FechaRegistro,
+        TipoCarroceria = CatalogoCarrocerias.Resolver(v.Marca, v.Modelo).ToString(),
+        DiagramaSvgUrl = mapaPlantillas.GetValueOrDefault($"{v.Marca}|{v.Modelo}".ToLowerInvariant())
     };
 }

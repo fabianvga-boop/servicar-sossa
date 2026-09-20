@@ -3,12 +3,13 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { EstadoCliente } from '../../core/models/enums';
+import { EstadoCliente, EstadoZonaVehiculo } from '../../core/models/enums';
 import {
   Cliente,
   HistorialVehiculo,
   Vehiculo,
   VehiculoFoto,
+  VehiculoZona,
 } from '../../core/models/personas.model';
 import { AuthService } from '../../core/services/auth.service';
 import { ClientesService } from '../../core/services/clientes.service';
@@ -16,9 +17,11 @@ import { NotificacionService } from '../../core/services/notificacion.service';
 import { PreferenciasService } from '../../core/services/preferencias.service';
 import { urlArchivo } from '../../core/services/api-base';
 import { VehiculosService } from '../../core/services/vehiculos.service';
+import { DiagramaVehiculo } from '../../shared/components/diagrama-vehiculo';
 import { Esqueleto } from '../../shared/components/esqueleto';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { Modal } from '../../shared/components/modal';
+import { Paginador } from '../../shared/components/paginador';
 import { Placa } from '../../shared/components/placa';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
 import { Atajo } from '../../shared/directives/atajo';
@@ -44,6 +47,7 @@ const CLAVE_BUSCAR = 'vehiculos.buscar';
     DecimalPipe,
     Modal,
     EstadoTabla,
+    Paginador,
     SelectorBusqueda,
     Atajo,
     EnfocarError,
@@ -51,6 +55,7 @@ const CLAVE_BUSCAR = 'vehiculos.buscar';
     Esqueleto,
     Placa,
     BolivianosPipe,
+    DiagramaVehiculo,
   ],
   templateUrl: './vehiculos.html',
   styleUrl: './vehiculos.css',
@@ -71,6 +76,11 @@ export class Vehiculos {
   protected readonly buscar = signal('');
   protected readonly clienteFiltro = signal('');
   protected readonly guardando = signal(false);
+
+  protected readonly pagina = signal(1);
+  protected readonly tamanoPagina = signal(20);
+  protected readonly totalRegistros = signal(0);
+  protected readonly totalPaginas = signal(0);
 
   protected readonly editando = signal<Vehiculo | null>(null);
   protected readonly formularioAbierto = signal(false);
@@ -94,6 +104,18 @@ export class Vehiculos {
   protected readonly subiendoFoto = signal(false);
   protected readonly eliminandoFoto = signal<string | null>(null);
   protected readonly urlArchivo = urlArchivo;
+
+  // Diagrama vectorial (zonas marcadas del vehículo).
+  protected readonly diagramaDe = signal<Vehiculo | null>(null);
+  protected readonly zonasDiagrama = signal<VehiculoZona[]>([]);
+  protected readonly cargandoZonas = signal(false);
+  protected readonly zonaEditando = signal<string | null>(null);
+  protected readonly guardandoZona = signal(false);
+  protected readonly EstadoZonaVehiculo = EstadoZonaVehiculo;
+  protected readonly formularioZona = this.fb.nonNullable.group({
+    estado: [EstadoZonaVehiculo.Atencion],
+    detalle: [''],
+  });
 
   protected readonly formulario = this.fb.nonNullable.group({
     clienteId: ['', Validators.required],
@@ -135,8 +157,8 @@ export class Vehiculos {
 
     // Solo el administrador puede dar de alta, y necesita el selector de clientes.
     if (this.auth.esAdministrador()) {
-      this.clientesService.getAll().subscribe((lista) =>
-        this.clientes.set(lista.filter((c) => c.estado === EstadoCliente.Activo)),
+      this.clientesService.getAll(undefined, 1, 500).subscribe((resultado) =>
+        this.clientes.set(resultado.items.filter((c) => c.estado === EstadoCliente.Activo)),
       );
     }
 
@@ -157,10 +179,17 @@ export class Vehiculos {
     this.cargando.set(true);
 
     this.servicio
-      .getAll(this.buscar() || undefined, this.clienteFiltro() || undefined)
+      .getAll(
+        this.buscar() || undefined,
+        this.clienteFiltro() || undefined,
+        this.pagina(),
+        this.tamanoPagina(),
+      )
       .subscribe({
-        next: (lista) => {
-          this.vehiculos.set(lista);
+        next: (resultado) => {
+          this.vehiculos.set(resultado.items);
+          this.totalRegistros.set(resultado.totalRegistros);
+          this.totalPaginas.set(resultado.totalPaginas);
           this.cargando.set(false);
         },
         error: () => this.cargando.set(false),
@@ -170,11 +199,24 @@ export class Vehiculos {
   protected onBuscar(valor: string): void {
     this.buscar.set(valor);
     this.preferencias.guardar(CLAVE_BUSCAR, valor);
+    this.pagina.set(1);
     this.cargar();
   }
 
   protected onFiltrarCliente(valor: string): void {
     this.clienteFiltro.set(valor);
+    this.pagina.set(1);
+    this.cargar();
+  }
+
+  protected cambiarPagina(pagina: number): void {
+    this.pagina.set(pagina);
+    this.cargar();
+  }
+
+  protected cambiarTamano(tamano: number): void {
+    this.tamanoPagina.set(tamano);
+    this.pagina.set(1);
     this.cargar();
   }
 
@@ -340,6 +382,66 @@ export class Vehiculos {
       },
       error: () => this.eliminandoFoto.set(null),
     });
+  }
+
+  // --- Diagrama vectorial (zonas) ---------------------------------------------
+
+  protected abrirDiagrama(vehiculo: Vehiculo): void {
+    this.diagramaDe.set(vehiculo);
+    this.zonaEditando.set(null);
+    this.cargarZonas(vehiculo.vehiculoId);
+  }
+
+  protected cerrarDiagrama(): void {
+    this.diagramaDe.set(null);
+    this.zonasDiagrama.set([]);
+    this.zonaEditando.set(null);
+  }
+
+  private cargarZonas(vehiculoId: string): void {
+    this.cargandoZonas.set(true);
+
+    this.servicio.getZonas(vehiculoId).subscribe({
+      next: (lista) => {
+        this.zonasDiagrama.set(lista);
+        this.cargandoZonas.set(false);
+      },
+      error: () => this.cargandoZonas.set(false),
+    });
+  }
+
+  protected onZonaClick(zona: string): void {
+    this.zonaEditando.set(zona);
+    this.formularioZona.reset({ estado: EstadoZonaVehiculo.Atencion, detalle: '' });
+  }
+
+  protected cancelarZona(): void {
+    this.zonaEditando.set(null);
+  }
+
+  protected guardarZona(): void {
+    const vehiculo = this.diagramaDe();
+    const zona = this.zonaEditando();
+    if (!vehiculo || !zona) return;
+
+    this.guardandoZona.set(true);
+    const datos = this.formularioZona.getRawValue();
+
+    this.servicio
+      .registrarZona(vehiculo.vehiculoId, {
+        zona,
+        estado: datos.estado,
+        detalle: datos.detalle || null,
+      })
+      .subscribe({
+        next: (nueva) => {
+          this.zonasDiagrama.update((lista) => [nueva, ...lista]);
+          this.guardandoZona.set(false);
+          this.zonaEditando.set(null);
+          this.notificacion.exito('Zona registrada en el diagrama.');
+        },
+        error: () => this.guardandoZona.set(false),
+      });
   }
 
   protected guardar(): void {

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using ServicarSossa.Domain.Enums;
 
 namespace ServicarSossa.Application.DTOs.Vehiculos;
 
@@ -83,6 +84,51 @@ public class VehiculoResponseDto
     public string? NumChasis { get; set; }
     public int? Kilometraje { get; set; }
     public DateTime FechaRegistro { get; set; }
+
+    /// <summary>
+    /// Silueta a usar para el diagrama vectorial (inferida de Marca/Modelo por
+    /// <see cref="ServicarSossa.Domain.Catalogos.CatalogoCarrocerias"/>; no es un
+    /// campo guardado en la tabla).
+    /// </summary>
+    public string TipoCarroceria { get; set; } = string.Empty;
+
+    /// <summary>
+    /// URL del SVG específico de la biblioteca de plantillas para esta
+    /// Marca+Modelo, si existe; null si no hay ninguna cargada (el frontend
+    /// cae al diagrama genérico por tipo de carrocería).
+    /// </summary>
+    public string? DiagramaSvgUrl { get; set; }
+}
+
+// ------------------------------------------------------------- Zonas (diagrama)
+
+/// <summary>Estado actual de una zona marcada sobre el diagrama del vehículo.</summary>
+public class VehiculoZonaResponseDto
+{
+    public string ZonaObsId { get; set; } = string.Empty;
+    public string VehiculoId { get; set; } = string.Empty;
+    public string? OrdenId { get; set; }
+    public string Zona { get; set; } = string.Empty;
+    public string Estado { get; set; } = string.Empty;
+    public string? Detalle { get; set; }
+    public DateTime FechaRegistro { get; set; }
+}
+
+/// <summary>Marca el estado de una zona del diagrama (crea un evento nuevo, no sobreescribe).</summary>
+public class RegistrarZonaDto
+{
+    [Required(ErrorMessage = "La zona es obligatoria.")]
+    [MaxLength(40)]
+    public string Zona { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "El estado es obligatorio.")]
+    public EstadoZonaVehiculo Estado { get; set; }
+
+    [MaxLength(300)]
+    public string? Detalle { get; set; }
+
+    [RegularExpression(@"^ORD-\d{3,}$", ErrorMessage = "La orden debe tener el formato ORD-000.")]
+    public string? OrdenId { get; set; }
 }
 
 // --------------------------------------------------------------------- Fotos

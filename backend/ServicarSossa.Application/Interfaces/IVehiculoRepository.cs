@@ -10,6 +10,6 @@ public interface IVehiculoRepository : IRepository<Vehiculo>
 {
     Task<Vehiculo?> GetByIdConClienteAsync(string vehiculoId, CancellationToken ct = default);
 
-    Task<IEnumerable<Vehiculo>> BuscarAsync(
-        string? buscar, string? clienteId, CancellationToken ct = default);
+    Task<(IEnumerable<Vehiculo> Items, int Total)> BuscarAsync(
+        string? buscar, string? clienteId, int pagina, int tamanoPagina, CancellationToken ct = default);
 }

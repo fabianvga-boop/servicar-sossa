@@ -22,14 +22,14 @@
         type="search"
         maxlength="100"
         placeholder="Buscar por placa, marca o modelo…"
-        style="max-width: 280px"
+        class="filtro-ancho-md"
         [value]="buscar()"
         (input)="onBuscar($any($event.target).value)"
       />
 
       <select
         *appSiRol="['Administrador']"
-        style="max-width: 240px"
+        class="filtro-ancho-sm"
         [value]="clienteFiltro()"
         (change)="onFiltrarCliente($any($event.target).value)"
       >
@@ -41,7 +41,7 @@
         }
       </select>
     </div>
-    <span class="texto-tenue texto-sm">{{ vehiculos().length }} vehículo(s)</span>
+    <span class="texto-tenue texto-sm">{{ totalRegistros() }} vehículo(s)</span>
   </div>
 
   @if (cargando() || vehiculos().length === 0) {
@@ -112,6 +112,18 @@
                       <circle cx="12" cy="13" r="3" />
                     </svg>
                   </button>
+                  <button
+                    type="button"
+                    class="btn-icono"
+                    title="Diagrama del vehículo"
+                    aria-label="Ver diagrama del vehículo"
+                    (click)="abrirDiagrama(vehiculo)"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <rect x="5" y="3" width="14" height="18" rx="3" />
+                      <path d="M9 8h6M9 12h6M9 16h3" />
+                    </svg>
+                  </button>
                   <!-- *appSiRol quita el botón del DOM para quien no sea Administrador -->
                   <button
                     *appSiRol="['Administrador']"
@@ -132,6 +144,15 @@
         </tbody>
       </table>
     </div>
+
+    <app-paginador
+      [pagina]="pagina()"
+      [totalPaginas]="totalPaginas()"
+      [totalRegistros]="totalRegistros()"
+      [tamanoPagina]="tamanoPagina()"
+      (cambiarPagina)="cambiarPagina($event)"
+      (cambiarTamano)="cambiarTamano($event)"
+    />
   }
 </div>
 
@@ -409,6 +430,65 @@
 
     <div pie>
       <button type="button" class="btn btn-secundario" (click)="cerrarGaleria()">Cerrar</button>
+    </div>
+  </app-modal>
+}
+
+@if (diagramaDe(); as vehiculo) {
+  <app-modal titulo="Diagrama de {{ vehiculo.placa }}" [ancho]="480" (cerrar)="cerrarDiagrama()">
+    <p class="texto-tenue texto-sm mb-2">
+      Haga clic en una zona para marcar su estado (Ok, Atención o En reparación). Queda como
+      historial: cada marca es un evento nuevo, no se pierde lo anterior.
+    </p>
+
+    @if (cargandoZonas()) {
+      <app-esqueleto [filas]="3" [columnas]="1" />
+    } @else {
+      <app-diagrama-vehiculo
+        [tipoCarroceria]="vehiculo.tipoCarroceria"
+        [svgUrl]="vehiculo.diagramaSvgUrl"
+        [zonas]="zonasDiagrama()"
+        [zonaSeleccionada]="zonaEditando()"
+        (zonaClick)="onZonaClick($event)"
+      />
+
+      @if (zonaEditando(); as zona) {
+        <form
+          class="rejilla mt-2"
+          style="border-top: 1px solid var(--gris-100); padding-top: 12px"
+          [formGroup]="formularioZona"
+          (ngSubmit)="guardarZona()"
+        >
+          <div class="campo">
+            <label for="estadoZona">Estado</label>
+            <select id="estadoZona" formControlName="estado">
+              <option [ngValue]="EstadoZonaVehiculo.Ok">Ok</option>
+              <option [ngValue]="EstadoZonaVehiculo.Atencion">Atención</option>
+              <option [ngValue]="EstadoZonaVehiculo.EnReparacion">En reparación</option>
+            </select>
+          </div>
+          <div class="campo">
+            <label for="detalleZona">Detalle (opcional)</label>
+            <input
+              id="detalleZona"
+              formControlName="detalle"
+              placeholder="Ej: rayón leve, golpe, falta pieza…"
+            />
+          </div>
+          <div style="display: flex; gap: 8px; justify-content: flex-end">
+            <button type="button" class="btn btn-secundario" (click)="cancelarZona()">
+              Cancelar
+            </button>
+            <button type="submit" class="btn btn-primario" [disabled]="guardandoZona()">
+              {{ guardandoZona() ? 'Guardando…' : 'Guardar zona' }}
+            </button>
+          </div>
+        </form>
+      }
+    }
+
+    <div pie>
+      <button type="button" class="btn btn-secundario" (click)="cerrarDiagrama()">Cerrar</button>
     </div>
   </app-modal>
 }
