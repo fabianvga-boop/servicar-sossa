@@ -11,15 +11,16 @@ namespace ServicarSossa.API.Controllers;
 public class VehiculosController(IVehiculoService service) : ApiControllerBase
 {
     /// <summary>
-    /// Lista vehículos. USU011: pasar <paramref name="clienteId"/> para ver solo
+    /// USU010 — lista vehículos. Pasar <paramref name="clienteId"/> para ver solo
     /// los vehículos de un cliente puntual.
     /// </summary>
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<VehiculoResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResultadoPaginadoDto<VehiculoResponseDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetAll(
-        [FromQuery] string? buscar, [FromQuery] string? clienteId, CancellationToken ct)
-        => Responder(await service.GetAllAsync(buscar, clienteId, ct));
+        [FromQuery] string? buscar, [FromQuery] string? clienteId,
+        [FromQuery] int pagina = 1, [FromQuery] int tamanoPagina = 20, CancellationToken ct = default)
+        => Responder(await service.GetAllAsync(buscar, clienteId, pagina, tamanoPagina, ct));
 
     /// <summary>Obtiene un vehículo por su código (VEH-000).</summary>
     [HttpGet("{id}")]
@@ -40,7 +41,7 @@ public class VehiculosController(IVehiculoService service) : ApiControllerBase
         return ResponderCreado(result, nameof(GetById), new { id = result.Data?.VehiculoId });
     }
 
-    /// <summary>USU010 — actualiza los datos del vehículo.</summary>
+    /// <summary>USU011 — actualiza los datos del vehículo.</summary>
     [HttpPut("{id}")]
     [Authorize(Roles = "Administrador")]
     [ProducesResponseType(typeof(VehiculoResponseDto), StatusCodes.Status200OK)]
@@ -94,5 +95,25 @@ public class VehiculosController(IVehiculoService service) : ApiControllerBase
     {
         var result = await service.EliminarFotoAsync(id, fotoId, ct);
         return result.Success ? Ok(new { mensaje = result.Message }) : Responder(result);
+    }
+
+    // --------------------------------------------------- Zonas (diagrama vectorial)
+
+    /// <summary>Estado más reciente de cada zona marcada sobre el diagrama, más el historial.</summary>
+    [HttpGet("{id}/zonas")]
+    [ProducesResponseType(typeof(IEnumerable<VehiculoZonaResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetZonas(string id, CancellationToken ct)
+        => Responder(await service.GetZonasAsync(id, ct));
+
+    /// <summary>Marca el estado de una zona del diagrama (queda un evento nuevo, no se sobreescribe).</summary>
+    [HttpPost("{id}/zonas")]
+    [ProducesResponseType(typeof(VehiculoZonaResponseDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RegistrarZona(
+        string id, [FromBody] RegistrarZonaDto dto, CancellationToken ct)
+    {
+        var result = await service.RegistrarZonaAsync(id, dto, UsuarioIdActual, ct);
+        return ResponderCreado(result, nameof(GetZonas), new { id });
     }
 }

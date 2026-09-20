@@ -1,4 +1,5 @@
 import { Vehiculo } from '../core/models/personas.model';
+import { unicosOrdenados } from './sugerencias-texto';
 
 /**
  * Ayudas para que el alta de un vehículo se llene eligiendo, no escribiendo.
@@ -60,14 +61,6 @@ export const COLORES_VEHICULO: Record<string, string> = {
 export function colorPunto(nombre: string | null | undefined): string {
   if (!nombre) return 'transparent';
   return COLORES_VEHICULO[nombre.trim().toLowerCase()] ?? '#9ca3af';
-}
-
-/** Quita vacíos, recorta, elimina repetidos y ordena alfabéticamente. */
-function unicosOrdenados(valores: (string | null | undefined)[]): string[] {
-  const limpios = valores
-    .map((v) => v?.trim())
-    .filter((v): v is string => !!v);
-  return [...new Set(limpios)].sort((a, b) => a.localeCompare(b));
 }
 
 /** Marcas para el autocompletado: las frecuentes más las ya registradas. */

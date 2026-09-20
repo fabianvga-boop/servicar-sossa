@@ -1,12 +1,15 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
+import { PaginaResultado } from '../models/paginacion.model';
 import {
   HistorialVehiculo,
+  RegistrarZonaRequest,
   Vehiculo,
   VehiculoFoto,
   VehiculoRequest,
   VehiculoUpdate,
+  VehiculoZona,
 } from '../models/personas.model';
 import { ApiBase } from './api-base';
 
@@ -20,8 +23,13 @@ export class VehiculosService extends ApiBase {
   }
 
   /** USU011 — pasar `clienteId` para ver solo los vehículos de un cliente. */
-  getAll(buscar?: string, clienteId?: string): Observable<Vehiculo[]> {
-    return this.listar<Vehiculo>({ buscar, clienteId });
+  getAll(
+    buscar?: string,
+    clienteId?: string,
+    pagina = 1,
+    tamanoPagina = 20,
+  ): Observable<PaginaResultado<Vehiculo>> {
+    return this.listarPaginado<Vehiculo>({ buscar, clienteId, pagina, tamanoPagina });
   }
 
   getById(id: string): Observable<Vehiculo> {
@@ -50,5 +58,15 @@ export class VehiculosService extends ApiBase {
 
   eliminarFoto(vehiculoId: string, fotoId: string): Observable<{ mensaje: string }> {
     return this.http.delete<{ mensaje: string }>(this.url(vehiculoId, 'fotos', fotoId));
+  }
+
+  // --- Zonas (diagrama vectorial) ----------------------------------------------
+
+  getZonas(vehiculoId: string): Observable<VehiculoZona[]> {
+    return this.http.get<VehiculoZona[]>(this.url(vehiculoId, 'zonas'));
+  }
+
+  registrarZona(vehiculoId: string, datos: RegistrarZonaRequest): Observable<VehiculoZona> {
+    return this.http.post<VehiculoZona>(this.url(vehiculoId, 'zonas'), datos);
   }
 }

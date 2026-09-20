@@ -1,0 +1,151 @@
+.diagrama {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+/*
+ * ::ng-deep: el SVG de una plantilla subida se inserta como nodos reales del
+ * DOM (fuera de lo que Angular procesa vía bindings), para que la silueta
+ * genérica y la plantilla personalizada compartan exactamente el mismo estilo.
+ */
+:host ::ng-deep svg {
+  width: 100%;
+  max-width: 220px;
+  height: auto;
+  overflow: visible;
+}
+
+.diagrama-personalizado {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+:host ::ng-deep .contorno {
+  fill: none;
+  stroke: var(--gris-300);
+  stroke-width: 1;
+  pointer-events: none;
+}
+
+:host ::ng-deep .decoracion {
+  fill: var(--gris-300);
+  stroke: none;
+  pointer-events: none;
+}
+
+:host ::ng-deep line.decoracion {
+  stroke: var(--gris-400);
+  stroke-width: 1;
+}
+
+:host ::ng-deep .faro {
+  fill: var(--gris-200);
+  stroke: var(--gris-400);
+  stroke-width: 0.75;
+}
+
+:host ::ng-deep .rueda {
+  fill: var(--gris-500);
+}
+
+:host ::ng-deep .zona {
+  fill: var(--gris-100);
+  stroke: var(--gris-400);
+  stroke-width: 1.5;
+  transition: fill 0.15s ease, stroke 0.15s ease;
+}
+
+.diagrama.no-interactivo ::ng-deep .zona {
+  cursor: default;
+}
+
+.diagrama:not(.no-interactivo) ::ng-deep .zona {
+  cursor: pointer;
+}
+
+.diagrama:not(.no-interactivo) ::ng-deep .zona:hover {
+  fill: var(--azul-100);
+  stroke: var(--azul-600);
+}
+
+:host ::ng-deep .zona.estado-ok {
+  fill: var(--verde-100);
+  stroke: var(--verde-600);
+}
+
+:host ::ng-deep .zona.estado-atencion {
+  fill: var(--naranja-100);
+  stroke: var(--naranja-600);
+}
+
+:host ::ng-deep .zona.estado-reparacion {
+  fill: var(--brand-soft);
+  stroke: var(--brand);
+}
+
+:host ::ng-deep .zona.seleccionada {
+  stroke-width: 3;
+  stroke-dasharray: 4 2;
+}
+
+.leyenda-zonas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.leyenda-zonas li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.no-interactivo .leyenda-zonas li {
+  cursor: default;
+}
+
+.leyenda-zonas li:hover,
+.leyenda-zonas li.activa {
+  background: var(--gris-100);
+}
+
+.leyenda-zonas .punto {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  border: 1.5px solid var(--gris-400);
+  background: var(--gris-100);
+}
+
+.leyenda-zonas .punto.estado-ok {
+  background: var(--verde-100);
+  border-color: var(--verde-600);
+}
+
+.leyenda-zonas .punto.estado-atencion {
+  background: var(--naranja-100);
+  border-color: var(--naranja-600);
+}
+
+.leyenda-zonas .punto.estado-reparacion {
+  background: var(--brand-soft);
+  border-color: var(--brand);
+}
+
+.leyenda-zonas .estado-texto {
+  margin-left: auto;
+  color: var(--gris-500);
+  font-size: 0.78rem;
+}

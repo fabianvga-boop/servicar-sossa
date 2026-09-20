@@ -1,0 +1,270 @@
+<div class="diagrama" [class.no-interactivo]="!interactivo()">
+  @if (hayPersonalizado()) {
+    <div
+      #contenedorPersonalizado
+      class="diagrama-personalizado"
+      (click)="onContenedorClick($event)"
+    ></div>
+  } @else {
+    @switch (familia()) {
+    @case ('sedan') {
+      <svg viewBox="0 0 220 400" role="img" aria-label="Diagrama del vehículo (sedán)">
+        <!-- contorno técnico de referencia, no clicable -->
+        <path class="contorno" d="M70 4 Q110 -6 150 4 L172 38 Q195 68 195 108
+          L195 300 Q195 362 163 387 L153 397 L67 397 L57 387 Q25 362 25 300
+          L25 108 Q25 68 48 38 Z" />
+
+        <!-- decoración: espejos, faros y ruedas, no clicable -->
+        <path class="decoracion" d="M20 94 L10 100 Q8 106 14 110 L23 106 Z" />
+        <path class="decoracion" d="M200 94 L210 100 Q212 106 206 110 L197 106 Z" />
+        <rect class="decoracion faro" x="52" y="8" width="26" height="10" rx="5" />
+        <rect class="decoracion faro" x="142" y="8" width="26" height="10" rx="5" />
+        <rect class="decoracion faro" x="55" y="384" width="24" height="8" rx="4" />
+        <rect class="decoracion faro" x="141" y="384" width="24" height="8" rx="4" />
+        <rect class="decoracion rueda" x="6" y="150" width="14" height="58" rx="6" />
+        <rect class="decoracion rueda" x="200" y="150" width="14" height="58" rx="6" />
+        <rect class="decoracion rueda" x="6" y="262" width="14" height="58" rx="6" />
+        <rect class="decoracion rueda" x="200" y="262" width="14" height="58" rx="6" />
+
+        <path [class]="claseZona('parachoques_delantero')"
+          d="M70 4 Q110 -6 150 4 L163 30 Q110 18 57 30 Z"
+          (click)="onZonaClick('parachoques_delantero')">
+          <title>Parachoques delantero — {{ etiquetaEstado('parachoques_delantero') }}</title>
+        </path>
+        <path [class]="claseZona('capo')"
+          d="M57 30 Q110 18 163 30 L174 84 L46 84 Z"
+          (click)="onZonaClick('capo')">
+          <title>Capó — {{ etiquetaEstado('capo') }}</title>
+        </path>
+        <path [class]="claseZona('parabrisas')" d="M49 86 L171 86 L149 118 L71 118 Z"
+          (click)="onZonaClick('parabrisas')">
+          <title>Parabrisas — {{ etiquetaEstado('parabrisas') }}</title>
+        </path>
+        <path [class]="claseZona('techo')" d="M71 120 L149 120 L149 232 L71 232 Z"
+          (click)="onZonaClick('techo')">
+          <title>Techo — {{ etiquetaEstado('techo') }}</title>
+        </path>
+        <path [class]="claseZona('puerta_izquierda')"
+          d="M25 86 L69 86 L69 300 L25 300 Q21 193 25 86 Z"
+          (click)="onZonaClick('puerta_izquierda')">
+          <title>Puertas (izquierda) — {{ etiquetaEstado('puerta_izquierda') }}</title>
+        </path>
+        <path [class]="claseZona('puerta_derecha')"
+          d="M195 86 L151 86 L151 300 L195 300 Q199 193 195 86 Z"
+          (click)="onZonaClick('puerta_derecha')">
+          <title>Puertas (derecha) — {{ etiquetaEstado('puerta_derecha') }}</title>
+        </path>
+        <path [class]="claseZona('parte_trasera')"
+          d="M71 234 L149 234 L149 300 L195 300 L195 300 Q195 362 163 387 L153 397
+             L67 397 L57 387 Q25 362 25 300 L25 300 L71 300 Z"
+          (click)="onZonaClick('parte_trasera')">
+          <title>Maletero y parachoques trasero — {{ etiquetaEstado('parte_trasera') }}</title>
+        </path>
+      </svg>
+    }
+
+    @case ('suv') {
+      <svg viewBox="0 0 220 400" role="img" aria-label="Diagrama del vehículo (SUV)">
+        <path class="contorno" d="M62 6 Q110 -4 158 6 L182 42 Q205 70 205 112
+          L205 300 Q205 355 178 382 L166 396 L54 396 L42 382 Q15 355 15 300
+          L15 112 Q15 70 38 42 Z" />
+
+        <path class="decoracion" d="M12 96 L2 102 Q0 108 6 112 L15 108 Z" />
+        <path class="decoracion" d="M208 96 L218 102 Q220 108 214 112 L205 108 Z" />
+        <rect class="decoracion faro" x="42" y="10" width="28" height="11" rx="4" />
+        <rect class="decoracion faro" x="150" y="10" width="28" height="11" rx="4" />
+        <rect class="decoracion faro" x="46" y="382" width="26" height="9" rx="3" />
+        <rect class="decoracion faro" x="148" y="382" width="26" height="9" rx="3" />
+        <rect class="decoracion rueda" x="0" y="150" width="16" height="64" rx="4" />
+        <rect class="decoracion rueda" x="204" y="150" width="16" height="64" rx="4" />
+        <rect class="decoracion rueda" x="0" y="266" width="16" height="64" rx="4" />
+        <rect class="decoracion rueda" x="204" y="266" width="16" height="64" rx="4" />
+
+        <path [class]="claseZona('parachoques_delantero')"
+          d="M62 6 Q110 -4 158 6 L172 32 Q110 20 48 32 Z"
+          (click)="onZonaClick('parachoques_delantero')">
+          <title>Parachoques delantero — {{ etiquetaEstado('parachoques_delantero') }}</title>
+        </path>
+        <path [class]="claseZona('capo')" d="M48 32 Q110 20 172 32 L186 88 L34 88 Z"
+          (click)="onZonaClick('capo')">
+          <title>Capó — {{ etiquetaEstado('capo') }}</title>
+        </path>
+        <path [class]="claseZona('parabrisas')" d="M40 90 L180 90 L158 120 L62 120 Z"
+          (click)="onZonaClick('parabrisas')">
+          <title>Parabrisas — {{ etiquetaEstado('parabrisas') }}</title>
+        </path>
+        <path [class]="claseZona('techo')" d="M62 122 L158 122 L158 234 L62 234 Z"
+          (click)="onZonaClick('techo')">
+          <title>Techo — {{ etiquetaEstado('techo') }}</title>
+        </path>
+        <path [class]="claseZona('puerta_izquierda')"
+          d="M15 90 L60 90 L60 300 L15 300 Q11 195 15 90 Z"
+          (click)="onZonaClick('puerta_izquierda')">
+          <title>Puertas (izquierda) — {{ etiquetaEstado('puerta_izquierda') }}</title>
+        </path>
+        <path [class]="claseZona('puerta_derecha')"
+          d="M205 90 L160 90 L160 300 L205 300 Q209 195 205 90 Z"
+          (click)="onZonaClick('puerta_derecha')">
+          <title>Puertas (derecha) — {{ etiquetaEstado('puerta_derecha') }}</title>
+        </path>
+        <path [class]="claseZona('parte_trasera')"
+          d="M62 236 L158 236 L158 300 L205 300 Q205 355 178 382 L166 396
+             L54 396 L42 382 Q15 355 15 300 L15 300 L62 300 Z"
+          (click)="onZonaClick('parte_trasera')">
+          <title>Maletero y parachoques trasero — {{ etiquetaEstado('parte_trasera') }}</title>
+        </path>
+      </svg>
+    }
+
+    @case ('pickup') {
+      <svg viewBox="0 0 220 400" role="img" aria-label="Diagrama del vehículo (pickup)">
+        <path class="contorno" d="M68 6 Q110 -4 152 6 L172 34 Q195 60 195 100
+          L195 380 Q195 396 178 396 L42 396 Q25 396 25 380 L25 100 Q25 60 48 34 Z" />
+
+        <path class="decoracion" d="M20 108 L10 114 Q8 120 14 124 L23 120 Z" />
+        <path class="decoracion" d="M200 108 L210 114 Q212 120 206 124 L197 120 Z" />
+        <rect class="decoracion faro" x="50" y="10" width="26" height="10" rx="5" />
+        <rect class="decoracion faro" x="144" y="10" width="26" height="10" rx="5" />
+        <rect class="decoracion rueda" x="6" y="164" width="14" height="58" rx="6" />
+        <rect class="decoracion rueda" x="200" y="164" width="14" height="58" rx="6" />
+        <rect class="decoracion rueda" x="6" y="296" width="14" height="58" rx="6" />
+        <rect class="decoracion rueda" x="200" y="296" width="14" height="58" rx="6" />
+
+        <path [class]="claseZona('parachoques_delantero')"
+          d="M68 6 Q110 -4 152 6 L163 30 Q110 18 57 30 Z"
+          (click)="onZonaClick('parachoques_delantero')">
+          <title>Parachoques delantero — {{ etiquetaEstado('parachoques_delantero') }}</title>
+        </path>
+        <path [class]="claseZona('capo')" d="M57 30 Q110 18 163 30 L176 98 L44 98 Z"
+          (click)="onZonaClick('capo')">
+          <title>Capó — {{ etiquetaEstado('capo') }}</title>
+        </path>
+        <path [class]="claseZona('parabrisas')" d="M46 100 L174 100 L156 128 L64 128 Z"
+          (click)="onZonaClick('parabrisas')">
+          <title>Parabrisas — {{ etiquetaEstado('parabrisas') }}</title>
+        </path>
+        <path [class]="claseZona('cabina')" d="M64 130 L156 130 L156 212 L64 212 Z"
+          (click)="onZonaClick('cabina')">
+          <title>Cabina (techo) — {{ etiquetaEstado('cabina') }}</title>
+        </path>
+        <path [class]="claseZona('puerta_izquierda')"
+          d="M25 100 L62 100 L62 230 L25 230 Q22 165 25 100 Z"
+          (click)="onZonaClick('puerta_izquierda')">
+          <title>Puertas (izquierda) — {{ etiquetaEstado('puerta_izquierda') }}</title>
+        </path>
+        <path [class]="claseZona('puerta_derecha')"
+          d="M195 100 L158 100 L158 230 L195 230 Q198 165 195 100 Z"
+          (click)="onZonaClick('puerta_derecha')">
+          <title>Puertas (derecha) — {{ etiquetaEstado('puerta_derecha') }}</title>
+        </path>
+        <path [class]="claseZona('platon')"
+          d="M25 232 L195 232 L195 380 Q195 396 178 396 L42 396 Q25 396 25 380 Z"
+          (click)="onZonaClick('platon')">
+          <title>Platón de carga — {{ etiquetaEstado('platon') }}</title>
+        </path>
+        <!-- líneas del platón, decorativas -->
+        <line class="decoracion" x1="25" y1="266" x2="195" y2="266" />
+        <line class="decoracion" x1="25" y1="300" x2="195" y2="300" />
+        <line class="decoracion" x1="25" y1="334" x2="195" y2="334" />
+        <line class="decoracion" x1="25" y1="368" x2="195" y2="368" />
+      </svg>
+    }
+
+    @case ('furgon') {
+      <svg viewBox="0 0 220 400" role="img" aria-label="Diagrama del vehículo (furgón / camión)">
+        <path class="contorno" d="M34 6 Q34 2 40 2 L180 2 Q186 2 186 6
+          L195 30 Q205 40 205 60 L205 390 Q205 398 197 398 L23 398 Q15 398 15 390
+          L15 60 Q15 40 25 30 Z" />
+
+        <rect class="decoracion faro" x="26" y="8" width="24" height="9" rx="3" />
+        <rect class="decoracion faro" x="170" y="8" width="24" height="9" rx="3" />
+        <rect class="decoracion rueda" x="4" y="134" width="14" height="58" rx="5" />
+        <rect class="decoracion rueda" x="202" y="134" width="14" height="58" rx="5" />
+        <rect class="decoracion rueda" x="4" y="314" width="14" height="58" rx="5" />
+        <rect class="decoracion rueda" x="202" y="314" width="14" height="58" rx="5" />
+
+        <path [class]="claseZona('parachoques_delantero')"
+          d="M34 6 Q34 2 40 2 L180 2 Q186 2 186 6 L192 26 L28 26 Z"
+          (click)="onZonaClick('parachoques_delantero')">
+          <title>Parachoques delantero — {{ etiquetaEstado('parachoques_delantero') }}</title>
+        </path>
+        <path [class]="claseZona('cabina')"
+          d="M25 28 L195 28 L204 60 Q205 65 205 70 L15 70 Q15 65 16 60 Z"
+          (click)="onZonaClick('cabina')">
+          <title>Cabina — {{ etiquetaEstado('cabina') }}</title>
+        </path>
+        <path [class]="claseZona('puerta_izquierda')"
+          d="M15 72 L58 72 L58 388 L23 388 Q15 388 15 380 Z"
+          (click)="onZonaClick('puerta_izquierda')">
+          <title>Puertas (izquierda) — {{ etiquetaEstado('puerta_izquierda') }}</title>
+        </path>
+        <path [class]="claseZona('puerta_derecha')"
+          d="M205 72 L162 72 L162 388 L197 388 Q205 388 205 380 Z"
+          (click)="onZonaClick('puerta_derecha')">
+          <title>Puertas (derecha) — {{ etiquetaEstado('puerta_derecha') }}</title>
+        </path>
+        <path [class]="claseZona('caja_carga')" d="M60 72 L160 72 L160 388 L60 388 Z"
+          (click)="onZonaClick('caja_carga')">
+          <title>Caja de carga — {{ etiquetaEstado('caja_carga') }}</title>
+        </path>
+
+        <line class="decoracion" x1="60" y1="130" x2="160" y2="130" />
+        <line class="decoracion" x1="60" y1="190" x2="160" y2="190" />
+        <line class="decoracion" x1="60" y1="250" x2="160" y2="250" />
+        <line class="decoracion" x1="60" y1="310" x2="160" y2="310" />
+        <line class="decoracion" x1="60" y1="350" x2="160" y2="350" />
+      </svg>
+    }
+
+    @case ('moto') {
+      <svg viewBox="0 0 160 380" role="img" aria-label="Diagrama del vehículo (moto)">
+        <path [class]="claseZona('faro_delantero')" d="M60 2 Q80 -6 100 2 L106 34 Q80 44 54 34 Z"
+          (click)="onZonaClick('faro_delantero')">
+          <title>Faro delantero — {{ etiquetaEstado('faro_delantero') }}</title>
+        </path>
+        <circle [class]="claseZona('rueda_delantera')" cx="80" cy="102" r="46"
+          (click)="onZonaClick('rueda_delantera')">
+          <title>Rueda delantera — {{ etiquetaEstado('rueda_delantera') }}</title>
+        </circle>
+        <path [class]="claseZona('tanque')" d="M38 168 Q80 156 122 168 L118 232 Q80 244 42 232 Z"
+          (click)="onZonaClick('tanque')">
+          <title>Tanque — {{ etiquetaEstado('tanque') }}</title>
+        </path>
+        <path [class]="claseZona('asiento')" d="M32 246 Q80 234 128 246 L124 306 Q80 320 36 306 Z"
+          (click)="onZonaClick('asiento')">
+          <title>Asiento — {{ etiquetaEstado('asiento') }}</title>
+        </path>
+        <circle [class]="claseZona('rueda_trasera')" cx="80" cy="332" r="46"
+          (click)="onZonaClick('rueda_trasera')">
+          <title>Rueda trasera — {{ etiquetaEstado('rueda_trasera') }}</title>
+        </circle>
+      </svg>
+    }
+
+    @default {
+      <svg viewBox="0 0 220 400" role="img" aria-label="Diagrama del vehículo (genérico)">
+        <rect class="decoracion rueda" x="6" y="150" width="14" height="58" rx="6" />
+        <rect class="decoracion rueda" x="200" y="150" width="14" height="58" rx="6" />
+        <rect class="decoracion rueda" x="6" y="262" width="14" height="58" rx="6" />
+        <rect class="decoracion rueda" x="200" y="262" width="14" height="58" rx="6" />
+        <path [class]="claseZona('general')" d="M70 4 Q110 -6 150 4 L172 38 Q195 68 195 108
+          L195 300 Q195 362 163 387 L153 397 L67 397 L57 387 Q25 362 25 300
+          L25 108 Q25 68 48 38 Z"
+          (click)="onZonaClick('general')">
+          <title>Vehículo — {{ etiquetaEstado('general') }}</title>
+        </path>
+      </svg>
+    }
+    }
+  }
+
+  <ul class="leyenda-zonas">
+    @for (z of listaZonas(); track z.codigo) {
+      <li [class.activa]="zonaSeleccionada() === z.codigo" (click)="onZonaClick(z.codigo)">
+        <span class="punto" [class]="claseZona(z.codigo)"></span>
+        {{ z.etiqueta }}
+        <span class="estado-texto">{{ etiquetaEstado(z.codigo) }}</span>
+      </li>
+    }
+  </ul>
+</div>

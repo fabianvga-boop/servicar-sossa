@@ -8,8 +8,8 @@ namespace ServicarSossa.Application.Interfaces;
 public interface IVehiculoService
 {
     /// <param name="clienteId">USU011: si se indica, filtra solo los vehículos de ese cliente.</param>
-    Task<Result<IEnumerable<VehiculoResponseDto>>> GetAllAsync(
-        string? buscar, string? clienteId, CancellationToken ct = default);
+    Task<Result<ResultadoPaginadoDto<VehiculoResponseDto>>> GetAllAsync(
+        string? buscar, string? clienteId, int pagina, int tamanoPagina, CancellationToken ct = default);
 
     Task<Result<VehiculoResponseDto>> GetByIdAsync(string id, CancellationToken ct = default);
 
@@ -33,4 +33,13 @@ public interface IVehiculoService
 
     Task<Result<bool>> EliminarFotoAsync(
         string vehiculoId, string fotoId, CancellationToken ct = default);
+
+    // --- Zonas (diagrama vectorial) --------------------------------------------
+
+    /// <summary>Estado más reciente de cada zona marcada, más el historial completo.</summary>
+    Task<Result<IEnumerable<VehiculoZonaResponseDto>>> GetZonasAsync(
+        string vehiculoId, CancellationToken ct = default);
+
+    Task<Result<VehiculoZonaResponseDto>> RegistrarZonaAsync(
+        string vehiculoId, RegistrarZonaDto dto, string usuarioId, CancellationToken ct = default);
 }

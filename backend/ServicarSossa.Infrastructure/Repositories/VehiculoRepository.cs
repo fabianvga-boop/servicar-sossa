@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using ServicarSossa.Application.Interfaces;
 using ServicarSossa.Domain.Entities;
 using ServicarSossa.Infrastructure.Data;
+using ServicarSossa.Infrastructure.Extensions;
 
 namespace ServicarSossa.Infrastructure.Repositories;
 
@@ -15,8 +16,8 @@ public class VehiculoRepository(AppDbContext context)
                     .AsNoTracking()
                     .FirstOrDefaultAsync(v => v.VehiculoId == vehiculoId, ct);
 
-    public async Task<IEnumerable<Vehiculo>> BuscarAsync(
-        string? buscar, string? clienteId, CancellationToken ct = default)
+    public async Task<(IEnumerable<Vehiculo> Items, int Total)> BuscarAsync(
+        string? buscar, string? clienteId, int pagina, int tamanoPagina, CancellationToken ct = default)
     {
         var query = Set.Include(v => v.Cliente).AsNoTracking();
 
@@ -32,6 +33,6 @@ public class VehiculoRepository(AppDbContext context)
                 EF.Functions.ILike(v.Modelo, termino));
         }
 
-        return await query.OrderBy(v => v.VehiculoId).ToListAsync(ct);
+        return await query.OrderBy(v => v.VehiculoId).ToPagedListAsync(pagina, tamanoPagina, ct);
     }
 }
