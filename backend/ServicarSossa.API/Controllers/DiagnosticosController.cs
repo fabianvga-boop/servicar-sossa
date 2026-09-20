@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Application.DTOs.Diagnosticos;
 using ServicarSossa.Application.Interfaces;
 using ServicarSossa.Domain.Enums;
@@ -15,14 +16,17 @@ public class DiagnosticosController(IDiagnosticoService service) : ApiController
 {
     /// <summary>USU014 — historial de diagnósticos, filtrable por vehículo, mecánico o estado.</summary>
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<DiagnosticoResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResultadoPaginadoDto<DiagnosticoResponseDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetAll(
         [FromQuery] string? vehiculoId,
         [FromQuery] string? mecanicoId,
         [FromQuery] EstadoDiag? estado,
+        [FromQuery] string? buscar,
+        [FromQuery] int pagina = 1,
+        [FromQuery] int tamanoPagina = 20,
         CancellationToken ct = default)
-        => Responder(await service.GetAllAsync(vehiculoId, mecanicoId, estado, ct));
+        => Responder(await service.GetAllAsync(vehiculoId, mecanicoId, estado, buscar, pagina, tamanoPagina, ct));
 
     /// <summary>Obtiene un diagnóstico por su código (DIA-000).</summary>
     [HttpGet("{id}")]
@@ -74,6 +78,24 @@ public class DiagnosticosController(IDiagnosticoService service) : ApiController
     public async Task<IActionResult> Responder(
         string id, [FromBody] ResponderDiagnosticoDto dto, CancellationToken ct)
         => Responder(await service.ResponderAsync(id, dto, UsuarioIdActual, EsAdministrador, ct));
+
+    /// <summary>
+    /// Diagnóstico asistido: sugiere servicios, repuestos y un rango de precio
+    /// para una falla que todavía se está redactando, comparándola contra el
+    /// historial. Se llama mientras el mecánico escribe, antes de guardar nada.
+    /// </summary>
+    [HttpGet("sugerencias")]
+    [ProducesResponseType(typeof(SugerenciaDiagnosticoDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetSugerencias(
+        [FromQuery] string descripcion, CancellationToken ct)
+        => Responder(await service.GetSugerenciasAsync(descripcion ?? string.Empty, ct));
+
+    /// <summary>Misma sugerencia, a partir de la falla ya guardada de un diagnóstico existente.</summary>
+    [HttpGet("{id}/sugerencias")]
+    [ProducesResponseType(typeof(SugerenciaDiagnosticoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetSugerenciasPorId(string id, CancellationToken ct)
+        => Responder(await service.GetSugerenciasPorIdAsync(id, ct));
 
     /// <summary>Descarga el presupuesto preliminar del diagnóstico en PDF.</summary>
     // Sin [Produces("application/pdf")]: restringir el tipo de salida haría que

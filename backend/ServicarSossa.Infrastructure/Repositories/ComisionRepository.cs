@@ -3,6 +3,7 @@ using ServicarSossa.Application.Interfaces;
 using ServicarSossa.Domain.Entities;
 using ServicarSossa.Domain.Enums;
 using ServicarSossa.Infrastructure.Data;
+using ServicarSossa.Infrastructure.Extensions;
 
 namespace ServicarSossa.Infrastructure.Repositories;
 
@@ -18,6 +19,18 @@ public class ComisionRepository(AppDbContext context)
     public async Task<IEnumerable<Comision>> BuscarAsync(
         string? mecanicoId, string? ordenId, EstadoPago? estadoPago,
         DateTime? desde, DateTime? hasta, CancellationToken ct = default)
+        => await ConstruirConsulta(mecanicoId, ordenId, estadoPago, desde, hasta).ToListAsync(ct);
+
+    public async Task<(IEnumerable<Comision> Items, int Total)> BuscarPaginadoAsync(
+        string? mecanicoId, string? ordenId, EstadoPago? estadoPago,
+        DateTime? desde, DateTime? hasta,
+        int pagina, int tamanoPagina, CancellationToken ct = default)
+        => await ConstruirConsulta(mecanicoId, ordenId, estadoPago, desde, hasta)
+            .ToPagedListAsync(pagina, tamanoPagina, ct);
+
+    private IQueryable<Comision> ConstruirConsulta(
+        string? mecanicoId, string? ordenId, EstadoPago? estadoPago,
+        DateTime? desde, DateTime? hasta)
     {
         var query = ConIncludes(Set.AsNoTracking());
 
@@ -36,7 +49,7 @@ public class ComisionRepository(AppDbContext context)
         if (hasta.HasValue)
             query = query.Where(c => c.FechaCalculo <= hasta.Value);
 
-        return await query.OrderByDescending(c => c.FechaCalculo).ToListAsync(ct);
+        return query.OrderByDescending(c => c.FechaCalculo);
     }
 
     public async Task<List<Comision>> GetParaPagoAsync(

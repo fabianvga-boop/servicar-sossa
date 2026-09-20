@@ -3,6 +3,7 @@ using ServicarSossa.Application.Interfaces;
 using ServicarSossa.Domain.Entities;
 using ServicarSossa.Domain.Enums;
 using ServicarSossa.Infrastructure.Data;
+using ServicarSossa.Infrastructure.Extensions;
 
 namespace ServicarSossa.Infrastructure.Repositories;
 
@@ -11,18 +12,21 @@ public class ReporteRepository(AppDbContext context) : IReporteRepository
 {
     public async Task<IEnumerable<FilaVentaDto>> VentasAsync(
         DateTime desde, DateTime hasta, CancellationToken ct = default)
-        => await context.Facturas
+        // Se reporta sobre proformas, no sobre facturas: es contra la proforma
+        // que el cliente paga, así que ahí está el dinero del taller. La tabla
+        // de facturas guarda lo fiscal y estaría vacía sin NIT habilitado.
+        => await context.Proformas
             .AsNoTracking()
-            .Where(f => f.FechaEmision >= desde && f.FechaEmision <= hasta)
-            .OrderBy(f => f.FechaEmision)
-            .Select(f => new FilaVentaDto(
-                f.FacturaId,
-                f.FechaEmision,
-                f.Orden.Cliente.RazonSocial ?? (f.Orden.Cliente.Nombre + " " + f.Orden.Cliente.Apellido),
-                f.Orden.Vehiculo.Placa,
-                f.Total,
-                f.Pagos.Sum(p => (decimal?)p.Monto) ?? 0m,
-                f.Estado.ToString()))
+            .Where(p => p.FechaEmision >= desde && p.FechaEmision <= hasta)
+            .OrderBy(p => p.FechaEmision)
+            .Select(p => new FilaVentaDto(
+                p.ProformaId,
+                p.FechaEmision,
+                p.Orden.Cliente.RazonSocial ?? (p.Orden.Cliente.Nombre + " " + p.Orden.Cliente.Apellido),
+                p.Orden.Vehiculo.Placa,
+                p.Total,
+                p.Pagos.Sum(x => (decimal?)x.Monto) ?? 0m,
+                p.Estado.ToString()))
             .ToListAsync(ct);
 
     public async Task<IEnumerable<FilaComisionDto>> ComisionesAsync(
@@ -75,15 +79,15 @@ public class ReporteRepository(AppDbContext context) : IReporteRepository
         ReporteGenerado reporte, CancellationToken ct = default)
         => await context.ReportesGenerados.AddAsync(reporte, ct);
 
-    public async Task<IEnumerable<ReporteGenerado>> GetBitacoraAsync(
-        string? tipoReporte, CancellationToken ct = default)
+    public async Task<(IEnumerable<ReporteGenerado> Items, int Total)> GetBitacoraAsync(
+        string? tipoReporte, int pagina, int tamanoPagina, CancellationToken ct = default)
     {
         var query = context.ReportesGenerados.Include(r => r.Usuario).AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(tipoReporte))
             query = query.Where(r => r.TipoReporte == tipoReporte);
 
-        return await query.OrderByDescending(r => r.FechaGeneracion).Take(200).ToListAsync(ct);
+        return await query.OrderByDescending(r => r.FechaGeneracion).ToPagedListAsync(pagina, tamanoPagina, ct);
     }
 
     public async Task<int> GuardarAsync(CancellationToken ct = default)

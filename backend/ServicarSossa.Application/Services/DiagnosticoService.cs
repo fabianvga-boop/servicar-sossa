@@ -1,5 +1,6 @@
 using ServicarSossa.Application.Common;
 using ServicarSossa.Application.DTOs.Comprobantes;
+using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Application.DTOs.Diagnosticos;
 using ServicarSossa.Application.DTOs.Ordenes;
 using ServicarSossa.Application.Interfaces;
@@ -15,7 +16,8 @@ public class DiagnosticoService(
     IOrdenRepository ordenRepo,
     IGeneradorId generadorId,
     IGeneradorComprobantes generadorComprobantes,
-    IOrdenService ordenes) : IDiagnosticoService
+    IOrdenService ordenes,
+    IAuditor auditor) : IDiagnosticoService
 {
     /// <summary>
     /// Una orden cerrada ya movió stock, calculó comisiones y (si corresponde)
@@ -27,17 +29,26 @@ public class DiagnosticoService(
         var orden = await ordenRepo.FirstOrDefaultAsync(o => o.DiagnosticoId == diagnosticoId, ct);
         return orden?.Estado == EstadoOrden.Cerrada;
     }
-    public async Task<Result<IEnumerable<DiagnosticoResponseDto>>> GetAllAsync(
-        string? vehiculoId, string? mecanicoId, EstadoDiag? estado,
-        CancellationToken ct = default)
+    public async Task<Result<ResultadoPaginadoDto<DiagnosticoResponseDto>>> GetAllAsync(
+        string? vehiculoId, string? mecanicoId, EstadoDiag? estado, string? buscar,
+        int pagina, int tamanoPagina, CancellationToken ct = default)
     {
         if (!string.IsNullOrWhiteSpace(vehiculoId)
             && !await vehiculos.ExistsAsync(v => v.VehiculoId == vehiculoId, ct))
-            return Result<IEnumerable<DiagnosticoResponseDto>>.NoEncontrado(
+            return Result<ResultadoPaginadoDto<DiagnosticoResponseDto>>.NoEncontrado(
                 $"No existe el vehículo {vehiculoId}.");
 
-        var lista = await diagnosticos.BuscarAsync(vehiculoId, mecanicoId, estado, ct);
-        return Result<IEnumerable<DiagnosticoResponseDto>>.Ok(lista.Select(Mapear));
+        var (items, total) = await diagnosticos.BuscarPaginadoAsync(
+            vehiculoId, mecanicoId, estado, buscar, pagina, tamanoPagina, ct);
+
+        return Result<ResultadoPaginadoDto<DiagnosticoResponseDto>>.Ok(
+            new ResultadoPaginadoDto<DiagnosticoResponseDto>
+            {
+                Items = items.Select(Mapear),
+                TotalRegistros = total,
+                Pagina = pagina,
+                TamanoPagina = tamanoPagina
+            });
     }
 
     public async Task<Result<DiagnosticoResponseDto>> GetByIdAsync(
@@ -86,6 +97,11 @@ public class DiagnosticoService(
         };
 
         await diagnosticos.AddAsync(diagnostico, ct);
+
+        await auditor.RegistrarAsync(
+            mecanicoId, AccionAuditoria.Crear, "Diagnostico", diagnostico.DiagnosticoId,
+            $"Registró el diagnóstico del vehículo {dto.VehiculoId}: '{diagnostico.DescripcionFalla}'.", ct);
+
         await diagnosticos.SaveChangesAsync(ct);
 
         var creado = await diagnosticos.GetByIdCompletoAsync(diagnostico.DiagnosticoId, ct);
@@ -129,6 +145,10 @@ public class DiagnosticoService(
         diagnostico.MontoEstimado = dto.MontoEstimado;
         diagnostico.FechaModificacion = DateTime.UtcNow;      // USU015
 
+        await auditor.RegistrarAsync(
+            usuarioId, AccionAuditoria.Editar, "Diagnostico", id,
+            $"Editó el diagnóstico '{diagnostico.DiagnosticoId}'.", ct);
+
         await diagnosticos.SaveChangesAsync(ct);
 
         var actualizado = await diagnosticos.GetByIdCompletoAsync(id, ct);
@@ -163,6 +183,10 @@ public class DiagnosticoService(
 
         diagnostico.Estado = dto.Estado;
         diagnostico.FechaModificacion = DateTime.UtcNow;
+
+        await auditor.RegistrarAsync(
+            usuarioId, AccionAuditoria.CambiarEstado, "Diagnostico", id,
+            $"Marcó el diagnóstico '{id}' como {dto.Estado}.", ct);
 
         await diagnosticos.SaveChangesAsync(ct);
 
@@ -208,6 +232,10 @@ public class DiagnosticoService(
             ? null
             : dto.ComentarioCliente.Trim();
         diagnostico.FechaModificacion = DateTime.UtcNow;
+
+        await auditor.RegistrarAsync(
+            usuarioId, AccionAuditoria.CambiarEstado, "Diagnostico", id,
+            $"Registró la respuesta del cliente al diagnóstico '{id}': {dto.Respuesta}.", ct);
 
         await diagnosticos.SaveChangesAsync(ct);
 
@@ -286,6 +314,150 @@ public class DiagnosticoService(
 
         return Result<ArchivoComprobanteDto>.Ok(
             generadorComprobantes.GenerarPresupuestoDiagnostico(presupuesto));
+    }
+
+    // ----------------------------------------------------- Diagnóstico asistido
+
+    public async Task<Result<SugerenciaDiagnosticoDto>> GetSugerenciasAsync(
+        string descripcionFalla, CancellationToken ct = default)
+        => Result<SugerenciaDiagnosticoDto>.Ok(await CalcularSugerenciasAsync(descripcionFalla, null, ct));
+
+    public async Task<Result<SugerenciaDiagnosticoDto>> GetSugerenciasPorIdAsync(
+        string diagnosticoId, CancellationToken ct = default)
+    {
+        var diagnostico = await diagnosticos.FirstOrDefaultAsync(d => d.DiagnosticoId == diagnosticoId, ct);
+
+        if (diagnostico is null)
+            return Result<SugerenciaDiagnosticoDto>.NoEncontrado($"No existe el diagnóstico {diagnosticoId}.");
+
+        return Result<SugerenciaDiagnosticoDto>.Ok(
+            await CalcularSugerenciasAsync(diagnostico.DescripcionFalla, diagnosticoId, ct));
+    }
+
+    /// <summary>Umbral mínimo de similitud (Jaccard sobre palabras) para considerar dos fallas "parecidas".</summary>
+    private const double UmbralSimilitud = 0.15;
+    private const int MaximoCasosSimilares = 8;
+
+    private async Task<SugerenciaDiagnosticoDto> CalcularSugerenciasAsync(
+        string descripcionFalla, string? excluirDiagnosticoId, CancellationToken ct)
+    {
+        var vacia = new SugerenciaDiagnosticoDto();
+
+        var palabrasNuevas = Tokenizar(descripcionFalla);
+        if (palabrasNuevas.Count == 0) return vacia;
+
+        var candidatos = await diagnosticos.ObtenerConOrdenParaSugerenciasAsync(ct);
+
+        var puntuados = candidatos
+            .Where(d => d.DiagnosticoId != excluirDiagnosticoId)
+            .Select(d => (Diagnostico: d, Similitud: Similitud(palabrasNuevas, Tokenizar(d.DescripcionFalla))))
+            .Where(x => x.Similitud >= UmbralSimilitud)
+            .OrderByDescending(x => x.Similitud)
+            .Take(MaximoCasosSimilares)
+            .ToList();
+
+        if (puntuados.Count == 0) return vacia;
+
+        var ordenes = puntuados.Select(x => x.Diagnostico.Orden!).ToList();
+        var totalCasos = ordenes.Count;
+
+        var servicios = ordenes
+            .SelectMany(o => o.Servicios.Select(s => (Orden: o, Servicio: s)))
+            .GroupBy(x => x.Servicio.ServicioId ?? $"libre:{x.Servicio.NombreLibre}")
+            .Select(g =>
+            {
+                var frecuencia = g.Select(x => x.Orden.OrdenId).Distinct().Count();
+                return new SugerenciaServicioDto
+                {
+                    ServicioId = g.First().Servicio.ServicioId,
+                    Nombre = g.First().Servicio.Servicio?.Nombre ?? g.First().Servicio.NombreLibre ?? "Servicio",
+                    Frecuencia = frecuencia,
+                    Porcentaje = Math.Round(100.0 * frecuencia / totalCasos, 1),
+                    PrecioPromedio = Math.Round(g.Average(x => x.Servicio.Precio), 2)
+                };
+            })
+            .OrderByDescending(s => s.Frecuencia)
+            .ThenBy(s => s.Nombre)
+            .Take(6)
+            .ToList();
+
+        var repuestos = ordenes
+            .SelectMany(o => o.Repuestos.Select(r => (Orden: o, Repuesto: r)))
+            .GroupBy(x => x.Repuesto.RepuestoId ?? $"libre:{x.Repuesto.Descripcion}")
+            .Select(g =>
+            {
+                var frecuencia = g.Select(x => x.Orden.OrdenId).Distinct().Count();
+                return new SugerenciaRepuestoDto
+                {
+                    RepuestoId = g.First().Repuesto.RepuestoId,
+                    Nombre = g.First().Repuesto.Repuesto?.Nombre ?? g.First().Repuesto.Descripcion ?? "Repuesto",
+                    Frecuencia = frecuencia,
+                    Porcentaje = Math.Round(100.0 * frecuencia / totalCasos, 1),
+                    PrecioUnitarioPromedio = Math.Round(g.Average(x => x.Repuesto.PrecioUnitario), 2)
+                };
+            })
+            .OrderByDescending(r => r.Frecuencia)
+            .ThenBy(r => r.Nombre)
+            .Take(6)
+            .ToList();
+
+        var totales = ordenes
+            .Select(o => o.Servicios.Sum(s => s.Precio) + o.Repuestos.Sum(r => r.Cantidad * r.PrecioUnitario))
+            .ToList();
+
+        return new SugerenciaDiagnosticoDto
+        {
+            BasadoEnCasos = totalCasos,
+            Servicios = servicios,
+            Repuestos = repuestos,
+            PrecioMinimo = totales.Min(),
+            PrecioMaximo = totales.Max(),
+            PrecioPromedio = Math.Round(totales.Average(), 2),
+            CasosSimilares = puntuados.Select(x => new CasoSimilarDto
+            {
+                DiagnosticoId = x.Diagnostico.DiagnosticoId,
+                DescripcionFalla = x.Diagnostico.DescripcionFalla,
+                Similitud = Math.Round(x.Similitud, 2)
+            }).ToList()
+        };
+    }
+
+    /// <summary>
+    /// Palabras/vacío del castellano que no aportan a comparar síntomas ("el motor
+    /// hace ruido" vs "hace ruido el motor" deben pesar por "motor"/"ruido", no
+    /// por "el"/"hace"). Lista corta a propósito: mejor una palabra vacía de más
+    /// en el resultado que perder una palabra clave real por sobre-filtrar.
+    /// </summary>
+    private static readonly HashSet<string> PalabrasVacias = new(StringComparer.Ordinal)
+    {
+        "el", "la", "los", "las", "un", "una", "unos", "unas", "de", "del", "al",
+        "a", "en", "y", "o", "que", "se", "no", "con", "sin", "por", "para",
+        "es", "esta", "muy", "mas", "su", "sus", "le", "lo", "cuando",
+    };
+
+    private static HashSet<string> Tokenizar(string texto)
+    {
+        var normalizado = QuitarAcentos(texto.ToLowerInvariant());
+        var crudas = normalizado.Split(
+            [' ', '\t', '\n', '\r', ',', '.', ';', ':', '!', '¡', '?', '¿', '(', ')', '"', '\''],
+            StringSplitOptions.RemoveEmptyEntries);
+
+        return crudas.Where(p => p.Length > 2 && !PalabrasVacias.Contains(p)).ToHashSet();
+    }
+
+    private static string QuitarAcentos(string texto) => texto
+        .Replace('á', 'a').Replace('é', 'e').Replace('í', 'i').Replace('ó', 'o').Replace('ú', 'u')
+        .Replace('ñ', 'n').Replace('ü', 'u');
+
+    /// <summary>Similitud de Jaccard: |A ∩ B| / |A ∪ B|. Simple, determinística y fácil de explicar.</summary>
+    private static double Similitud(HashSet<string> a, HashSet<string> b)
+    {
+        if (a.Count == 0 || b.Count == 0) return 0;
+
+        var interseccion = a.Count(b.Contains);
+        var union = a.Count + b.Count - interseccion;
+
+        return union == 0 ? 0 : (double)interseccion / union;
     }
 
     private static DiagnosticoResponseDto Mapear(Diagnostico d) => new()

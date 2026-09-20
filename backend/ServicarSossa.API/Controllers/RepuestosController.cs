@@ -14,17 +14,19 @@ namespace ServicarSossa.API.Controllers;
 public class RepuestosController(IRepuestoService service) : ApiControllerBase
 {
     /// <summary>
-    /// Lista repuestos. Con <c>soloStockBajo=true</c> devuelve la alerta de
-    /// reposición (USU030): los que llegaron o bajaron del stock mínimo.
+    /// USU030 — lista repuestos. Con <c>soloStockBajo=true</c> devuelve la alerta
+    /// de reposición: los que llegaron o bajaron del stock mínimo.
     /// </summary>
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<RepuestoResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResultadoPaginadoDto<RepuestoResponseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll(
         [FromQuery] string? buscar,
         [FromQuery] string? proveedorId,
         [FromQuery] bool soloStockBajo = false,
+        [FromQuery] int pagina = 1,
+        [FromQuery] int tamanoPagina = 20,
         CancellationToken ct = default)
-        => Responder(await service.GetAllAsync(buscar, proveedorId, soloStockBajo, ct));
+        => Responder(await service.GetAllAsync(buscar, proveedorId, soloStockBajo, pagina, tamanoPagina, ct));
 
     /// <summary>Obtiene un repuesto por su código (REP-000).</summary>
     [HttpGet("{id}")]
@@ -46,8 +48,9 @@ public class RepuestosController(IRepuestoService service) : ApiControllerBase
     }
 
     /// <summary>
-    /// USU027 — actualiza datos del repuesto. No modifica el stock actual:
-    /// para eso está el ajuste de inventario.
+    /// Actualiza los datos maestros del repuesto (nombre, precios, proveedor,
+    /// stock mínimo). No modifica el stock actual: eso es USU027, en el ajuste
+    /// de inventario. Sin historia numerada propia en la Épica 6.
     /// </summary>
     [HttpPut("{id}")]
     [Authorize(Roles = "Administrador")]
@@ -57,7 +60,10 @@ public class RepuestosController(IRepuestoService service) : ApiControllerBase
         string id, [FromBody] RepuestoUpdateDto dto, CancellationToken ct)
         => Responder(await service.UpdateAsync(id, dto, UsuarioIdActual, ct));
 
-    /// <summary>Ajuste manual de inventario (conteo físico, merma, rotura).</summary>
+    /// <summary>
+    /// USU027 — actualiza el stock. Ajuste manual de inventario con motivo
+    /// (conteo físico, merma, rotura); el ingreso por compra es USU029.
+    /// </summary>
     [HttpPatch("{id}/stock")]
     [Authorize(Roles = "Administrador")]
     [ProducesResponseType(typeof(RepuestoResponseDto), StatusCodes.Status200OK)]

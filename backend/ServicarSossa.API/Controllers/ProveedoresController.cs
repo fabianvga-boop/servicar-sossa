@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Application.DTOs.Proveedores;
 using ServicarSossa.Application.Interfaces;
 
@@ -11,9 +12,11 @@ public class ProveedoresController(IProveedorService service) : ApiControllerBas
 {
     /// <summary>Lista proveedores, opcionalmente filtrados por nombre o contacto.</summary>
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<ProveedorResponseDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAll([FromQuery] string? buscar, CancellationToken ct)
-        => Responder(await service.GetAllAsync(buscar, ct));
+    [ProducesResponseType(typeof(ResultadoPaginadoDto<ProveedorResponseDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAll(
+        [FromQuery] string? buscar, [FromQuery] int pagina = 1, [FromQuery] int tamanoPagina = 20,
+        CancellationToken ct = default)
+        => Responder(await service.GetAllAsync(buscar, pagina, tamanoPagina, ct));
 
     /// <summary>Obtiene un proveedor por su código (PRO-000).</summary>
     [HttpGet("{id}")]

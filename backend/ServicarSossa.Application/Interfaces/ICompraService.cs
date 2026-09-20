@@ -1,5 +1,6 @@
 using ServicarSossa.Application.Common;
 using ServicarSossa.Application.DTOs.Compras;
+using ServicarSossa.Application.DTOs.Comunes;
 
 namespace ServicarSossa.Application.Interfaces;
 
@@ -10,8 +11,9 @@ namespace ServicarSossa.Application.Interfaces;
 /// </summary>
 public interface ICompraService
 {
-    Task<Result<IEnumerable<CompraResponseDto>>> GetAllAsync(
-        string? proveedorId, DateTime? desde, DateTime? hasta, CancellationToken ct = default);
+    Task<Result<ResultadoPaginadoDto<CompraResponseDto>>> GetAllAsync(
+        string? proveedorId, DateTime? desde, DateTime? hasta,
+        int pagina, int tamanoPagina, CancellationToken ct = default);
 
     Task<Result<CompraDetalleResponseDto>> GetByIdAsync(string id, CancellationToken ct = default);
 

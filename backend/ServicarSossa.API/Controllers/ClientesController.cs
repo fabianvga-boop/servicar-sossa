@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ServicarSossa.Application.DTOs.Clientes;
+using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Application.Interfaces;
 
 namespace ServicarSossa.API.Controllers;
@@ -9,11 +10,13 @@ namespace ServicarSossa.API.Controllers;
 [Authorize(Roles = "Administrador")]
 public class ClientesController(IClienteService service) : ApiControllerBase
 {
-    /// <summary>Lista clientes, opcionalmente filtrados por nombre, razón social o CI/NIT.</summary>
+    /// <summary>USU007 — lista clientes, opcionalmente filtrados por nombre, razón social o CI/NIT.</summary>
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<ClienteResponseDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAll([FromQuery] string? buscar, CancellationToken ct)
-        => Responder(await service.GetAllAsync(buscar, ct));
+    [ProducesResponseType(typeof(ResultadoPaginadoDto<ClienteResponseDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAll(
+        [FromQuery] string? buscar, [FromQuery] int pagina = 1, [FromQuery] int tamanoPagina = 20,
+        CancellationToken ct = default)
+        => Responder(await service.GetAllAsync(buscar, pagina, tamanoPagina, ct));
 
     /// <summary>Obtiene un cliente por su código (CLI-000).</summary>
     [HttpGet("{id}")]
@@ -33,7 +36,7 @@ public class ClientesController(IClienteService service) : ApiControllerBase
         return ResponderCreado(result, nameof(GetById), new { id = result.Data?.ClienteId });
     }
 
-    /// <summary>USU007 — actualiza los datos del cliente.</summary>
+    /// <summary>USU008 — actualiza los datos del cliente.</summary>
     [HttpPut("{id}")]
     [ProducesResponseType(typeof(ClienteResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -41,7 +44,11 @@ public class ClientesController(IClienteService service) : ApiControllerBase
         string id, [FromBody] ClienteUpdateDto dto, CancellationToken ct)
         => Responder(await service.UpdateAsync(id, dto, UsuarioIdActual, ct));
 
-    /// <summary>USU008 — activa o desactiva el cliente (baja lógica).</summary>
+    /// <summary>
+    /// Activa o desactiva el cliente (baja lógica). Sin historia de usuario
+    /// numerada propia en la Épica 2 — funcionalidad añadida más allá del
+    /// backlog original de USU006–USU008 (ver «Desarrollo realizado»).
+    /// </summary>
     [HttpPatch("{id}/estado")]
     [ProducesResponseType(typeof(ClienteResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

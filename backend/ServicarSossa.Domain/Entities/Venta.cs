@@ -26,8 +26,19 @@ public class Venta
     public EstadoVenta Estado { get; set; } = EstadoVenta.Emitida;
     public string? Observaciones { get; set; }
 
+    /// <summary>
+    /// Código de "tipo de método de pago" del SIN, congelado al vender. Se guarda
+    /// aparte de <see cref="MetodoPago"/> porque el catálogo del SIN cambia con
+    /// el tiempo: lo ya emitido debe conservar el código con el que se emitió.
+    /// Nullable mientras se opere con recibos internos.
+    /// </summary>
+    public int? MetodoPagoId { get; set; }
+
     // Navegación
     public Cliente? Cliente { get; set; }
     public Usuario Usuario { get; set; } = null!;
     public ICollection<VentaDetalle> Detalles { get; set; } = [];
+
+    /// <summary>Comprobante fiscal, solo si la venta se facturó ante el SIAT.</summary>
+    public Factura? Factura { get; set; }
 }

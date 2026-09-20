@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using ServicarSossa.Application.Interfaces;
 using ServicarSossa.Domain.Entities;
 using ServicarSossa.Infrastructure.Data;
+using ServicarSossa.Infrastructure.Extensions;
 
 namespace ServicarSossa.Infrastructure.Repositories;
 
@@ -17,8 +18,9 @@ public class CompraRepository(AppDbContext context)
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.CompraId == compraId, ct);
 
-    public async Task<IEnumerable<Compra>> BuscarAsync(
-        string? proveedorId, DateTime? desde, DateTime? hasta, CancellationToken ct = default)
+    public async Task<(IEnumerable<Compra> Items, int Total)> BuscarAsync(
+        string? proveedorId, DateTime? desde, DateTime? hasta,
+        int pagina, int tamanoPagina, CancellationToken ct = default)
     {
         var query = Set
             .Include(c => c.Proveedor)
@@ -46,7 +48,7 @@ public class CompraRepository(AppDbContext context)
             query = query.Where(c => c.Fecha < limite);
         }
 
-        return await query.OrderByDescending(c => c.Fecha).ToListAsync(ct);
+        return await query.OrderByDescending(c => c.Fecha).ToPagedListAsync(pagina, tamanoPagina, ct);
     }
 
     public async Task AgregarDetalleAsync(CompraDetalle detalle, CancellationToken ct = default)

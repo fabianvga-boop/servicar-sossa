@@ -1,5 +1,6 @@
 using System.Globalization;
 using ServicarSossa.Application.Common;
+using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Application.DTOs.Reportes;
 using ServicarSossa.Application.Interfaces;
 using ServicarSossa.Domain.Entities;
@@ -83,25 +84,31 @@ public class ReporteService(
         return Result<ArchivoReporteDto>.Ok(archivo, "Reporte generado correctamente.");
     }
 
-    public async Task<Result<IEnumerable<ReporteGeneradoResponseDto>>> GetBitacoraAsync(
-        string? tipoReporte, CancellationToken ct = default)
+    public async Task<Result<ResultadoPaginadoDto<ReporteGeneradoResponseDto>>> GetBitacoraAsync(
+        string? tipoReporte, int pagina, int tamanoPagina, CancellationToken ct = default)
     {
-        var lista = await reportes.GetBitacoraAsync(tipoReporte, ct);
+        var (items, total) = await reportes.GetBitacoraAsync(tipoReporte, pagina, tamanoPagina, ct);
 
-        return Result<IEnumerable<ReporteGeneradoResponseDto>>.Ok(lista.Select(r =>
-            new ReporteGeneradoResponseDto
+        return Result<ResultadoPaginadoDto<ReporteGeneradoResponseDto>>.Ok(
+            new ResultadoPaginadoDto<ReporteGeneradoResponseDto>
             {
-                ReporteId = r.ReporteId,
-                TipoReporte = r.TipoReporte,
-                FechaInicio = r.FechaInicio,
-                FechaFin = r.FechaFin,
-                UsuarioId = r.UsuarioId,
-                NombreUsuario = r.Usuario is null
-                    ? string.Empty
-                    : $"{r.Usuario.Nombre} {r.Usuario.Apellido}".Trim(),
-                FechaGeneracion = r.FechaGeneracion,
-                Formato = r.Formato
-            }));
+                Items = items.Select(r => new ReporteGeneradoResponseDto
+                {
+                    ReporteId = r.ReporteId,
+                    TipoReporte = r.TipoReporte,
+                    FechaInicio = r.FechaInicio,
+                    FechaFin = r.FechaFin,
+                    UsuarioId = r.UsuarioId,
+                    NombreUsuario = r.Usuario is null
+                        ? string.Empty
+                        : $"{r.Usuario.Nombre} {r.Usuario.Apellido}".Trim(),
+                    FechaGeneracion = r.FechaGeneracion,
+                    Formato = r.Formato
+                }),
+                TotalRegistros = total,
+                Pagina = pagina,
+                TamanoPagina = tamanoPagina
+            });
     }
 
     // ================================================================== REPORTES

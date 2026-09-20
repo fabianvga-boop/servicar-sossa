@@ -7,8 +7,9 @@ public interface ICompraRepository : IRepository<Compra>
 {
     Task<Compra?> GetDetalleAsync(string compraId, CancellationToken ct = default);
 
-    Task<IEnumerable<Compra>> BuscarAsync(
-        string? proveedorId, DateTime? desde, DateTime? hasta, CancellationToken ct = default);
+    Task<(IEnumerable<Compra> Items, int Total)> BuscarAsync(
+        string? proveedorId, DateTime? desde, DateTime? hasta,
+        int pagina, int tamanoPagina, CancellationToken ct = default);
 
     Task AgregarDetalleAsync(CompraDetalle detalle, CancellationToken ct = default);
 

@@ -1,4 +1,5 @@
 using ServicarSossa.Application.Common;
+using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Application.DTOs.Ventas;
 using ServicarSossa.Application.Interfaces;
 using ServicarSossa.Domain.Entities;
@@ -24,16 +25,24 @@ public class VentaService(
 {
     private const string SubcarpetaFotos = "repuestos";
 
-    public async Task<Result<IEnumerable<VentaResponseDto>>> GetAllAsync(
+    public async Task<Result<ResultadoPaginadoDto<VentaResponseDto>>> GetAllAsync(
         string? clienteId, EstadoVenta? estado,
-        DateTime? desde, DateTime? hasta, CancellationToken ct = default)
+        DateTime? desde, DateTime? hasta, int pagina, int tamanoPagina, CancellationToken ct = default)
     {
         if (desde.HasValue && hasta.HasValue && desde > hasta)
-            return Result<IEnumerable<VentaResponseDto>>.Fail(
+            return Result<ResultadoPaginadoDto<VentaResponseDto>>.Fail(
                 "La fecha inicial no puede ser posterior a la final.");
 
-        var lista = await ventas.BuscarAsync(clienteId, estado, desde, hasta, ct);
-        return Result<IEnumerable<VentaResponseDto>>.Ok(lista.Select(Mapear));
+        var (items, total) = await ventas.BuscarPaginadoAsync(
+            clienteId, estado, desde, hasta, pagina, tamanoPagina, ct);
+
+        return Result<ResultadoPaginadoDto<VentaResponseDto>>.Ok(new ResultadoPaginadoDto<VentaResponseDto>
+        {
+            Items = items.Select(Mapear),
+            TotalRegistros = total,
+            Pagina = pagina,
+            TamanoPagina = tamanoPagina
+        });
     }
 
     public async Task<Result<VentaResponseDto>> GetByIdAsync(
@@ -137,6 +146,10 @@ public class VentaService(
         }, ct);
 
         var creada = await ventas.GetByIdCompletaAsync(ventaId, ct);
+
+        // La venta no emite comprobante fiscal por sí sola: si el taller está
+        // habilitado ante el SIN, se factura después desde el módulo de
+        // Facturas. Así vender no depende de que un servicio externo responda.
         return Result<VentaResponseDto>.Ok(
             Mapear(creada!), $"Venta {ventaId} registrada por Bs {total:N2}.");
     }

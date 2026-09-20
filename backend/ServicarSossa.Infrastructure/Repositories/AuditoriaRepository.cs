@@ -3,6 +3,7 @@ using ServicarSossa.Application.Interfaces;
 using ServicarSossa.Domain.Entities;
 using ServicarSossa.Domain.Enums;
 using ServicarSossa.Infrastructure.Data;
+using ServicarSossa.Infrastructure.Extensions;
 
 namespace ServicarSossa.Infrastructure.Repositories;
 
@@ -12,6 +13,18 @@ public class AuditoriaRepository(AppDbContext context)
     public async Task<IEnumerable<Auditoria>> BuscarAsync(
         string? entidad, string? entidadId, string? usuarioId, AccionAuditoria? accion,
         DateTime? desde, DateTime? hasta, CancellationToken ct = default)
+        => await ConstruirConsulta(entidad, entidadId, usuarioId, accion, desde, hasta)
+            .Take(500).ToListAsync(ct);
+
+    public async Task<(IEnumerable<Auditoria> Items, int Total)> BuscarPaginadoAsync(
+        string? entidad, string? entidadId, string? usuarioId, AccionAuditoria? accion,
+        DateTime? desde, DateTime? hasta, int pagina, int tamanoPagina, CancellationToken ct = default)
+        => await ConstruirConsulta(entidad, entidadId, usuarioId, accion, desde, hasta)
+            .ToPagedListAsync(pagina, tamanoPagina, ct);
+
+    private IQueryable<Auditoria> ConstruirConsulta(
+        string? entidad, string? entidadId, string? usuarioId, AccionAuditoria? accion,
+        DateTime? desde, DateTime? hasta)
     {
         var query = Set.Include(a => a.Usuario).AsNoTracking().AsQueryable();
 
@@ -37,6 +50,6 @@ public class AuditoriaRepository(AppDbContext context)
             query = query.Where(a => a.Fecha < limite);
         }
 
-        return await query.OrderByDescending(a => a.Fecha).Take(500).ToListAsync(ct);
+        return query.OrderByDescending(a => a.Fecha);
     }
 }

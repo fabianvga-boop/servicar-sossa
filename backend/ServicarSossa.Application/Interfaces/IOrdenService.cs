@@ -53,4 +53,12 @@ public interface IOrdenService
 
     Task<Result<OrdenDetalleResponseDto>> QuitarRepuestoAsync(
         string ordenId, string ordenRepuestoId, CancellationToken ct = default);
+
+    // ------------------------------------------------- Escribir menos: sugerencias
+
+    /// <summary>Nombres de servicios "fuera de catálogo" ya usados en cualquier orden.</summary>
+    Task<Result<IEnumerable<string>>> GetNombresServicioLibreAsync(CancellationToken ct = default);
+
+    /// <summary>Descripciones de repuestos "fuera de inventario" ya usadas en cualquier orden.</summary>
+    Task<Result<IEnumerable<string>>> GetDescripcionesRepuestoLibreAsync(CancellationToken ct = default);
 }

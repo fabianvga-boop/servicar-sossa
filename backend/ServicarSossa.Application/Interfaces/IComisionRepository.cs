@@ -11,9 +11,16 @@ public interface IComisionRepository : IRepository<Comision>
 {
     Task<Comision?> GetByIdCompletaAsync(string comisionId, CancellationToken ct = default);
 
+    /// <summary>Sin paginar: la usa el resumen por mecánico, que necesita el total real.</summary>
     Task<IEnumerable<Comision>> BuscarAsync(
         string? mecanicoId, string? ordenId, EstadoPago? estadoPago,
         DateTime? desde, DateTime? hasta, CancellationToken ct = default);
+
+    /// <summary>Misma búsqueda que <see cref="BuscarAsync"/>, para la pantalla de listado.</summary>
+    Task<(IEnumerable<Comision> Items, int Total)> BuscarPaginadoAsync(
+        string? mecanicoId, string? ordenId, EstadoPago? estadoPago,
+        DateTime? desde, DateTime? hasta,
+        int pagina, int tamanoPagina, CancellationToken ct = default);
 
     /// <summary>Carga con seguimiento de cambios, para el pago por lote.</summary>
     Task<List<Comision>> GetParaPagoAsync(

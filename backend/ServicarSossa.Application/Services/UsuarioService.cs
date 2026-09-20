@@ -7,7 +7,7 @@ using ServicarSossa.Domain.Enums;
 
 namespace ServicarSossa.Application.Services;
 
-/// <summary>USU001, USU003, USU004, USU005 — gestión de usuarios.</summary>
+/// <summary>USU001–USU005 — gestión de usuarios.</summary>
 public class UsuarioService(
     IUsuarioRepository usuarios,
     IRepository<Rol> roles,
@@ -17,11 +17,17 @@ public class UsuarioService(
 {
     private const string SubcarpetaFotos = "usuarios";
 
-    public async Task<Result<IEnumerable<UsuarioResponseDto>>> GetAllAsync(
-        string? buscar, CancellationToken ct = default)
+    public async Task<Result<ResultadoPaginadoDto<UsuarioResponseDto>>> GetAllAsync(
+        string? buscar, int pagina, int tamanoPagina, CancellationToken ct = default)
     {
-        var lista = await usuarios.GetAllConRolAsync(buscar, ct);
-        return Result<IEnumerable<UsuarioResponseDto>>.Ok(lista.Select(Mapear));
+        var (items, total) = await usuarios.GetAllConRolAsync(buscar, pagina, tamanoPagina, ct);
+        return Result<ResultadoPaginadoDto<UsuarioResponseDto>>.Ok(new ResultadoPaginadoDto<UsuarioResponseDto>
+        {
+            Items = items.Select(Mapear),
+            TotalRegistros = total,
+            Pagina = pagina,
+            TamanoPagina = tamanoPagina
+        });
     }
 
     public async Task<Result<UsuarioResponseDto>> GetByIdAsync(

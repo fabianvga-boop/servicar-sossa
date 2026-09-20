@@ -3,6 +3,7 @@ using ServicarSossa.Application.Interfaces;
 using ServicarSossa.Domain.Entities;
 using ServicarSossa.Domain.Enums;
 using ServicarSossa.Infrastructure.Data;
+using ServicarSossa.Infrastructure.Extensions;
 
 namespace ServicarSossa.Infrastructure.Repositories;
 
@@ -15,20 +16,23 @@ public class FacturaRepository(AppDbContext context)
         => await ConIncludes(Set.AsNoTracking())
             .FirstOrDefaultAsync(f => f.FacturaId == facturaId, ct);
 
-    public async Task<IEnumerable<Factura>> BuscarAsync(
-        string? ordenId, string? clienteId, EstadoFactura? estado,
-        DateTime? desde, DateTime? hasta, CancellationToken ct = default)
+    public async Task<(IEnumerable<Factura> Items, int Total)> BuscarAsync(
+        string? ordenId, string? ventaId, EstadoFactura? estado, EstadoSiat? estadoSiat,
+        DateTime? desde, DateTime? hasta, int pagina, int tamanoPagina, CancellationToken ct = default)
     {
         var query = ConIncludes(Set.AsNoTracking());
 
         if (!string.IsNullOrWhiteSpace(ordenId))
             query = query.Where(f => f.OrdenId == ordenId);
 
-        if (!string.IsNullOrWhiteSpace(clienteId))
-            query = query.Where(f => f.Orden.ClienteId == clienteId);
+        if (!string.IsNullOrWhiteSpace(ventaId))
+            query = query.Where(f => f.VentaId == ventaId);
 
         if (estado.HasValue)
             query = query.Where(f => f.Estado == estado.Value);
+
+        if (estadoSiat.HasValue)
+            query = query.Where(f => f.EstadoSiat == estadoSiat.Value);
 
         if (desde.HasValue)
             query = query.Where(f => f.FechaEmision >= desde.Value);
@@ -36,15 +40,16 @@ public class FacturaRepository(AppDbContext context)
         if (hasta.HasValue)
             query = query.Where(f => f.FechaEmision <= hasta.Value);
 
-        return await query.OrderByDescending(f => f.FechaEmision).ToListAsync(ct);
+        return await query.OrderByDescending(f => f.FechaEmision).ToPagedListAsync(pagina, tamanoPagina, ct);
     }
 
-    public async Task<bool> TienePagosAsync(string facturaId, CancellationToken ct = default)
-        => await Context.Pagos.AnyAsync(p => p.FacturaId == facturaId, ct);
-
+    /// <summary>
+    /// El XML no se incluye: son campos grandes y ninguna pantalla los lista.
+    /// Se leen aparte, por factura, cuando alguien pide el respaldo.
+    /// </summary>
     private static IQueryable<Factura> ConIncludes(IQueryable<Factura> query)
         => query
-            .Include(f => f.Orden).ThenInclude(o => o.Vehiculo)
-            .Include(f => f.Orden).ThenInclude(o => o.Cliente)
-            .Include(f => f.Pagos);
+            .Include(f => f.Orden!).ThenInclude(o => o.Vehiculo)
+            .Include(f => f.Orden!).ThenInclude(o => o.Cliente)
+            .Include(f => f.Venta!).ThenInclude(v => v.Cliente);
 }

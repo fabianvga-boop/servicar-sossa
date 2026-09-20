@@ -20,6 +20,8 @@ public class OrdenService(
     IDiagnosticoRepository diagnosticos,
     IRepository<ComisionConfig> comisionesConfig,
     IRepository<Comision> comisiones,
+    IRepository<OrdenServicio> ordenServicios,
+    IRepository<OrdenRepuesto> ordenRepuestos,
     IGeneradorId generadorId,
     IUnitOfWork unitOfWork,
     IAuditor auditor) : IOrdenService
@@ -722,5 +724,33 @@ public class OrdenService(
             FechaAsignacion = m.FechaAsignacion
         })];
         return dto;
+    }
+
+    // ------------------------------------------------- Escribir menos: sugerencias
+
+    /// <summary>
+    /// Nombres de servicios "fuera de catálogo" ya usados en cualquier orden:
+    /// para no volver a escribir uno que ya se tipeó antes.
+    /// </summary>
+    public async Task<Result<IEnumerable<string>>> GetNombresServicioLibreAsync(
+        CancellationToken ct = default)
+    {
+        var lista = await ordenServicios.FindAsync(s => s.NombreLibre != null, ct);
+        return Result<IEnumerable<string>>.Ok(
+            lista.Select(s => s.NombreLibre!).Distinct(StringComparer.OrdinalIgnoreCase)
+                 .OrderBy(n => n, StringComparer.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Descripciones de repuestos "fuera de inventario" (cliente trae / compra
+    /// externa) ya usadas en cualquier orden.
+    /// </summary>
+    public async Task<Result<IEnumerable<string>>> GetDescripcionesRepuestoLibreAsync(
+        CancellationToken ct = default)
+    {
+        var lista = await ordenRepuestos.FindAsync(r => r.Descripcion != null, ct);
+        return Result<IEnumerable<string>>.Ok(
+            lista.Select(r => r.Descripcion!).Distinct(StringComparer.OrdinalIgnoreCase)
+                 .OrderBy(n => n, StringComparer.OrdinalIgnoreCase));
     }
 }

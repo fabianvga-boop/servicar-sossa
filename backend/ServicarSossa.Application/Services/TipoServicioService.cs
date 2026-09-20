@@ -1,4 +1,5 @@
 using ServicarSossa.Application.Common;
+using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Application.DTOs.TiposServicio;
 using ServicarSossa.Application.Interfaces;
 using ServicarSossa.Domain.Entities;
@@ -9,13 +10,21 @@ namespace ServicarSossa.Application.Services;
 /// <summary>USU013 — gestión del catálogo de tipos de servicio.</summary>
 public class TipoServicioService(
     ITipoServicioRepository servicios,
-    IGeneradorId generadorId) : ITipoServicioService
+    IGeneradorId generadorId,
+    IAuditor auditor) : ITipoServicioService
 {
-    public async Task<Result<IEnumerable<TipoServicioResponseDto>>> GetAllAsync(
-        string? buscar, bool soloActivos, CancellationToken ct = default)
+    public async Task<Result<ResultadoPaginadoDto<TipoServicioResponseDto>>> GetAllAsync(
+        string? buscar, bool soloActivos, int pagina, int tamanoPagina, CancellationToken ct = default)
     {
-        var lista = await servicios.BuscarAsync(buscar, soloActivos, ct);
-        return Result<IEnumerable<TipoServicioResponseDto>>.Ok(lista.Select(Mapear));
+        var (items, total) = await servicios.BuscarAsync(buscar, soloActivos, pagina, tamanoPagina, ct);
+        return Result<ResultadoPaginadoDto<TipoServicioResponseDto>>.Ok(
+            new ResultadoPaginadoDto<TipoServicioResponseDto>
+            {
+                Items = items.Select(Mapear),
+                TotalRegistros = total,
+                Pagina = pagina,
+                TamanoPagina = tamanoPagina
+            });
     }
 
     public async Task<Result<TipoServicioResponseDto>> GetByIdAsync(
@@ -29,7 +38,7 @@ public class TipoServicioService(
     }
 
     public async Task<Result<TipoServicioResponseDto>> CreateAsync(
-        TipoServicioRequestDto dto, CancellationToken ct = default)
+        TipoServicioRequestDto dto, string usuarioId, CancellationToken ct = default)
     {
         var nombre = dto.Nombre.Trim();
 
@@ -49,13 +58,18 @@ public class TipoServicioService(
         };
 
         await servicios.AddAsync(servicio, ct);
+
+        await auditor.RegistrarAsync(
+            usuarioId, AccionAuditoria.Crear, "TipoServicio", servicio.ServicioId,
+            $"Registró el servicio '{nombre}' en el catálogo.", ct);
+
         await servicios.SaveChangesAsync(ct);
 
         return Result<TipoServicioResponseDto>.Ok(Mapear(servicio), "Servicio registrado correctamente.");
     }
 
     public async Task<Result<TipoServicioResponseDto>> UpdateAsync(
-        string id, TipoServicioUpdateDto dto, CancellationToken ct = default)
+        string id, TipoServicioUpdateDto dto, string usuarioId, CancellationToken ct = default)
     {
         var servicio = await servicios.FirstOrDefaultAsync(s => s.ServicioId == id, ct);
 
@@ -73,13 +87,17 @@ public class TipoServicioService(
         servicio.Descripcion = string.IsNullOrWhiteSpace(dto.Descripcion) ? null : dto.Descripcion.Trim();
         servicio.PrecioBase = dto.PrecioBase;
 
+        await auditor.RegistrarAsync(
+            usuarioId, AccionAuditoria.Editar, "TipoServicio", id,
+            $"Editó el servicio '{nombre}' del catálogo.", ct);
+
         await servicios.SaveChangesAsync(ct);
 
         return Result<TipoServicioResponseDto>.Ok(Mapear(servicio), "Servicio actualizado correctamente.");
     }
 
     public async Task<Result<TipoServicioResponseDto>> CambiarEstadoAsync(
-        string id, CambiarEstadoServicioDto dto, CancellationToken ct = default)
+        string id, CambiarEstadoServicioDto dto, string usuarioId, CancellationToken ct = default)
     {
         var servicio = await servicios.FirstOrDefaultAsync(s => s.ServicioId == id, ct);
 
@@ -90,6 +108,11 @@ public class TipoServicioService(
             return Result<TipoServicioResponseDto>.Fail($"El servicio ya está {dto.Estado}.");
 
         servicio.Estado = dto.Estado;
+
+        await auditor.RegistrarAsync(
+            usuarioId, AccionAuditoria.CambiarEstado, "TipoServicio", id,
+            $"Marcó el servicio '{servicio.Nombre}' como {dto.Estado}.", ct);
+
         await servicios.SaveChangesAsync(ct);
 
         return Result<TipoServicioResponseDto>.Ok(

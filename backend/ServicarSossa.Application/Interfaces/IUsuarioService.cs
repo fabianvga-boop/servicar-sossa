@@ -7,8 +7,8 @@ namespace ServicarSossa.Application.Interfaces;
 /// <summary>USU001, USU003, USU004, USU005 — CRUD de usuarios y asignación de rol.</summary>
 public interface IUsuarioService
 {
-    Task<Result<IEnumerable<UsuarioResponseDto>>> GetAllAsync(
-        string? buscar, CancellationToken ct = default);
+    Task<Result<ResultadoPaginadoDto<UsuarioResponseDto>>> GetAllAsync(
+        string? buscar, int pagina, int tamanoPagina, CancellationToken ct = default);
 
     Task<Result<UsuarioResponseDto>> GetByIdAsync(string id, CancellationToken ct = default);
 

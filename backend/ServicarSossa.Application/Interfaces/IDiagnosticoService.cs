@@ -1,5 +1,6 @@
 using ServicarSossa.Application.Common;
 using ServicarSossa.Application.DTOs.Comprobantes;
+using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Application.DTOs.Diagnosticos;
 using ServicarSossa.Domain.Enums;
 
@@ -9,9 +10,9 @@ namespace ServicarSossa.Application.Interfaces;
 public interface IDiagnosticoService
 {
     /// <summary>USU014 — historial de diagnósticos, filtrable.</summary>
-    Task<Result<IEnumerable<DiagnosticoResponseDto>>> GetAllAsync(
-        string? vehiculoId, string? mecanicoId, EstadoDiag? estado,
-        CancellationToken ct = default);
+    Task<Result<ResultadoPaginadoDto<DiagnosticoResponseDto>>> GetAllAsync(
+        string? vehiculoId, string? mecanicoId, EstadoDiag? estado, string? buscar,
+        int pagina, int tamanoPagina, CancellationToken ct = default);
 
     Task<Result<DiagnosticoResponseDto>> GetByIdAsync(string id, CancellationToken ct = default);
 
@@ -42,4 +43,18 @@ public interface IDiagnosticoService
 
     /// <summary>Genera el presupuesto preliminar del diagnóstico en PDF.</summary>
     Task<Result<ArchivoComprobanteDto>> GetPdfAsync(string id, CancellationToken ct = default);
+
+    // ------------------------------------------------------- Diagnóstico asistido
+
+    /// <summary>
+    /// Sugiere servicios, repuestos y un rango de precio para una falla que
+    /// todavía se está redactando (antes de guardar el diagnóstico), comparándola
+    /// contra el historial de diagnósticos que sí llegaron a una orden.
+    /// </summary>
+    Task<Result<SugerenciaDiagnosticoDto>> GetSugerenciasAsync(
+        string descripcionFalla, CancellationToken ct = default);
+
+    /// <summary>Misma sugerencia, pero a partir de la falla ya guardada de un diagnóstico existente.</summary>
+    Task<Result<SugerenciaDiagnosticoDto>> GetSugerenciasPorIdAsync(
+        string diagnosticoId, CancellationToken ct = default);
 }

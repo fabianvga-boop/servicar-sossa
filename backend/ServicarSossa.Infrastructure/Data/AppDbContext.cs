@@ -22,6 +22,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Cliente> Clientes => Set<Cliente>();
     public DbSet<Vehiculo> Vehiculos => Set<Vehiculo>();
     public DbSet<VehiculoFoto> VehiculoFotos => Set<VehiculoFoto>();
+    public DbSet<VehiculoZonaObservacion> VehiculoZonas => Set<VehiculoZonaObservacion>();
+    public DbSet<PlantillaVehiculo> PlantillasVehiculo => Set<PlantillaVehiculo>();
     public DbSet<TipoServicio> TiposServicio => Set<TipoServicio>();
     public DbSet<Diagnostico> Diagnosticos => Set<Diagnostico>();
     public DbSet<OrdenTrabajo> OrdenesTrabajo => Set<OrdenTrabajo>();
@@ -34,6 +36,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<OrdenRepuesto> OrdenRepuestos => Set<OrdenRepuesto>();
     public DbSet<ComisionConfig> ComisionesConfig => Set<ComisionConfig>();
     public DbSet<Comision> Comisiones => Set<Comision>();
+    public DbSet<Proforma> Proformas => Set<Proforma>();
     public DbSet<Factura> Facturas => Set<Factura>();
     public DbSet<Venta> Ventas => Set<Venta>();
     public DbSet<VentaDetalle> VentaDetalles => Set<VentaDetalle>();
@@ -136,6 +139,14 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.FechaRegistro).HasColumnName("fecha_registro").IsRequired();
             e.Property(x => x.Estado).HasColumnName("estado").HasMaxLength(20)
                 .HasConversion<string>().IsRequired();
+
+            // Fiscales (SIAT): el tipo de documento se guarda como el código
+            // numérico del SIN, no como texto — es lo que espera el webservice.
+            e.Property(x => x.TipoDocumentoId).HasColumnName("tipo_documento_id")
+                .HasConversion<int?>();
+            e.Property(x => x.NumeroDocumento).HasColumnName("numero_documento").HasMaxLength(30);
+            e.Property(x => x.Complemento).HasColumnName("complemento").HasMaxLength(5);
+
             e.HasIndex(x => x.CiNit).IsUnique();
         });
 
@@ -172,6 +183,38 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne(x => x.Vehiculo).WithMany(v => v.Fotos)
                 .HasForeignKey(x => x.VehiculoId).OnDelete(DeleteBehavior.Cascade);
         });
+
+        b.Entity<VehiculoZonaObservacion>(e =>
+        {
+            e.ToTable("vehiculo_zonas");
+            e.HasKey(x => x.ZonaObsId);
+            e.Property(x => x.ZonaObsId).HasColumnName("zona_obs_id").HasMaxLength(20);
+            e.Property(x => x.VehiculoId).HasColumnName("vehiculo_id").HasMaxLength(20).IsRequired();
+            e.Property(x => x.OrdenId).HasColumnName("orden_id").HasMaxLength(20);
+            e.Property(x => x.Zona).HasColumnName("zona").HasMaxLength(40).IsRequired();
+            e.Property(x => x.Estado).HasColumnName("estado").HasMaxLength(20)
+                .HasConversion<string>().IsRequired();
+            e.Property(x => x.Detalle).HasColumnName("detalle").HasMaxLength(300);
+            e.Property(x => x.FechaRegistro).HasColumnName("fecha_registro").IsRequired();
+            e.HasIndex(x => x.VehiculoId).HasDatabaseName("idx_vehiculo_zonas_vehiculo");
+            e.HasOne(x => x.Vehiculo).WithMany()
+                .HasForeignKey(x => x.VehiculoId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Orden).WithMany()
+                .HasForeignKey(x => x.OrdenId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        b.Entity<PlantillaVehiculo>(e =>
+        {
+            e.ToTable("plantillas_vehiculo");
+            e.HasKey(x => x.PlantillaId);
+            e.Property(x => x.PlantillaId).HasColumnName("plantilla_id").HasMaxLength(20);
+            e.Property(x => x.Marca).HasColumnName("marca").HasMaxLength(50).IsRequired();
+            e.Property(x => x.Modelo).HasColumnName("modelo").HasMaxLength(50).IsRequired();
+            e.Property(x => x.NombreArchivo).HasColumnName("nombre_archivo").HasMaxLength(255).IsRequired();
+            e.Property(x => x.FechaSubida).HasColumnName("fecha_subida").IsRequired();
+            // Una sola plantilla activa por combinación marca+modelo (sin distinguir mayúsculas).
+            e.HasIndex(x => new { x.Marca, x.Modelo }).IsUnique();
+        });
     }
 
     // ------------------------------------------------------------------ ÉPICA 3
@@ -187,6 +230,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.PrecioBase).HasColumnName("precio_base").HasPrecision(10, 2);
             e.Property(x => x.Estado).HasColumnName("estado").HasMaxLength(20)
                 .HasConversion<string>().IsRequired();
+            e.Property(x => x.CodigoSin).HasColumnName("codigo_sin").HasMaxLength(20);
+            e.Property(x => x.UnidadMedidaSin).HasColumnName("unidad_medida_sin");
         });
 
         b.Entity<Diagnostico>(e =>
@@ -317,6 +362,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.PrecioVenta).HasColumnName("precio_venta").HasPrecision(10, 2);
             e.Property(x => x.ProveedorId).HasColumnName("proveedor_id").HasMaxLength(20);
             e.Property(x => x.NombreArchivoFoto).HasColumnName("nombre_archivo_foto").HasMaxLength(255);
+            e.Property(x => x.CodigoSin).HasColumnName("codigo_sin").HasMaxLength(20);
+            e.Property(x => x.UnidadMedidaSin).HasColumnName("unidad_medida_sin");
             e.HasOne(x => x.Proveedor).WithMany(p => p.Repuestos)
                 .HasForeignKey(x => x.ProveedorId).OnDelete(DeleteBehavior.SetNull);
         });
@@ -418,20 +465,57 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     // --------------------------------------------------------------- ÉPICAS 8/9
     private static void ConfigurarFacturacion(ModelBuilder b)
     {
-        b.Entity<Factura>(e =>
+        // Proforma: documento de cobro del taller, sin valor fiscal.
+        b.Entity<Proforma>(e =>
         {
-            e.ToTable("facturas");
-            e.HasKey(x => x.FacturaId);
-            e.Property(x => x.FacturaId).HasColumnName("factura_id").HasMaxLength(20);
+            e.ToTable("proformas");
+            e.HasKey(x => x.ProformaId);
+            e.Property(x => x.ProformaId).HasColumnName("proforma_id").HasMaxLength(20);
             e.Property(x => x.OrdenId).HasColumnName("orden_id").HasMaxLength(20).IsRequired();
             e.Property(x => x.FechaEmision).HasColumnName("fecha_emision").IsRequired();
             e.Property(x => x.NitRazonSocial).HasColumnName("nit_razon_social").HasMaxLength(150);
             e.Property(x => x.Total).HasColumnName("total").HasPrecision(12, 2);
             e.Property(x => x.Estado).HasColumnName("estado").HasMaxLength(20)
                 .HasConversion<string>().IsRequired();
-            e.HasIndex(x => x.OrdenId).HasDatabaseName("idx_facturas_orden");
+            e.HasIndex(x => x.OrdenId).HasDatabaseName("idx_proformas_orden");
+            e.HasOne(x => x.Orden).WithMany(o => o.Proformas)
+                .HasForeignKey(x => x.OrdenId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Factura: comprobante fiscal SIAT. Cuelga de una orden O de una venta.
+        b.Entity<Factura>(e =>
+        {
+            e.ToTable("facturas");
+            e.HasKey(x => x.FacturaId);
+            e.Property(x => x.FacturaId).HasColumnName("factura_id").HasMaxLength(20);
+            e.Property(x => x.OrdenId).HasColumnName("orden_id").HasMaxLength(20);
+            e.Property(x => x.VentaId).HasColumnName("venta_id").HasMaxLength(20);
+            e.Property(x => x.FechaEmision).HasColumnName("fecha_emision").IsRequired();
+            e.Property(x => x.NitRazonSocial).HasColumnName("nit_razon_social").HasMaxLength(150);
+            e.Property(x => x.Total).HasColumnName("total").HasPrecision(12, 2);
+            e.Property(x => x.MetodoPagoId).HasColumnName("metodo_pago_id");
+            e.Property(x => x.Estado).HasColumnName("estado").HasMaxLength(20)
+                .HasConversion<string>().IsRequired();
+
+            // Fiscales
+            e.Property(x => x.NumeroFactura).HasColumnName("numero_factura");
+            e.Property(x => x.Cuf).HasColumnName("cuf").HasMaxLength(100);
+            e.Property(x => x.Cufd).HasColumnName("cufd").HasMaxLength(100);
+            e.Property(x => x.CodigoRecepcion).HasColumnName("codigo_recepcion").HasMaxLength(100);
+            e.Property(x => x.EstadoSiat).HasColumnName("estado_siat").HasMaxLength(20)
+                .HasConversion<string>().IsRequired();
+            e.Property(x => x.XmlGenerado).HasColumnName("xml_generado");
+            e.Property(x => x.XmlFirmado).HasColumnName("xml_firmado");
+            e.Property(x => x.FechaEmisionSiat).HasColumnName("fecha_emision_siat");
+            e.Property(x => x.MensajeServicio).HasColumnName("mensaje_servicio").HasMaxLength(500);
+
+            e.HasIndex(x => x.Cuf).HasDatabaseName("idx_facturas_cuf");
+            e.HasIndex(x => x.FechaEmision).HasDatabaseName("idx_facturas_fecha");
+
             e.HasOne(x => x.Orden).WithMany(o => o.Facturas)
                 .HasForeignKey(x => x.OrdenId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Venta).WithOne(v => v.Factura)
+                .HasForeignKey<Factura>(x => x.VentaId).OnDelete(DeleteBehavior.Restrict);
         });
 
         // Punto de venta: venta de repuestos en mostrador, sin orden de trabajo.
@@ -449,6 +533,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Estado).HasColumnName("estado").HasMaxLength(20)
                 .HasConversion<string>().IsRequired();
             e.Property(x => x.Observaciones).HasColumnName("observaciones").HasMaxLength(255);
+            e.Property(x => x.MetodoPagoId).HasColumnName("metodo_pago_id");
             e.HasIndex(x => x.FechaVenta).HasDatabaseName("idx_ventas_fecha");
             e.HasOne(x => x.Cliente).WithMany(c => c.Ventas)
                 .HasForeignKey(x => x.ClienteId).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
@@ -480,16 +565,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.ToTable("pagos");
             e.HasKey(x => x.PagoId);
             e.Property(x => x.PagoId).HasColumnName("pago_id").HasMaxLength(20);
-            e.Property(x => x.FacturaId).HasColumnName("factura_id").HasMaxLength(20).IsRequired();
+            e.Property(x => x.ProformaId).HasColumnName("proforma_id").HasMaxLength(20).IsRequired();
             e.Property(x => x.Monto).HasColumnName("monto").HasPrecision(12, 2);
             e.Property(x => x.FechaPago).HasColumnName("fecha_pago").IsRequired();
             e.Property(x => x.MetodoPago).HasColumnName("metodo_pago").HasMaxLength(30)
                 .HasConversion<string>().IsRequired();
             e.Property(x => x.Referencia).HasColumnName("referencia").HasMaxLength(100);
-            e.HasIndex(x => x.FacturaId).HasDatabaseName("idx_pagos_factura");
-            e.HasOne(x => x.Factura).WithMany(f => f.Pagos)
-                .HasForeignKey(x => x.FacturaId).OnDelete(DeleteBehavior.Cascade);
+            e.Property(x => x.MetodoPagoId).HasColumnName("metodo_pago_id");
+            e.HasIndex(x => x.ProformaId).HasDatabaseName("idx_pagos_proforma");
+            e.HasOne(x => x.Proforma).WithMany(p => p.Pagos)
+                .HasForeignKey(x => x.ProformaId).OnDelete(DeleteBehavior.Cascade);
         });
+
     }
 
     // ------------------------------------------------------------------ ÉPICA 4

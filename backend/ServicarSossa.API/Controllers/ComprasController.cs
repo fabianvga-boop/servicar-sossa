@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ServicarSossa.Application.DTOs.Compras;
+using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Application.Interfaces;
 
 namespace ServicarSossa.API.Controllers;
@@ -15,13 +16,15 @@ public class ComprasController(ICompraService service) : ApiControllerBase
 {
     /// <summary>Lista compras, filtrables por proveedor y rango de fechas.</summary>
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<CompraResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResultadoPaginadoDto<CompraResponseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll(
         [FromQuery] string? proveedorId,
         [FromQuery] DateTime? desde,
         [FromQuery] DateTime? hasta,
+        [FromQuery] int pagina = 1,
+        [FromQuery] int tamanoPagina = 20,
         CancellationToken ct = default)
-        => Responder(await service.GetAllAsync(proveedorId, desde, hasta, ct));
+        => Responder(await service.GetAllAsync(proveedorId, desde, hasta, pagina, tamanoPagina, ct));
 
     /// <summary>Detalle completo de una compra (CMP-000) con todas sus líneas.</summary>
     [HttpGet("{id}")]

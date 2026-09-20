@@ -1,5 +1,6 @@
 using ServicarSossa.Application.Common;
 using ServicarSossa.Application.DTOs.Comisiones;
+using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Application.Interfaces;
 using ServicarSossa.Domain.Entities;
 using ServicarSossa.Domain.Enums;
@@ -12,7 +13,8 @@ public class ComisionService(
     IComisionConfigRepository configuraciones,
     IUsuarioRepository usuarios,
     IGeneradorId generadorId,
-    IUnitOfWork unitOfWork) : IComisionService
+    IUnitOfWork unitOfWork,
+    IAuditor auditor) : IComisionService
 {
     private const string RolMecanico = "Mecanico";
     private const string RolAdministrador = "Administrador";
@@ -46,7 +48,7 @@ public class ComisionService(
     }
 
     public async Task<Result<ComisionConfigResponseDto>> EstablecerConfiguracionAsync(
-        string mecanicoId, ComisionConfigRequestDto dto, CancellationToken ct = default)
+        string mecanicoId, ComisionConfigRequestDto dto, string usuarioId, CancellationToken ct = default)
     {
         var mecanico = await usuarios.GetByIdConRolAsync(mecanicoId, ct);
 
@@ -83,6 +85,10 @@ public class ComisionService(
             config.FechaActualizacion = DateTime.UtcNow;
         }
 
+        await auditor.RegistrarAsync(
+            usuarioId, AccionAuditoria.CambiarEstado, "ComisionConfig", config.ConfigId,
+            $"Fijó la comisión de '{mecanico.Nombre} {mecanico.Apellido}' en {dto.Porcentaje}%.", ct);
+
         await configuraciones.SaveChangesAsync(ct);
 
         config.Mecanico = mecanico;
@@ -91,21 +97,30 @@ public class ComisionService(
 
     // ================================================================= CONSULTA
 
-    public async Task<Result<IEnumerable<ComisionResponseDto>>> GetAllAsync(
+    public async Task<Result<ResultadoPaginadoDto<ComisionResponseDto>>> GetAllAsync(
         string? mecanicoId, string? ordenId, EstadoPago? estadoPago,
-        DateTime? desde, DateTime? hasta, CancellationToken ct = default)
+        DateTime? desde, DateTime? hasta, int pagina, int tamanoPagina, CancellationToken ct = default)
     {
         if (desde.HasValue && hasta.HasValue && desde > hasta)
-            return Result<IEnumerable<ComisionResponseDto>>.Fail(
+            return Result<ResultadoPaginadoDto<ComisionResponseDto>>.Fail(
                 "La fecha inicial no puede ser posterior a la final.");
 
         if (!string.IsNullOrWhiteSpace(mecanicoId)
             && !await usuarios.ExistsAsync(u => u.UsuarioId == mecanicoId, ct))
-            return Result<IEnumerable<ComisionResponseDto>>.NoEncontrado(
+            return Result<ResultadoPaginadoDto<ComisionResponseDto>>.NoEncontrado(
                 $"No existe el usuario {mecanicoId}.");
 
-        var lista = await comisiones.BuscarAsync(mecanicoId, ordenId, estadoPago, desde, hasta, ct);
-        return Result<IEnumerable<ComisionResponseDto>>.Ok(lista.Select(Mapear));
+        var (items, total) = await comisiones.BuscarPaginadoAsync(
+            mecanicoId, ordenId, estadoPago, desde, hasta, pagina, tamanoPagina, ct);
+
+        return Result<ResultadoPaginadoDto<ComisionResponseDto>>.Ok(
+            new ResultadoPaginadoDto<ComisionResponseDto>
+            {
+                Items = items.Select(Mapear),
+                TotalRegistros = total,
+                Pagina = pagina,
+                TamanoPagina = tamanoPagina
+            });
     }
 
     public async Task<Result<ComisionResponseDto>> GetByIdAsync(
@@ -151,7 +166,7 @@ public class ComisionService(
     // ===================================================================== PAGO
 
     public async Task<Result<ComisionResponseDto>> PagarAsync(
-        string id, CancellationToken ct = default)
+        string id, string usuarioId, CancellationToken ct = default)
     {
         var comision = await comisiones.FirstOrDefaultAsync(c => c.ComisionId == id, ct);
 
@@ -167,6 +182,10 @@ public class ComisionService(
         comision.EstadoPago = EstadoPago.Pagado;
         comision.FechaPago = DateTime.UtcNow;
 
+        await auditor.RegistrarAsync(
+            usuarioId, AccionAuditoria.CambiarEstado, "Comision", id,
+            $"Liquidó la comisión {id} por Bs {comision.Monto:N2}.", ct);
+
         await comisiones.SaveChangesAsync(ct);
 
         var actualizada = await comisiones.GetByIdCompletaAsync(id, ct);
@@ -175,7 +194,7 @@ public class ComisionService(
     }
 
     public async Task<Result<LiquidacionResultadoDto>> PagarLoteAsync(
-        PagarComisionesLoteDto dto, CancellationToken ct = default)
+        PagarComisionesLoteDto dto, string usuarioId, CancellationToken ct = default)
     {
         var ids = dto.ComisionIds.Distinct().ToList();
         var encontradas = await comisiones.GetParaPagoAsync(ids, ct);
@@ -223,6 +242,12 @@ public class ComisionService(
                 comision.EstadoPago = EstadoPago.Pagado;
                 comision.FechaPago = momento;
             }
+
+            await auditor.RegistrarAsync(
+                usuarioId, AccionAuditoria.CambiarEstado, "Comision",
+                string.Join(", ", encontradas.Select(c => c.ComisionId)),
+                $"Liquidó {encontradas.Count} comisión(es) por un total de Bs {totalBruto:N2}" +
+                (adelanto > 0 ? $", con un adelanto descontado de Bs {adelanto:N2}." : "."), token);
 
             await comisiones.SaveChangesAsync(token);
             return true;

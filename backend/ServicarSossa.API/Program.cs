@@ -108,6 +108,12 @@ await DbSeeder.SeedAsync(app.Services);
 // Archivos subidos por el usuario (fotos de vehículos, etc.), separados de
 // "Recursos" (que sí se versiona). Sin autenticación: igual que el logo del
 // taller, no son datos sensibles y así se sirven directo como <img src>.
+// CORS va antes de UseStaticFiles: si no, las respuestas de /uploads nunca
+// llevan Access-Control-Allow-Origin (el middleware de archivos estáticos
+// corta la cadena antes de llegar a UseCors) y cualquier fetch por XHR/fetch
+// a esos archivos (no así un <img src>, que no la necesita) falla por CORS.
+app.UseCors(PoliticaCorsAngular);
+
 var carpetaUploads = Path.Combine(AppContext.BaseDirectory, "Uploads");
 Directory.CreateDirectory(carpetaUploads);
 app.UseStaticFiles(new StaticFileOptions
@@ -115,8 +121,6 @@ app.UseStaticFiles(new StaticFileOptions
     FileProvider = new PhysicalFileProvider(carpetaUploads),
     RequestPath = "/uploads"
 });
-
-app.UseCors(PoliticaCorsAngular);
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

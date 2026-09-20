@@ -1,4 +1,5 @@
 using ServicarSossa.Application.Common;
+using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Application.DTOs.Proveedores;
 using ServicarSossa.Application.Interfaces;
 using ServicarSossa.Domain.Entities;
@@ -12,15 +13,22 @@ public class ProveedorService(
     IGeneradorId generadorId,
     IAuditor auditor) : IProveedorService
 {
-    public async Task<Result<IEnumerable<ProveedorResponseDto>>> GetAllAsync(
-        string? buscar, CancellationToken ct = default)
+    public async Task<Result<ResultadoPaginadoDto<ProveedorResponseDto>>> GetAllAsync(
+        string? buscar, int pagina, int tamanoPagina, CancellationToken ct = default)
     {
-        var lista = (await proveedores.BuscarAsync(buscar, ct)).ToList();
+        var (items, total) = await proveedores.BuscarAsync(buscar, pagina, tamanoPagina, ct);
+        var lista = items.ToList();
         var conteo = await proveedores.ContarRepuestosPorProveedorAsync(
             lista.Select(p => p.ProveedorId), ct);
 
-        return Result<IEnumerable<ProveedorResponseDto>>.Ok(
-            lista.Select(p => Mapear(p, conteo.GetValueOrDefault(p.ProveedorId))));
+        return Result<ResultadoPaginadoDto<ProveedorResponseDto>>.Ok(
+            new ResultadoPaginadoDto<ProveedorResponseDto>
+            {
+                Items = lista.Select(p => Mapear(p, conteo.GetValueOrDefault(p.ProveedorId))),
+                TotalRegistros = total,
+                Pagina = pagina,
+                TamanoPagina = tamanoPagina
+            });
     }
 
     public async Task<Result<ProveedorResponseDto>> GetByIdAsync(

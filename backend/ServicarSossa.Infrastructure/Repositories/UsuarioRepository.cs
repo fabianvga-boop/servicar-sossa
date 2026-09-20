@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using ServicarSossa.Application.Interfaces;
 using ServicarSossa.Domain.Entities;
 using ServicarSossa.Infrastructure.Data;
+using ServicarSossa.Infrastructure.Extensions;
 
 namespace ServicarSossa.Infrastructure.Repositories;
 
@@ -21,8 +22,8 @@ public class UsuarioRepository(AppDbContext context)
                     .AsNoTracking()
                     .FirstOrDefaultAsync(u => u.UsuarioId == usuarioId, ct);
 
-    public async Task<IEnumerable<Usuario>> GetAllConRolAsync(
-        string? buscar, CancellationToken ct = default)
+    public async Task<(IEnumerable<Usuario> Items, int Total)> GetAllConRolAsync(
+        string? buscar, int pagina, int tamanoPagina, CancellationToken ct = default)
     {
         var query = Set.Include(u => u.Rol).AsNoTracking();
 
@@ -36,6 +37,6 @@ public class UsuarioRepository(AppDbContext context)
                 EF.Functions.ILike(u.Email, termino));
         }
 
-        return await query.OrderBy(u => u.UsuarioId).ToListAsync(ct);
+        return await query.OrderBy(u => u.UsuarioId).ToPagedListAsync(pagina, tamanoPagina, ct);
     }
 }
