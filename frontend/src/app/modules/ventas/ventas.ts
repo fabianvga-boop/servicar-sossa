@@ -15,6 +15,7 @@ import { Confirmacion } from '../../shared/components/confirmacion';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { InsigniaEstado } from '../../shared/components/insignia-estado';
 import { Modal } from '../../shared/components/modal';
+import { Paginador } from '../../shared/components/paginador';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 
@@ -41,6 +42,7 @@ interface LineaCarrito {
     Confirmacion,
     EstadoTabla,
     InsigniaEstado,
+    Paginador,
     SelectorBusqueda,
     BolivianosPipe,
   ],
@@ -63,6 +65,11 @@ export class Ventas implements ConfirmarSalida {
   protected readonly clientes = signal<Cliente[]>([]);
   protected readonly cargando = signal(true);
   protected readonly procesando = signal(false);
+
+  protected readonly pagina = signal(1);
+  protected readonly tamanoPagina = signal(20);
+  protected readonly totalRegistros = signal(0);
+  protected readonly totalPaginas = signal(0);
 
   /** Carrito de la venta en curso. */
   protected readonly carrito = signal<LineaCarrito[]>([]);
@@ -171,26 +178,43 @@ export class Ventas implements ConfirmarSalida {
     this.cargarRepuestos();
 
     this.clientesService
-      .getAll()
-      .subscribe((lista) =>
-        this.clientes.set(lista.filter((c) => c.estado === EstadoCliente.Activo)),
+      .getAll(undefined, 1, 500)
+      .subscribe((resultado) =>
+        this.clientes.set(resultado.items.filter((c) => c.estado === EstadoCliente.Activo)),
       );
   }
 
   protected cargar(): void {
     this.cargando.set(true);
 
-    this.servicio.getAll().subscribe({
-      next: (lista) => {
-        this.ventas.set(lista);
-        this.cargando.set(false);
-      },
-      error: () => this.cargando.set(false),
-    });
+    this.servicio
+      .getAll({ pagina: this.pagina(), tamanoPagina: this.tamanoPagina() })
+      .subscribe({
+        next: (resultado) => {
+          this.ventas.set(resultado.items);
+          this.totalRegistros.set(resultado.totalRegistros);
+          this.totalPaginas.set(resultado.totalPaginas);
+          this.cargando.set(false);
+        },
+        error: () => this.cargando.set(false),
+      });
+  }
+
+  protected cambiarPagina(pagina: number): void {
+    this.pagina.set(pagina);
+    this.cargar();
+  }
+
+  protected cambiarTamano(tamano: number): void {
+    this.tamanoPagina.set(tamano);
+    this.pagina.set(1);
+    this.cargar();
   }
 
   private cargarRepuestos(): void {
-    this.repuestosService.getAll().subscribe((lista) => this.repuestos.set(lista));
+    this.repuestosService
+      .getAll({ tamanoPagina: 500 })
+      .subscribe((resultado) => this.repuestos.set(resultado.items));
   }
 
   // --- Carrito ---------------------------------------------------------------

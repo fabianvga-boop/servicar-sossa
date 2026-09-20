@@ -18,13 +18,13 @@
   <div class="tarjeta-encabezado">
     <input
       type="search"
+      class="filtro-ancho-lg"
       maxlength="100"
       placeholder="Buscar por nombre o contacto…"
-      style="max-width: 320px"
       [value]="buscar()"
       (input)="onBuscar($any($event.target).value)"
     />
-    <span class="texto-tenue texto-sm">{{ proveedores().length }} registro(s)</span>
+    <span class="texto-tenue texto-sm">{{ totalRegistros() }} registro(s)</span>
   </div>
 
   @if (cargando() || proveedores().length === 0) {
@@ -97,7 +97,7 @@
               </td>
               <td class="num">
                 <a
-                  class="badge-repuestos"
+                  class="contador-pildora contador-pildora--enlace"
                   [routerLink]="['/repuestos']"
                   [queryParams]="{ proveedorId: proveedor.proveedorId }"
                   [title]="'Ver en inventario los repuestos de ' + proveedor.nombre"
@@ -137,6 +137,15 @@
         </tbody>
       </table>
     </div>
+
+    <app-paginador
+      [pagina]="pagina()"
+      [totalPaginas]="totalPaginas()"
+      [totalRegistros]="totalRegistros()"
+      [tamanoPagina]="tamanoPagina()"
+      (cambiarPagina)="cambiarPagina($event)"
+      (cambiarTamano)="cambiarTamano($event)"
+    />
   }
 </div>
 
@@ -150,7 +159,7 @@
         <label for="nombre">Nombre <span class="obligatorio">*</span></label>
         <input id="nombre" formControlName="nombre" [class.invalido]="invalido('nombre')" />
         @if (invalido('nombre')) {
-          <span class="campo-error">El nombre es obligatorio.</span>
+          <span class="campo-error">{{ error('nombre') }}</span>
         }
       </div>
 
@@ -175,13 +184,23 @@
           [class.invalido]="invalido('email')"
         />
         @if (invalido('email')) {
-          <span class="campo-error">El formato del email no es válido.</span>
+          <span class="campo-error">{{ error('email') }}</span>
         }
       </div>
 
       <div class="campo">
         <label for="direccion">Dirección</label>
-        <input id="direccion" formControlName="direccion" />
+        <input
+          id="direccion"
+          formControlName="direccion"
+          list="lista-direcciones-proveedor"
+          autocomplete="off"
+        />
+        <datalist id="lista-direcciones-proveedor">
+          @for (d of direccionesSugeridas(); track d) {
+            <option [value]="d"></option>
+          }
+        </datalist>
       </div>
     </form>
 

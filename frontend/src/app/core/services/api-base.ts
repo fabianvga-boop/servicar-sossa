@@ -3,6 +3,7 @@ import { inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
+import { PaginaResultado } from '../models/paginacion.model';
 import { nombreDesdeCabecera } from './descarga';
 
 /**
@@ -48,12 +49,17 @@ export abstract class ApiBase {
     return this.http.get<T[]>(this.base, { params: this.params(filtros) });
   }
 
+  /** Igual que {@link listar}, pero para un listado paginado por el backend. */
+  protected listarPaginado<T>(filtros?: Record<string, unknown>): Observable<PaginaResultado<T>> {
+    return this.http.get<PaginaResultado<T>>(this.base, { params: this.params(filtros) });
+  }
+
   protected obtener<T>(id: string): Observable<T> {
     return this.http.get<T>(this.url(id));
   }
 
   /**
-   * Descarga un archivo del recurso (por ejemplo `facturas/FAC-001/pdf`).
+   * Descarga un archivo del recurso (por ejemplo `proformas/PRF-001/pdf`).
    * Conserva el nombre que el backend puso en Content-Disposition; si la
    * cabecera no llega, cae al que se indique como respaldo.
    */

@@ -41,13 +41,13 @@
         type="search"
         maxlength="100"
         placeholder="Buscar por código de compra o proveedor…"
-        style="max-width: 260px"
+        class="filtro-ancho-lg"
         [value]="buscarTexto()"
         (input)="onBuscarTexto($any($event.target).value)"
       />
 
       <select
-        style="max-width: 220px"
+        class="filtro-ancho-md"
         [value]="proveedorFiltro()"
         (change)="onFiltrarProveedor($any($event.target).value)"
       >
@@ -59,19 +59,19 @@
 
       <input
         type="date"
-        style="max-width: 150px"
+        class="filtro-ancho-sm"
         [value]="desde()"
         (change)="onFecha('desde', $any($event.target).value)"
       />
       <input
         type="date"
-        style="max-width: 150px"
+        class="filtro-ancho-sm"
         [value]="hasta()"
         (change)="onFecha('hasta', $any($event.target).value)"
       />
     </div>
 
-    <span class="texto-tenue texto-sm">{{ comprasFiltradas().length }} compra(s)</span>
+    <span class="texto-tenue texto-sm">{{ totalRegistros() }} compra(s)</span>
   </div>
 
   <div class="chips-rango-compras">
@@ -121,7 +121,7 @@
               <td class="texto-sm">{{ compra.nombreUsuario }}</td>
               <td class="num">
                 <span
-                  class="badge-lineas"
+                  class="contador-pildora"
                   [title]="etiquetaLineas(compra.cantidadLineas) + ' — abra el detalle para ver el desglose'"
                 >
                   {{ etiquetaLineas(compra.cantidadLineas) }}
@@ -148,6 +148,15 @@
         </tbody>
       </table>
     </div>
+
+    <app-paginador
+      [pagina]="pagina()"
+      [totalPaginas]="totalPaginas()"
+      [totalRegistros]="totalRegistros()"
+      [tamanoPagina]="tamanoPagina()"
+      (cambiarPagina)="cambiarPagina($event)"
+      (cambiarTamano)="cambiarTamano($event)"
+    />
   }
 </div>
 
@@ -217,11 +226,13 @@
                   @if (detalles.length > 1) {
                     <button
                       type="button"
-                      class="btn-enlace texto-rojo"
+                      class="btn-enlace texto-rojo boton-quitar-linea"
                       (click)="quitarLinea(i)"
                       aria-label="Quitar línea"
                     >
-                      ✕
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+                      </svg>
                     </button>
                   }
                 </td>

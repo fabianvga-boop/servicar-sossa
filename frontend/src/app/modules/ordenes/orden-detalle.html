@@ -115,6 +115,19 @@
           <span>{{ o.nombreCliente }}</span>
         </a>
       </div>
+
+      <button
+        type="button"
+        class="btn btn-secundario btn-sm no-imprimir"
+        title="Ver diagrama del vehículo"
+        (click)="diagramaAbierto.set(true)"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="5" y="3" width="14" height="18" rx="3" />
+          <path d="M9 8h6M9 12h6M9 16h3" />
+        </svg>
+        Diagrama
+      </button>
     </div>
 
     <div class="contexto-identificador">
@@ -199,6 +212,66 @@
         </div>
       }
 
+      <!-- ------------------------------------------------- Diagnóstico asistido -->
+      @if (sugerenciaOrden(); as s) {
+        <div class="tarjeta mb-2" *appSiRol="['Administrador']">
+          <div class="tarjeta-encabezado">
+            <h2>Sugerencias para esta orden</h2>
+          </div>
+          <div class="tarjeta-cuerpo">
+            <p class="texto-tenue texto-sm mb-2">
+              Basado en {{ s.basadoEnCasos }} caso(s) con una falla similar. Haga clic en una
+              sugerencia para agregarla.
+            </p>
+
+            @if (s.servicios.length > 0) {
+              <div class="mb-2">
+                <span class="panel-sugerencia-etq">Servicios probables</span>
+                <div class="chips-sugerencia mt-1">
+                  @for (sv of s.servicios; track sv.nombre) {
+                    <button
+                      type="button"
+                      class="chip-sugerido"
+                      [disabled]="!editableTrabajo()"
+                      [title]="motivoBloqueoTrabajo()"
+                      (click)="abrirPanelServicioSugerido(sv)"
+                    >
+                      + {{ sv.nombre }} · {{ sv.porcentaje }}%
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+
+            @if (s.repuestos.length > 0) {
+              <div class="mb-2">
+                <span class="panel-sugerencia-etq">Repuestos probables</span>
+                <div class="chips-sugerencia mt-1">
+                  @for (rp of s.repuestos; track rp.nombre) {
+                    <button
+                      type="button"
+                      class="chip-sugerido"
+                      [disabled]="!editableTrabajo()"
+                      [title]="motivoBloqueoTrabajo()"
+                      (click)="abrirPanelRepuestoSugerido(rp)"
+                    >
+                      + {{ rp.nombre }} · {{ rp.porcentaje }}%
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+
+            @if (s.precioMinimo != null) {
+              <p class="texto-tenue texto-sm mb-0">
+                Precio en casos similares: {{ s.precioMinimo | bs }} – {{ s.precioMaximo | bs }}
+                (prom. {{ s.precioPromedio | bs }})
+              </p>
+            }
+          </div>
+        </div>
+      }
+
       <!-- ------------------------------------------------------ Servicios -->
       <div class="tarjeta mb-2">
         <div class="tarjeta-encabezado">
@@ -264,7 +337,7 @@
                     <td class="num">{{ servicio.precio | bs }}</td>
                     <td>
                       <div class="acciones">
-                        @if (puedeAvanzarServicios()) {
+                        @if (puedeAvanzarServicios() && servicio.estado !== EstadoServicioOrden.Completado) {
                           @if (servicio.estado === EstadoServicioOrden.Pendiente) {
                             <button
                               type="button"
@@ -272,19 +345,26 @@
                               [disabled]="procesando()"
                               (click)="avanzarServicio(servicio.ordenServicioId, EstadoServicioOrden.EnProceso)"
                             >
-                              Iniciar
+                              En proceso
                             </button>
-                          }
-                          @if (servicio.estado === EstadoServicioOrden.EnProceso) {
+                          } @else {
                             <button
                               type="button"
                               class="btn-enlace"
                               [disabled]="procesando()"
-                              (click)="avanzarServicio(servicio.ordenServicioId, EstadoServicioOrden.Completado)"
+                              (click)="avanzarServicio(servicio.ordenServicioId, EstadoServicioOrden.Pendiente)"
                             >
-                              Completar
+                              Quitar «en proceso»
                             </button>
                           }
+                          <button
+                            type="button"
+                            class="btn-enlace"
+                            [disabled]="procesando()"
+                            (click)="avanzarServicio(servicio.ordenServicioId, EstadoServicioOrden.Completado)"
+                          >
+                            Completar
+                          </button>
                         }
                         @if (puedeGestionar() && editableTrabajo()) {
                           <button
@@ -447,7 +527,7 @@
           </div>
 
           <!-- Estado de cobro: la pregunta clave al entregar el auto -->
-          @if (factura(); as f) {
+          @if (proforma(); as f) {
             @if (f.estaSaldada) {
               <div class="cobro cobro-pagado mt-1">
                 <span class="cobro-punto" aria-hidden="true"></span>
@@ -477,7 +557,7 @@
                 <span class="cobro-estado">Sin proforma emitida</span>
                 <a
                   class="cobro-accion"
-                  [routerLink]="['/facturas']"
+                  [routerLink]="['/proformas']"
                   [queryParams]="{ buscar: o.ordenId }"
                 >
                   Emitir proforma →
@@ -633,15 +713,22 @@
           </div>
         } @else {
           <div class="campo">
-            <label for="nombreLibreServicio">Servicio realizado</label>
+            <label for="nombreLibreServicio">Nombre del servicio</label>
             <input
               id="nombreLibreServicio"
               type="text"
               maxlength="150"
               name="nombreLibreServicio"
+              list="lista-servicios-libres"
+              autocomplete="off"
               placeholder="Ej. Reparación de manguera de radiador"
               [(ngModel)]="nuevoServicio.nombreLibre"
             />
+            <datalist id="lista-servicios-libres">
+              @for (n of nombresServicioLibreSugeridos(); track n) {
+                <option [value]="n"></option>
+              }
+            </datalist>
           </div>
         }
 
@@ -747,9 +834,16 @@
             type="text"
             maxlength="150"
             name="descripcionRepuesto"
+            list="lista-repuestos-libres"
+            autocomplete="off"
             placeholder="Ej. Pastillas de freno delanteras"
             [(ngModel)]="nuevoRepuesto.descripcion"
           />
+          <datalist id="lista-repuestos-libres">
+            @for (d of descripcionesRepuestoLibreSugeridas(); track d) {
+              <option [value]="d"></option>
+            }
+          </datalist>
         </div>
       }
 
@@ -828,6 +922,58 @@
     </app-modal>
   }
 
+  @if (diagramaAbierto()) {
+    <app-modal titulo="Diagrama de {{ o.placaVehiculo }}" [ancho]="480" (cerrar)="cerrarDiagrama()">
+      <p class="texto-tenue texto-sm mb-2">
+        Marque el estado de una zona haciendo clic sobre ella. Queda como historial de esta orden
+        y de las anteriores.
+      </p>
+
+      <app-diagrama-vehiculo
+        [tipoCarroceria]="tipoCarroceriaVehiculo()"
+        [svgUrl]="diagramaSvgUrlVehiculo()"
+        [zonas]="zonasVehiculo()"
+        [interactivo]="editable()"
+        [zonaSeleccionada]="zonaEditando()"
+        (zonaClick)="onZonaClick($event)"
+      />
+
+      @if (zonaEditando(); as zona) {
+        <form class="rejilla mt-2" style="border-top: 1px solid var(--gris-100); padding-top: 12px" (ngSubmit)="guardarZona()">
+          <div class="campo">
+            <label for="estadoZonaOrden">Estado</label>
+            <select id="estadoZonaOrden" name="estadoZona" [(ngModel)]="nuevaZona.estado">
+              <option [ngValue]="EstadoZonaVehiculo.Ok">Ok</option>
+              <option [ngValue]="EstadoZonaVehiculo.Atencion">Atención</option>
+              <option [ngValue]="EstadoZonaVehiculo.EnReparacion">En reparación</option>
+            </select>
+          </div>
+          <div class="campo">
+            <label for="detalleZonaOrden">Detalle (opcional)</label>
+            <input
+              id="detalleZonaOrden"
+              name="detalleZona"
+              [(ngModel)]="nuevaZona.detalle"
+              placeholder="Ej: rayón leve, golpe, falta pieza…"
+            />
+          </div>
+          <div style="display: flex; gap: 8px; justify-content: flex-end">
+            <button type="button" class="btn btn-secundario" (click)="cancelarZona()">
+              Cancelar
+            </button>
+            <button type="submit" class="btn btn-primario" [disabled]="guardandoZona()">
+              {{ guardandoZona() ? 'Guardando…' : 'Guardar zona' }}
+            </button>
+          </div>
+        </form>
+      }
+
+      <div pie>
+        <button type="button" class="btn btn-secundario" (click)="cerrarDiagrama()">Cerrar</button>
+      </div>
+    </app-modal>
+  }
+
   @if (porCerrar()) {
     <app-confirmacion
       titulo="Cerrar orden de trabajo"
@@ -854,6 +1000,21 @@
       [procesando]="procesando()"
       (confirmar)="cancelarOrden()"
       (cancelar)="porCancelar.set(false)"
+    />
+  }
+
+  @if (avisoRepuestoServicio(); as aviso) {
+    <app-confirmacion
+      titulo="Falta cargar el repuesto"
+      [mensaje]="
+        '«' + aviso.nombreServicio + '» suele necesitar ' + aviso.repuestoSugerido +
+        ', y esta orden todavía no tiene ningún repuesto cargado.'
+      "
+      advertencia="Puede agregarlo del inventario, como compra externa o indicando que lo trae el cliente. Si ya lo tiene a mano y lo va a cargar después, puede continuar igual."
+      textoConfirmar="Continuar igual"
+      [procesando]="procesando()"
+      (confirmar)="confirmarAvanceSinRepuesto()"
+      (cancelar)="avisoRepuestoServicio.set(null)"
     />
   }
 } @else {

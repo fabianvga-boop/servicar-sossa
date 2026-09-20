@@ -13,6 +13,7 @@ import { NotificacionService } from '../../core/services/notificacion.service';
 import { PreferenciasService } from '../../core/services/preferencias.service';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { Modal } from '../../shared/components/modal';
+import { Paginador } from '../../shared/components/paginador';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
 import { Atajo } from '../../shared/directives/atajo';
 import { EnfocarError } from '../../shared/directives/enfocar-error';
@@ -30,6 +31,7 @@ const CLAVE_STOCK_BAJO = 'repuestos.stockBajo';
     DatePipe,
     Modal,
     EstadoTabla,
+    Paginador,
     SelectorBusqueda,
     Atajo,
     EnfocarError,
@@ -57,6 +59,11 @@ export class Repuestos {
   /** Llega por URL desde la ficha de un proveedor (?proveedorId=…), sin selector propio. */
   protected readonly proveedorFiltro = signal('');
   protected readonly guardando = signal(false);
+
+  protected readonly pagina = signal(1);
+  protected readonly tamanoPagina = signal(20);
+  protected readonly totalRegistros = signal(0);
+  protected readonly totalPaginas = signal(0);
 
   protected readonly editando = signal<Repuesto | null>(null);
   protected readonly formularioAbierto = signal(false);
@@ -153,7 +160,9 @@ export class Repuestos {
     this.cargar();
 
     if (this.auth.esAdministrador()) {
-      this.proveedoresService.getAll().subscribe((lista) => this.proveedores.set(lista));
+      this.proveedoresService
+        .getAll(undefined, 1, 500)
+        .subscribe((resultado) => this.proveedores.set(resultado.items));
     }
   }
 
@@ -165,10 +174,14 @@ export class Repuestos {
         buscar: this.buscar() || undefined,
         soloStockBajo: this.soloStockBajo() || undefined,
         proveedorId: this.proveedorFiltro() || undefined,
+        pagina: this.pagina(),
+        tamanoPagina: this.tamanoPagina(),
       })
       .subscribe({
-        next: (lista) => {
-          this.repuestos.set(lista);
+        next: (resultado) => {
+          this.repuestos.set(resultado.items);
+          this.totalRegistros.set(resultado.totalRegistros);
+          this.totalPaginas.set(resultado.totalPaginas);
           this.cargando.set(false);
         },
         error: () => this.cargando.set(false),
@@ -178,17 +191,31 @@ export class Repuestos {
   protected onBuscar(valor: string): void {
     this.buscar.set(valor);
     this.preferencias.guardar(CLAVE_BUSCAR, valor);
+    this.pagina.set(1);
     this.cargar();
   }
 
   protected alternarStockBajo(): void {
     this.soloStockBajo.update((v) => !v);
     this.preferencias.guardar(CLAVE_STOCK_BAJO, this.soloStockBajo());
+    this.pagina.set(1);
     this.cargar();
   }
 
   protected limpiarFiltroProveedor(): void {
     this.proveedorFiltro.set('');
+    this.pagina.set(1);
+    this.cargar();
+  }
+
+  protected cambiarPagina(pagina: number): void {
+    this.pagina.set(pagina);
+    this.cargar();
+  }
+
+  protected cambiarTamano(tamano: number): void {
+    this.tamanoPagina.set(tamano);
+    this.pagina.set(1);
     this.cargar();
   }
 

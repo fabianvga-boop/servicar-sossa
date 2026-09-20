@@ -15,6 +15,28 @@
   border: 1px solid var(--gris-200);
   border-radius: var(--radio);
   padding: 15px 18px 17px;
+  animation: entrada-escalonada 0.28s var(--entrada-easing) backwards;
+}
+
+.indicador:nth-child(2) { animation-delay: 40ms; }
+.indicador:nth-child(3) { animation-delay: 80ms; }
+.indicador:nth-child(4) { animation-delay: 120ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .indicador { animation: none; }
+}
+
+/* La tarjeta más accionable del panel: trabajo ya terminado que solo falta
+   cerrar y facturar (a diferencia de "en proceso", que no exige ninguna
+   acción todavía). Mismo borde y sombra que el resto, solo un poco más
+   presente: acento superior a tono con su propio verde y valor algo mayor. */
+.indicador-prioridad {
+  border-top: 3px solid var(--verde-600);
+  box-shadow: var(--sombra-md);
+}
+
+.indicador-prioridad .indicador-valor {
+  font-size: 30px;
 }
 
 /* Etiqueta e ícono arriba, valor debajo: se lee "qué" antes que "cuánto". */
@@ -96,6 +118,15 @@
 
 .chispa-punto {
   fill: var(--azul-600);
+}
+
+/* Leyenda breve bajo cada gráfico (sparkline o anillo): aclara qué mide
+   exactamente, porque el número solo no lo dice. */
+.grafico-leyenda {
+  font-size: 10.5px;
+  color: var(--gris-400);
+  margin-top: 6px;
+  line-height: 1.3;
 }
 
 /* --------------------------------------------------- Anillo de progreso
@@ -187,10 +218,14 @@
 
 .acceso.urgente { border-left-color: var(--brand); }
 
+/* El color sigue al mismo código que el borde izquierdo de la fila: azul
+   para "hay que atender", rojo cuando además es urgente. */
 .acceso-icono {
-  font-size: 18px;
+  color: var(--azul-600);
   flex-shrink: 0;
 }
+
+.acceso.urgente .acceso-icono { color: var(--brand); }
 
 .acceso-texto {
   display: flex;

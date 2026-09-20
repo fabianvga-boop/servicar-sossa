@@ -9,13 +9,23 @@ import { Confirmacion } from '../../shared/components/confirmacion';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { InsigniaEstado } from '../../shared/components/insignia-estado';
 import { Modal } from '../../shared/components/modal';
+import { Paginador } from '../../shared/components/paginador';
 import { Atajo } from '../../shared/directives/atajo';
 import { EnfocarError } from '../../shared/directives/enfocar-error';
 
 /** USU001-USU005 — gestión de usuarios del sistema. */
 @Component({
   selector: 'app-usuarios',
-  imports: [ReactiveFormsModule, Modal, Confirmacion, EstadoTabla, InsigniaEstado, Atajo, EnfocarError],
+  imports: [
+    ReactiveFormsModule,
+    Modal,
+    Confirmacion,
+    EstadoTabla,
+    InsigniaEstado,
+    Paginador,
+    Atajo,
+    EnfocarError,
+  ],
   templateUrl: './usuarios.html',
 })
 export class Usuarios {
@@ -28,6 +38,11 @@ export class Usuarios {
   protected readonly cargando = signal(true);
   protected readonly buscar = signal('');
   protected readonly guardando = signal(false);
+
+  protected readonly pagina = signal(1);
+  protected readonly tamanoPagina = signal(20);
+  protected readonly totalRegistros = signal(0);
+  protected readonly totalPaginas = signal(0);
 
   protected readonly editando = signal<Usuario | null>(null);
   protected readonly formularioAbierto = signal(false);
@@ -53,23 +68,58 @@ export class Usuarios {
   protected cargar(): void {
     this.cargando.set(true);
 
-    this.servicio.getAll(this.buscar() || undefined).subscribe({
-      next: (lista) => {
-        this.usuarios.set(lista);
-        this.cargando.set(false);
-      },
-      error: () => this.cargando.set(false),
-    });
+    this.servicio
+      .getAll(this.buscar() || undefined, this.pagina(), this.tamanoPagina())
+      .subscribe({
+        next: (resultado) => {
+          this.usuarios.set(resultado.items);
+          this.totalRegistros.set(resultado.totalRegistros);
+          this.totalPaginas.set(resultado.totalPaginas);
+          this.cargando.set(false);
+        },
+        error: () => this.cargando.set(false),
+      });
   }
 
   protected onBuscar(valor: string): void {
     this.buscar.set(valor);
+    this.pagina.set(1);
+    this.cargar();
+  }
+
+  protected cambiarPagina(pagina: number): void {
+    this.pagina.set(pagina);
+    this.cargar();
+  }
+
+  protected cambiarTamano(tamano: number): void {
+    this.tamanoPagina.set(tamano);
+    this.pagina.set(1);
     this.cargar();
   }
 
   protected invalido(control: string): boolean {
     const campo = this.formulario.get(control);
     return !!campo && campo.invalid && campo.touched;
+  }
+
+  /** Mensaje concreto por campo, en vez de un genérico "revise el formulario". */
+  protected error(control: string): string {
+    const campo = this.formulario.get(control);
+    if (!campo || !this.invalido(control)) return '';
+
+    if (campo.hasError('required')) return 'Este campo es obligatorio.';
+    if (campo.hasError('email')) return 'Ingrese un email válido.';
+    if (campo.hasError('minlength')) {
+      const { requiredLength } = campo.getError('minlength');
+      return `Mínimo ${requiredLength} caracteres.`;
+    }
+    if (campo.hasError('maxlength')) {
+      const { requiredLength } = campo.getError('maxlength');
+      return `Máximo ${requiredLength} caracteres.`;
+    }
+
+    return 'Revise el valor ingresado.';
   }
 
   protected abrirNuevo(): void {

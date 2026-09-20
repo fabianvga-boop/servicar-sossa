@@ -88,7 +88,7 @@ let contadorModal = 0;
     .fondo {
       position: fixed;
       inset: 0;
-      background: rgba(15, 41, 66, 0.45);
+      background: rgba(20, 23, 28, 0.45);
       display: flex;
       align-items: center;
       justify-content: center;

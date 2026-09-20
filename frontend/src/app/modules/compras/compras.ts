@@ -17,6 +17,7 @@ import { ContadoresService } from '../../core/services/contadores.service';
 import { NotificacionService } from '../../core/services/notificacion.service';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { Modal } from '../../shared/components/modal';
+import { Paginador } from '../../shared/components/paginador';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
 import { Atajo } from '../../shared/directives/atajo';
 import { EnfocarError } from '../../shared/directives/enfocar-error';
@@ -30,6 +31,7 @@ import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
     DatePipe,
     Modal,
     EstadoTabla,
+    Paginador,
     SelectorBusqueda,
     Atajo,
     EnfocarError,
@@ -58,6 +60,11 @@ export class Compras {
   /** Filtro de texto por código de compra: es local, sobre lo ya cargado. */
   protected readonly buscarTexto = signal('');
   protected readonly guardando = signal(false);
+
+  protected readonly pagina = signal(1);
+  protected readonly tamanoPagina = signal(20);
+  protected readonly totalRegistros = signal(0);
+  protected readonly totalPaginas = signal(0);
 
   protected readonly rangosRapidos = [
     { clave: 'hoy', etiqueta: 'Hoy' },
@@ -137,8 +144,12 @@ export class Compras {
 
   constructor() {
     this.cargar();
-    this.proveedoresService.getAll().subscribe((lista) => this.proveedores.set(lista));
-    this.repuestosService.getAll().subscribe((lista) => this.repuestos.set(lista));
+    this.proveedoresService
+      .getAll(undefined, 1, 500)
+      .subscribe((resultado) => this.proveedores.set(resultado.items));
+    this.repuestosService
+      .getAll({ tamanoPagina: 500 })
+      .subscribe((resultado) => this.repuestos.set(resultado.items));
   }
 
   protected get detalles(): FormArray {
@@ -153,21 +164,41 @@ export class Compras {
         proveedorId: this.proveedorFiltro() || undefined,
         desde: this.desde() || undefined,
         hasta: this.hasta() || undefined,
+        pagina: this.pagina(),
+        tamanoPagina: this.tamanoPagina(),
       })
       .subscribe({
-        next: (lista) => {
-          this.compras.set(lista);
+        next: (resultado) => {
+          this.compras.set(resultado.items);
+          this.totalRegistros.set(resultado.totalRegistros);
+          this.totalPaginas.set(resultado.totalPaginas);
           this.cargando.set(false);
         },
         error: () => this.cargando.set(false),
       });
 
     // KPIs del mes: siempre sobre el universo completo, no la vista filtrada.
-    this.servicio.getAll({}).subscribe((lista) => this.comprasTodas.set(lista));
+    // Ordenado por fecha descendente, así que el mes en curso siempre entra
+    // en las primeras páginas aunque el histórico completo sea más grande.
+    this.servicio
+      .getAll({ tamanoPagina: 500 })
+      .subscribe((resultado) => this.comprasTodas.set(resultado.items));
   }
 
   protected onFiltrarProveedor(valor: string): void {
     this.proveedorFiltro.set(valor);
+    this.pagina.set(1);
+    this.cargar();
+  }
+
+  protected cambiarPagina(pagina: number): void {
+    this.pagina.set(pagina);
+    this.cargar();
+  }
+
+  protected cambiarTamano(tamano: number): void {
+    this.tamanoPagina.set(tamano);
+    this.pagina.set(1);
     this.cargar();
   }
 
@@ -178,6 +209,7 @@ export class Compras {
   protected onFecha(campo: 'desde' | 'hasta', valor: string): void {
     this.rangoActivo.set(null);
     (campo === 'desde' ? this.desde : this.hasta).set(valor);
+    this.pagina.set(1);
     this.cargar();
   }
 
@@ -200,6 +232,7 @@ export class Compras {
     }
 
     this.hasta.set(hoy);
+    this.pagina.set(1);
     this.cargar();
   }
 
@@ -207,6 +240,7 @@ export class Compras {
     this.rangoActivo.set(null);
     this.desde.set('');
     this.hasta.set('');
+    this.pagina.set(1);
     this.cargar();
   }
 
@@ -282,7 +316,9 @@ export class Compras {
         this.formularioAbierto.set(false);
         this.cargar();
         // El stock cambió: recargamos el catálogo para las próximas compras.
-        this.repuestosService.getAll().subscribe((lista) => this.repuestos.set(lista));
+        this.repuestosService
+          .getAll({ tamanoPagina: 500 })
+          .subscribe((resultado) => this.repuestos.set(resultado.items));
         // Una compra puede sacar repuestos de la alerta de stock bajo.
         this.contadores.refrescar();
       },

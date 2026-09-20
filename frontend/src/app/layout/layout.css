@@ -14,7 +14,7 @@
   flex-shrink: 0;
   background: var(--sidebar-fondo);
   border-right: 1px solid var(--sidebar-borde);
-  color: var(--blanco);
+  color: var(--sidebar-texto);
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -89,17 +89,22 @@
   margin: 2px calc(var(--sangria) / 2);
   padding: 11px calc(var(--sangria) / 2);
   border-radius: var(--radio-sm);
-  color: var(--blanco);
+  color: var(--sidebar-texto);
   font-size: 14.5px;
   font-weight: 500;
   line-height: 1.25;
   text-decoration: none;
+  transition: background-color 0.15s, transform 0.1s;
 }
 
 .enlace:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--blanco);
+  background: var(--gris-100);
+  color: var(--sidebar-texto);
   text-decoration: none;
+}
+
+.enlace:active {
+  transform: scale(0.98);
 }
 
 /* Activo como píldora sólida en rojo de marca: sobre el riel oscuro el rojo
@@ -114,9 +119,10 @@
 .icono {
   color: var(--sidebar-tenue);
   flex-shrink: 0;
+  transition: color 0.15s;
 }
 
-.enlace:hover .icono { color: var(--blanco); }
+.enlace:hover .icono { color: var(--sidebar-texto); }
 .enlace.activo .icono { color: var(--blanco); }
 
 /* Insignia de pendientes: dice cuánto trabajo espera sin tener que entrar */
@@ -124,8 +130,8 @@
   min-width: 21px;
   padding: 2px 7px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.2);
-  color: var(--blanco);
+  background: var(--gris-100);
+  color: var(--ink-soft);
   font-size: 11px;
   font-weight: 700;
   text-align: center;
@@ -136,6 +142,19 @@
 .contador.alerta {
   background: var(--brand);
   color: var(--blanco);
+}
+
+/* El anillo de foco global (styles.css) es --brand sobre cualquier fondo.
+   Contra este riel oscuro (--sidebar-fondo) el rojo pasa el mínimo de
+   contraste para elementos no textuales (~3,3:1 sobre 3:1), pero raspando
+   el límite; el resto del sistema usa fondos claros donde el mismo rojo
+   destaca sin problema (dato en styles.css). Acá, en vez de dejarlo al
+   límite, se usa un anillo blanco: mismo criterio que ya usan los enlaces
+   e íconos del lateral (16,28:1 sobre este fondo, ver comentario en
+   styles.css). Excepción local, no toca el foco del resto de la app. */
+.lateral a:focus-visible,
+.lateral button:focus-visible {
+  outline-color: var(--brand);
 }
 
 /* ------------------------------------------------------------ Principal */
@@ -172,6 +191,21 @@
 }
 
 .crece { flex: 1; }
+
+/* Nombre de la sección activa: complementa (no reemplaza) la píldora
+   .activo del lateral. Se recorta con puntos suspensivos en vez de
+   empujar al buscador si el título fuera largo. */
+.titulo-seccion {
+  margin: 0;
+  max-width: 220px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 15.5px;
+  font-weight: 600;
+  color: var(--ink);
+  flex-shrink: 1;
+}
 
 /* ---------------------------------------------------- Buscador global */
 
@@ -344,6 +378,10 @@
   .contenido { padding: 16px; }
 
   .usuario-datos { display: none; }
+
+  /* En móvil no hay ancho para el título de sección además del buscador y
+     la hamburguesa; el uso desde el celular es ocasional (ver hamburguesa). */
+  .titulo-seccion { display: none; }
 
   /* En móvil el disparador se reduce al ícono: no hay ancho para la leyenda */
   .buscar-disparador {

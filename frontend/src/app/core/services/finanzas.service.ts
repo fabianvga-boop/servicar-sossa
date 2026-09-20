@@ -1,18 +1,24 @@
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 
-import { EstadoFactura, EstadoPago, MetodoPago } from '../models/enums';
+import { EstadoProforma, EstadoPago, MetodoPago } from '../models/enums';
+import { PaginaResultado } from '../models/paginacion.model';
 import {
   Comision,
   ComisionConfig,
+  EstadoFacturacion,
+  EstadoSiat,
   Factura,
   FacturaRequest,
+  Proforma,
+  ProformaRequest,
   LiquidacionResultado,
   Pago,
   PagoRequest,
   ResumenComisiones,
 } from '../models/finanzas.model';
 import { ApiBase } from './api-base';
+import { nombreDesdeCabecera } from './descarga';
 
 /** USU031-USU034 — comisiones de mecánicos. */
 @Injectable({ providedIn: 'root' })
@@ -25,8 +31,10 @@ export class ComisionesService extends ApiBase {
     estadoPago?: EstadoPago;
     desde?: string;
     hasta?: string;
-  } = {}): Observable<Comision[]> {
-    return this.listar<Comision>(filtros);
+    pagina?: number;
+    tamanoPagina?: number;
+  } = {}): Observable<PaginaResultado<Comision>> {
+    return this.listarPaginado<Comision>(filtros);
   }
 
   getById(id: string): Observable<Comision> {
@@ -71,40 +79,109 @@ export class ComisionesService extends ApiBase {
 }
 
 /**
- * USU038 — proforma (documento de cobro único del taller: no hay factura
- * fiscal por SIAT, así que no se distingue de una proforma). El recurso
- * técnico sigue siendo "facturas" para no tocar datos existentes.
+ * USU038 — proformas: el documento de cobro del taller, sin valor fiscal.
+ * Es el flujo operativo de todos los días, y contra lo que el cliente paga.
+ */
+@Injectable({ providedIn: 'root' })
+export class ProformasService extends ApiBase {
+  protected readonly recurso = 'proformas';
+
+  getAll(filtros: {
+    ordenId?: string;
+    clienteId?: string;
+    estado?: EstadoProforma;
+    desde?: string;
+    hasta?: string;
+    pagina?: number;
+    tamanoPagina?: number;
+  } = {}): Observable<PaginaResultado<Proforma>> {
+    return this.listarPaginado<Proforma>(filtros);
+  }
+
+  getById(id: string): Observable<Proforma> {
+    return this.obtener<Proforma>(id);
+  }
+
+  crear(datos: ProformaRequest): Observable<Proforma> {
+    return this.http.post<Proforma>(this.base, datos);
+  }
+
+  /** Solo procede si la proforma no tiene pagos registrados. */
+  anular(id: string): Observable<Proforma> {
+    return this.http.patch<Proforma>(this.url(id, 'anular'), {});
+  }
+
+  /** Comprobante en PDF con el detalle de servicios y repuestos. */
+  pdf(id: string): Observable<{ blob: Blob; nombreArchivo: string }> {
+    return this.archivo([id, 'pdf'], `${id}.pdf`);
+  }
+}
+
+/**
+ * Facturación electrónica: el comprobante FISCAL ante el SIN, con su CUF y su
+ * XML. Distinto de ProformasService, que documenta el cobro del taller.
+ *
+ * Mientras el taller no tenga NIT habilitado, `estado()` devuelve
+ * `emisionHabilitada: false` y la pantalla explica por qué en vez de ofrecer
+ * un botón que va a fallar.
  */
 @Injectable({ providedIn: 'root' })
 export class FacturasService extends ApiBase {
   protected readonly recurso = 'facturas';
 
+  /** Si el módulo puede emitir hoy. Lo primero que consulta la pantalla. */
+  estado(): Observable<EstadoFacturacion> {
+    return this.http.get<EstadoFacturacion>(this.url('estado'));
+  }
+
   getAll(filtros: {
     ordenId?: string;
-    clienteId?: string;
-    estado?: EstadoFactura;
+    ventaId?: string;
+    estado?: EstadoProforma;
+    estadoSiat?: EstadoSiat;
     desde?: string;
     hasta?: string;
-  } = {}): Observable<Factura[]> {
-    return this.listar<Factura>(filtros);
+    pagina?: number;
+    tamanoPagina?: number;
+  } = {}): Observable<PaginaResultado<Factura>> {
+    return this.listarPaginado<Factura>(filtros);
   }
 
   getById(id: string): Observable<Factura> {
     return this.obtener<Factura>(id);
   }
 
-  crear(datos: FacturaRequest): Observable<Factura> {
+  /** Emite la factura fiscal de una orden de trabajo o de una venta. */
+  emitir(datos: FacturaRequest): Observable<Factura> {
     return this.http.post<Factura>(this.base, datos);
   }
 
-  /** Solo procede si la factura no tiene pagos registrados. */
-  anular(id: string): Observable<Factura> {
-    return this.http.patch<Factura>(this.url(id, 'anular'), {});
+  anular(id: string, motivo?: string): Observable<Factura> {
+    const query = motivo ? `?motivo=${encodeURIComponent(motivo)}` : '';
+    return this.http.patch<Factura>(`${this.url(id, 'anular')}${query}`, {});
   }
 
-  /** Comprobante en PDF con el detalle de servicios y repuestos. */
-  pdf(id: string): Observable<{ blob: Blob; nombreArchivo: string }> {
-    return this.archivo([id, 'pdf'], `${id}.pdf`);
+  /**
+   * XML del comprobante: el respaldo que archiva el contribuyente. No usa el
+   * helper `archivo()` de ApiBase porque necesita el parámetro `firmado`.
+   */
+  xml(id: string, firmado = false): Observable<{ blob: Blob; nombreArchivo: string }> {
+    const sufijo = firmado ? 'firmado' : 'generado';
+
+    return this.http
+      .get(this.url(id, 'xml'), {
+        params: { firmado },
+        responseType: 'blob',
+        observe: 'response',
+      })
+      .pipe(
+        map((respuesta) => ({
+          blob: respuesta.body!,
+          nombreArchivo:
+            nombreDesdeCabecera(respuesta.headers.get('Content-Disposition')) ??
+            `${id}-${sufijo}.xml`,
+        })),
+      );
   }
 }
 
@@ -114,13 +191,15 @@ export class PagosService extends ApiBase {
   protected readonly recurso = 'pagos';
 
   getAll(filtros: {
-    facturaId?: string;
+    proformaId?: string;
     clienteId?: string;
     metodoPago?: MetodoPago;
     desde?: string;
     hasta?: string;
-  } = {}): Observable<Pago[]> {
-    return this.listar<Pago>(filtros);
+    pagina?: number;
+    tamanoPagina?: number;
+  } = {}): Observable<PaginaResultado<Pago>> {
+    return this.listarPaginado<Pago>(filtros);
   }
 
   getById(id: string): Observable<Pago> {

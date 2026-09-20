@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable, map } from 'rxjs';
 
 import { FormatoReporte, TipoReporte } from '../models/enums';
+import { PaginaResultado } from '../models/paginacion.model';
 import { Reporte, ReporteGenerado } from '../models/reporte.model';
 import { ApiBase } from './api-base';
 import { descargarArchivo, nombreDesdeCabecera } from './descarga';
@@ -45,9 +46,13 @@ export class ReportesService extends ApiBase {
       );
   }
 
-  getBitacora(tipoReporte?: string): Observable<ReporteGenerado[]> {
-    return this.http.get<ReporteGenerado[]>(this.url('bitacora'), {
-      params: this.params({ tipoReporte }),
+  getBitacora(
+    tipoReporte?: string,
+    pagina = 1,
+    tamanoPagina = 20,
+  ): Observable<PaginaResultado<ReporteGenerado>> {
+    return this.http.get<PaginaResultado<ReporteGenerado>>(this.url('bitacora'), {
+      params: this.params({ tipoReporte, pagina, tamanoPagina }),
     });
   }
 

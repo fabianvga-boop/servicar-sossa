@@ -11,7 +11,7 @@
     <div class="filtros-auditoria">
       <label class="filtro-campo">
         <span class="filtro-etiqueta">Módulo</span>
-        <select [(ngModel)]="filtro.entidad" (ngModelChange)="cargar()">
+        <select [(ngModel)]="filtro.entidad" (ngModelChange)="filtrar()">
           <option value="">Todos los módulos</option>
           @for (entidad of entidades; track entidad) {
             <option [value]="entidad">{{ entidad }}</option>
@@ -21,7 +21,7 @@
 
       <label class="filtro-campo">
         <span class="filtro-etiqueta">Acción</span>
-        <select [(ngModel)]="filtro.accion" (ngModelChange)="cargar()">
+        <select [(ngModel)]="filtro.accion" (ngModelChange)="filtrar()">
           <option value="">Toda acción</option>
           @for (accion of acciones; track accion.valor) {
             <option [value]="accion.valor">{{ accion.etiqueta }}</option>
@@ -31,12 +31,12 @@
 
       <label class="filtro-campo">
         <span class="filtro-etiqueta">Desde</span>
-        <input type="date" [(ngModel)]="filtro.desde" (ngModelChange)="cargar()" />
+        <input type="date" [(ngModel)]="filtro.desde" (ngModelChange)="filtrar()" />
       </label>
 
       <label class="filtro-campo">
         <span class="filtro-etiqueta">Hasta</span>
-        <input type="date" [(ngModel)]="filtro.hasta" (ngModelChange)="cargar()" />
+        <input type="date" [(ngModel)]="filtro.hasta" (ngModelChange)="filtrar()" />
       </label>
 
       @if (hayFiltro()) {
@@ -45,7 +45,7 @@
         </button>
       }
     </div>
-    <span class="texto-tenue texto-sm">{{ filas().length }} registro(s)</span>
+    <span class="texto-tenue texto-sm">{{ totalRegistros() }} registro(s)</span>
   </div>
 
   @if (cargando() || filas().length === 0) {
@@ -88,5 +88,14 @@
         </tbody>
       </table>
     </div>
+
+    <app-paginador
+      [pagina]="pagina()"
+      [totalPaginas]="totalPaginas()"
+      [totalRegistros]="totalRegistros()"
+      [tamanoPagina]="tamanoPagina()"
+      (cambiarPagina)="cambiarPagina($event)"
+      (cambiarTamano)="cambiarTamano($event)"
+    />
   }
 </div>

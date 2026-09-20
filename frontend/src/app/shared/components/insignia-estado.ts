@@ -2,7 +2,7 @@ import { Component, computed, input } from '@angular/core';
 
 import {
   EstadoDiag,
-  EstadoFactura,
+  EstadoProforma,
   EstadoOrden,
   EstadoPago,
   EstadoServicioOrden,
@@ -16,7 +16,7 @@ type Familia =
   | 'servicioOrden'
   | 'diagnostico'
   | 'respuestaCliente'
-  | 'factura'
+  | 'proforma'
   | 'venta'
   | 'pago'
   | 'activo';
@@ -62,7 +62,7 @@ export class InsigniaEstado {
       case 'servicioOrden': return ETIQUETAS.estadoServicioOrden[v as EstadoServicioOrden];
       case 'diagnostico': return ETIQUETAS.estadoDiag[v as EstadoDiag];
       case 'respuestaCliente': return ETIQUETAS.respuestaCliente[v as RespuestaCliente];
-      case 'factura': return ETIQUETAS.estadoFactura[v as EstadoFactura];
+      case 'proforma': return ETIQUETAS.estadoProforma[v as EstadoProforma];
       case 'venta': return ETIQUETAS.estadoVenta[v as EstadoVenta];
       case 'pago': return ETIQUETAS.estadoPago[v as EstadoPago];
       case 'activo': return ETIQUETAS.activoInactivo[v as 0 | 1];
@@ -103,11 +103,11 @@ export class InsigniaEstado {
           [RespuestaCliente.Rechazado]: 'insignia-roja',
         }[v as RespuestaCliente];
 
-      case 'factura':
+      case 'proforma':
         return {
-          [EstadoFactura.Emitida]: 'insignia-verde',
-          [EstadoFactura.Anulada]: 'insignia-roja',
-        }[v as EstadoFactura];
+          [EstadoProforma.Emitida]: 'insignia-verde',
+          [EstadoProforma.Anulada]: 'insignia-roja',
+        }[v as EstadoProforma];
 
       case 'venta':
         return {

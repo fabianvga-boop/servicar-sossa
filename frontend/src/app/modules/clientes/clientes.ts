@@ -12,9 +12,11 @@ import { Confirmacion } from '../../shared/components/confirmacion';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { InsigniaEstado } from '../../shared/components/insignia-estado';
 import { Modal } from '../../shared/components/modal';
+import { Paginador } from '../../shared/components/paginador';
 import { Placa } from '../../shared/components/placa';
 import { Atajo } from '../../shared/directives/atajo';
 import { EnfocarError } from '../../shared/directives/enfocar-error';
+import { unicosOrdenados } from '../../shared/sugerencias-texto';
 import {
   COLORES_RAPIDOS,
   colorPunto,
@@ -38,6 +40,7 @@ const MAX_PLACAS = 2;
     Confirmacion,
     EstadoTabla,
     InsigniaEstado,
+    Paginador,
     Placa,
     Atajo,
     EnfocarError,
@@ -55,9 +58,16 @@ export class Clientes {
   private readonly router = inject(Router);
 
   protected readonly clientes = signal<Cliente[]>([]);
+  /** Solo para el autocompletado de "Dirección": no reemplaza la tabla paginada. */
+  protected readonly direccionesSugeridas = signal<string[]>([]);
   protected readonly cargando = signal(true);
   protected readonly buscar = signal('');
   protected readonly guardando = signal(false);
+
+  protected readonly pagina = signal(1);
+  protected readonly tamanoPagina = signal(20);
+  protected readonly totalRegistros = signal(0);
+  protected readonly totalPaginas = signal(0);
 
   /** Cliente en edición; null significa "alta nueva". */
   protected readonly editando = signal<Cliente | null>(null);
@@ -119,24 +129,49 @@ export class Clientes {
     this.cargar();
 
     // Solo para las listas de sugerencias del alta rápida de vehículo.
-    this.vehiculosService.getAll().subscribe((lista) => this.vehiculosExistentes.set(lista));
+    this.vehiculosService
+      .getAll(undefined, undefined, 1, 500)
+      .subscribe((resultado) => this.vehiculosExistentes.set(resultado.items));
+
+    // Solo para el autocompletado de "Dirección": no reemplaza la tabla paginada.
+    this.servicio
+      .getAll(undefined, 1, 500)
+      .subscribe((resultado) =>
+        this.direccionesSugeridas.set(unicosOrdenados(resultado.items.map((c) => c.direccion))),
+      );
   }
 
   protected cargar(): void {
     this.cargando.set(true);
 
-    this.servicio.getAll(this.buscar() || undefined).subscribe({
-      next: (lista) => {
-        this.clientes.set(lista);
-        this.cargando.set(false);
-      },
-      error: () => this.cargando.set(false),
-    });
+    this.servicio
+      .getAll(this.buscar() || undefined, this.pagina(), this.tamanoPagina())
+      .subscribe({
+        next: (resultado) => {
+          this.clientes.set(resultado.items);
+          this.totalRegistros.set(resultado.totalRegistros);
+          this.totalPaginas.set(resultado.totalPaginas);
+          this.cargando.set(false);
+        },
+        error: () => this.cargando.set(false),
+      });
   }
 
   protected onBuscar(valor: string): void {
     this.buscar.set(valor);
     this.preferencias.guardar(CLAVE_BUSCAR, valor);
+    this.pagina.set(1);
+    this.cargar();
+  }
+
+  protected cambiarPagina(pagina: number): void {
+    this.pagina.set(pagina);
+    this.cargar();
+  }
+
+  protected cambiarTamano(tamano: number): void {
+    this.tamanoPagina.set(tamano);
+    this.pagina.set(1);
     this.cargar();
   }
 

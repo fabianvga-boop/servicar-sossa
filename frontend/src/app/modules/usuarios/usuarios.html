@@ -18,13 +18,13 @@
   <div class="tarjeta-encabezado">
     <input
       type="search"
+      class="filtro-ancho-lg"
       maxlength="100"
       placeholder="Buscar por nombre, usuario o email…"
-      style="max-width: 320px"
       [value]="buscar()"
       (input)="onBuscar($any($event.target).value)"
     />
-    <span class="texto-tenue texto-sm">{{ usuarios().length }} registro(s)</span>
+    <span class="texto-tenue texto-sm">{{ totalRegistros() }} registro(s)</span>
   </div>
 
   @if (cargando() || usuarios().length === 0) {
@@ -104,6 +104,15 @@
         </tbody>
       </table>
     </div>
+
+    <app-paginador
+      [pagina]="pagina()"
+      [totalPaginas]="totalPaginas()"
+      [totalRegistros]="totalRegistros()"
+      [tamanoPagina]="tamanoPagina()"
+      (cambiarPagina)="cambiarPagina($event)"
+      (cambiarTamano)="cambiarTamano($event)"
+    />
   }
 </div>
 
@@ -118,7 +127,7 @@
           <label for="nombre">Nombre <span class="obligatorio">*</span></label>
           <input id="nombre" formControlName="nombre" [class.invalido]="invalido('nombre')" />
           @if (invalido('nombre')) {
-            <span class="campo-error">El nombre es obligatorio.</span>
+            <span class="campo-error">{{ error('nombre') }}</span>
           }
         </div>
 
@@ -126,7 +135,7 @@
           <label for="apellido">Apellido <span class="obligatorio">*</span></label>
           <input id="apellido" formControlName="apellido" [class.invalido]="invalido('apellido')" />
           @if (invalido('apellido')) {
-            <span class="campo-error">El apellido es obligatorio.</span>
+            <span class="campo-error">{{ error('apellido') }}</span>
           }
         </div>
       </div>
@@ -135,7 +144,7 @@
         <label for="email">Email <span class="obligatorio">*</span></label>
         <input id="email" type="email" formControlName="email" [class.invalido]="invalido('email')" />
         @if (invalido('email')) {
-          <span class="campo-error">Ingrese un email válido.</span>
+          <span class="campo-error">{{ error('email') }}</span>
         }
       </div>
 
@@ -144,7 +153,7 @@
           <label for="username">Usuario <span class="obligatorio">*</span></label>
           <input id="username" formControlName="username" [class.invalido]="invalido('username')" />
           @if (invalido('username')) {
-            <span class="campo-error">El usuario es obligatorio.</span>
+            <span class="campo-error">{{ error('username') }}</span>
           } @else if (editando()) {
             <span class="campo-ayuda">El nombre de usuario no se puede cambiar.</span>
           } @else {
@@ -161,7 +170,7 @@
             }
           </select>
           @if (invalido('rolId')) {
-            <span class="campo-error">Seleccione un rol.</span>
+            <span class="campo-error">{{ error('rolId') }}</span>
           }
         </div>
       </div>
@@ -178,7 +187,7 @@
               [class.invalido]="invalido('password')"
             />
             @if (invalido('password')) {
-              <span class="campo-error">Mínimo 8 caracteres.</span>
+              <span class="campo-error">{{ error('password') }}</span>
             } @else {
               <span class="campo-ayuda">Mínimo 8 caracteres. La persona podrá cambiarla después desde su perfil.</span>
             }

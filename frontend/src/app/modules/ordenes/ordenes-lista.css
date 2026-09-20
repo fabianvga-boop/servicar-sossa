@@ -289,12 +289,16 @@
   border-radius: var(--radio-sm);
   overflow: hidden;
   cursor: pointer;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
 }
 
 .tarjeta-orden:hover {
   border-color: var(--brand);
   box-shadow: 0 0 0 3px var(--brand-soft);
+}
+
+.tarjeta-orden:active {
+  transform: scale(0.98);
 }
 
 .tarjeta-orden:focus-visible {

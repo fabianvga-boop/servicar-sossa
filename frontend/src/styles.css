@@ -14,8 +14,8 @@
 
   /* Tinta: los dos tonos oscuros del sistema, usados como color de texto.
      --ink para el texto principal, --ink-soft para el secundario. */
-  --ink: #14171c;
-  --ink-soft: #3a414e;
+  --ink: #111c2d;
+  --ink-soft: #3f4c63;
 
   /* Colores de estado, para insignias y avisos. Cada familia tiene un tono
      sólido (600, para el texto) y uno suave (100, para el fondo). */
@@ -37,8 +37,9 @@
        100/50  → rellenos y superficies secundarias */
   --gris-500: #6b7280;
   --gris-400: #9aa1ab;
-  --gris-200: #e2e8f0;
-  --gris-100: #eef2f6;
+  --gris-300: #c3cad3;
+  --gris-200: #e5eaef;
+  --gris-100: #eef3f9;
   --gris-50: #f8fafc;
   --blanco: #ffffff;
 
@@ -51,13 +52,13 @@
        gris   = marco de la aplicación (piso, menú, encabezado)
      Cuando el marco era blanco competía con las tarjetas y el menú se leía
      como una tarjeta más. */
-  --fondo-app: #f1f5f9;
+  --fondo-app: #f0f5f9;
 
   /* Radios un poco más generosos: esquinas más suaves leen como una
      interfaz más amigable/cercana que el look "SaaS" cuadrado. */
-  --radio: 8px;
+  --radio: 16px;
   --radio-sm: 7px;
-  --sombra-sm: 0 1px 2px rgba(20, 23, 28, 0.06);
+  --sombra-sm: 0 9px 17.5px rgba(0, 0, 0, 0.05);
   --sombra-md: 0 4px 14px rgba(20, 23, 28, 0.12);
   --sombra-lg: 0 18px 50px rgba(0, 0, 0, 0.35);
 
@@ -74,19 +75,88 @@
   --etiqueta-tam: 11.5px;
   --etiqueta-tracking: 0.05em;
 
-  /* Menú lateral: un neutro CÁLIDO, no un segundo rojo — así no compite con
-     el rojo de marca ni pelea con él como el gris azulado del resto del
-     sistema. Enlaces en blanco puro sobre --sidebar-fondo: 16,28:1. Las
-     etiquetas de grupo en --sidebar-tenue: 7,02:1. Ambos muy por encima
-     del mínimo de accesibilidad. */
-  --sidebar-fondo: #241f1e;
-  --sidebar-borde: #3a3230;
-  --sidebar-tenue: #b3a8a4;
+  /* Menú lateral claro: el riel comparte superficie con las tarjetas y el
+     único color fuerte es la píldora roja del módulo activo. Los enlaces van
+     en --sidebar-texto sobre blanco (12,4:1); las etiquetas de grupo y los
+     íconos toman el mismo secundario que el resto del sistema (8,7:1), para
+     que el menú y el contenido se lean como una sola pieza. */
+  --sidebar-fondo: #ffffff;
+  --sidebar-borde: #e5eaef;
+  --sidebar-tenue: var(--ink-soft);
+  --sidebar-texto: #2a3547;
+
+  /* Anchos de campo en barras de filtro. Antes cada módulo fijaba un
+     max-width inline distinto (150 a 320px) para el mismo tipo de campo;
+     estos tres cubren los casos reales: buscador principal, selector
+     mediano (fecha/estado) y selector chico (cantidad/orden). */
+  --ancho-filtro-lg: 320px;
+  --ancho-filtro-md: 240px;
+  --ancho-filtro-sm: 160px;
+
+  /* Curva de easing única para toda animación de entrada del sistema: una
+     desaceleración suave, sin rebote — se nota fluida sin distraer. */
+  --entrada-easing: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Foco de teclado: mismo anillo en todo el sistema (antes solo lo tenían
+   las tarjetas de órdenes/productos; los enlaces y botones del menú no
+   mostraban ningún indicador al navegar con Tab). */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:not([tabindex='-1']):focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+
+/* ------------------------------------------------------- Entrada escalonada
+   Filas de tabla, tarjetas de repuesto y tarjetas de orden aparecen con un
+   pequeño desfasaje entre una y otra al cargar o filtrar, en vez de todas de
+   golpe — ayuda a notar qué cambió (una búsqueda, una página nueva) sin
+   depender de otra señal. Va acá porque las tres clases son globales y se
+   repiten en más de una decena de módulos: un solo lugar alcanza a todos.
+   `backwards` (no `both`): al terminar la animación se libera el control de
+   `transform`, así el `:active` de cada tarjeta/fila sigue funcionando. */
+@keyframes entrada-escalonada {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+:where(table.tabla tbody tr, .tarjeta-repuesto, .tarjeta-orden) {
+  animation: entrada-escalonada 0.28s var(--entrada-easing) backwards;
+}
+
+:where(table.tabla tbody tr, .tarjeta-repuesto, .tarjeta-orden):nth-child(1) { animation-delay: 0ms; }
+:where(table.tabla tbody tr, .tarjeta-repuesto, .tarjeta-orden):nth-child(2) { animation-delay: 25ms; }
+:where(table.tabla tbody tr, .tarjeta-repuesto, .tarjeta-orden):nth-child(3) { animation-delay: 50ms; }
+:where(table.tabla tbody tr, .tarjeta-repuesto, .tarjeta-orden):nth-child(4) { animation-delay: 75ms; }
+:where(table.tabla tbody tr, .tarjeta-repuesto, .tarjeta-orden):nth-child(5) { animation-delay: 100ms; }
+:where(table.tabla tbody tr, .tarjeta-repuesto, .tarjeta-orden):nth-child(6) { animation-delay: 125ms; }
+:where(table.tabla tbody tr, .tarjeta-repuesto, .tarjeta-orden):nth-child(7) { animation-delay: 150ms; }
+:where(table.tabla tbody tr, .tarjeta-repuesto, .tarjeta-orden):nth-child(8) { animation-delay: 175ms; }
+:where(table.tabla tbody tr, .tarjeta-repuesto, .tarjeta-orden):nth-child(n+9) { animation-delay: 200ms; }
+
+/* Apertura de menús/paneles flotantes: mismo criterio, sin desfasaje. */
+@keyframes entrada-panel {
+  from { opacity: 0; transform: scale(0.97) translateY(-2px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.menu-contextual[open] .menu-contextual-panel {
+  animation: entrada-panel 0.12s var(--entrada-easing);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(table.tabla tbody tr, .tarjeta-repuesto, .tarjeta-orden, .menu-contextual-panel) {
+    animation: none;
+  }
 }
 
 html,
@@ -139,18 +209,18 @@ a:hover {
    física (una hoja) en vez de un simple recuadro. */
 .tarjeta {
   background: var(--blanco);
-  border: 1px solid var(--gris-200);
+  border: 1px solid transparent;
   border-radius: var(--radio);
   box-shadow: var(--sombra-sm);
 }
 
 .tarjeta-cuerpo {
-  padding: 20px;
+  padding: 30px;
 }
 
 .tarjeta-encabezado {
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--gris-200);
+  padding: 20px 30px;
+  border-bottom: 1px solid transparent;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -162,6 +232,20 @@ a:hover {
 .tarjeta-encabezado h3 {
   margin: 0;
 }
+
+.tarjeta-encabezado input[type='search'] {
+  max-width: 340px;
+}
+
+.campo-mayusculas {
+  text-transform: uppercase;
+}
+
+/* Anchos de campo en filtros: reemplazan los style="max-width: …px" sueltos
+   que cada módulo fijaba con un valor distinto para el mismo tipo de campo. */
+.filtro-ancho-lg { max-width: var(--ancho-filtro-lg); }
+.filtro-ancho-md { max-width: var(--ancho-filtro-md); }
+.filtro-ancho-sm { max-width: var(--ancho-filtro-sm); }
 
 /* ---------------------------------------------------------------- Botones */
 
@@ -237,8 +321,10 @@ a:hover {
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
+  transition: opacity 0.1s;
 }
 .btn-enlace:hover { text-decoration: underline; }
+.btn-enlace:not(:disabled):active { opacity: 0.6; }
 
 /* --------------------------------------------------------------- Formularios */
 
@@ -482,6 +568,72 @@ textarea.invalido:focus {
   color: var(--brand-dk);
 }
 
+/* ------------------------------------------------- Diagnóstico asistido */
+
+.panel-sugerencia {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--azul-100);
+  border-radius: var(--radio-sm);
+  background: var(--azul-100);
+}
+
+.panel-sugerencia-titulo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #1c4a9c;
+}
+
+.panel-sugerencia-titulo svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.panel-sugerencia-fila {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.panel-sugerencia-precio {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px solid #c5d7f7;
+}
+
+.panel-sugerencia-etq {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gris-500);
+}
+
+.chips-sugerencia {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip-badge {
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: var(--blanco);
+  border: 1px solid var(--gris-200);
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ----------------------------------------------------------------- Tablas */
 
 .tabla-contenedor {
@@ -678,7 +830,7 @@ table.tabla th.th-acciones {
   background: var(--blanco);
   color: var(--gris-500);
   cursor: pointer;
-  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  transition: background 0.12s, color 0.12s, border-color 0.12s, transform 0.1s;
 }
 
 .btn-icono svg {
@@ -686,10 +838,19 @@ table.tabla th.th-acciones {
   height: 16px;
 }
 
-.btn-icono:hover {
+.btn-icono:not(:disabled):hover {
   background: var(--gris-50);
   color: var(--ink);
   border-color: var(--gris-400);
+}
+
+.btn-icono:not(:disabled):active {
+  transform: scale(0.92);
+}
+
+.btn-icono:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 /* Acción destructiva/de bloqueo: tinte rojo suave, igual que el resto del sistema */
@@ -1007,6 +1168,33 @@ table.tabla th.num {
   color: var(--ink-soft);
 }
 
+/* ------------------------------------------------------------------ Avisos */
+
+/* Franja informativa en azul (no de alarma): explica por qué una pantalla
+   está en solo lectura o por qué una acción no está disponible. Vive acá y
+   no en un módulo porque la usan varias pantallas; dentro de un componente
+   el estilo no viaja con el marcado que se copia. */
+.banner-info {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 14px;
+  border-radius: var(--radio);
+  background: var(--azul-100);
+  border: 1px solid #c5d7f7;
+  color: #1c4a9c;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Sin esto el ícono se estira hasta ocupar la pantalla: los SVG en línea de
+   este sistema no traen width/height propios. */
+.banner-info svg {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+
 /* --------------------------------------------------------------- Insignias */
 
 .insignia {
@@ -1026,6 +1214,39 @@ table.tabla th.num {
 .insignia-naranja { background: var(--naranja-100); color: #7a5700; --punto: var(--naranja-600); }
 .insignia-roja { background: var(--brand-soft); color: #a00400; --punto: var(--brand); }
 .insignia-gris { background: var(--gris-200); color: #2c323c; --punto: var(--gris-500); }
+
+/* Píldora contador: número de elementos junto a un nombre (repuestos de un
+   proveedor, líneas de una compra, pestaña con conteo). Antes cada módulo
+   reimplementaba el mismo círculo con padding/radio propios; acá queda un
+   único patrón con dos variantes. */
+.contador-pildora {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 20px;
+  border: 1px solid transparent;
+  background: var(--gris-100);
+  color: var(--ink-soft);
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Variante enlace: cuando el contador lleva a otra pantalla (ej. ver
+   repuestos de este proveedor), con estado hover propio. */
+.contador-pildora--enlace {
+  background: var(--gris-50);
+  border-color: var(--gris-200);
+  text-decoration: none;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.contador-pildora--enlace:hover {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand-dk);
+}
 
 /* --------------------------------------------------------- Estados vacíos */
 

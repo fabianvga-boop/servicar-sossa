@@ -15,6 +15,7 @@ import { Confirmacion } from '../../shared/components/confirmacion';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { InsigniaEstado } from '../../shared/components/insignia-estado';
 import { Modal } from '../../shared/components/modal';
+import { Paginador } from '../../shared/components/paginador';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 
@@ -33,6 +34,7 @@ const CLAVE_FILTRO = 'comisiones.estadoPago';
     Confirmacion,
     EstadoTabla,
     InsigniaEstado,
+    Paginador,
     SelectorBusqueda,
     BolivianosPipe,
   ],
@@ -56,6 +58,11 @@ export class Comisiones {
   protected readonly cargando = signal(true);
   protected readonly procesando = signal(false);
   protected readonly estadoFiltro = signal('');
+
+  protected readonly pagina = signal(1);
+  protected readonly tamanoPagina = signal(20);
+  protected readonly totalRegistros = signal(0);
+  protected readonly totalPaginas = signal(0);
 
   /** Comisiones marcadas para liquidar en lote. */
   protected readonly seleccionadas = signal<Set<string>>(new Set());
@@ -133,11 +140,11 @@ export class Comisiones {
 
     this.cargar();
 
-    this.usuariosService.getAll().subscribe((lista) =>
+    this.usuariosService.getAll(undefined, 1, 500).subscribe((resultado) =>
       // El administrador (dueño) también genera comisión cuando trabaja un
       // vehículo (con porcentaje 100), así que puede configurarse su porcentaje.
       this.mecanicos.set(
-        lista.filter(
+        resultado.items.filter(
           (u) =>
             (u.nombreRol === 'Mecanico' || u.nombreRol === 'Administrador') &&
             u.estado === EstadoUsuario.Activo,
@@ -152,10 +159,16 @@ export class Comisiones {
     const estado = this.estadoFiltro();
 
     this.servicio
-      .getAll({ estadoPago: estado === '' ? undefined : (Number(estado) as EstadoPago) })
+      .getAll({
+        estadoPago: estado === '' ? undefined : (Number(estado) as EstadoPago),
+        pagina: this.pagina(),
+        tamanoPagina: this.tamanoPagina(),
+      })
       .subscribe({
-        next: (lista) => {
-          this.comisiones.set(lista);
+        next: (resultado) => {
+          this.comisiones.set(resultado.items);
+          this.totalRegistros.set(resultado.totalRegistros);
+          this.totalPaginas.set(resultado.totalPaginas);
           this.cargando.set(false);
         },
         error: () => this.cargando.set(false),
@@ -173,6 +186,18 @@ export class Comisiones {
     this.estadoFiltro.set(valor);
     this.preferencias.guardar(CLAVE_FILTRO, valor);
     this.seleccionadas.set(new Set());
+    this.pagina.set(1);
+    this.cargar();
+  }
+
+  protected cambiarPagina(pagina: number): void {
+    this.pagina.set(pagina);
+    this.cargar();
+  }
+
+  protected cambiarTamano(tamano: number): void {
+    this.tamanoPagina.set(tamano);
+    this.pagina.set(1);
     this.cargar();
   }
 

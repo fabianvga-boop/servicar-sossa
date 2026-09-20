@@ -6,7 +6,7 @@
 
   <aside class="lateral" [class.abierto]="menuAbierto()">
     <div class="marca">
-      <img src="assets/logo-oscuro.png" alt="Servicar SOSSA" class="marca-logo" />
+      <img src="assets/logo.png" alt="Servicar SOSSA" class="marca-logo" />
     </div>
 
     <nav class="navegacion">
@@ -51,12 +51,22 @@
         (click)="alternarMenu()"
         aria-label="Abrir menú"
       >
-        ☰
+        <app-icono-menu nombre="menu" />
       </button>
+
+      <!-- Nombre de la sección activa: la señal de "dónde estoy" para quien
+           entra por un enlace directo, sin depender de ver la píldora activa
+           del lateral (oculta en móvil detrás de la hamburguesa).
+           No es <h1>: cada pantalla ya trae el suyo propio con el mismo
+           texto (p. ej. clientes.html); duplicarlo rompería el esquema de
+           encabezados de la página. -->
+      @if (tituloSeccion(); as titulo) {
+        <span class="titulo-seccion">{{ titulo }}</span>
+      }
 
       <!-- Disparador del buscador global; el atajo Ctrl+K hace lo mismo -->
       <button type="button" class="buscar-disparador" (click)="abrirBuscador()">
-        <span class="lupa" aria-hidden="true">⌕</span>
+        <app-icono-menu class="lupa" nombre="buscar" />
         <span class="buscar-texto">Buscar orden, cliente, placa…</span>
         <kbd>Ctrl</kbd><kbd>K</kbd>
       </button>

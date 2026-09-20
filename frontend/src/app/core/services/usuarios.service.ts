@@ -3,6 +3,7 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { EstadoUsuario } from '../models/enums';
+import { PaginaResultado } from '../models/paginacion.model';
 import { Rol, Usuario, UsuarioRequest, UsuarioUpdate } from '../models/personas.model';
 import { ApiBase } from './api-base';
 
@@ -11,8 +12,8 @@ import { ApiBase } from './api-base';
 export class UsuariosService extends ApiBase {
   protected readonly recurso = 'usuarios';
 
-  getAll(buscar?: string): Observable<Usuario[]> {
-    return this.listar<Usuario>({ buscar });
+  getAll(buscar?: string, pagina = 1, tamanoPagina = 20): Observable<PaginaResultado<Usuario>> {
+    return this.listarPaginado<Usuario>({ buscar, pagina, tamanoPagina });
   }
 
   getById(id: string): Observable<Usuario> {

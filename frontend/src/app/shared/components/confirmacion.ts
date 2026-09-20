@@ -4,7 +4,7 @@ import { Modal } from './modal';
 
 /**
  * Confirmación para acciones que no se pueden deshacer (cerrar una orden,
- * anular una factura, pagar comisiones). Evita repetir el mismo modal
+ * anular una proforma, pagar comisiones). Evita repetir el mismo modal
  * en cada pantalla.
  */
 @Component({
@@ -58,7 +58,7 @@ import { Modal } from './modal';
       color: #92400e;
     }
 
-    /* Anular una factura y desactivar un cliente no pesan igual: cuando la
+    /* Anular una proforma y desactivar un cliente no pesan igual: cuando la
        acción es irreversible la advertencia va en rojo, no en naranja. */
     .advertencia.grave {
       background: var(--brand-soft);

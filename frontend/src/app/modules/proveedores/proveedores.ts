@@ -8,13 +8,24 @@ import { NotificacionService } from '../../core/services/notificacion.service';
 import { Confirmacion } from '../../shared/components/confirmacion';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { Modal } from '../../shared/components/modal';
+import { Paginador } from '../../shared/components/paginador';
 import { Atajo } from '../../shared/directives/atajo';
 import { EnfocarError } from '../../shared/directives/enfocar-error';
+import { unicosOrdenados } from '../../shared/sugerencias-texto';
 
 /** USU028 — gestión de proveedores. */
 @Component({
   selector: 'app-proveedores',
-  imports: [ReactiveFormsModule, RouterLink, Modal, Confirmacion, EstadoTabla, Atajo, EnfocarError],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    Modal,
+    Confirmacion,
+    EstadoTabla,
+    Paginador,
+    Atajo,
+    EnfocarError,
+  ],
   templateUrl: './proveedores.html',
   styleUrl: './proveedores.css',
 })
@@ -24,9 +35,16 @@ export class Proveedores {
   private readonly notificacion = inject(NotificacionService);
 
   protected readonly proveedores = signal<Proveedor[]>([]);
+  /** Solo para el autocompletado de "Dirección": no reemplaza la tabla paginada. */
+  protected readonly direccionesSugeridas = signal<string[]>([]);
   protected readonly cargando = signal(true);
   protected readonly buscar = signal('');
   protected readonly guardando = signal(false);
+
+  protected readonly pagina = signal(1);
+  protected readonly tamanoPagina = signal(20);
+  protected readonly totalRegistros = signal(0);
+  protected readonly totalPaginas = signal(0);
 
   protected readonly editando = signal<Proveedor | null>(null);
   protected readonly formularioAbierto = signal(false);
@@ -42,28 +60,70 @@ export class Proveedores {
 
   constructor() {
     this.cargar();
+
+    // Solo para el autocompletado de "Dirección": no reemplaza la tabla paginada.
+    this.servicio
+      .getAll(undefined, 1, 500)
+      .subscribe((resultado) =>
+        this.direccionesSugeridas.set(unicosOrdenados(resultado.items.map((p) => p.direccion))),
+      );
   }
 
   protected cargar(): void {
     this.cargando.set(true);
 
-    this.servicio.getAll(this.buscar() || undefined).subscribe({
-      next: (lista) => {
-        this.proveedores.set(lista);
-        this.cargando.set(false);
-      },
-      error: () => this.cargando.set(false),
-    });
+    this.servicio
+      .getAll(this.buscar() || undefined, this.pagina(), this.tamanoPagina())
+      .subscribe({
+        next: (resultado) => {
+          this.proveedores.set(resultado.items);
+          this.totalRegistros.set(resultado.totalRegistros);
+          this.totalPaginas.set(resultado.totalPaginas);
+          this.cargando.set(false);
+        },
+        error: () => this.cargando.set(false),
+      });
   }
 
   protected onBuscar(valor: string): void {
     this.buscar.set(valor);
+    this.pagina.set(1);
+    this.cargar();
+  }
+
+  protected cambiarPagina(pagina: number): void {
+    this.pagina.set(pagina);
+    this.cargar();
+  }
+
+  protected cambiarTamano(tamano: number): void {
+    this.tamanoPagina.set(tamano);
+    this.pagina.set(1);
     this.cargar();
   }
 
   protected invalido(control: string): boolean {
     const campo = this.formulario.get(control);
     return !!campo && campo.invalid && campo.touched;
+  }
+
+  /** Mensaje concreto por campo, en vez de un genérico "revise el formulario". */
+  protected error(control: string): string {
+    const campo = this.formulario.get(control);
+    if (!campo || !this.invalido(control)) return '';
+
+    if (campo.hasError('required')) return 'Este campo es obligatorio.';
+    if (campo.hasError('email')) return 'Ingrese un email válido.';
+    if (campo.hasError('minlength')) {
+      const { requiredLength } = campo.getError('minlength');
+      return `Mínimo ${requiredLength} caracteres.`;
+    }
+    if (campo.hasError('maxlength')) {
+      const { requiredLength } = campo.getError('maxlength');
+      return `Máximo ${requiredLength} caracteres.`;
+    }
+
+    return 'Revise el valor ingresado.';
   }
 
   /**

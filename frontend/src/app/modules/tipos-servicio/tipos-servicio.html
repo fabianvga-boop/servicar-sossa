@@ -22,9 +22,9 @@
     <div class="fila envuelve">
       <input
         type="search"
+        class="filtro-ancho-md"
         maxlength="100"
         placeholder="Buscar servicio…"
-        style="max-width: 280px"
         [value]="buscar()"
         (input)="onBuscar($any($event.target).value)"
       />
@@ -38,7 +38,7 @@
         Mostrar dados de baja
       </label>
     </div>
-    <span class="texto-tenue texto-sm">{{ servicios().length }} servicio(s)</span>
+    <span class="texto-tenue texto-sm">{{ totalRegistros() }} servicio(s)</span>
   </div>
 
   @if (cargando() || servicios().length === 0) {
@@ -98,7 +98,7 @@
                       class="btn-icono btn-icono-peligro"
                       title="Dar de baja"
                       aria-label="Dar de baja el servicio"
-                      (click)="cambiarEstado(servicio)"
+                      (click)="porCambiarEstado.set(servicio)"
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
@@ -110,7 +110,7 @@
                       class="btn-icono btn-icono-exito"
                       title="Reactivar"
                       aria-label="Reactivar servicio"
-                      (click)="cambiarEstado(servicio)"
+                      (click)="porCambiarEstado.set(servicio)"
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 7.4-2" />
@@ -124,6 +124,15 @@
         </tbody>
       </table>
     </div>
+
+    <app-paginador
+      [pagina]="pagina()"
+      [totalPaginas]="totalPaginas()"
+      [totalRegistros]="totalRegistros()"
+      [tamanoPagina]="tamanoPagina()"
+      (cambiarPagina)="cambiarPagina($event)"
+      (cambiarTamano)="cambiarTamano($event)"
+    />
   }
 </div>
 
@@ -138,11 +147,18 @@
         <input
           id="nombre"
           formControlName="nombre"
+          list="lista-servicios-comunes"
+          autocomplete="off"
           placeholder="Ej. Cambio de aceite"
           [class.invalido]="invalido('nombre')"
         />
+        <datalist id="lista-servicios-comunes">
+          @for (s of serviciosComunes; track s) {
+            <option [value]="s"></option>
+          }
+        </datalist>
         @if (invalido('nombre')) {
-          <span class="campo-error">El nombre es obligatorio.</span>
+          <span class="campo-error">{{ error('nombre') }}</span>
         }
       </div>
 
@@ -181,4 +197,25 @@
       </button>
     </div>
   </app-modal>
+}
+
+@if (porCambiarEstado(); as servicio) {
+  <app-confirmacion
+    [titulo]="servicio.estado === EstadoServicio.Activo ? 'Dar de baja el servicio' : 'Reactivar servicio'"
+    [mensaje]="
+      servicio.estado === EstadoServicio.Activo
+        ? '¿Dar de baja el servicio ' + servicio.nombre + '?'
+        : '¿Reactivar el servicio ' + servicio.nombre + '?'
+    "
+    [advertencia]="
+      servicio.estado === EstadoServicio.Activo
+        ? 'No se podrá cargar en nuevas órdenes mientras esté dado de baja.'
+        : null
+    "
+    [textoConfirmar]="servicio.estado === EstadoServicio.Activo ? 'Dar de baja' : 'Reactivar'"
+    [peligroso]="servicio.estado === EstadoServicio.Activo"
+    [procesando]="guardando()"
+    (confirmar)="cambiarEstado()"
+    (cancelar)="porCambiarEstado.set(null)"
+  />
 }

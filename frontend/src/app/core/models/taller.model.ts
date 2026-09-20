@@ -66,6 +66,45 @@ export interface ResponderDiagnostico {
   comentarioCliente?: string | null;
 }
 
+// ---------------------------------------------------- Diagnóstico asistido
+
+/**
+ * Sugerencias calculadas comparando la falla reportada contra el historial de
+ * diagnósticos que sí llegaron a una orden (coincidencia de palabras clave,
+ * sin IA externa) — ver DiagnosticoService.CalcularSugerenciasAsync.
+ */
+export interface SugerenciaDiagnostico {
+  basadoEnCasos: number;
+  servicios: SugerenciaServicio[];
+  repuestos: SugerenciaRepuesto[];
+  precioMinimo?: number | null;
+  precioMaximo?: number | null;
+  precioPromedio?: number | null;
+  casosSimilares: CasoSimilar[];
+}
+
+export interface SugerenciaServicio {
+  servicioId?: string | null;
+  nombre: string;
+  frecuencia: number;
+  porcentaje: number;
+  precioPromedio: number;
+}
+
+export interface SugerenciaRepuesto {
+  repuestoId?: string | null;
+  nombre: string;
+  frecuencia: number;
+  porcentaje: number;
+  precioUnitarioPromedio: number;
+}
+
+export interface CasoSimilar {
+  diagnosticoId: string;
+  descripcionFalla: string;
+  similitud: number;
+}
+
 // --------------------------------------------------------- Órdenes de trabajo
 
 export interface Orden {

@@ -81,7 +81,7 @@
             </button>
           }
         </div>
-        <span class="texto-tenue texto-sm">{{ comisiones().length }} comisión(es)</span>
+        <span class="texto-tenue texto-sm">{{ totalRegistros() }} comisión(es)</span>
       </div>
 
       @if (cargando() || comisiones().length === 0) {
@@ -201,6 +201,15 @@
             </tbody>
           </table>
         </div>
+
+        <app-paginador
+          [pagina]="pagina()"
+          [totalPaginas]="totalPaginas()"
+          [totalRegistros]="totalRegistros()"
+          [tamanoPagina]="tamanoPagina()"
+          (cambiarPagina)="cambiarPagina($event)"
+          (cambiarTamano)="cambiarTamano($event)"
+        />
       }
     </div>
 

@@ -18,7 +18,10 @@ export type NombreIconoMenu =
   | 'usuarios'
   | 'reportes'
   | 'auditoria'
-  | 'completado';
+  | 'plantillas'
+  | 'completado'
+  | 'buscar'
+  | 'menu';
 
 /**
  * Íconos de trazo para el menú lateral, en vez de emoji: se ven iguales en
@@ -113,9 +116,24 @@ export type NombreIconoMenu =
           <circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.4-4.4"/>
         </svg>
       }
+      @case ('plantillas') {
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="5" y="3" width="14" height="18" rx="3"/><path d="M9 8h6M9 12h6M9 16h3"/>
+        </svg>
+      }
       @case ('completado') {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.5 2.5L16 9.5"/>
+        </svg>
+      }
+      @case ('buscar') {
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.4-4.4"/>
+        </svg>
+      }
+      @case ('menu') {
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 6h16M4 12h16M4 18h16"/>
         </svg>
       }
     }

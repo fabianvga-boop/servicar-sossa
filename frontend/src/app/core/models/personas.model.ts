@@ -1,4 +1,4 @@
-import { EstadoCliente, EstadoUsuario } from './enums';
+import { EstadoCliente, EstadoUsuario, EstadoZonaVehiculo } from './enums';
 
 // ------------------------------------------------------------------ Usuarios
 
@@ -83,6 +83,10 @@ export interface Vehiculo {
   numChasis?: string | null;
   kilometraje?: number | null;
   fechaRegistro: string;
+  /** Silueta a usar en el diagrama vectorial; inferida de marca/modelo por el backend. */
+  tipoCarroceria: TipoCarroceria;
+  /** SVG específico de la biblioteca de plantillas para esta marca+modelo, si existe. */
+  diagramaSvgUrl: string | null;
 }
 
 export interface VehiculoRequest {
@@ -98,6 +102,48 @@ export interface VehiculoRequest {
 }
 
 export type VehiculoUpdate = Omit<VehiculoRequest, 'clienteId'>;
+
+/** Silueta del diagrama vectorial. Debe coincidir con TipoCarroceria del backend. */
+export type TipoCarroceria =
+  | 'Sedan'
+  | 'Suv'
+  | 'Pickup'
+  | 'Furgon'
+  | 'Moto'
+  | 'Camion'
+  | 'Hatchback'
+  | 'Generico';
+
+// --------------------------------------------- Zonas del vehículo (diagrama)
+
+export interface VehiculoZona {
+  zonaObsId: string;
+  vehiculoId: string;
+  ordenId?: string | null;
+  zona: string;
+  /** 'Ok' | 'Atencion' | 'EnReparacion', tal como lo serializa el backend. */
+  estado: string;
+  detalle?: string | null;
+  fechaRegistro: string;
+}
+
+export interface RegistrarZonaRequest {
+  zona: string;
+  estado: EstadoZonaVehiculo;
+  detalle?: string | null;
+  ordenId?: string | null;
+}
+
+// --------------------------------- Biblioteca de plantillas (Marca+Modelo)
+
+/** Un SVG fiel a un vehículo real (Marca+Modelo), cargado por el Administrador. */
+export interface PlantillaVehiculo {
+  plantillaId: string;
+  marca: string;
+  modelo: string;
+  url: string;
+  fechaSubida: string;
+}
 
 // -------------------------------------------------- Fotos del vehículo (galería)
 
