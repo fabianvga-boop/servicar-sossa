@@ -18,7 +18,7 @@
   <div class="tarjeta-encabezado">
     <div class="filtros-diagnosticos">
       <select
-        style="max-width: 220px"
+        class="filtro-ancho-md"
         [value]="estadoFiltro()"
         (change)="onFiltrarEstado($any($event.target).value)"
       >
@@ -28,32 +28,27 @@
         <option value="2">Anulado</option>
       </select>
 
-      <!-- Búsqueda rápida en el propio HTML, sin estado en el componente:
-           `#buscadorDiag` se lee más abajo, dentro del @for, para decidir qué
-           fila mostrar. El (input)="0" no hace nada por sí solo — su único
-           propósito es que Angular vuelva a evaluar la plantilla en cada
-           tecla (sin él, `buscadorDiag.value` no se releería). -->
       <div class="buscador-con-icono">
         <svg class="buscador-con-icono-lupa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <circle cx="10.5" cy="10.5" r="6.5" /><path d="m20 20-4.4-4.4" />
         </svg>
         <input
-          #buscadorDiag
           type="search"
           maxlength="100"
-          placeholder="Buscar por placa, cliente o falla…"
-          aria-label="Buscar por placa, cliente o falla"
-          (input)="0"
+          placeholder="Buscar por placa, falla u observaciones…"
+          aria-label="Buscar por placa, falla u observaciones"
+          [value]="buscar()"
+          (input)="onBuscar($any($event.target).value)"
         />
       </div>
     </div>
-    <span class="texto-tenue texto-sm">{{ diagnosticos().length }} diagnóstico(s)</span>
+    <span class="texto-tenue texto-sm">{{ totalRegistros() }} diagnóstico(s)</span>
   </div>
 
   @if (cargando() || diagnosticos().length === 0) {
     <app-estado-tabla
       [cargando]="cargando()"
-      [hayFiltro]="estadoFiltro().length > 0"
+      [hayFiltro]="estadoFiltro().length > 0 || buscar().length > 0"
       titulo="Sin diagnósticos registrados"
       descripcion="Registre el diagnóstico de un vehículo para dejar constancia de la falla."
     />
@@ -74,13 +69,6 @@
         </thead>
         <tbody>
           @for (diagnostico of diagnosticos(); track diagnostico.diagnosticoId) {
-            @let terminoBusqueda = buscadorDiag.value.trim().toLowerCase();
-            @let coincideBusqueda =
-              !terminoBusqueda ||
-              diagnostico.placaVehiculo.toLowerCase().includes(terminoBusqueda) ||
-              diagnostico.nombreCliente.toLowerCase().includes(terminoBusqueda) ||
-              diagnostico.descripcionFalla.toLowerCase().includes(terminoBusqueda);
-            @if (coincideBusqueda) {
             <tr>
               <td>
                 <div class="codigo">{{ diagnostico.diagnosticoId }}</div>
@@ -182,11 +170,19 @@
                 </details>
               </td>
             </tr>
-            }
           }
         </tbody>
       </table>
     </div>
+
+    <app-paginador
+      [pagina]="pagina()"
+      [totalPaginas]="totalPaginas()"
+      [totalRegistros]="totalRegistros()"
+      [tamanoPagina]="tamanoPagina()"
+      (cambiarPagina)="cambiarPagina($event)"
+      (cambiarTamano)="cambiarTamano($event)"
+    />
   }
 </div>
 
@@ -215,6 +211,13 @@
 
       <div class="campo">
         <label for="descripcionFalla">Descripción de la falla <span class="obligatorio">*</span></label>
+        @if (fallasSugeridas().length > 0 && !formulario.controls.descripcionFalla.value) {
+          <div class="chips-sugerencia mb-1">
+            @for (f of fallasSugeridas().slice(0, 8); track f) {
+              <button type="button" class="chip-sugerido" (click)="usarFallaSugerida(f)">{{ f }}</button>
+            }
+          </div>
+        }
         <textarea
           id="descripcionFalla"
           formControlName="descripcionFalla"
@@ -224,6 +227,55 @@
         ></textarea>
         @if (invalido('descripcionFalla')) {
           <span class="campo-error">Describa la falla detectada.</span>
+        }
+
+        @if (cargandoSugerencia()) {
+          <p class="texto-tenue texto-sm mb-0 mt-1">Buscando casos similares…</p>
+        } @else if (sugerencia(); as s) {
+          <div class="panel-sugerencia mt-1">
+            <div class="panel-sugerencia-titulo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M9.5 2A5.5 5.5 0 0 0 4 7.5c0 2 1 3.5 2.5 4.7V15a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-2.8C13.9 11 15 9.5 15 7.5A5.5 5.5 0 0 0 9.5 2Z" />
+                <path d="M7.5 19h4M8 22h3" />
+              </svg>
+              Diagnóstico asistido — basado en {{ s.basadoEnCasos }} caso(s) similar(es)
+            </div>
+
+            @if (s.servicios.length > 0) {
+              <div class="panel-sugerencia-fila">
+                <span class="panel-sugerencia-etq">Servicios probables</span>
+                <div class="chips-sugerencia">
+                  @for (sv of s.servicios; track sv.nombre) {
+                    <span class="chip-badge">{{ sv.nombre }} <strong>· {{ sv.porcentaje }}%</strong></span>
+                  }
+                </div>
+              </div>
+            }
+
+            @if (s.repuestos.length > 0) {
+              <div class="panel-sugerencia-fila">
+                <span class="panel-sugerencia-etq">Repuestos probables</span>
+                <div class="chips-sugerencia">
+                  @for (rp of s.repuestos; track rp.nombre) {
+                    <span class="chip-badge">{{ rp.nombre }} <strong>· {{ rp.porcentaje }}%</strong></span>
+                  }
+                </div>
+              </div>
+            }
+
+            @if (s.precioMinimo != null) {
+              <div class="panel-sugerencia-fila panel-sugerencia-precio">
+                <span class="panel-sugerencia-etq">Precio en casos similares</span>
+                <span>
+                  {{ s.precioMinimo | bs }} – {{ s.precioMaximo | bs }}
+                  <span class="texto-tenue">(prom. {{ s.precioPromedio | bs }})</span>
+                </span>
+                <button type="button" class="btn-enlace" (click)="usarPrecioSugerido()">
+                  Usar Bs {{ s.precioPromedio }}
+                </button>
+              </div>
+            }
+          </div>
         }
       </div>
 

@@ -88,4 +88,16 @@ export class OrdenesService extends ApiBase {
   quitarRepuesto(ordenId: string, ordenRepuestoId: string): Observable<OrdenDetalle> {
     return this.http.delete<OrdenDetalle>(this.url(ordenId, 'repuestos', ordenRepuestoId));
   }
+
+  // --- Escribir menos: sugerencias --------------------------------------------
+
+  /** Nombres de servicios "fuera de catálogo" ya usados en cualquier orden. */
+  nombresServicioLibre(): Observable<string[]> {
+    return this.http.get<string[]>(this.url('sugerencias', 'servicios-libres'));
+  }
+
+  /** Descripciones de repuestos "fuera de inventario" ya usadas en cualquier orden. */
+  descripcionesRepuestoLibre(): Observable<string[]> {
+    return this.http.get<string[]>(this.url('sugerencias', 'repuestos-libres'));
+  }
 }

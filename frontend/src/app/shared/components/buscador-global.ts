@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, map } from 'rxjs/operators';
 
 import { Cliente, Vehiculo } from '../../core/models/personas.model';
 import { Repuesto } from '../../core/models/inventario.model';
@@ -11,10 +11,11 @@ import { ClientesService } from '../../core/services/clientes.service';
 import { RepuestosService } from '../../core/services/inventario.service';
 import { OrdenesService } from '../../core/services/ordenes.service';
 import { VehiculosService } from '../../core/services/vehiculos.service';
+import { IconoMenu, NombreIconoMenu } from './icono-menu';
 
 interface Resultado {
   grupo: string;
-  icono: string;
+  icono: NombreIconoMenu;
   etiqueta: string;
   detalle: string;
   ruta: string;
@@ -44,6 +45,7 @@ function normalizar(texto: string): string {
  */
 @Component({
   selector: 'app-buscador-global',
+  imports: [IconoMenu],
   host: {
     '(document:keydown)': 'alTeclearGlobal($event)',
   },
@@ -52,7 +54,7 @@ function normalizar(texto: string): string {
       <div class="fondo" (click)="cerrar()">
         <div class="panel" (click)="$event.stopPropagation()">
           <div class="campo-busqueda">
-            <span class="lupa" aria-hidden="true">⌕</span>
+            <app-icono-menu class="lupa" nombre="buscar" />
             <input
               #campo
               type="text"
@@ -90,7 +92,7 @@ function normalizar(texto: string): string {
                   (mouseenter)="resaltado.set(i)"
                   (click)="ir(item)"
                 >
-                  <span class="icono" aria-hidden="true">{{ item.icono }}</span>
+                  <app-icono-menu class="icono" [nombre]="item.icono" />
                   <span class="etiqueta">{{ item.etiqueta }}</span>
                   <span class="detalle">{{ item.detalle }}</span>
                 </li>
@@ -242,24 +244,24 @@ export class BuscadorGlobal {
   private cargado = false;
 
   /** Destinos fijos: sirven de atajo de navegación además de la búsqueda. */
-  private readonly destinos: { etiqueta: string; ruta: string; icono: string; soloAdmin: boolean }[] =
+  private readonly destinos: { etiqueta: string; ruta: string; icono: NombreIconoMenu; soloAdmin: boolean }[] =
     [
-      { etiqueta: 'Panel', ruta: '/dashboard', icono: '▦', soloAdmin: false },
-      { etiqueta: 'Órdenes de trabajo', ruta: '/ordenes', icono: '🗂', soloAdmin: false },
-      { etiqueta: 'Diagnósticos', ruta: '/diagnosticos', icono: '🔧', soloAdmin: false },
-      { etiqueta: 'Catálogo de servicios', ruta: '/tipos-servicio', icono: '⚙', soloAdmin: false },
-      { etiqueta: 'Clientes', ruta: '/clientes', icono: '👤', soloAdmin: true },
-      { etiqueta: 'Vehículos', ruta: '/vehiculos', icono: '🚗', soloAdmin: false },
-      { etiqueta: 'Repuestos', ruta: '/repuestos', icono: '📦', soloAdmin: false },
-      { etiqueta: 'Proveedores', ruta: '/proveedores', icono: '🏭', soloAdmin: true },
-      { etiqueta: 'Compras', ruta: '/compras', icono: '🛒', soloAdmin: true },
-      { etiqueta: 'Punto de venta', ruta: '/ventas', icono: '🏪', soloAdmin: true },
-      { etiqueta: 'Proformas', ruta: '/proformas', icono: '🧾', soloAdmin: true },
-      { etiqueta: 'Pagos', ruta: '/pagos', icono: '💵', soloAdmin: true },
-      { etiqueta: 'Comisiones', ruta: '/comisiones', icono: '%', soloAdmin: true },
-      { etiqueta: 'Usuarios', ruta: '/usuarios', icono: '🔑', soloAdmin: true },
-      { etiqueta: 'Reportes', ruta: '/reportes', icono: '📊', soloAdmin: true },
-      { etiqueta: 'Auditoría', ruta: '/auditoria', icono: '🕵', soloAdmin: true },
+      { etiqueta: 'Panel', ruta: '/dashboard', icono: 'panel', soloAdmin: false },
+      { etiqueta: 'Órdenes de trabajo', ruta: '/ordenes', icono: 'ordenes', soloAdmin: false },
+      { etiqueta: 'Diagnósticos', ruta: '/diagnosticos', icono: 'diagnosticos', soloAdmin: false },
+      { etiqueta: 'Catálogo de servicios', ruta: '/tipos-servicio', icono: 'catalogo', soloAdmin: false },
+      { etiqueta: 'Clientes', ruta: '/clientes', icono: 'clientes', soloAdmin: true },
+      { etiqueta: 'Vehículos', ruta: '/vehiculos', icono: 'vehiculos', soloAdmin: false },
+      { etiqueta: 'Repuestos', ruta: '/repuestos', icono: 'repuestos', soloAdmin: false },
+      { etiqueta: 'Proveedores', ruta: '/proveedores', icono: 'proveedores', soloAdmin: true },
+      { etiqueta: 'Compras', ruta: '/compras', icono: 'compras', soloAdmin: true },
+      { etiqueta: 'Punto de venta', ruta: '/ventas', icono: 'ventas', soloAdmin: true },
+      { etiqueta: 'Proformas', ruta: '/proformas', icono: 'proformas', soloAdmin: true },
+      { etiqueta: 'Pagos', ruta: '/pagos', icono: 'pagos', soloAdmin: true },
+      { etiqueta: 'Comisiones', ruta: '/comisiones', icono: 'comisiones', soloAdmin: true },
+      { etiqueta: 'Usuarios', ruta: '/usuarios', icono: 'usuarios', soloAdmin: true },
+      { etiqueta: 'Reportes', ruta: '/reportes', icono: 'reportes', soloAdmin: true },
+      { etiqueta: 'Auditoría', ruta: '/auditoria', icono: 'auditoria', soloAdmin: true },
     ];
 
   protected readonly resultados = computed<Resultado[]>(() => {
@@ -276,7 +278,7 @@ export class BuscadorGlobal {
       if (!coincide(orden.ordenId, orden.placaVehiculo, orden.nombreCliente)) continue;
       salida.push({
         grupo: 'Órdenes',
-        icono: '🗂',
+        icono: 'ordenes',
         etiqueta: orden.ordenId,
         detalle: `${orden.placaVehiculo} · ${orden.nombreCliente}`,
         ruta: `/ordenes/${orden.ordenId}`,
@@ -293,7 +295,7 @@ export class BuscadorGlobal {
 
       salida.push({
         grupo: 'Clientes',
-        icono: '👤',
+        icono: 'clientes',
         etiqueta: nombre,
         detalle: cliente.ciNit,
         ruta: '/clientes',
@@ -306,7 +308,7 @@ export class BuscadorGlobal {
         continue;
       salida.push({
         grupo: 'Vehículos',
-        icono: '🚗',
+        icono: 'vehiculos',
         etiqueta: vehiculo.placa,
         detalle: `${vehiculo.marca} ${vehiculo.modelo} · ${vehiculo.nombreCliente}`,
         ruta: '/vehiculos',
@@ -318,7 +320,7 @@ export class BuscadorGlobal {
       if (!coincide(repuesto.nombre, repuesto.descripcion)) continue;
       salida.push({
         grupo: 'Repuestos',
-        icono: '📦',
+        icono: 'repuestos',
         etiqueta: repuesto.nombre,
         detalle: `stock ${repuesto.stockActual}`,
         ruta: '/repuestos',
@@ -414,10 +416,16 @@ export class BuscadorGlobal {
     forkJoin({
       ordenes: this.ordenesService.getAll().pipe(catchError(() => of([] as Orden[]))),
       clientes: this.auth.esAdministrador()
-        ? this.clientesService.getAll().pipe(catchError(() => of([] as Cliente[])))
+        ? this.clientesService
+            .getAll(undefined, 1, 500)
+            .pipe(map((r) => r.items), catchError(() => of([] as Cliente[])))
         : of([] as Cliente[]),
-      vehiculos: this.vehiculosService.getAll().pipe(catchError(() => of([] as Vehiculo[]))),
-      repuestos: this.repuestosService.getAll().pipe(catchError(() => of([] as Repuesto[]))),
+      vehiculos: this.vehiculosService
+        .getAll(undefined, undefined, 1, 500)
+        .pipe(map((r) => r.items), catchError(() => of([] as Vehiculo[]))),
+      repuestos: this.repuestosService
+        .getAll({ tamanoPagina: 500 })
+        .pipe(map((r) => r.items), catchError(() => of([] as Repuesto[]))),
     }).subscribe(({ ordenes, clientes, vehiculos, repuestos }) => {
       this.ordenes.set(ordenes);
       this.clientes.set(clientes);

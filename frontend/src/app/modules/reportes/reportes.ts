@@ -7,11 +7,12 @@ import { Reporte, ReporteGenerado } from '../../core/models/reporte.model';
 import { NotificacionService } from '../../core/services/notificacion.service';
 import { ReportesService } from '../../core/services/reportes.service';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
+import { Paginador } from '../../shared/components/paginador';
 
 /** USU017-USU020 — generación y exportación de reportes. */
 @Component({
   selector: 'app-reportes',
-  imports: [FormsModule, DatePipe, KeyValuePipe, EstadoTabla],
+  imports: [FormsModule, DatePipe, KeyValuePipe, EstadoTabla, Paginador],
   templateUrl: './reportes.html',
   styleUrl: './reportes.css',
 })
@@ -24,6 +25,11 @@ export class Reportes {
   protected readonly generando = signal(false);
   protected readonly exportando = signal(false);
   protected readonly mostrarBitacora = signal(false);
+
+  protected readonly paginaBitacora = signal(1);
+  protected readonly tamanoPaginaBitacora = signal(20);
+  protected readonly totalBitacora = signal(0);
+  protected readonly totalPaginasBitacora = signal(0);
 
   protected readonly tipos = [
     { valor: TipoReporte.Ventas, etiqueta: 'Ventas', ayuda: 'Facturación emitida y cobrada' },
@@ -118,7 +124,24 @@ export class Reportes {
   }
 
   protected cargarBitacora(): void {
-    this.servicio.getBitacora().subscribe((lista) => this.bitacora.set(lista));
+    this.servicio
+      .getBitacora(undefined, this.paginaBitacora(), this.tamanoPaginaBitacora())
+      .subscribe((resultado) => {
+        this.bitacora.set(resultado.items);
+        this.totalBitacora.set(resultado.totalRegistros);
+        this.totalPaginasBitacora.set(resultado.totalPaginas);
+      });
+  }
+
+  protected cambiarPaginaBitacora(pagina: number): void {
+    this.paginaBitacora.set(pagina);
+    this.cargarBitacora();
+  }
+
+  protected cambiarTamanoBitacora(tamano: number): void {
+    this.tamanoPaginaBitacora.set(tamano);
+    this.paginaBitacora.set(1);
+    this.cargarBitacora();
   }
 
   protected nombreFormato(formato: FormatoReporte): string {

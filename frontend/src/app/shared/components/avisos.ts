@@ -61,6 +61,10 @@ import { NotificacionService } from '../../core/services/notificacion.service';
       to { opacity: 1; transform: translateX(0); }
     }
 
+    @media (prefers-reduced-motion: reduce) {
+      .aviso { animation: none; }
+    }
+
     .aviso-exito { border-left-color: var(--verde-600); }
     .aviso-error { border-left-color: var(--brand-dk); }
     .aviso-advertencia { border-left-color: var(--naranja-600); }

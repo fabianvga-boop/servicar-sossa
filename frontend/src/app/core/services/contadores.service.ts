@@ -1,10 +1,8 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { forkJoin, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, map } from 'rxjs/operators';
 
 import { EstadoOrden, EstadoPago } from '../models/enums';
-import { Comision } from '../models/finanzas.model';
-import { Repuesto } from '../models/inventario.model';
 import { Orden } from '../models/taller.model';
 import { AuthService } from './auth.service';
 import { ComisionesService } from './finanzas.service';
@@ -48,18 +46,20 @@ export class ContadoresService {
     // debe tumbar el resto de los contadores, por eso cada rama va protegida.
     forkJoin({
       ordenes: this.ordenesService.getAll().pipe(catchError(() => of([] as Orden[]))),
-      comisiones: this.auth.esAdministrador()
+      // Solo interesa el total, no los registros: tamanoPagina=1 pide el
+      // mínimo posible y `totalRegistros` ya trae la cuenta real.
+      comisionesPendientes: this.auth.esAdministrador()
         ? this.comisionesService
-            .getAll({ estadoPago: EstadoPago.Pendiente })
-            .pipe(catchError(() => of([] as Comision[])))
-        : of([] as Comision[]),
-      repuestos: this.repuestosService
-        .getAll({ soloStockBajo: true })
-        .pipe(catchError(() => of([] as Repuesto[]))),
-    }).subscribe(({ ordenes, comisiones, repuestos }) => {
+            .getAll({ estadoPago: EstadoPago.Pendiente, tamanoPagina: 1 })
+            .pipe(map((r) => r.totalRegistros), catchError(() => of(0)))
+        : of(0),
+      stockBajo: this.repuestosService
+        .getAll({ soloStockBajo: true, tamanoPagina: 1 })
+        .pipe(map((r) => r.totalRegistros), catchError(() => of(0))),
+    }).subscribe(({ ordenes, comisionesPendientes, stockBajo }) => {
       this.ordenes.set(ordenes);
-      this.comisionesPendientes.set(comisiones.length);
-      this.stockBajo.set(repuestos.length);
+      this.comisionesPendientes.set(comisionesPendientes);
+      this.stockBajo.set(stockBajo);
     });
   }
 }

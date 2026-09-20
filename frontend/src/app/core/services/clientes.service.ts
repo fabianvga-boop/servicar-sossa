@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { EstadoCliente } from '../models/enums';
+import { PaginaResultado } from '../models/paginacion.model';
 import { Cliente, ClienteRequest } from '../models/personas.model';
 import { ApiBase } from './api-base';
 
@@ -10,8 +11,12 @@ import { ApiBase } from './api-base';
 export class ClientesService extends ApiBase {
   protected readonly recurso = 'clientes';
 
-  getAll(buscar?: string): Observable<Cliente[]> {
-    return this.listar<Cliente>({ buscar });
+  getAll(
+    buscar?: string,
+    pagina = 1,
+    tamanoPagina = 20,
+  ): Observable<PaginaResultado<Cliente>> {
+    return this.listarPaginado<Cliente>({ buscar, pagina, tamanoPagina });
   }
 
   getById(id: string): Observable<Cliente> {

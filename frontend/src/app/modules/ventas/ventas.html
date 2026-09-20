@@ -27,7 +27,7 @@
     (click)="pestania.set('historial')"
   >
     Historial del día
-    <span class="pestania-cuenta">{{ ventas().length }}</span>
+    <span class="contador-pildora">{{ ventas().length }}</span>
   </button>
 </div>
 
@@ -146,7 +146,9 @@
                 [attr.aria-label]="'Quitar ' + linea.repuesto.nombre + ' del carrito'"
                 (click)="quitarDelCarrito(linea.repuesto.repuestoId)"
               >
-                ✕
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+                </svg>
               </button>
             </div>
 
@@ -202,7 +204,7 @@
 <div class="tarjeta">
   <div class="tarjeta-encabezado">
     <h2>Ventas registradas</h2>
-    <span class="texto-tenue texto-sm">{{ ventas().length }} venta(s)</span>
+    <span class="texto-tenue texto-sm">{{ totalRegistros() }} venta(s)</span>
   </div>
 
     @if (cargando() || ventas().length === 0) {
@@ -240,17 +242,29 @@
                 <td class="num texto-fuerte">{{ venta.total | bs }}</td>
                 <td><app-insignia-estado familia="venta" [valor]="venta.estado" /></td>
                 <td>
-                  <div class="acciones">
-                    <button type="button" class="btn-enlace" (click)="detalleDe.set(venta)">
-                      Ver
+                  <div class="acciones-iconos">
+                    <button
+                      type="button"
+                      class="btn-icono"
+                      title="Ver"
+                      aria-label="Ver detalle de la venta"
+                      (click)="detalleDe.set(venta)"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z" /><circle cx="12" cy="12" r="3" />
+                      </svg>
                     </button>
                     @if (venta.estado === EstadoVenta.Emitida) {
                       <button
                         type="button"
-                        class="btn-enlace texto-rojo"
+                        class="btn-icono btn-icono-peligro"
+                        title="Anular"
+                        aria-label="Anular venta"
                         (click)="porAnular.set(venta)"
                       >
-                        Anular
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                        </svg>
                       </button>
                     }
                   </div>
@@ -260,6 +274,15 @@
           </tbody>
         </table>
       </div>
+
+      <app-paginador
+        [pagina]="pagina()"
+        [totalPaginas]="totalPaginas()"
+        [totalRegistros]="totalRegistros()"
+        [tamanoPagina]="tamanoPagina()"
+        (cambiarPagina)="cambiarPagina($event)"
+        (cambiarTamano)="cambiarTamano($event)"
+      />
     }
 </div>
 }

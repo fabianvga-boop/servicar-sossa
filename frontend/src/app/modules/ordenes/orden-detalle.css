@@ -1,11 +1,20 @@
 /* ---------------------------------------------- Encabezado / contexto */
 
-/* Barra de acciones globales: volver, imprimir y transiciones de estado */
+/* Barra de acciones globales: volver, imprimir y, sobre todo, los botones
+   para avanzar el estado de la orden — la acción principal de esta pantalla.
+   Se destaca como un panel propio (fondo + acento superior) para que se lea
+   primero, antes que las tarjetas puramente informativas de más abajo. */
 .orden-acciones {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+  background: var(--blanco);
+  border: 1px solid var(--gris-200);
+  border-top: 3px solid var(--brand);
+  border-radius: var(--radio);
+  padding: 12px 16px;
+  box-shadow: var(--sombra-sm);
 }
 
 .orden-acciones .btn {
@@ -62,26 +71,6 @@
   letter-spacing: -0.01em;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
-}
-
-/* Aviso de solo lectura (orden cerrada): informativo, en azul, no de alarma. */
-.banner-info {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 10px 14px;
-  border-radius: var(--radio);
-  background: var(--azul-100);
-  border: 1px solid #c5d7f7;
-  color: #1c4a9c;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.banner-info svg {
-  width: 17px;
-  height: 17px;
-  flex-shrink: 0;
 }
 
 /* Miniatura de la foto del vehículo, del mismo alto que la placa grande para

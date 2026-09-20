@@ -2,11 +2,13 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { EstadoDiag, EstadoServicio } from '../models/enums';
+import { PaginaResultado } from '../models/paginacion.model';
 import {
   Diagnostico,
   DiagnosticoRequest,
   DiagnosticoUpdate,
   ResponderDiagnostico,
+  SugerenciaDiagnostico,
   TipoServicio,
   TipoServicioRequest,
 } from '../models/taller.model';
@@ -18,8 +20,13 @@ export class TiposServicioService extends ApiBase {
   protected readonly recurso = 'tipos-servicio';
 
   /** Por defecto oculta los dados de baja, que es lo que necesitan los selectores. */
-  getAll(buscar?: string, soloActivos = true): Observable<TipoServicio[]> {
-    return this.listar<TipoServicio>({ buscar, soloActivos });
+  getAll(
+    buscar?: string,
+    soloActivos = true,
+    pagina = 1,
+    tamanoPagina = 20,
+  ): Observable<PaginaResultado<TipoServicio>> {
+    return this.listarPaginado<TipoServicio>({ buscar, soloActivos, pagina, tamanoPagina });
   }
 
   getById(id: string): Observable<TipoServicio> {
@@ -48,8 +55,11 @@ export class DiagnosticosService extends ApiBase {
     vehiculoId?: string;
     mecanicoId?: string;
     estado?: EstadoDiag;
-  } = {}): Observable<Diagnostico[]> {
-    return this.listar<Diagnostico>(filtros);
+    buscar?: string;
+    pagina?: number;
+    tamanoPagina?: number;
+  } = {}): Observable<PaginaResultado<Diagnostico>> {
+    return this.listarPaginado<Diagnostico>(filtros);
   }
 
   getById(id: string): Observable<Diagnostico> {
@@ -77,5 +87,19 @@ export class DiagnosticosService extends ApiBase {
   /** Presupuesto preliminar en PDF para entregar al cliente. */
   pdf(id: string): Observable<{ blob: Blob; nombreArchivo: string }> {
     return this.archivo([id, 'pdf'], `${id}-presupuesto.pdf`);
+  }
+
+  // --- Diagnóstico asistido ---------------------------------------------------
+
+  /** Sugerencias mientras se redacta la falla (antes de guardar el diagnóstico). */
+  sugerencias(descripcionFalla: string): Observable<SugerenciaDiagnostico> {
+    return this.http.get<SugerenciaDiagnostico>(this.url('sugerencias'), {
+      params: { descripcion: descripcionFalla },
+    });
+  }
+
+  /** Misma sugerencia, a partir de la falla ya guardada de un diagnóstico existente. */
+  sugerenciasPorId(id: string): Observable<SugerenciaDiagnostico> {
+    return this.http.get<SugerenciaDiagnostico>(this.url(id, 'sugerencias'));
   }
 }

@@ -2,7 +2,7 @@ import { DatePipe } from '@angular/common';
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { catchError, of } from 'rxjs';
+import { catchError, map, of } from 'rxjs';
 
 import { ConfirmarSalida } from '../../core/guards/confirmar-salida.guard';
 import {
@@ -10,28 +10,38 @@ import {
   EstadoOrden,
   EstadoServicioOrden,
   EstadoUsuario,
+  EstadoZonaVehiculo,
   OrigenRepuesto,
 } from '../../core/models/enums';
-import { Factura } from '../../core/models/finanzas.model';
+import { Proforma } from '../../core/models/finanzas.model';
 import { Repuesto } from '../../core/models/inventario.model';
-import { Usuario, VehiculoFoto } from '../../core/models/personas.model';
+import {
+  TipoCarroceria,
+  Usuario,
+  VehiculoFoto,
+  VehiculoZona,
+} from '../../core/models/personas.model';
 import {
   OrdenDetalle as OrdenDetalleModel,
   OrdenRepuesto,
   OrdenServicio,
+  SugerenciaDiagnostico,
+  SugerenciaRepuesto,
+  SugerenciaServicio,
   TipoServicio,
 } from '../../core/models/taller.model';
 import { AuthService } from '../../core/services/auth.service';
 import { urlArchivo } from '../../core/services/api-base';
 import { ContadoresService } from '../../core/services/contadores.service';
-import { ComisionesService, FacturasService } from '../../core/services/finanzas.service';
+import { ComisionesService, ProformasService } from '../../core/services/finanzas.service';
 import { RepuestosService } from '../../core/services/inventario.service';
 import { NotificacionService } from '../../core/services/notificacion.service';
 import { OrdenesService } from '../../core/services/ordenes.service';
-import { TiposServicioService } from '../../core/services/taller.service';
+import { DiagnosticosService, TiposServicioService } from '../../core/services/taller.service';
 import { UsuariosService } from '../../core/services/usuarios.service';
 import { VehiculosService } from '../../core/services/vehiculos.service';
 import { Confirmacion } from '../../shared/components/confirmacion';
+import { DiagramaVehiculo } from '../../shared/components/diagrama-vehiculo';
 import { InsigniaEstado } from '../../shared/components/insignia-estado';
 import { Migas } from '../../shared/components/migas';
 import { Modal } from '../../shared/components/modal';
@@ -46,6 +56,51 @@ interface Requisito {
   etiqueta: string;
   cumplido: boolean;
   ayuda: string;
+}
+
+/**
+ * Servicios típicos que no tienen sentido sin el repuesto que usan (cambio de
+ * aceite sin aceite, de pastillas sin pastillas...). Se detecta por palabra
+ * clave en el nombre del servicio en vez de agregar un campo al catálogo: así
+ * también funciona con servicios de texto libre, sin pedirle al administrador
+ * que configure nada de más.
+ */
+const PALABRAS_CLAVE_REPUESTO: Record<string, string> = {
+  aceite: 'aceite',
+  filtro: 'filtro',
+  bateria: 'batería',
+  bujia: 'bujías',
+  pastilla: 'pastillas de freno',
+  disco: 'disco de freno',
+  valvula: 'válvulas',
+  correa: 'correa',
+  amortiguador: 'amortiguador',
+  llanta: 'llanta',
+  neumatico: 'neumático',
+  embrague: 'embrague',
+  clutch: 'embrague',
+  rodamiento: 'rodamiento',
+  radiador: 'refrigerante',
+};
+
+/**
+ * Rango de tildes sueltas que deja `normalize('NFD')` al separar cada letra
+ * de su acento (U+0300–U+036F). Se arma con `fromCharCode` para que el código
+ * fuente quede en ASCII puro y nadie lo rompa al reindentar o recodificar.
+ */
+const DIACRITICOS_SERVICIO = new RegExp(
+  `[${String.fromCharCode(0x0300)}-${String.fromCharCode(0x036f)}]`,
+  'g',
+);
+
+/** Sin acentos y en minúsculas, para que "batería"/"bateria" avisen igual. */
+function repuestoSugeridoPara(nombreServicio: string): string | null {
+  const normalizado = nombreServicio.toLowerCase().normalize('NFD').replace(DIACRITICOS_SERVICIO, '');
+
+  for (const [clave, etiqueta] of Object.entries(PALABRAS_CLAVE_REPUESTO)) {
+    if (normalizado.includes(clave)) return etiqueta;
+  }
+  return null;
 }
 
 /** USU022-USU025 — detalle de la orden: mecánicos, servicios, repuestos y cierre. */
@@ -64,6 +119,7 @@ interface Requisito {
     SelectorBusqueda,
     SiTieneRol,
     BolivianosPipe,
+    DiagramaVehiculo,
   ],
   templateUrl: './orden-detalle.html',
   styleUrl: './orden-detalle.css',
@@ -79,10 +135,11 @@ export class OrdenDetalle implements ConfirmarSalida {
   private readonly servicio = inject(OrdenesService);
   private readonly usuariosService = inject(UsuariosService);
   private readonly tiposServicioService = inject(TiposServicioService);
+  private readonly diagnosticosService = inject(DiagnosticosService);
   private readonly repuestosService = inject(RepuestosService);
   private readonly vehiculosService = inject(VehiculosService);
   private readonly comisionesService = inject(ComisionesService);
-  private readonly facturasService = inject(FacturasService);
+  private readonly proformasService = inject(ProformasService);
   private readonly notificacion = inject(NotificacionService);
   private readonly contadores = inject(ContadoresService);
   protected readonly auth = inject(AuthService);
@@ -97,16 +154,38 @@ export class OrdenDetalle implements ConfirmarSalida {
   protected readonly galeriaAbierta = signal(false);
   protected readonly urlArchivo = urlArchivo;
 
+  // Diagrama vectorial del vehículo (USU022-025): zonas marcadas sobre la
+  // silueta, para anotar daños/observaciones sin depender solo de texto libre.
+  protected readonly tipoCarroceriaVehiculo = signal<TipoCarroceria>('Generico');
+  protected readonly diagramaSvgUrlVehiculo = signal<string | null>(null);
+
+  // Diagnóstico asistido: sugerencias de servicios/repuestos/precio para la
+  // orden, calculadas a partir de la falla del diagnóstico que la originó.
+  protected readonly sugerenciaOrden = signal<SugerenciaDiagnostico | null>(null);
+  protected readonly zonasVehiculo = signal<VehiculoZona[]>([]);
+  protected readonly zonaEditando = signal<string | null>(null);
+  protected readonly guardandoZona = signal(false);
+  protected readonly diagramaAbierto = signal(false);
+  protected readonly EstadoZonaVehiculo = EstadoZonaVehiculo;
+  protected nuevaZona = {
+    estado: EstadoZonaVehiculo.Atencion,
+    detalle: '',
+  };
+
   protected readonly mecanicos = signal<Usuario[]>([]);
   protected readonly catalogo = signal<TipoServicio[]>([]);
   protected readonly repuestos = signal<Repuesto[]>([]);
 
+  // Escribir menos: nombres/descripciones libres ya usados antes en cualquier orden.
+  protected readonly nombresServicioLibreSugeridos = signal<string[]>([]);
+  protected readonly descripcionesRepuestoLibreSugeridas = signal<string[]>([]);
+
   /**
-   * Proforma/factura de cobro de la orden, si ya se emitió. Alimenta el estado
+   * Proforma/proforma de cobro de la orden, si ya se emitió. Alimenta el estado
    * de cobro del Resumen: ¿ya pagó el cliente o queda saldo? Es la pregunta
    * clave al entregar el auto. Null mientras no exista documento de cobro.
    */
-  protected readonly factura = signal<Factura | null>(null);
+  protected readonly proforma = signal<Proforma | null>(null);
 
   /**
    * Mecánicos con porcentaje de comisión configurado (> 0). Sirve solo para
@@ -252,7 +331,7 @@ export class OrdenDetalle implements ConfirmarSalida {
           {
             etiqueta: 'Cargar los servicios ejecutados',
             cumplido: orden.servicios.length > 0,
-            ayuda: 'Sin servicios la orden no factura nada ni genera comisiones.',
+            ayuda: 'Sin servicios la orden no proforma nada ni genera comisiones.',
           },
           {
             etiqueta: 'Completar todos los servicios',
@@ -362,19 +441,32 @@ export class OrdenDetalle implements ConfirmarSalida {
     effect(() => this.cargar(this.id()));
 
     if (this.auth.esAdministrador()) {
-      this.usuariosService.getAll().subscribe((lista) =>
+      this.usuariosService.getAll(undefined, 1, 500).subscribe((resultado) =>
         // El administrador (dueño) también trabaja vehículos cuando el taller se
         // satura, así que ambos roles pueden asignarse como trabajadores.
         this.mecanicos.set(
-          lista.filter(
+          resultado.items.filter(
             (u) =>
               (u.nombreRol === 'Mecanico' || u.nombreRol === 'Administrador') &&
               u.estado === EstadoUsuario.Activo,
           ),
         ),
       );
-      this.tiposServicioService.getAll().subscribe((lista) => this.catalogo.set(lista));
-      this.repuestosService.getAll().subscribe((lista) => this.repuestos.set(lista));
+      this.tiposServicioService
+        .getAll(undefined, true, 1, 500)
+        .subscribe((resultado) => this.catalogo.set(resultado.items));
+      this.repuestosService
+        .getAll({ tamanoPagina: 500 })
+        .subscribe((resultado) => this.repuestos.set(resultado.items));
+
+      this.servicio
+        .nombresServicioLibre()
+        .subscribe((nombres) => this.nombresServicioLibreSugeridos.set(nombres));
+      this.servicio
+        .descripcionesRepuestoLibre()
+        .subscribe((descripciones) =>
+          this.descripcionesRepuestoLibreSugeridas.set(descripciones),
+        );
 
       // Porcentajes configurados: solo para avisar al asignar un mecánico sin comisión.
       this.comisionesService.getConfiguraciones().subscribe((configs) => {
@@ -389,7 +481,8 @@ export class OrdenDetalle implements ConfirmarSalida {
   private cargar(id: string): void {
     this.cargando.set(true);
     this.fotosVehiculo.set([]);
-    this.factura.set(null);
+    this.proforma.set(null);
+    this.sugerenciaOrden.set(null);
 
     this.servicio.getById(id).subscribe({
       next: (orden) => {
@@ -404,13 +497,46 @@ export class OrdenDetalle implements ConfirmarSalida {
           .pipe(catchError(() => of([] as VehiculoFoto[])))
           .subscribe((fotos) => this.fotosVehiculo.set(fotos));
 
+        // Diagrama: tipo de carrocería (para elegir la silueta) y las zonas ya marcadas.
+        this.vehiculosService
+          .getById(orden.vehiculoId)
+          .pipe(catchError(() => of(null)))
+          .subscribe((vehiculo) => {
+            if (!vehiculo) return;
+            this.tipoCarroceriaVehiculo.set(vehiculo.tipoCarroceria);
+            this.diagramaSvgUrlVehiculo.set(vehiculo.diagramaSvgUrl ?? null);
+          });
+
+        this.vehiculosService
+          .getZonas(orden.vehiculoId)
+          .pipe(catchError(() => of([] as VehiculoZona[])))
+          .subscribe((zonas) => this.zonasVehiculo.set(zonas));
+
         // Estado de cobro: se consulta la proforma de la orden si existe. Es
         // una carga secundaria; si falla, el Resumen simplemente no muestra el
         // badge de cobro en vez de romper la vista.
-        this.facturasService
+        this.proformasService
           .getAll({ ordenId: id })
-          .pipe(catchError(() => of([] as Factura[])))
-          .subscribe((facturas) => this.factura.set(facturas[0] ?? null));
+          .pipe(
+            map((resultado) => resultado.items[0] ?? null),
+            catchError(() => of(null)),
+          )
+          .subscribe((proforma) => this.proforma.set(proforma));
+
+        // Diagnóstico asistido: solo tiene sentido mientras se puede seguir
+        // agregando servicios/repuestos (orden abierta/en proceso).
+        const editable = orden.estado === EstadoOrden.Abierta || orden.estado === EstadoOrden.EnProceso;
+
+        if (orden.diagnosticoId && editable) {
+          this.diagnosticosService
+            .sugerenciasPorId(orden.diagnosticoId)
+            .pipe(catchError(() => of(null)))
+            .subscribe((sugerencia) => {
+              this.sugerenciaOrden.set(
+                sugerencia && sugerencia.basadoEnCasos > 0 ? sugerencia : null,
+              );
+            });
+        }
       },
       error: () => this.cargando.set(false),
     });
@@ -424,6 +550,47 @@ export class OrdenDetalle implements ConfirmarSalida {
   protected abrirGaleriaVehiculo(): void {
     if (this.fotosVehiculo().length === 0) return;
     this.galeriaAbierta.set(true);
+  }
+
+  // --- Diagrama vectorial (zonas) ---------------------------------------------
+
+  protected onZonaClick(zona: string): void {
+    this.zonaEditando.set(zona);
+    this.nuevaZona = { estado: EstadoZonaVehiculo.Atencion, detalle: '' };
+  }
+
+  protected cancelarZona(): void {
+    this.zonaEditando.set(null);
+  }
+
+  protected cerrarDiagrama(): void {
+    this.diagramaAbierto.set(false);
+    this.zonaEditando.set(null);
+  }
+
+  protected guardarZona(): void {
+    const orden = this.orden();
+    const zona = this.zonaEditando();
+    if (!orden || !zona) return;
+
+    this.guardandoZona.set(true);
+
+    this.vehiculosService
+      .registrarZona(orden.vehiculoId, {
+        zona,
+        estado: this.nuevaZona.estado,
+        detalle: this.nuevaZona.detalle || null,
+        ordenId: orden.ordenId,
+      })
+      .subscribe({
+        next: (nueva) => {
+          this.zonasVehiculo.update((lista) => [nueva, ...lista]);
+          this.guardandoZona.set(false);
+          this.zonaEditando.set(null);
+          this.notificacion.exito('Zona registrada en el diagrama.');
+        },
+        error: () => this.guardandoZona.set(false),
+      });
   }
 
   /** Todas las operaciones del detalle devuelven la orden completa actualizada. */
@@ -549,6 +716,27 @@ export class OrdenDetalle implements ConfirmarSalida {
    * dos (el caso de saturación), queda el selector para indicar cuál hizo el
    * trabajo.
    */
+  /** Diagnóstico asistido: abre el panel de servicio con la sugerencia ya cargada. */
+  protected abrirPanelServicioSugerido(sugerencia: SugerenciaServicio): void {
+    this.abrirPanelServicio();
+    this.nuevoServicio.delCatalogo = !!sugerencia.servicioId;
+    this.nuevoServicio.servicioId = sugerencia.servicioId ?? '';
+    this.nuevoServicio.nombreLibre = sugerencia.servicioId ? '' : sugerencia.nombre;
+    this.nuevoServicio.precio = sugerencia.precioPromedio;
+  }
+
+  /** Diagnóstico asistido: abre el panel de repuesto con la sugerencia ya cargada. */
+  protected abrirPanelRepuestoSugerido(sugerencia: SugerenciaRepuesto): void {
+    this.nuevoRepuesto = {
+      origen: sugerencia.repuestoId ? OrigenRepuesto.Inventario : OrigenRepuesto.CompraExterna,
+      repuestoId: sugerencia.repuestoId ?? '',
+      descripcion: sugerencia.repuestoId ? '' : sugerencia.nombre,
+      cantidad: 1,
+      precioUnitario: sugerencia.precioUnitarioPromedio,
+    };
+    this.panelRepuesto.set(true);
+  }
+
   protected abrirPanelServicio(): void {
     const asignados = this.orden()?.mecanicos ?? [];
 
@@ -593,7 +781,7 @@ export class OrdenDetalle implements ConfirmarSalida {
     }
 
     if (!delCatalogo && !nombreLibre.trim()) {
-      this.notificacion.advertencia('Describa el servicio realizado.');
+      this.notificacion.advertencia('Describa el servicio a realizar.');
       return;
     }
 
@@ -624,7 +812,49 @@ export class OrdenDetalle implements ConfirmarSalida {
     };
   }
 
+  /**
+   * Aviso pendiente de confirmar: se intentó marcar en proceso o completar un
+   * servicio que típicamente necesita un repuesto (cambio de aceite,
+   * pastillas, batería…) y la orden todavía no tiene ninguno cargado. No
+   * bloquea — el mecánico puede confirmar igual si ya lo tiene a mano y lo va
+   * a cargar después.
+   */
+  protected readonly avisoRepuestoServicio = signal<{
+    ordenServicioId: string;
+    nombreServicio: string;
+    repuestoSugerido: string;
+    estado: EstadoServicioOrden;
+  } | null>(null);
+
   protected avanzarServicio(ordenServicioId: string, estado: EstadoServicioOrden): void {
+    if (estado === EstadoServicioOrden.EnProceso || estado === EstadoServicioOrden.Completado) {
+      const servicio = this.orden()?.servicios.find((s) => s.ordenServicioId === ordenServicioId);
+      const repuestoSugerido = servicio ? repuestoSugeridoPara(servicio.nombreServicio) : null;
+      const sinRepuestosCargados = (this.orden()?.repuestos.length ?? 0) === 0;
+
+      if (servicio && repuestoSugerido && sinRepuestosCargados) {
+        this.avisoRepuestoServicio.set({
+          ordenServicioId,
+          nombreServicio: servicio.nombreServicio,
+          repuestoSugerido,
+          estado,
+        });
+        return;
+      }
+    }
+
+    this.ejecutarAvanceServicio(ordenServicioId, estado);
+  }
+
+  /** El mecánico confirmó que continúa igual sin registrar antes el repuesto. */
+  protected confirmarAvanceSinRepuesto(): void {
+    const aviso = this.avisoRepuestoServicio();
+    if (!aviso) return;
+    this.avisoRepuestoServicio.set(null);
+    this.ejecutarAvanceServicio(aviso.ordenServicioId, aviso.estado);
+  }
+
+  private ejecutarAvanceServicio(ordenServicioId: string, estado: EstadoServicioOrden): void {
     this.procesando.set(true);
     this.servicio
       .cambiarEstadoServicio(this.id(), ordenServicioId, estado)
@@ -741,7 +971,8 @@ export class OrdenDetalle implements ConfirmarSalida {
       this.panelServicio() ||
       this.panelRepuesto() ||
       this.porCerrar() ||
-      this.porCancelar()
+      this.porCancelar() ||
+      this.avisoRepuestoServicio() !== null
     );
   }
 

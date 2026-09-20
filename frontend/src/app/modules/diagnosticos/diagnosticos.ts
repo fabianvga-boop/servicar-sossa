@@ -2,10 +2,12 @@ import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { catchError, debounceTime, distinctUntilChanged, map, of, switchMap } from 'rxjs';
 
 import { ETIQUETAS, EstadoDiag, RespuestaCliente } from '../../core/models/enums';
 import { Vehiculo } from '../../core/models/personas.model';
-import { Diagnostico } from '../../core/models/taller.model';
+import { Diagnostico, SugerenciaDiagnostico } from '../../core/models/taller.model';
+import { unicosOrdenados } from '../../shared/sugerencias-texto';
 import { AuthService } from '../../core/services/auth.service';
 import { ContadoresService } from '../../core/services/contadores.service';
 import { descargarArchivo } from '../../core/services/descarga';
@@ -18,6 +20,7 @@ import { Confirmacion } from '../../shared/components/confirmacion';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { InsigniaEstado } from '../../shared/components/insignia-estado';
 import { Modal } from '../../shared/components/modal';
+import { Paginador } from '../../shared/components/paginador';
 import { Placa } from '../../shared/components/placa';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
 import { Atajo } from '../../shared/directives/atajo';
@@ -45,6 +48,7 @@ const CLAVE_FILTRO = 'diagnosticos.estado';
     Confirmacion,
     EstadoTabla,
     InsigniaEstado,
+    Paginador,
     Placa,
     SelectorBusqueda,
     Atajo,
@@ -68,7 +72,13 @@ export class Diagnosticos {
   protected readonly vehiculos = signal<Vehiculo[]>([]);
   protected readonly cargando = signal(true);
   protected readonly estadoFiltro = signal<string>('');
+  protected readonly buscar = signal('');
   protected readonly guardando = signal(false);
+
+  protected readonly pagina = signal(1);
+  protected readonly tamanoPagina = signal(20);
+  protected readonly totalRegistros = signal(0);
+  protected readonly totalPaginas = signal(0);
 
   protected readonly editando = signal<Diagnostico | null>(null);
   protected readonly formularioAbierto = signal(false);
@@ -94,6 +104,13 @@ export class Diagnosticos {
     montoEstimado: this.fb.control<number | null>(null),
   });
 
+  // --- Diagnóstico asistido: sugerencias mientras se redacta la falla --------
+  protected readonly sugerencia = signal<SugerenciaDiagnostico | null>(null);
+  protected readonly cargandoSugerencia = signal(false);
+
+  /** Fallas ya registradas: para no volver a escribir una que ya se tipeó antes. */
+  protected readonly fallasSugeridas = signal<string[]>([]);
+
   protected readonly opcionesVehiculo = computed<OpcionSelector[]>(() =>
     this.vehiculos().map((v) => ({
       valor: v.vehiculoId,
@@ -106,7 +123,38 @@ export class Diagnosticos {
     this.estadoFiltro.set(this.preferencias.leer(CLAVE_FILTRO, ''));
 
     this.cargar();
-    this.vehiculosService.getAll().subscribe((lista) => this.vehiculos.set(lista));
+    this.vehiculosService
+      .getAll(undefined, undefined, 1, 500)
+      .subscribe((resultado) => this.vehiculos.set(resultado.items));
+
+    // Solo para el autocompletado de "Descripción de la falla": no reemplaza
+    // la tabla paginada de arriba.
+    this.servicio
+      .getAll({ pagina: 1, tamanoPagina: 500 })
+      .subscribe((resultado) =>
+        this.fallasSugeridas.set(unicosOrdenados(resultado.items.map((d) => d.descripcionFalla))),
+      );
+
+    // Diagnóstico asistido: apenas se redacta la falla (con algo de texto real),
+    // se buscan casos históricos parecidos y se sugieren servicios/repuestos/precio.
+    this.formulario.controls.descripcionFalla.valueChanges
+      .pipe(
+        map((texto) => texto.trim()),
+        debounceTime(500),
+        distinctUntilChanged(),
+        switchMap((texto) => {
+          if (texto.length < 8) {
+            this.cargandoSugerencia.set(false);
+            return of(null);
+          }
+          this.cargandoSugerencia.set(true);
+          return this.servicio.sugerencias(texto).pipe(catchError(() => of(null)));
+        }),
+      )
+      .subscribe((resultado) => {
+        this.cargandoSugerencia.set(false);
+        this.sugerencia.set(resultado && resultado.basadoEnCasos > 0 ? resultado : null);
+      });
   }
 
   protected cargar(): void {
@@ -115,10 +163,17 @@ export class Diagnosticos {
     const estado = this.estadoFiltro();
 
     this.servicio
-      .getAll({ estado: estado === '' ? undefined : (Number(estado) as EstadoDiag) })
+      .getAll({
+        estado: estado === '' ? undefined : (Number(estado) as EstadoDiag),
+        buscar: this.buscar() || undefined,
+        pagina: this.pagina(),
+        tamanoPagina: this.tamanoPagina(),
+      })
       .subscribe({
-        next: (lista) => {
-          this.diagnosticos.set(lista);
+        next: (resultado) => {
+          this.diagnosticos.set(resultado.items);
+          this.totalRegistros.set(resultado.totalRegistros);
+          this.totalPaginas.set(resultado.totalPaginas);
           this.cargando.set(false);
         },
         error: () => this.cargando.set(false),
@@ -128,6 +183,24 @@ export class Diagnosticos {
   protected onFiltrarEstado(valor: string): void {
     this.estadoFiltro.set(valor);
     this.preferencias.guardar(CLAVE_FILTRO, valor);
+    this.pagina.set(1);
+    this.cargar();
+  }
+
+  protected onBuscar(valor: string): void {
+    this.buscar.set(valor);
+    this.pagina.set(1);
+    this.cargar();
+  }
+
+  protected cambiarPagina(pagina: number): void {
+    this.pagina.set(pagina);
+    this.cargar();
+  }
+
+  protected cambiarTamano(tamano: number): void {
+    this.tamanoPagina.set(tamano);
+    this.pagina.set(1);
     this.cargar();
   }
 
@@ -215,11 +288,13 @@ export class Diagnosticos {
     this.editando.set(null);
     this.formulario.reset();
     this.formulario.controls.vehiculoId.enable();
+    this.sugerencia.set(null);
     this.formularioAbierto.set(true);
   }
 
   protected abrirEditar(diagnostico: Diagnostico): void {
     this.editando.set(diagnostico);
+    this.sugerencia.set(null);
     this.formulario.patchValue({
       vehiculoId: diagnostico.vehiculoId,
       descripcionFalla: diagnostico.descripcionFalla,
@@ -266,6 +341,20 @@ export class Diagnosticos {
       },
       error: () => this.guardando.set(false),
     });
+  }
+
+  /** Escribir menos: usa una falla ya registrada antes tal cual, con un clic. */
+  protected usarFallaSugerida(texto: string): void {
+    this.formulario.controls.descripcionFalla.setValue(texto);
+    this.formulario.controls.descripcionFalla.markAsDirty();
+  }
+
+  /** Toma el promedio sugerido y lo pone directo en "Monto estimado". */
+  protected usarPrecioSugerido(): void {
+    const monto = this.sugerencia()?.precioPromedio;
+    if (monto == null) return;
+    this.formulario.controls.montoEstimado.setValue(Math.round(monto));
+    this.formulario.controls.montoEstimado.markAsDirty();
   }
 
   protected marcarRevisado(diagnostico: Diagnostico): void {

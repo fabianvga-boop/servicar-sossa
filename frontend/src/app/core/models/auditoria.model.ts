@@ -18,4 +18,6 @@ export interface FiltroAuditoria {
   accion?: AccionAuditoria;
   desde?: string;
   hasta?: string;
+  pagina?: number;
+  tamanoPagina?: number;
 }

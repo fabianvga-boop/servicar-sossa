@@ -1,3 +1,15 @@
+/* Ícono en vez de "✕" suelto: mismo trazo que usa app-modal para cerrar */
+.boton-quitar-linea {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.boton-quitar-linea svg {
+  width: 14px;
+  height: 14px;
+}
+
 /* ============================================ KPIs de abastecimiento */
 .kpis-compras {
   display: grid;
@@ -84,18 +96,4 @@
   background: var(--brand);
   border-color: var(--brand);
   color: var(--blanco);
-}
-
-/* -------------------------------------------------- Badge de "Líneas" */
-.badge-lineas {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 9px;
-  border-radius: 20px;
-  background: var(--gris-100);
-  color: var(--ink-soft);
-  font-size: 11.5px;
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: default;
 }

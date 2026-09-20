@@ -6,6 +6,7 @@ import { AccionAuditoria, ETIQUETAS } from '../../core/models/enums';
 import { Auditoria as AuditoriaFila } from '../../core/models/auditoria.model';
 import { AuditoriaService } from '../../core/services/auditoria.service';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
+import { Paginador } from '../../shared/components/paginador';
 
 const ENTIDADES = [
   'Repuesto',
@@ -15,7 +16,11 @@ const ENTIDADES = [
   'Venta',
   'Compra',
   'Orden',
-  'Factura',
+  'Diagnostico',
+  'TipoServicio',
+  'Comision',
+  'ComisionConfig',
+  'Proforma',
   'Pago',
   'Usuario',
 ];
@@ -23,7 +28,7 @@ const ENTIDADES = [
 /** Bitácora de auditoría: quién hizo qué, cuándo, sobre qué registro. */
 @Component({
   selector: 'app-auditoria',
-  imports: [FormsModule, DatePipe, EstadoTabla],
+  imports: [FormsModule, DatePipe, EstadoTabla, Paginador],
   templateUrl: './auditoria.html',
   styleUrl: './auditoria.css',
 })
@@ -32,6 +37,11 @@ export class Auditoria {
 
   protected readonly filas = signal<AuditoriaFila[]>([]);
   protected readonly cargando = signal(true);
+
+  protected readonly pagina = signal(1);
+  protected readonly tamanoPagina = signal(20);
+  protected readonly totalRegistros = signal(0);
+  protected readonly totalPaginas = signal(0);
 
   protected readonly entidades = ENTIDADES;
   protected readonly acciones = Object.entries(ETIQUETAS.accionAuditoria).map(
@@ -60,18 +70,39 @@ export class Auditoria {
         accion: this.filtro.accion === '' ? undefined : this.filtro.accion,
         desde: this.filtro.desde || undefined,
         hasta: this.filtro.hasta || undefined,
+        pagina: this.pagina(),
+        tamanoPagina: this.tamanoPagina(),
       })
       .subscribe({
-        next: (lista) => {
-          this.filas.set(lista);
+        next: (resultado) => {
+          this.filas.set(resultado.items);
+          this.totalRegistros.set(resultado.totalRegistros);
+          this.totalPaginas.set(resultado.totalPaginas);
           this.cargando.set(false);
         },
         error: () => this.cargando.set(false),
       });
   }
 
+  /** Cualquier cambio de filtro vuelve a la primera página. */
+  protected filtrar(): void {
+    this.pagina.set(1);
+    this.cargar();
+  }
+
   protected limpiarFiltros(): void {
     this.filtro = { entidad: '', accion: '', desde: '', hasta: '' };
+    this.filtrar();
+  }
+
+  protected cambiarPagina(pagina: number): void {
+    this.pagina.set(pagina);
+    this.cargar();
+  }
+
+  protected cambiarTamano(tamano: number): void {
+    this.tamanoPagina.set(tamano);
+    this.pagina.set(1);
     this.cargar();
   }
 

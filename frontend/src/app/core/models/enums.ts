@@ -46,7 +46,7 @@ export enum RespuestaCliente {
   Rechazado = 2,
 }
 
-export enum EstadoFactura {
+export enum EstadoProforma {
   Emitida = 0,
   Anulada = 1,
 }
@@ -96,6 +96,13 @@ export enum TipoAjusteStock {
   Otro = 3,
 }
 
+/** Estado de una zona marcada sobre el diagrama vectorial del vehículo. */
+export enum EstadoZonaVehiculo {
+  Ok = 0,
+  Atencion = 1,
+  EnReparacion = 2,
+}
+
 export enum AccionAuditoria {
   Crear = 0,
   Editar = 1,
@@ -129,9 +136,9 @@ export const ETIQUETAS = {
     [RespuestaCliente.Aprobado]: 'Aprobado',
     [RespuestaCliente.Rechazado]: 'Rechazado',
   },
-  estadoFactura: {
-    [EstadoFactura.Emitida]: 'Emitida',
-    [EstadoFactura.Anulada]: 'Anulada',
+  estadoProforma: {
+    [EstadoProforma.Emitida]: 'Emitida',
+    [EstadoProforma.Anulada]: 'Anulada',
   },
   estadoVenta: {
     [EstadoVenta.Emitida]: 'Emitida',
@@ -156,6 +163,11 @@ export const ETIQUETAS = {
   activoInactivo: {
     0: 'Activo',
     1: 'Inactivo',
+  },
+  estadoZonaVehiculo: {
+    [EstadoZonaVehiculo.Ok]: 'Ok',
+    [EstadoZonaVehiculo.Atencion]: 'Atención',
+    [EstadoZonaVehiculo.EnReparacion]: 'En reparación',
   },
   accionAuditoria: {
     [AccionAuditoria.Crear]: 'Creó',

@@ -36,6 +36,7 @@
         <path class="chispa-linea" [attr.d]="sparkAperturas().linea" />
         <circle class="chispa-punto" [attr.cx]="sparkAperturas().puntoX" [attr.cy]="sparkAperturas().puntoY" r="2.4" />
       </svg>
+      <div class="grafico-leyenda">Aperturas por día, últimos 7 días</div>
     </div>
 
     <div class="indicador">
@@ -57,9 +58,10 @@
           <text x="20" y="23.5" class="anillo-texto">{{ progresoEnProceso() }}%</text>
         </svg>
       </div>
+      <div class="grafico-leyenda">% de lo activo ya en trabajo (no solo abierto)</div>
     </div>
 
-    <div class="indicador">
+    <div class="indicador indicador-prioridad">
       <div class="indicador-cabecera">
         <app-icono-menu class="indicador-icono" nombre="completado" />
         <span class="indicador-etiqueta">Finalizadas por cerrar</span>
@@ -78,6 +80,7 @@
           <text x="20" y="23.5" class="anillo-texto">{{ progresoFinalizadas() }}%</text>
         </svg>
       </div>
+      <div class="grafico-leyenda">% de lo activo ya listo para entregar</div>
     </div>
 
     <div class="indicador">
@@ -93,6 +96,7 @@
         <path class="chispa-linea" [attr.d]="sparkMonto().linea" />
         <circle class="chispa-punto" [attr.cx]="sparkMonto().puntoX" [attr.cy]="sparkMonto().puntoY" r="2.4" />
       </svg>
+      <div class="grafico-leyenda">Monto de lo abierto por día, últimos 7 días</div>
     </div>
   </div>
 
@@ -159,7 +163,7 @@
                 [routerLink]="acceso.ruta"
                 [queryParams]="acceso.parametros"
               >
-                <span class="acceso-icono" aria-hidden="true">{{ acceso.icono }}</span>
+                <app-icono-menu class="acceso-icono" [nombre]="acceso.icono" />
                 <span class="acceso-texto">
                   <span class="acceso-etiqueta">{{ acceso.etiqueta }}</span>
                   <span class="acceso-descripcion">{{ acceso.descripcion }}</span>
@@ -196,7 +200,7 @@
                     [alt]="repuesto.nombre"
                   />
                 } @else {
-                  <span class="reponer-foto reponer-foto-vacia" aria-hidden="true">📦</span>
+                  <app-icono-menu class="reponer-foto reponer-foto-vacia" nombre="repuestos" />
                 }
                 <span class="reponer-texto">
                   <span class="reponer-nombre">{{ repuesto.nombre }}</span>

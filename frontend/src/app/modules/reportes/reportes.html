@@ -77,7 +77,7 @@
   <div class="tarjeta mb-2">
     <div class="tarjeta-encabezado">
       <h2>Historial de reportes emitidos</h2>
-      <span class="texto-tenue texto-sm">{{ bitacora().length }} registro(s)</span>
+      <span class="texto-tenue texto-sm">{{ totalBitacora() }} registro(s)</span>
     </div>
 
     @if (bitacora().length === 0) {
@@ -117,6 +117,15 @@
           </tbody>
         </table>
       </div>
+
+      <app-paginador
+        [pagina]="paginaBitacora()"
+        [totalPaginas]="totalPaginasBitacora()"
+        [totalRegistros]="totalBitacora()"
+        [tamanoPagina]="tamanoPaginaBitacora()"
+        (cambiarPagina)="cambiarPaginaBitacora($event)"
+        (cambiarTamano)="cambiarTamanoBitacora($event)"
+      />
     }
   </div>
 }

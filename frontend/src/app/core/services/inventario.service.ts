@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { EstadoVenta, TipoAjusteStock } from '../models/enums';
+import { PaginaResultado } from '../models/paginacion.model';
 import {
   Compra,
   CompraDetalle,
@@ -23,8 +24,8 @@ import { ApiBase } from './api-base';
 export class ProveedoresService extends ApiBase {
   protected readonly recurso = 'proveedores';
 
-  getAll(buscar?: string): Observable<Proveedor[]> {
-    return this.listar<Proveedor>({ buscar });
+  getAll(buscar?: string, pagina = 1, tamanoPagina = 20): Observable<PaginaResultado<Proveedor>> {
+    return this.listarPaginado<Proveedor>({ buscar, pagina, tamanoPagina });
   }
 
   getById(id: string): Observable<Proveedor> {
@@ -54,8 +55,10 @@ export class RepuestosService extends ApiBase {
     buscar?: string;
     proveedorId?: string;
     soloStockBajo?: boolean;
-  } = {}): Observable<Repuesto[]> {
-    return this.listar<Repuesto>(filtros);
+    pagina?: number;
+    tamanoPagina?: number;
+  } = {}): Observable<PaginaResultado<Repuesto>> {
+    return this.listarPaginado<Repuesto>(filtros);
   }
 
   getById(id: string): Observable<Repuesto> {
@@ -114,8 +117,10 @@ export class VentasService extends ApiBase {
     estado?: EstadoVenta;
     desde?: string;
     hasta?: string;
-  } = {}): Observable<Venta[]> {
-    return this.listar<Venta>(filtros);
+    pagina?: number;
+    tamanoPagina?: number;
+  } = {}): Observable<PaginaResultado<Venta>> {
+    return this.listarPaginado<Venta>(filtros);
   }
 
   getById(id: string): Observable<Venta> {
@@ -149,8 +154,10 @@ export class ComprasService extends ApiBase {
     proveedorId?: string;
     desde?: string;
     hasta?: string;
-  } = {}): Observable<Compra[]> {
-    return this.listar<Compra>(filtros);
+    pagina?: number;
+    tamanoPagina?: number;
+  } = {}): Observable<PaginaResultado<Compra>> {
+    return this.listarPaginado<Compra>(filtros);
   }
 
   getById(id: string): Observable<CompraDetalle> {

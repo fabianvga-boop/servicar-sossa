@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, map } from 'rxjs/operators';
 
 import { EstadoOrden, EstadoPago } from '../../core/models/enums';
 import { Comision } from '../../core/models/finanzas.model';
@@ -13,7 +13,7 @@ import { ComisionesService } from '../../core/services/finanzas.service';
 import { RepuestosService } from '../../core/services/inventario.service';
 import { OrdenesService } from '../../core/services/ordenes.service';
 import { Esqueleto } from '../../shared/components/esqueleto';
-import { IconoMenu } from '../../shared/components/icono-menu';
+import { IconoMenu, NombreIconoMenu } from '../../shared/components/icono-menu';
 import { InsigniaEstado } from '../../shared/components/insignia-estado';
 import { Placa } from '../../shared/components/placa';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
@@ -22,7 +22,7 @@ import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 interface AccesoDirecto {
   etiqueta: string;
   descripcion: string;
-  icono: string;
+  icono: NombreIconoMenu;
   cantidad: number;
   ruta: string;
   parametros?: Record<string, string>;
@@ -95,7 +95,10 @@ export class Dashboard {
 
   protected readonly cargando = signal(true);
   protected readonly ordenes = signal<Orden[]>([]);
+  /** Repuestos a reponer, para el widget "Por reponer" del panel. */
   protected readonly stockBajo = signal<Repuesto[]>([]);
+  /** Cuenta real (puede ser mayor a lo cargado en `stockBajo`). */
+  protected readonly stockBajoTotal = signal(0);
   protected readonly comisionesPendientes = signal<Comision[]>([]);
 
   protected readonly abiertas = computed(
@@ -212,7 +215,7 @@ export class Dashboard {
         {
           etiqueta: 'Órdenes por cerrar',
           descripcion: 'Trabajo terminado, falta cerrar y facturar',
-          icono: '🗂',
+          icono: 'ordenes',
           cantidad: this.finalizadas(),
           ruta: '/ordenes',
           parametros: { estado: String(EstadoOrden.Finalizada) },
@@ -220,7 +223,7 @@ export class Dashboard {
         {
           etiqueta: 'Comisiones por liquidar',
           descripcion: 'Pendientes de pago a los mecánicos',
-          icono: '%',
+          icono: 'comisiones',
           cantidad: this.comisionesPendientes().length,
           detalle: this.totalComisionesPendientes() > 0
             ? `Bs ${this.totalComisionesPendientes().toFixed(2)}`
@@ -230,8 +233,8 @@ export class Dashboard {
         {
           etiqueta: 'Stock crítico',
           descripcion: 'Repuestos en el mínimo o por debajo',
-          icono: '📦',
-          cantidad: this.stockBajo().length,
+          icono: 'repuestos',
+          cantidad: this.stockBajoTotal(),
           ruta: '/repuestos',
           parametros: { stockBajo: 'true' },
           urgente: true,
@@ -241,7 +244,7 @@ export class Dashboard {
       lista.push({
         etiqueta: 'Mis órdenes en curso',
         descripcion: 'Órdenes con trabajo asignado a usted',
-        icono: '🔧',
+        icono: 'ordenes',
         cantidad: this.abiertas() + this.enProceso(),
         ruta: '/ordenes',
       });
@@ -263,17 +266,20 @@ export class Dashboard {
       ordenes: this.ordenesService
         .getAll(esAdmin ? {} : { mecanicoId: this.auth.sesion()?.usuarioId })
         .pipe(catchError(() => of([] as Orden[]))),
+      // El widget "Por reponer" necesita los repuestos en sí, no solo la cuenta.
       stockBajo: this.repuestosService
-        .getAll({ soloStockBajo: true })
-        .pipe(catchError(() => of([] as Repuesto[]))),
+        .getAll({ soloStockBajo: true, tamanoPagina: 500 })
+        .pipe(catchError(() => of({ items: [], totalRegistros: 0 }))),
+      // Acá sí se necesitan los montos (para sumarlos), no solo la cuenta.
       comisiones: esAdmin
         ? this.comisionesService
-            .getAll({ estadoPago: EstadoPago.Pendiente })
-            .pipe(catchError(() => of([] as Comision[])))
+            .getAll({ estadoPago: EstadoPago.Pendiente, tamanoPagina: 500 })
+            .pipe(map((r) => r.items), catchError(() => of([] as Comision[])))
         : of([] as Comision[]),
     }).subscribe(({ ordenes, stockBajo, comisiones }) => {
       this.ordenes.set(ordenes);
-      this.stockBajo.set(stockBajo);
+      this.stockBajo.set(stockBajo.items);
+      this.stockBajoTotal.set(stockBajo.totalRegistros);
       this.comisionesPendientes.set(comisiones);
       this.cargando.set(false);
     });
