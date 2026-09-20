@@ -116,8 +116,12 @@ Las llaves primarias son **cÃ³digos alfanumÃ©ricos** de tipo `VARCHAR(20)`, 
 // Usar como string en la BD (HasConversion<string>())
 public enum EstadoUsuario   { Activo, Inactivo }
 public enum EstadoOrden     { Abierta, EnProceso, Finalizada, Cerrada, Cancelada }
-public enum EstadoProforma  { Pendiente, Aprobada, Rechazada }
+// Proforma: documento de cobro del taller, SIN valor fiscal (PRF-000).
+// Factura:  comprobante fiscal SIAT, con CUF y XML (FAC-000). Solo existe con
+//           Facturacion:Modo = SIAT_ONLINE; si no, la tabla queda vacía.
+public enum EstadoProforma  { Emitida, Anulada }
 public enum EstadoFactura   { Emitida, Anulada }
+public enum EstadoSiat      { Pendiente, Enviada, Validada, Rechazada, Contingencia, Anulada }
 public enum EstadoPago      { Pendiente, Pagado }
 public enum EstadoDiag      { Registrado, Revisado, Anulado }
 public enum MetodoPago      { Efectivo, Transferencia, Tarjeta, QR, Otro }

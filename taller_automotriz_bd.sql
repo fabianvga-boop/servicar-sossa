@@ -293,20 +293,25 @@ CREATE TABLE comisiones (
 );
 
 -- ============================================================================
--- EPICA 8 y 9: FACTURACION (COMO "PROFORMA" EN LA APP) Y PAGOS (US035-US041)
--- El sistema no factura via SIAT: "facturas" es el unico documento de cobro
--- del taller y se muestra como "Proforma" en la interfaz (no hay tabla de
--- proformas aparte).
+-- EPICA 8 y 9: PROFORMAS, FACTURACION SIAT Y PAGOS (US035-US041)
+-- La proforma es el documento de cobro operativo del taller, SIN valor fiscal:
+-- nace de una orden Finalizada/Cerrada y es contra lo que el cliente paga
+-- (tabla propia, no un alias de "factura"). La factura SOLO existe cuando el
+-- taller esta habilitado ante el SIN (Facturacion:Modo = SIAT_ONLINE) y puede
+-- nacer de una orden o de una venta de mostrador, nunca de las dos; mientras
+-- tanto la tabla queda vacia. Los pagos se registran contra la proforma, no
+-- contra la factura, porque la proforma es el flujo operativo de todos los
+-- dias y la factura no duplica los cobros.
 -- ============================================================================
 
-CREATE TABLE facturas (
-    factura_id       VARCHAR(20) PRIMARY KEY
-                         CHECK (factura_id ~ '^FAC-[0-9]{3,}$'),    -- FAC-001
+CREATE TABLE proformas (
+    proforma_id      VARCHAR(20) PRIMARY KEY
+                         CHECK (proforma_id ~ '^PRF-[0-9]{3,}$'),   -- PRF-001
     orden_id         VARCHAR(20) NOT NULL REFERENCES ordenes_trabajo(orden_id),
     fecha_emision    TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     nit_razon_social VARCHAR(150),
     total            DECIMAL(12,2) NOT NULL DEFAULT 0,
-    estado           VARCHAR(20) NOT NULL DEFAULT 'Emitida'         -- EstadoFactura
+    estado           VARCHAR(20) NOT NULL DEFAULT 'Emitida'         -- EstadoProforma
                          CHECK (estado IN ('Emitida','Anulada'))
 );
 
@@ -327,7 +332,10 @@ CREATE TABLE ventas (
     total           DECIMAL(12,2) NOT NULL DEFAULT 0,
     estado          VARCHAR(20) NOT NULL DEFAULT 'Emitida'          -- EstadoVenta
                         CHECK (estado IN ('Emitida','Anulada')),
-    observaciones   VARCHAR(255)
+    observaciones   VARCHAR(255),
+    -- Codigo del catalogo del SIN para la forma de cobro, congelado al vender
+    -- (la venta tambien necesita el codigo para poder facturarse en linea).
+    metodo_pago_id  SMALLINT
 );
 
 CREATE TABLE venta_detalle (
@@ -340,15 +348,57 @@ CREATE TABLE venta_detalle (
     subtotal         DECIMAL(12,2) GENERATED ALWAYS AS (cantidad * precio_unitario) STORED
 );
 
+-- Comprobante fiscal ante el SIN: lleva CUF, CUFD y el XML firmado que se
+-- envia a los webservices del SIAT. Cuelga de una orden de trabajo O de una
+-- venta de mostrador (chk_facturas_un_origen), nunca de las dos, y no
+-- depende de la proforma: se emite directo del documento que origino el cobro.
+CREATE TABLE facturas (
+    factura_id         VARCHAR(20) PRIMARY KEY
+                           CHECK (factura_id ~ '^FAC-[0-9]{3,}$'),  -- FAC-001
+    orden_id            VARCHAR(20) REFERENCES ordenes_trabajo(orden_id),
+    venta_id            VARCHAR(20) REFERENCES ventas(venta_id),
+    fecha_emision       TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    nit_razon_social    VARCHAR(150),
+    total               DECIMAL(12,2) NOT NULL CHECK (total >= 0),
+    -- Codigo del catalogo del SIN para la forma de cobro.
+    metodo_pago_id      SMALLINT,
+    estado              VARCHAR(20) NOT NULL DEFAULT 'Emitida'      -- EstadoFactura
+                           CHECK (estado IN ('Emitida','Anulada')),
+    -- --- Datos fiscales (SIAT); permanecen NULL mientras el modo no sea SIAT_ONLINE ---
+    numero_factura      BIGINT,                    -- correlativo fiscal que exige el SIN
+    cuf                 VARCHAR(100),               -- Codigo Unico de Factura
+    cufd                VARCHAR(100),               -- Codigo Unico de Descarga (vence cada dia)
+    codigo_recepcion    VARCHAR(100),               -- acuse del webservice si la recepcion fue correcta
+    estado_siat         VARCHAR(20) NOT NULL DEFAULT 'Pendiente'    -- EstadoSiat
+                           CHECK (estado_siat IN ('Pendiente','Enviada','Validada','Rechazada','Contingencia','Anulada')),
+    xml_generado        TEXT,                       -- XML armado segun el XSD del SIN, antes de firmar
+    xml_firmado         TEXT,                       -- el mismo XML ya firmado digitalmente
+    fecha_emision_siat  TIMESTAMPTZ,                -- fecha que consta en el comprobante fiscal
+    mensaje_servicio    VARCHAR(500),               -- ultima respuesta del webservice: acuse o motivo de rechazo
+    CONSTRAINT chk_facturas_un_origen CHECK (
+        (orden_id IS NOT NULL AND venta_id IS NULL) OR
+        (orden_id IS NULL AND venta_id IS NOT NULL)
+    )
+);
+
+-- A lo sumo una factura vigente (no Anulada) por orden y por venta.
+CREATE UNIQUE INDEX idx_facturas_orden_vigente ON facturas(orden_id) WHERE orden_id IS NOT NULL AND estado = 'Emitida';
+CREATE UNIQUE INDEX idx_facturas_venta_vigente ON facturas(venta_id) WHERE venta_id IS NOT NULL AND estado = 'Emitida';
+
 CREATE TABLE pagos (
     pago_id         VARCHAR(20) PRIMARY KEY
                         CHECK (pago_id ~ '^PAG-[0-9]{3,}$'),        -- PAG-001
-    factura_id      VARCHAR(20) NOT NULL REFERENCES facturas(factura_id) ON DELETE CASCADE,
+    -- El cobro se registra contra la proforma, que es el documento operativo
+    -- del taller; la factura fiscal, cuando exista, representa ese mismo
+    -- dinero y no duplica los pagos.
+    proforma_id     VARCHAR(20) NOT NULL REFERENCES proformas(proforma_id) ON DELETE CASCADE,
     monto           DECIMAL(12,2) NOT NULL CHECK (monto > 0),
     fecha_pago      TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     metodo_pago     VARCHAR(30) NOT NULL                            -- MetodoPago
                         CHECK (metodo_pago IN ('Efectivo','Transferencia','Tarjeta','QR','Otro')),
-    referencia      VARCHAR(100)
+    referencia      VARCHAR(100),
+    -- Codigo del catalogo del SIN para la forma de cobro, congelado al cobrar.
+    metodo_pago_id  SMALLINT
 );
 
 -- ============================================================================
@@ -405,8 +455,10 @@ CREATE INDEX idx_orden_servicios_mecanico  ON orden_servicios(mecanico_id);
 CREATE INDEX idx_orden_repuestos_orden     ON orden_repuestos(orden_id);
 CREATE INDEX idx_compra_detalle_compra     ON compra_detalle(compra_id);
 CREATE INDEX idx_comisiones_mecanico       ON comisiones(mecanico_id);
-CREATE INDEX idx_facturas_orden            ON facturas(orden_id);
-CREATE INDEX idx_pagos_factura             ON pagos(factura_id);
+CREATE INDEX idx_proformas_orden           ON proformas(orden_id);
+CREATE INDEX idx_facturas_cuf              ON facturas(cuf);
+CREATE INDEX idx_facturas_fecha            ON facturas(fecha_emision);
+CREATE INDEX idx_pagos_proforma            ON pagos(proforma_id);
 
 -- ============================================================================
 -- DATOS INICIALES (seed) SUGERIDOS PARA ROLES
