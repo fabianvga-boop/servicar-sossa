@@ -32,13 +32,23 @@ param(
 # (un simple NOTICE de psql) se convierte en error si se usa 2>&1 con 'Stop'.
 # El control de errores se hace mirando $LASTEXITCODE, no la preferencia.
 $ErrorActionPreference = 'Continue'
-$raiz   = $PSScriptRoot
-$psql   = "C:\Program Files\PostgreSQL\16\bin\psql.exe"
-$pgdump = "C:\Program Files\PostgreSQL\16\bin\pg_dump.exe"
+$raiz = $PSScriptRoot
 
-foreach ($exe in @($psql, $pgdump)) {
-    if (-not (Test-Path $exe)) { throw "No se encuentra $exe. Instala PostgreSQL 16." }
+# Se usa la version MAS NUEVA de las herramientas instaladas: pg_dump se niega a
+# volcar un servidor de version mayor que la suya, y Supabase corre PostgreSQL 17.
+$bin = Get-ChildItem "C:\Program Files\PostgreSQL" -Directory -ErrorAction SilentlyContinue |
+       Where-Object   { $_.Name -match '^\d+$' } |
+       Sort-Object    { [int]$_.Name } -Descending |
+       ForEach-Object { Join-Path $_.FullName 'bin' } |
+       Where-Object   { (Test-Path (Join-Path $_ 'psql.exe')) -and (Test-Path (Join-Path $_ 'pg_dump.exe')) } |
+       Select-Object -First 1
+
+if (-not $bin) {
+    throw "No se encontro PostgreSQL en 'C:\Program Files\PostgreSQL'. Instala al menos las herramientas cliente."
 }
+
+$psql   = Join-Path $bin 'psql.exe'
+$pgdump = Join-Path $bin 'pg_dump.exe'
 
 # Orden cronologico. migracion_eliminar_proforma.sql esta excluida a proposito.
 $migraciones = @(
@@ -65,6 +75,26 @@ Write-Host ""
 Write-Host "=== 1. Comprobando la conexion ===" -ForegroundColor Cyan
 $ver = Consultar "SELECT current_database() || ' @ ' || substring(version() from 'PostgreSQL [0-9.]+');"
 Write-Host "    $ver"
+Write-Host "    herramientas locales: $bin"
+
+# pg_dump aborta si el servidor es de una version mayor que la suya. Se verifica
+# ANTES de tocar nada, para no descubrirlo recien al intentar el respaldo.
+$servidorMayor = [int]([int](Consultar "SELECT current_setting('server_version_num');") / 10000)
+$dumpTexto     = (& $pgdump --version) -join ' '
+$dumpMayor     = if ($dumpTexto -match '(\d+)\.\d+') { [int]$Matches[1] } else { 0 }
+
+if ($dumpMayor -lt $servidorMayor) {
+    throw @"
+Incompatibilidad de versiones: el servidor es PostgreSQL $servidorMayor y tu pg_dump es $dumpMayor.
+pg_dump se niega a volcar un servidor mas nuevo que el, asi que NO se puede hacer el respaldo
+previo y no se aplica ninguna migracion.
+
+Solucion: instala las herramientas de PostgreSQL $servidorMayor y volve a correr esto.
+    winget install PostgreSQL.PostgreSQL.$servidorMayor
+(Convive con la $dumpMayor que ya tenes; el script toma sola la mas nueva.)
+"@
+}
+Write-Host "    pg_dump $dumpMayor contra servidor $servidorMayor : compatible" -ForegroundColor DarkGray
 
 Write-Host ""
 Write-Host "=== 2. Estado actual del esquema ===" -ForegroundColor Cyan
