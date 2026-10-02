@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 -- BASE DE DATOS: Sistema de Informacion para Taller Automotriz "Servicar SOSSA"
 -- Proyecto de Grado - UAJMS (Tarija, Bolivia)
 -- Motor: PostgreSQL 16
@@ -19,9 +19,14 @@
 --   * Las marcas de tiempo usan TIMESTAMPTZ y se guardan en UTC. Npgsql mapea
 --     DateTime con Kind=Utc directamente a este tipo; NO usar TIMESTAMP simple.
 -- ============================================================================
--- USO:
---   psql -U postgres -c "CREATE DATABASE servicar_sossa;"
---   psql -U postgres -d servicar_sossa -f taller_automotriz_bd.sql
+-- USO (instalacion nueva; crea las 28 tablas del esquema vigente):
+--   psql -U postgres -c "CREATE ROLE servicar_app LOGIN PASSWORD '<clave>';"
+--   psql -U postgres -c "CREATE DATABASE servicar_sossa OWNER servicar_app ENCODING 'UTF8';"
+--   psql -U servicar_app -d servicar_sossa -f taller_automotriz_bd.sql
+--
+-- Se ejecuta con el rol de la API para que sea duena de las tablas. Este
+-- archivo YA incluye todas las migraciones_*.sql: no aplicarlas encima. Esas
+-- migraciones son solo para actualizar una base creada con una version vieja.
 -- ============================================================================
 
 
@@ -83,7 +88,12 @@ CREATE TABLE clientes (
     direccion       VARCHAR(200),
     fecha_registro  TIMESTAMPTZ    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     estado          VARCHAR(20)  NOT NULL DEFAULT 'Activo'
-                        CHECK (estado IN ('Activo','Inactivo'))
+                        CHECK (estado IN ('Activo','Inactivo')),
+    -- Documento desglosado para el SIAT (opcional mientras Facturacion:Modo = INTERNAL).
+    -- El uso diario sigue siendo ci_nit; estas columnas solo alimentan la factura fiscal.
+    tipo_documento_id SMALLINT,                   -- catalogo SIN: 1=CI, 2=CEX, 3=PAS, 4=OD, 5=NIT
+    numero_documento  VARCHAR(30),
+    complemento       VARCHAR(5)                  -- letra que acompana a algunos CI
 );
 
 CREATE TABLE vehiculos (
@@ -122,7 +132,10 @@ CREATE TABLE tipos_servicio (
     descripcion     VARCHAR(255),
     precio_base     DECIMAL(10,2) NOT NULL DEFAULT 0,
     estado          VARCHAR(20)  NOT NULL DEFAULT 'Activo'
-                        CHECK (estado IN ('Activo','Inactivo'))
+                        CHECK (estado IN ('Activo','Inactivo')),
+    -- Homologacion contra el catalogo del SIN (solo para facturacion SIAT)
+    codigo_sin        VARCHAR(20),
+    unidad_medida_sin SMALLINT
 );
 
 CREATE TABLE diagnosticos (
@@ -222,7 +235,10 @@ CREATE TABLE repuestos (
     precio_venta    DECIMAL(10,2) NOT NULL DEFAULT 0,  -- precio de venta: se usa en órdenes y punto de venta
     proveedor_id    VARCHAR(20)  REFERENCES proveedores(proveedor_id),
     -- Foto del producto (opcional): nombre del archivo en Uploads/repuestos
-    nombre_archivo_foto VARCHAR(255)
+    nombre_archivo_foto VARCHAR(255),
+    -- Homologacion contra el catalogo del SIN (solo para facturacion SIAT)
+    codigo_sin        VARCHAR(20),
+    unidad_medida_sin SMALLINT
 );
 
 CREATE TABLE compras (
@@ -436,6 +452,39 @@ CREATE TABLE auditoria (
 
 CREATE INDEX idx_auditoria_entidad ON auditoria(entidad, entidad_id);
 CREATE INDEX idx_auditoria_fecha   ON auditoria(fecha);
+
+-- ============================================================================
+-- DIAGRAMA VECTORIAL DEL VEHICULO
+-- ============================================================================
+-- Van al final porque vehiculo_zonas referencia a ordenes_trabajo.
+
+-- Zonas marcadas sobre el diagrama del vehiculo (golpes, piezas en reparacion)
+CREATE TABLE vehiculo_zonas (
+    zona_obs_id     VARCHAR(20) PRIMARY KEY
+                        CHECK (zona_obs_id ~ '^ZNA-[0-9]{3,}$'),  -- ZNA-001
+    vehiculo_id     VARCHAR(20) NOT NULL REFERENCES vehiculos(vehiculo_id) ON DELETE CASCADE,
+    orden_id        VARCHAR(20) REFERENCES ordenes_trabajo(orden_id) ON DELETE SET NULL,
+    zona            VARCHAR(40) NOT NULL,
+    estado          VARCHAR(20) NOT NULL
+                        CHECK (estado IN ('Ok', 'Atencion', 'EnReparacion')),
+    detalle         VARCHAR(300),
+    fecha_registro  TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_vehiculo_zonas_vehiculo ON vehiculo_zonas(vehiculo_id);
+
+-- Biblioteca de diagramas vectoriales, uno por Marca+Modelo
+CREATE TABLE plantillas_vehiculo (
+    plantilla_id    VARCHAR(20) PRIMARY KEY
+                        CHECK (plantilla_id ~ '^PLV-[0-9]{3,}$'),  -- PLV-001
+    marca           VARCHAR(50) NOT NULL,
+    modelo          VARCHAR(50) NOT NULL,
+    nombre_archivo  VARCHAR(255) NOT NULL,
+    fecha_subida    TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX idx_plantillas_vehiculo_marca_modelo
+    ON plantillas_vehiculo(marca, modelo);
 
 -- ============================================================================
 -- INDICES RECOMENDADOS (mejoran consultas frecuentes de reportes y busquedas)
