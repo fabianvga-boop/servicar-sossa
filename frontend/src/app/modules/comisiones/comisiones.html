@@ -1,9 +1,19 @@
 <div class="fila-entre envuelve mb-2">
   <div>
-    <h1>Comisiones</h1>
-    <p class="texto-tenue texto-sm mb-0">
-      Se generan solas al cerrar una orden de trabajo
-    </p>
+    @if (esAdmin()) {
+      <h1>Comisiones</h1>
+      <p class="texto-tenue texto-sm mb-0">
+        Se generan solas al cerrar una orden de trabajo
+      </p>
+    } @else {
+      <h1>Mis comisiones</h1>
+      <p class="texto-tenue texto-sm mb-0">
+        Se generan al cerrar cada orden en la que usted ejecutó servicios
+        @if (miPorcentaje() !== null) {
+          · su porcentaje: {{ miPorcentaje() }}%
+        }
+      </p>
+    }
   </div>
   @if (pestania() === 'config') {
     <button type="button" class="btn btn-primario" (click)="abrirConfig()">
@@ -12,29 +22,31 @@
   }
 </div>
 
-<div class="pestanias mb-2">
-  <button
-    type="button"
-    [class.activa]="pestania() === 'comisiones'"
-    (click)="cambiarPestania('comisiones')"
-  >
-    Comisiones
-  </button>
-  <button
-    type="button"
-    [class.activa]="pestania() === 'resumen'"
-    (click)="cambiarPestania('resumen')"
-  >
-    Resumen por mecánico
-  </button>
-  <button
-    type="button"
-    [class.activa]="pestania() === 'config'"
-    (click)="cambiarPestania('config')"
-  >
-    Porcentajes
-  </button>
-</div>
+@if (esAdmin()) {
+  <div class="pestanias mb-2">
+    <button
+      type="button"
+      [class.activa]="pestania() === 'comisiones'"
+      (click)="cambiarPestania('comisiones')"
+    >
+      Comisiones
+    </button>
+    <button
+      type="button"
+      [class.activa]="pestania() === 'resumen'"
+      (click)="cambiarPestania('resumen')"
+    >
+      Resumen por mecánico
+    </button>
+    <button
+      type="button"
+      [class.activa]="pestania() === 'config'"
+      (click)="cambiarPestania('config')"
+    >
+      Porcentajes
+    </button>
+  </div>
+}
 
 @switch (pestania()) {
   <!-- ================================================== Listado detallado -->
@@ -44,12 +56,12 @@
       <div class="kpi-comision kpi-pendiente">
         <span class="kpi-etiqueta">Total pendiente</span>
         <span class="kpi-valor">{{ kpiTotalPendiente() | bs }}</span>
-        <span class="kpi-pie">Por liquidar a los mecánicos</span>
+        <span class="kpi-pie">{{ esAdmin() ? 'Por liquidar a los mecánicos' : 'Por cobrar' }}</span>
       </div>
       <div class="kpi-comision kpi-pagado">
         <span class="kpi-etiqueta">Total pagado</span>
         <span class="kpi-valor">{{ kpiTotalPagado() | bs }}</span>
-        <span class="kpi-pie">Comisiones ya liquidadas</span>
+        <span class="kpi-pie">{{ esAdmin() ? 'Comisiones ya liquidadas' : 'Ya cobradas' }}</span>
       </div>
       <div class="kpi-comision">
         <span class="kpi-etiqueta">Cantidad pendiente</span>
@@ -71,7 +83,7 @@
             <option value="1">Pagadas</option>
           </select>
 
-          @if (pendientes().length > 0) {
+          @if (esAdmin() && pendientes().length > 0) {
             <button
               type="button"
               class="btn btn-secundario btn-sm"
@@ -96,11 +108,15 @@
           <table class="tabla">
             <thead>
               <tr>
-                <th style="width: 34px"></th>
+                @if (esAdmin()) {
+                  <th style="width: 34px"></th>
+                }
                 <th>Código</th>
                 <th>Cálculo</th>
                 <th>Orden</th>
-                <th>Mecánico</th>
+                @if (esAdmin()) {
+                  <th>Mecánico</th>
+                }
                 <th class="num">Monto</th>
                 <th>Estado</th>
                 <th class="th-acciones">Acciones</th>
@@ -109,16 +125,18 @@
             <tbody>
               @for (comision of comisiones(); track comision.comisionId) {
                 <tr>
-                  <td>
-                    @if (comision.estadoPago === EstadoPago.Pendiente) {
-                      <input
-                        type="checkbox"
-                        style="width: auto"
-                        [checked]="estaSeleccionada(comision.comisionId)"
-                        (change)="alternarSeleccion(comision.comisionId)"
-                      />
-                    }
-                  </td>
+                  @if (esAdmin()) {
+                    <td>
+                      @if (comision.estadoPago === EstadoPago.Pendiente) {
+                        <input
+                          type="checkbox"
+                          style="width: auto"
+                          [checked]="estaSeleccionada(comision.comisionId)"
+                          (change)="alternarSeleccion(comision.comisionId)"
+                        />
+                      }
+                    </td>
+                  }
                   <td class="codigo">{{ comision.comisionId }}</td>
                   <td class="texto-sm">{{ comision.fechaCalculo | date: 'dd/MM/yyyy' }}</td>
                   <td>
@@ -127,12 +145,14 @@
                     </a>
                     <div class="texto-tenue texto-sm">{{ comision.placaVehiculo }}</div>
                   </td>
-                  <td>
-                    <span class="celda-mecanico">
-                      <span class="avatar-ini" aria-hidden="true">{{ iniciales(comision.nombreMecanico) }}</span>
-                      <span>{{ comision.nombreMecanico }}</span>
-                    </span>
-                  </td>
+                  @if (esAdmin()) {
+                    <td>
+                      <span class="celda-mecanico">
+                        <span class="avatar-ini" aria-hidden="true">{{ iniciales(comision.nombreMecanico) }}</span>
+                        <span>{{ comision.nombreMecanico }}</span>
+                      </span>
+                    </td>
+                  }
                   <td class="num texto-fuerte">{{ comision.monto | bs }}</td>
                   <td>
                     <app-insignia-estado familia="pago" [valor]="comision.estadoPago" />
@@ -158,7 +178,7 @@
                         </svg>
                       </button>
                       <!-- Pagar: acción principal cuando está pendiente, botón sólido -->
-                      @if (comision.estadoPago === EstadoPago.Pendiente) {
+                      @if (esAdmin() && comision.estadoPago === EstadoPago.Pendiente) {
                         <button type="button" class="btn btn-exito btn-sm" (click)="porPagar.set(comision)">
                           Pagar
                         </button>
@@ -168,8 +188,10 @@
                 </tr>
                 @if (expandida() === comision.comisionId) {
                   <tr>
-                    <td></td>
-                    <td colspan="7">
+                    @if (esAdmin()) {
+                      <td></td>
+                    }
+                    <td [attr.colspan]="esAdmin() ? 7 : 6">
                       @if (comision.detalle.length === 0) {
                         <p class="texto-tenue texto-sm mb-0">
                           Sin servicios registrados para este mecánico en la orden.

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ServicarSossa.Application.Common;
 using ServicarSossa.Application.DTOs.Comisiones;
 using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Application.Interfaces;
@@ -11,20 +12,23 @@ namespace ServicarSossa.API.Controllers;
 /// USU031-USU034 — comisiones de mecánicos.
 /// Las comisiones se generan solas al cerrar una orden de trabajo; aquí se
 /// configuran los porcentajes, se consultan y se liquidan.
+/// El Mecánico solo consulta las suyas (USU032); configurar y liquidar es del Administrador.
 /// </summary>
-[Authorize(Roles = "Administrador")]
+[Authorize(Roles = "Administrador,Mecanico")]
 public class ComisionesController(IComisionService service) : ApiControllerBase
 {
     // ============================================================ CONFIGURACIÓN
 
     /// <summary>USU031 — porcentajes de comisión configurados por mecánico.</summary>
     [HttpGet("config")]
+    [Authorize(Roles = "Administrador")]
     [ProducesResponseType(typeof(IEnumerable<ComisionConfigResponseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetConfiguraciones(CancellationToken ct)
         => Responder(await service.GetConfiguracionesAsync(ct));
 
     /// <summary>USU031 — porcentaje configurado para un mecánico puntual.</summary>
     [HttpGet("config/{mecanicoId}")]
+    [Authorize(Roles = "Administrador")]
     [ProducesResponseType(typeof(ComisionConfigResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetConfiguracion(string mecanicoId, CancellationToken ct)
@@ -35,6 +39,7 @@ public class ComisionesController(IComisionService service) : ApiControllerBase
     /// reemplaza. Solo afecta a las órdenes que se cierren de aquí en adelante.
     /// </summary>
     [HttpPut("config/{mecanicoId}")]
+    [Authorize(Roles = "Administrador")]
     [ProducesResponseType(typeof(ComisionConfigResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> EstablecerConfiguracion(
@@ -45,8 +50,8 @@ public class ComisionesController(IComisionService service) : ApiControllerBase
 
     /// <summary>
     /// USU032 — comisiones filtrables por mecánico, orden, estado y periodo.
-    /// Ojo: la historia está escrita para el Mecánico ("consultar mis comisiones"),
-    /// pero el controlador completo exige rol Administrador; ver Sprint Review.
+    /// El Mecánico recibe siempre las suyas: el filtro <paramref name="mecanicoId"/>
+    /// se ignora y se reemplaza por su propio usuario.
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(ResultadoPaginadoDto<ComisionResponseDto>), StatusCodes.Status200OK)]
@@ -60,25 +65,41 @@ public class ComisionesController(IComisionService service) : ApiControllerBase
         [FromQuery] int tamanoPagina = 20,
         CancellationToken ct = default)
         => Responder(await service.GetAllAsync(
-            mecanicoId, ordenId, estadoPago, desde, hasta, pagina, tamanoPagina, ct));
+            EsAdministrador ? mecanicoId : UsuarioIdActual,
+            ordenId, estadoPago, desde, hasta, pagina, tamanoPagina, ct));
 
     /// <summary>
     /// USU034 — totales pendientes y pagados por mecánico en el periodo: es el
     /// reporte de comisiones. El cálculo automático (USU033) no vive aquí, sino
     /// en <c>OrdenService.CerrarOrdenAsync</c>, al cerrar la orden.
+    /// El Mecánico recibe solo su propia fila.
     /// </summary>
     [HttpGet("resumen")]
     [ProducesResponseType(typeof(IEnumerable<ResumenComisionesDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetResumen(
         [FromQuery] DateTime? desde, [FromQuery] DateTime? hasta, CancellationToken ct = default)
-        => Responder(await service.GetResumenAsync(desde, hasta, ct));
+    {
+        var result = await service.GetResumenAsync(desde, hasta, ct);
+        if (EsAdministrador || !result.Success) return Responder(result);
 
-    /// <summary>Obtiene una comisión por su código (COM-000).</summary>
+        return Ok(result.Data!.Where(r => r.MecanicoId == UsuarioIdActual).ToList());
+    }
+
+    /// <summary>
+    /// Obtiene una comisión por su código (COM-000). Para el Mecánico, una
+    /// comisión ajena responde 404, igual que si no existiera.
+    /// </summary>
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(ComisionResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(string id, CancellationToken ct)
-        => Responder(await service.GetByIdAsync(id, ct));
+    {
+        var result = await service.GetByIdAsync(id, ct);
+        if (!EsAdministrador && result.Success && result.Data!.MecanicoId != UsuarioIdActual)
+            return Responder(Result<ComisionResponseDto>.NoEncontrado($"No existe la comisión {id}."));
+
+        return Responder(result);
+    }
 
     // ===================================================================== PAGO
 
@@ -88,6 +109,7 @@ public class ComisionesController(IComisionService service) : ApiControllerBase
     /// backlog de la Épica 7, que solo preveía reportarlas (USU034).
     /// </summary>
     [HttpPatch("{id}/pagar")]
+    [Authorize(Roles = "Administrador")]
     [ProducesResponseType(typeof(ComisionResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Pagar(string id, CancellationToken ct)
@@ -98,6 +120,7 @@ public class ComisionesController(IComisionService service) : ApiControllerBase
     /// Sin historia numerada propia, igual que el pago individual.
     /// </summary>
     [HttpPost("pagar-lote")]
+    [Authorize(Roles = "Administrador")]
     [ProducesResponseType(typeof(LiquidacionResultadoDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> PagarLote(

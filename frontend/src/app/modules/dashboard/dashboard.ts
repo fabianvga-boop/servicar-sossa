@@ -241,13 +241,25 @@ export class Dashboard {
         },
       );
     } else {
-      lista.push({
-        etiqueta: 'Mis órdenes en curso',
-        descripcion: 'Órdenes con trabajo asignado a usted',
-        icono: 'ordenes',
-        cantidad: this.abiertas() + this.enProceso(),
-        ruta: '/ordenes',
-      });
+      lista.push(
+        {
+          etiqueta: 'Mis órdenes en curso',
+          descripcion: 'Órdenes con trabajo asignado a usted',
+          icono: 'ordenes',
+          cantidad: this.abiertas() + this.enProceso(),
+          ruta: '/ordenes',
+        },
+        {
+          etiqueta: 'Mis comisiones por cobrar',
+          descripcion: 'Generadas por sus servicios, aún sin liquidar',
+          icono: 'comisiones',
+          cantidad: this.comisionesPendientes().length,
+          detalle: this.totalComisionesPendientes() > 0
+            ? `Bs ${this.totalComisionesPendientes().toFixed(2)}`
+            : undefined,
+          ruta: '/comisiones',
+        },
+      );
     }
 
     return lista.filter((acceso) => acceso.cantidad > 0);
@@ -260,8 +272,8 @@ export class Dashboard {
   private cargar(): void {
     const esAdmin = this.auth.esAdministrador();
 
-    // El mecánico solo ve sus propias órdenes y no tiene acceso a comisiones;
-    // cada rama va protegida para que un 403 parcial no vacíe el panel entero.
+    // El mecánico solo ve sus propias órdenes y comisiones: la API ya se las
+    // filtra. Cada rama va protegida para que un error parcial no vacíe el panel.
     forkJoin({
       ordenes: this.ordenesService
         .getAll(esAdmin ? {} : { mecanicoId: this.auth.sesion()?.usuarioId })
@@ -271,11 +283,9 @@ export class Dashboard {
         .getAll({ soloStockBajo: true, tamanoPagina: 500 })
         .pipe(catchError(() => of({ items: [], totalRegistros: 0 }))),
       // Acá sí se necesitan los montos (para sumarlos), no solo la cuenta.
-      comisiones: esAdmin
-        ? this.comisionesService
-            .getAll({ estadoPago: EstadoPago.Pendiente, tamanoPagina: 500 })
-            .pipe(map((r) => r.items), catchError(() => of([] as Comision[])))
-        : of([] as Comision[]),
+      comisiones: this.comisionesService
+        .getAll({ estadoPago: EstadoPago.Pendiente, tamanoPagina: 500 })
+        .pipe(map((r) => r.items), catchError(() => of([] as Comision[]))),
     }).subscribe(({ ordenes, stockBajo, comisiones }) => {
       this.ordenes.set(ordenes);
       this.stockBajo.set(stockBajo.items);
