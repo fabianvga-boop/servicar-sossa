@@ -6,6 +6,7 @@ import { RouterLink } from '@angular/router';
 import { EstadoPago, EstadoUsuario } from '../../core/models/enums';
 import { Comision, ComisionConfig, ResumenComisiones } from '../../core/models/finanzas.model';
 import { Usuario } from '../../core/models/personas.model';
+import { AuthService } from '../../core/services/auth.service';
 import { ContadoresService } from '../../core/services/contadores.service';
 import { ComisionesService } from '../../core/services/finanzas.service';
 import { NotificacionService } from '../../core/services/notificacion.service';
@@ -23,7 +24,11 @@ type Pestania = 'comisiones' | 'resumen' | 'config';
 
 const CLAVE_FILTRO = 'comisiones.estadoPago';
 
-/** USU031-USU034 — comisiones de mecánicos. */
+/**
+ * USU031-USU034 — comisiones de mecánicos. El Mecánico entra en modo consulta
+ * (USU032): ve solo las suyas, sin pestañas de resumen ni de porcentajes y sin
+ * las acciones de pago, que son del Administrador.
+ */
 @Component({
   selector: 'app-comisiones',
   imports: [
@@ -47,6 +52,10 @@ export class Comisiones {
   private readonly notificacion = inject(NotificacionService);
   private readonly preferencias = inject(PreferenciasService);
   private readonly contadores = inject(ContadoresService);
+  private readonly auth = inject(AuthService);
+
+  /** Administrador: gestiona todo. Mecánico: solo consulta sus comisiones. */
+  protected readonly esAdmin = this.auth.esAdministrador;
 
   protected readonly pestania = signal<Pestania>('comisiones');
 
@@ -98,6 +107,9 @@ export class Comisiones {
   );
   protected readonly kpiCantidadPendiente = computed(() => this.pendientes().length);
 
+  /** Porcentaje del propio mecánico; su resumen trae una sola fila. */
+  protected readonly miPorcentaje = computed(() => this.resumen()[0]?.porcentajeConfigurado ?? null);
+
   /** Iniciales para el avatar del mecánico: solo presentación. */
   protected iniciales(nombre: string | null | undefined): string {
     const partes = (nombre ?? '').trim().split(/\s+/).filter(Boolean);
@@ -140,6 +152,9 @@ export class Comisiones {
 
     this.cargar();
 
+    // La lista de mecánicos solo sirve para configurar porcentajes.
+    if (!this.esAdmin()) return;
+
     this.usuariosService.getAll(undefined, 1, 500).subscribe((resultado) =>
       // El administrador (dueño) también genera comisión cuando trabaja un
       // vehículo (con porcentaje 100), así que puede configurarse su porcentaje.
@@ -174,8 +189,11 @@ export class Comisiones {
         error: () => this.cargando.set(false),
       });
 
+    // Para el mecánico, la API devuelve solo su fila del resumen.
     this.servicio.getResumen().subscribe((lista) => this.resumen.set(lista));
-    this.servicio.getConfiguraciones().subscribe((lista) => this.configuraciones.set(lista));
+    if (this.esAdmin()) {
+      this.servicio.getConfiguraciones().subscribe((lista) => this.configuraciones.set(lista));
+    }
   }
 
   protected cambiarPestania(valor: Pestania): void {

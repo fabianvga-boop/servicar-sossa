@@ -129,7 +129,7 @@ export const routes: Routes = [
       },
       {
         path: 'comisiones',
-        canActivate: [authGuard(['Administrador'])],
+        canActivate: [authGuard(['Administrador', 'Mecanico'])],
         data: { title: 'Comisiones' },
         loadComponent: () =>
           import('./modules/comisiones/comisiones').then((m) => m.Comisiones),

@@ -118,7 +118,6 @@ export class Layout {
           ruta: '/comisiones',
           etiqueta: 'Comisiones',
           icono: 'comisiones',
-          roles: ['Administrador'],
           contador: 'comisionesPendientes',
         },
       ],

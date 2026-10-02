@@ -16,7 +16,10 @@ public class OrdenesController(IOrdenService service) : ApiControllerBase
 {
     // ====================================================================== ORDEN
 
-    /// <summary>USU024 — lista órdenes filtrables por cliente, vehículo, mecánico o estado.</summary>
+    /// <summary>
+    /// USU024 — lista órdenes filtrables por cliente, vehículo, mecánico o estado.
+    /// El Mecánico recibe solo las órdenes a las que está asignado.
+    /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<OrdenResponseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll(
@@ -25,7 +28,8 @@ public class OrdenesController(IOrdenService service) : ApiControllerBase
         [FromQuery] string? mecanicoId,
         [FromQuery] EstadoOrden? estado,
         CancellationToken ct = default)
-        => Responder(await service.GetAllAsync(clienteId, vehiculoId, mecanicoId, estado, ct));
+        => Responder(await service.GetAllAsync(
+            clienteId, vehiculoId, EsAdministrador ? mecanicoId : UsuarioIdActual, estado, ct));
 
     /// <summary>Escribir menos: nombres de servicios "fuera de catálogo" ya usados antes.</summary>
     [HttpGet("sugerencias/servicios-libres")]

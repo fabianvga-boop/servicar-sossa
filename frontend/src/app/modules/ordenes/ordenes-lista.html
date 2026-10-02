@@ -201,7 +201,9 @@
                     <span class="tarjeta-total">{{ orden.total | bs }}</span>
 
                     @if (sePuedeFacturar(orden)) {
+                      <!-- Cobrar lleva a Proformas, que es solo del Administrador -->
                       <a
+                        *appSiRol="['Administrador']"
                         class="tarjeta-cobrar"
                         [routerLink]="['/proformas']"
                         [queryParams]="{ ordenId: orden.ordenId }"

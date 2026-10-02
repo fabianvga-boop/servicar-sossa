@@ -4,7 +4,6 @@ import { catchError, map } from 'rxjs/operators';
 
 import { EstadoOrden, EstadoPago } from '../models/enums';
 import { Orden } from '../models/taller.model';
-import { AuthService } from './auth.service';
 import { ComisionesService } from './finanzas.service';
 import { RepuestosService } from './inventario.service';
 import { OrdenesService } from './ordenes.service';
@@ -21,7 +20,6 @@ export class ContadoresService {
   private readonly ordenesService = inject(OrdenesService);
   private readonly comisionesService = inject(ComisionesService);
   private readonly repuestosService = inject(RepuestosService);
-  private readonly auth = inject(AuthService);
 
   private readonly ordenes = signal<Orden[]>([]);
 
@@ -42,17 +40,15 @@ export class ContadoresService {
   readonly stockBajo = signal(0);
 
   refrescar(): void {
-    // El mecánico no tiene acceso a comisiones: la llamada devolvería 403 y no
-    // debe tumbar el resto de los contadores, por eso cada rama va protegida.
+    // Para el mecánico la API ya devuelve solo sus órdenes y sus comisiones.
+    // Cada rama va protegida para que un error no tumbe el resto de los contadores.
     forkJoin({
       ordenes: this.ordenesService.getAll().pipe(catchError(() => of([] as Orden[]))),
       // Solo interesa el total, no los registros: tamanoPagina=1 pide el
       // mínimo posible y `totalRegistros` ya trae la cuenta real.
-      comisionesPendientes: this.auth.esAdministrador()
-        ? this.comisionesService
-            .getAll({ estadoPago: EstadoPago.Pendiente, tamanoPagina: 1 })
-            .pipe(map((r) => r.totalRegistros), catchError(() => of(0)))
-        : of(0),
+      comisionesPendientes: this.comisionesService
+        .getAll({ estadoPago: EstadoPago.Pendiente, tamanoPagina: 1 })
+        .pipe(map((r) => r.totalRegistros), catchError(() => of(0))),
       stockBajo: this.repuestosService
         .getAll({ soloStockBajo: true, tamanoPagina: 1 })
         .pipe(map((r) => r.totalRegistros), catchError(() => of(0))),
