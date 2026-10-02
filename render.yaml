@@ -1,0 +1,28 @@
+# Blueprint de Render para el backend (ASP.NET Core 8 en Docker).
+# El frontend sigue en Vercel y la base en Supabase.
+# Las variables marcadas con sync: false se cargan a mano en el panel de Render
+# (no se versionan: llevan la contraseña de la base y la clave JWT).
+services:
+  - type: web
+    name: servicar-sossa-api
+    runtime: docker
+    plan: free
+    region: virginia            # la región de Render más cercana a Supabase (sa-east-1)
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/salud
+    autoDeploy: true
+    buildFilter:
+      paths:
+        - backend/**
+    envVars:
+      - key: PORT                 # Render enruta a este puerto; .NET 8 escucha en 8080
+        value: "8080"
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: Cors__OrigenesPermitidos__0
+        value: https://servicar-sossa.vercel.app
+      - key: ConnectionStrings__DefaultConnection   # formato clave=valor, Session pooler de Supabase
+        sync: false
+      - key: Jwt__Key
+        sync: false
