@@ -1,0 +1,20 @@
+# Mantiene despierto el backend en Render (el plan gratuito lo duerme tras 15 min
+# sin tráfico) y con actividad la base de Supabase (el plan gratuito la pausa tras
+# unos días sin uso). /api/salud consulta la base, así que un solo llamado cubre ambos.
+name: Mantener activo
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # cada 10 minutos (GitHub puede demorarlo unos minutos)
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Consultar /api/salud
+        run: |
+          # El primer llamado puede tardar ~1 minuto si Render estaba dormido.
+          curl --fail --silent --show-error --max-time 120 --retry 2 --retry-delay 20 \
+            https://servicar-sossa-api.onrender.com/api/salud

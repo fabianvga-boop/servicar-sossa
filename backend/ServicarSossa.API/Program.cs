@@ -125,4 +125,12 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
+// Salud del servicio, sin autenticación: la usa el hosting (Render) para saber
+// si el despliegue quedó vivo, y el workflow de GitHub que lo mantiene activo.
+// Toca la base a propósito: así Supabase registra actividad y no se pausa.
+app.MapGet("/api/salud", async (AppDbContext db, CancellationToken ct) =>
+    await db.Database.CanConnectAsync(ct)
+        ? Results.Ok(new { estado = "ok", baseDeDatos = "conectada" })
+        : Results.Json(new { estado = "error", baseDeDatos = "sin conexion" }, statusCode: 503));
+
 app.Run();

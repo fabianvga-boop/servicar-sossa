@@ -1,4 +1,5 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://servicar-sossa-production.up.railway.app/api',
+  // Backend en Render (render.yaml). Antes estaba en Railway.
+  apiUrl: 'https://servicar-sossa-api.onrender.com/api',
 };
