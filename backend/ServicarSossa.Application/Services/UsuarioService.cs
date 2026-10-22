@@ -165,9 +165,9 @@ public class UsuarioService(
 
         await usuarios.SaveChangesAsync(ct);
 
-        // Si cambió la extensión, el archivo viejo quedaría huérfano en disco.
+        // Cada subida genera un nombre nuevo: el archivo anterior quedaría huérfano.
         if (anterior is not null && anterior != usuario.NombreArchivoFoto)
-            archivos.Eliminar(SubcarpetaFotos, anterior);
+            await archivos.EliminarAsync(SubcarpetaFotos, anterior, ct);
 
         var actualizado = await usuarios.GetByIdConRolAsync(id, ct);
         return Result<UsuarioResponseDto>.Ok(Mapear(actualizado!), "Foto actualizada correctamente.");
@@ -189,7 +189,7 @@ public class UsuarioService(
         usuario.NombreArchivoFoto = null;
         await usuarios.SaveChangesAsync(ct);
 
-        archivos.Eliminar(SubcarpetaFotos, archivo);
+        await archivos.EliminarAsync(SubcarpetaFotos, archivo, ct);
 
         var actualizado = await usuarios.GetByIdConRolAsync(id, ct);
         return Result<UsuarioResponseDto>.Ok(Mapear(actualizado!), "Foto eliminada correctamente.");

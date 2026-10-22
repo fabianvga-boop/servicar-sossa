@@ -236,7 +236,7 @@ public class VehiculoService(
         // Primero la fila; si el archivo ya no está en disco, no es motivo para fallar.
         fotos.Remove(foto);
         await fotos.SaveChangesAsync(ct);
-        archivos.Eliminar(SubcarpetaFotos, foto.NombreArchivo);
+        await archivos.EliminarAsync(SubcarpetaFotos, foto.NombreArchivo, ct);
 
         return Result<bool>.Ok(true, "Foto eliminada correctamente.");
     }

@@ -12,6 +12,7 @@ import { VehiculosService } from '../../core/services/vehiculos.service';
 import { Confirmacion } from '../../shared/components/confirmacion';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { EnfocarError } from '../../shared/directives/enfocar-error';
+import { SRC_SIN_FOTO } from '../../shared/imagen-faltante';
 import { marcasSugeridas, modelosSugeridos } from '../../shared/vehiculo-sugerencias';
 
 const TAMANIO_MAXIMO_BYTES = 512 * 1024;
@@ -111,8 +112,13 @@ export class PlantillasVehiculo {
           [plantilla.plantillaId]: this.sanitizador.bypassSecurityTrustUrl(dataUri),
         }));
       },
-      // Si no se puede leer el SVG, la fila simplemente queda sin miniatura.
-      error: () => {},
+      // Si no se puede leer el SVG (por ejemplo, el archivo ya no existe),
+      // la fila muestra el ícono "sin foto" en vez de un recuadro vacío.
+      error: () =>
+        this.vistaPrevia.update((mapa) => ({
+          ...mapa,
+          [plantilla.plantillaId]: this.sanitizador.bypassSecurityTrustUrl(SRC_SIN_FOTO),
+        })),
     });
   }
 
