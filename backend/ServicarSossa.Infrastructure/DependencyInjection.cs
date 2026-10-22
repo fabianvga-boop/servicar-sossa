@@ -71,7 +71,7 @@ public static class DependencyInjection
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IExportadorReportes, ExportadorReportes>();
         services.AddScoped<IGeneradorComprobantes, GeneradorComprobantes>();
-        services.AddScoped<IAlmacenArchivos, AlmacenArchivosDisco>();
+        RegistrarAlmacenArchivos(services, config);
 
         // --- Servicios de negocio ---------------------------------------------
         services.AddScoped<IAuthService, AuthService>();                 // Sprint 1
@@ -134,5 +134,43 @@ public static class DependencyInjection
             "Facturacion:Modo está en 'SIAT_ONLINE', pero la integración con el SIAT " +
             "aún no está implementada (ver EmisorSiatFacturacion: CUFD, CUF, XML, firma y envío). " +
             "Implemente esos pasos antes de activar el modo, o vuelva a 'INTERNAL'.");
+    }
+
+    /// <summary>
+    /// Disco en el entorno local; Supabase Storage en producción. Si se pide
+    /// Supabase con datos incompletos, la API no arranca: es preferible a
+    /// arrancar y perder en silencio cada foto que se suba.
+    /// </summary>
+    private static void RegistrarAlmacenArchivos(IServiceCollection services, IConfiguration config)
+    {
+        services.Configure<ArchivosOptions>(config.GetSection(ArchivosOptions.Seccion));
+
+        var opciones = config.GetSection(ArchivosOptions.Seccion).Get<ArchivosOptions>()
+            ?? new ArchivosOptions();
+
+        if (!opciones.UsaSupabase)
+        {
+            services.AddScoped<IAlmacenArchivos, AlmacenArchivosDisco>();
+            return;
+        }
+
+        var faltantes = new List<string>();
+        if (string.IsNullOrWhiteSpace(opciones.SupabaseUrl)) faltantes.Add("Archivos:SupabaseUrl");
+        if (string.IsNullOrWhiteSpace(opciones.SupabaseClave)) faltantes.Add("Archivos:SupabaseClave");
+        if (string.IsNullOrWhiteSpace(opciones.Bucket)) faltantes.Add("Archivos:Bucket");
+
+        if (faltantes.Count > 0)
+            throw new InvalidOperationException(
+                "Archivos:Proveedor está en 'Supabase' pero falta configurar: " +
+                string.Join(", ", faltantes) + ". " +
+                "Complete esos valores o quite Archivos:Proveedor para guardar en disco.");
+
+        if (opciones.SupabaseUrl.Contains("/rest/", StringComparison.OrdinalIgnoreCase)
+            || opciones.SupabaseUrl.Contains("/storage/", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException(
+                "Archivos:SupabaseUrl debe ser solo la dirección del proyecto " +
+                "(https://<ref>.supabase.co), sin /rest/v1 ni /storage/v1.");
+
+        services.AddSingleton<IAlmacenArchivos, AlmacenArchivosSupabase>();
     }
 }

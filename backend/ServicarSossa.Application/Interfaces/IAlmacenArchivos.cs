@@ -8,16 +8,22 @@ namespace ServicarSossa.Application.Interfaces;
 public interface IAlmacenArchivos
 {
     /// <summary>
-    /// Guarda el contenido bajo la subcarpeta indicada con el nombre base dado
-    /// (sin extensión) y devuelve el nombre físico completo del archivo creado.
+    /// Guarda el contenido bajo la subcarpeta indicada y devuelve el nombre
+    /// físico del archivo creado. Ese nombre parte del nombre base (sin
+    /// extensión) pero lleva un sufijo aleatorio: cada subida produce un
+    /// nombre nuevo, así que quien reemplaza un archivo debe borrar el anterior.
     /// </summary>
     Task<string> GuardarAsync(
         string subcarpeta, string nombreBase, byte[] contenido, string extension,
         CancellationToken ct = default);
 
     /// <summary>Elimina el archivo si existe; no falla si ya no está.</summary>
-    void Eliminar(string subcarpeta, string nombreArchivo);
+    Task EliminarAsync(string subcarpeta, string nombreArchivo, CancellationToken ct = default);
 
-    /// <summary>Ruta pública (relativa al origen del backend) para acceder al archivo.</summary>
+    /// <summary>
+    /// Dirección para acceder al archivo: relativa al origen del backend
+    /// (<c>/uploads/...</c>) en disco, o absoluta cuando vive en un
+    /// almacenamiento externo.
+    /// </summary>
     string RutaPublica(string subcarpeta, string nombreArchivo);
 }

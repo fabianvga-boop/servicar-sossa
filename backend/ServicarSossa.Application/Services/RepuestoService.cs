@@ -185,7 +185,7 @@ public class RepuestoService(
 
         await repuestos.SaveChangesAsync(ct);
 
-        if (foto is not null) archivos.Eliminar(SubcarpetaFotos, foto);
+        if (foto is not null) await archivos.EliminarAsync(SubcarpetaFotos, foto, ct);
 
         return Result<bool>.Ok(true, "Repuesto eliminado correctamente.");
     }
@@ -211,9 +211,9 @@ public class RepuestoService(
 
         await repuestos.SaveChangesAsync(ct);
 
-        // Si cambió la extensión, el archivo viejo quedaría huérfano en disco.
+        // Cada subida genera un nombre nuevo: el archivo anterior quedaría huérfano.
         if (anterior is not null && anterior != repuesto.NombreArchivoFoto)
-            archivos.Eliminar(SubcarpetaFotos, anterior);
+            await archivos.EliminarAsync(SubcarpetaFotos, anterior, ct);
 
         var actualizado = await repuestos.GetByIdConProveedorAsync(id, ct);
         return Result<RepuestoResponseDto>.Ok(Mapear(actualizado!), "Foto actualizada correctamente.");
@@ -234,7 +234,7 @@ public class RepuestoService(
         repuesto.NombreArchivoFoto = null;
         await repuestos.SaveChangesAsync(ct);
 
-        archivos.Eliminar(SubcarpetaFotos, archivo);
+        await archivos.EliminarAsync(SubcarpetaFotos, archivo, ct);
 
         var actualizado = await repuestos.GetByIdConProveedorAsync(id, ct);
         return Result<RepuestoResponseDto>.Ok(Mapear(actualizado!), "Foto eliminada correctamente.");

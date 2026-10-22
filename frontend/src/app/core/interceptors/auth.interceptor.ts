@@ -43,6 +43,11 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(peticion).pipe(
     catchError((error: HttpErrorResponse) => {
+      // Leer un archivo subido (el SVG de una plantilla, por ejemplo) no es
+      // una operación del usuario: si el archivo falta, la pantalla ya lo
+      // resuelve mostrando "sin foto". Un aviso de error ahí solo asusta.
+      if (esArchivoSubido(req.url)) return throwError(() => error);
+
       // El login maneja su propio 401: ahí significa "credenciales incorrectas",
       // no "sesión vencida", y cerrar sesión sería redundante.
       const esLogin = req.url.endsWith('/auth/login');
@@ -66,6 +71,11 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     }),
   );
 };
+
+/** Archivos subidos: en disco local ("/uploads/") o en Supabase Storage. */
+function esArchivoSubido(url: string): boolean {
+  return url.includes('/uploads/') || url.includes('/storage/v1/object/');
+}
 
 /**
  * Extrae el mensaje del backend, que responde `{ mensaje: "..." }`.

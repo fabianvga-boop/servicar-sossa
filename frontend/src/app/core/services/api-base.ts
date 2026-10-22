@@ -7,10 +7,16 @@ import { PaginaResultado } from '../models/paginacion.model';
 import { nombreDesdeCabecera } from './descarga';
 
 /**
- * Resuelve una ruta pública devuelta por el backend (ej. "/uploads/vehiculos/FOT-001.jpg")
- * contra su origen. `environment.apiUrl` termina en "/api", así que se recorta.
+ * Resuelve una ruta pública devuelta por el backend contra su origen.
+ *
+ * En el entorno local la ruta es relativa ("/uploads/vehiculos/FOT-001-x.jpg")
+ * y se resuelve contra el origen de la API (`environment.apiUrl` termina en
+ * "/api", así que se recorta). En producción los archivos viven en Supabase
+ * Storage y el backend ya devuelve la dirección completa: se usa tal cual.
  */
 export function urlArchivo(rutaPublica: string): string {
+  if (/^https?:\/\//i.test(rutaPublica)) return rutaPublica;
+
   const origen = environment.apiUrl.replace(/\/api\/?$/, '');
   return `${origen}${rutaPublica}`;
 }

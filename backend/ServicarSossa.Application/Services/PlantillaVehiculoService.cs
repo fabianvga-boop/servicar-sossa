@@ -38,7 +38,7 @@ public class PlantillaVehiculoService(
         // vez de acumular duplicados que compitan al resolver el diagrama.
         if (existente is not null)
         {
-            archivos.Eliminar(Subcarpeta, existente.NombreArchivo);
+            await archivos.EliminarAsync(Subcarpeta, existente.NombreArchivo, ct);
             plantillas.Remove(existente);
         }
 
@@ -69,7 +69,7 @@ public class PlantillaVehiculoService(
 
         plantillas.Remove(plantilla);
         await plantillas.SaveChangesAsync(ct);
-        archivos.Eliminar(Subcarpeta, plantilla.NombreArchivo);
+        await archivos.EliminarAsync(Subcarpeta, plantilla.NombreArchivo, ct);
 
         return Result<bool>.Ok(true, "Plantilla eliminada. Los vehículos de esa marca y modelo vuelven al diagrama genérico.");
     }
