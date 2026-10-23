@@ -24,4 +24,18 @@ public class ArchivosOptions
     public string Bucket { get; set; } = string.Empty;
 
     public bool UsaSupabase => Proveedor.Equals("Supabase", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Quita espacios y saltos de línea de los extremos. Los campos de valor
+    /// de Render son áreas de texto: un salto de línea pegado al final hacía
+    /// que "Supabase⏎" no se reconociera y las fotos volvieran al disco.
+    /// </summary>
+    public ArchivosOptions Normalizar()
+    {
+        Proveedor = (Proveedor ?? string.Empty).Trim();
+        SupabaseUrl = (SupabaseUrl ?? string.Empty).Trim().TrimEnd('/');
+        SupabaseClave = (SupabaseClave ?? string.Empty).Trim();
+        Bucket = (Bucket ?? string.Empty).Trim().Trim('/');
+        return this;
+    }
 }

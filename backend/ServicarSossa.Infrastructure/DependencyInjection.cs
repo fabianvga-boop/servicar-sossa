@@ -144,9 +144,10 @@ public static class DependencyInjection
     private static void RegistrarAlmacenArchivos(IServiceCollection services, IConfiguration config)
     {
         services.Configure<ArchivosOptions>(config.GetSection(ArchivosOptions.Seccion));
+        services.PostConfigure<ArchivosOptions>(o => o.Normalizar());
 
-        var opciones = config.GetSection(ArchivosOptions.Seccion).Get<ArchivosOptions>()
-            ?? new ArchivosOptions();
+        var opciones = (config.GetSection(ArchivosOptions.Seccion).Get<ArchivosOptions>()
+            ?? new ArchivosOptions()).Normalizar();
 
         if (!opciones.UsaSupabase)
         {
