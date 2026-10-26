@@ -1,4 +1,4 @@
-<div class="fila-entre envuelve mb-2">
+<div class="fila-entre envuelve mb-2 encabezado-pagina">
   <div>
     <h1>Vehículos</h1>
     <p class="texto-tenue texto-sm mb-0">Vehículos registrados por cliente</p>
@@ -6,12 +6,14 @@
   <button
     *appSiRol="['Administrador']"
     type="button"
-    class="btn btn-primario"
+    class="btn btn-primario btn-nuevo"
     appAtajo="n"
     title="Atajo: tecla N"
     (click)="abrirNuevo()"
   >
-    + Nuevo vehículo
+    <span class="btn-nuevo-mas" aria-hidden="true">+</span>
+    Nuevo vehículo
+    <kbd class="btn-nuevo-atajo" aria-hidden="true">N</kbd>
   </button>
 </div>
 

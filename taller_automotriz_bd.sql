@@ -19,7 +19,7 @@
 --   * Las marcas de tiempo usan TIMESTAMPTZ y se guardan en UTC. Npgsql mapea
 --     DateTime con Kind=Utc directamente a este tipo; NO usar TIMESTAMP simple.
 -- ============================================================================
--- USO (instalacion nueva; crea las 28 tablas del esquema vigente):
+-- USO (instalacion nueva; crea las 29 tablas del esquema vigente):
 --   psql -U postgres -c "CREATE ROLE servicar_app LOGIN PASSWORD '<clave>';"
 --   psql -U postgres -c "CREATE DATABASE servicar_sossa OWNER servicar_app ENCODING 'UTF8';"
 --   psql -U servicar_app -d servicar_sossa -f taller_automotriz_bd.sql
@@ -133,6 +133,9 @@ CREATE TABLE tipos_servicio (
     precio_base     DECIMAL(10,2) NOT NULL DEFAULT 0,
     estado          VARCHAR(20)  NOT NULL DEFAULT 'Activo'
                         CHECK (estado IN ('Activo','Inactivo')),
+    -- El servicio consume un repuesto (cambio de aceite, de bateria...): en la
+    -- orden no se completa sin registrar el repuesto usado.
+    requiere_repuesto BOOLEAN    NOT NULL DEFAULT FALSE,
     -- Homologacion contra el catalogo del SIN (solo para facturacion SIAT)
     codigo_sin        VARCHAR(20),
     unidad_medida_sin SMALLINT
@@ -180,7 +183,9 @@ CREATE TABLE ordenes_trabajo (
     observaciones       TEXT
 );
 
--- Relacion N:M: una orden puede tener varios mecanicos asignados (US022)
+-- Mecanicos asignados a la orden (US022). Por regla, una orden la trabaja un
+-- solo mecanico; un segundo se admite solo como excepcion del Administrador,
+-- con su motivo registrado en auditoria. Por eso la relacion sigue siendo N:M.
 CREATE TABLE orden_mecanicos (
     orden_id            VARCHAR(20) NOT NULL REFERENCES ordenes_trabajo(orden_id) ON DELETE CASCADE,
     mecanico_id         VARCHAR(20) NOT NULL REFERENCES usuarios(usuario_id),
@@ -201,6 +206,9 @@ CREATE TABLE orden_servicios (
     mecanico_id         VARCHAR(20) NOT NULL REFERENCES usuarios(usuario_id),
     descripcion         VARCHAR(255),
     precio              DECIMAL(10,2) NOT NULL DEFAULT 0,
+    -- Copia de tipos_servicio.requiere_repuesto al cargar el servicio (o lo que
+    -- indique el Administrador si es fuera de catalogo).
+    requiere_repuesto   BOOLEAN     NOT NULL DEFAULT FALSE,
     estado              VARCHAR(20) NOT NULL DEFAULT 'Pendiente'    -- EstadoServicioOrden
                             CHECK (estado IN ('Pendiente','EnProceso','Completado')),
     -- Del catalogo exige servicio_id; suelto exige nombre_libre.
@@ -238,8 +246,28 @@ CREATE TABLE repuestos (
     nombre_archivo_foto VARCHAR(255),
     -- Homologacion contra el catalogo del SIN (solo para facturacion SIAT)
     codigo_sin        VARCHAR(20),
-    unidad_medida_sin SMALLINT
+    unidad_medida_sin SMALLINT,
+    -- Universal (aceites, liquidos, fusibles) o Especifico de ciertos vehiculos
+    tipo_aplicacion   VARCHAR(20) NOT NULL DEFAULT 'Universal'
+                          CONSTRAINT repuestos_tipo_aplicacion_check
+                          CHECK (tipo_aplicacion IN ('Universal','Especifico'))
 );
+
+-- Vehiculos en los que calza un repuesto Especifico. Modelo vacio = todos los
+-- modelos de la marca; anios vacios = sin limite.
+CREATE TABLE repuesto_compatibilidad (
+    compatibilidad_id VARCHAR(20) PRIMARY KEY
+                          CHECK (compatibilidad_id ~ '^RCP-[0-9]{3,}$'),   -- RCP-001
+    repuesto_id       VARCHAR(20) NOT NULL
+                          REFERENCES repuestos(repuesto_id) ON DELETE CASCADE,
+    marca             VARCHAR(50) NOT NULL,
+    modelo            VARCHAR(50),
+    anio_desde        SMALLINT,
+    anio_hasta        SMALLINT,
+    CHECK (anio_desde IS NULL OR anio_hasta IS NULL OR anio_desde <= anio_hasta)
+);
+
+CREATE INDEX idx_repuesto_compatibilidad_repuesto ON repuesto_compatibilidad(repuesto_id);
 
 CREATE TABLE compras (
     compra_id       VARCHAR(20) PRIMARY KEY
@@ -269,6 +297,9 @@ CREATE TABLE orden_repuestos (
                            CHECK (orden_repuesto_id ~ '^ORE-[0-9]{3,}$'),  -- ORE-001
     orden_id           VARCHAR(20) NOT NULL REFERENCES ordenes_trabajo(orden_id) ON DELETE CASCADE,
     repuesto_id        VARCHAR(20) REFERENCES repuestos(repuesto_id),  -- solo si origen = Inventario
+    -- Servicio para el que se uso (opcional). Un servicio que requiere repuesto
+    -- no se completa sin al menos uno asociado.
+    orden_servicio_id  VARCHAR(20) REFERENCES orden_servicios(orden_servicio_id) ON DELETE SET NULL,
     origen             VARCHAR(20)   NOT NULL DEFAULT 'Inventario'
                            CHECK (origen IN ('Inventario','ClienteTrae','CompraExterna')),
     descripcion        VARCHAR(150),
@@ -328,7 +359,10 @@ CREATE TABLE proformas (
     nit_razon_social VARCHAR(150),
     total            DECIMAL(12,2) NOT NULL DEFAULT 0,
     estado           VARCHAR(20) NOT NULL DEFAULT 'Emitida'         -- EstadoProforma
-                         CHECK (estado IN ('Emitida','Anulada'))
+                         CHECK (estado IN ('Emitida','Anulada')),
+    -- Copia del detalle tal como se emitio (cliente, vehiculo, servicios,
+    -- repuestos): el PDF sale de aca aunque la orden se corrija despues.
+    detalle          JSONB
 );
 
 -- ============================================================================
@@ -443,7 +477,7 @@ CREATE TABLE auditoria (
                      CHECK (auditoria_id ~ '^AUD-[0-9]{3,}$'),    -- AUD-001
     usuario_id   VARCHAR(20) NOT NULL REFERENCES usuarios(usuario_id),
     accion       VARCHAR(20) NOT NULL                             -- AccionAuditoria
-                     CHECK (accion IN ('Crear','Editar','Eliminar','Anular','Ajustar','CambiarEstado')),
+                     CHECK (accion IN ('Crear','Editar','Eliminar','Anular','Ajustar','CambiarEstado','Excepcion')),
     entidad      VARCHAR(50) NOT NULL,       -- "Repuesto", "Vehiculo", "Venta", etc.
     entidad_id   VARCHAR(20) NOT NULL,       -- PK del registro afectado
     descripcion  VARCHAR(300) NOT NULL,      -- resumen legible de la accion
@@ -502,6 +536,7 @@ CREATE INDEX idx_diagnosticos_vehiculo     ON diagnosticos(vehiculo_id);
 CREATE INDEX idx_orden_servicios_orden     ON orden_servicios(orden_id);
 CREATE INDEX idx_orden_servicios_mecanico  ON orden_servicios(mecanico_id);
 CREATE INDEX idx_orden_repuestos_orden     ON orden_repuestos(orden_id);
+CREATE INDEX idx_orden_repuestos_servicio  ON orden_repuestos(orden_servicio_id);
 CREATE INDEX idx_compra_detalle_compra     ON compra_detalle(compra_id);
 CREATE INDEX idx_comisiones_mecanico       ON comisiones(mecanico_id);
 CREATE INDEX idx_proformas_orden           ON proformas(orden_id);

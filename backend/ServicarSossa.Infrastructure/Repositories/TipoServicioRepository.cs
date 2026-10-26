@@ -19,13 +19,8 @@ public class TipoServicioRepository(AppDbContext context)
         if (soloActivos)
             query = query.Where(s => s.Estado == EstadoServicio.Activo);
 
-        if (!string.IsNullOrWhiteSpace(buscar))
-        {
-            var termino = $"%{buscar.Trim()}%";
-            query = query.Where(s =>
-                EF.Functions.ILike(s.Nombre, termino) ||
-                EF.Functions.ILike(s.Descripcion ?? "", termino));
-        }
+        query = query.BuscarPorPalabras(buscar,
+            s => s.ServicioId, s => s.Nombre, s => s.Descripcion);
 
         return await query.OrderBy(s => s.Nombre).ToPagedListAsync(pagina, tamanoPagina, ct);
     }

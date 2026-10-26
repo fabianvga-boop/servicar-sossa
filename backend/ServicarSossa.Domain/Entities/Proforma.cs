@@ -25,6 +25,14 @@ public class Proforma
     public decimal Total { get; set; }
     public EstadoProforma Estado { get; set; } = EstadoProforma.Emitida;
 
+    /// <summary>
+    /// Copia (JSON) del detalle tal como se emitió: cliente, vehículo, servicios
+    /// y repuestos. El PDF sale de acá, así una orden corregida después no
+    /// cambia lo que dice una proforma ya entregada. Null en las emitidas antes
+    /// de existir la columna: esas se copian antes de anularlas.
+    /// </summary>
+    public string? Detalle { get; set; }
+
     // Navegación
     public OrdenTrabajo Orden { get; set; } = null!;
     public ICollection<Pago> Pagos { get; set; } = [];

@@ -171,7 +171,7 @@
 }
 
 .contexto-cliente:hover {
-  color: var(--azul-600);
+  color: var(--azul-700);
   text-decoration: underline;
 }
 
@@ -183,7 +183,7 @@
 }
 
 .contexto-cliente:hover svg {
-  color: var(--azul-600);
+  color: var(--azul-700);
 }
 
 .columnas {
@@ -257,7 +257,7 @@
   gap: 5px;
   font-size: 12.5px;
   font-weight: 700;
-  color: var(--azul-600);
+  color: var(--azul-700);
   text-decoration: none;
   font-variant-numeric: tabular-nums;
 }
@@ -412,7 +412,7 @@
 }
 
 .requisitos li.cumplido .marca {
-  color: var(--verde-600);
+  color: var(--verde-700);
   text-decoration: none;
 }
 
@@ -439,39 +439,114 @@
 /* Separación del tag de origen junto al nombre del repuesto */
 .ml-1 { margin-left: 6px; }
 
-/* Control segmentado para elegir el origen del repuesto */
-.segmentos {
-  display: flex;
-  gap: 4px;
-  padding: 3px;
-  background: var(--gris-100);
-  border-radius: var(--radio);
-}
-
-.segmento {
-  flex: 1;
-  padding: 7px 10px;
-  border: none;
-  background: transparent;
-  border-radius: var(--radio-sm);
-  font: inherit;
-  font-size: 13px;
-  color: var(--ink-soft);
-  cursor: pointer;
-  transition: background 0.12s, color 0.12s, box-shadow 0.12s;
-}
-
-.segmento:hover {
-  color: var(--ink);
-}
-
-.segmento.activo {
-  background: var(--blanco);
-  color: var(--brand-dk);
-  font-weight: 600;
-  box-shadow: var(--sombra-sm);
-}
-
 @media (max-width: 1000px) {
   .columnas { grid-template-columns: 1fr; }
+}
+
+/* Repuesto usado en un servicio que lo requiere: confirma que la regla se cumple. */
+.repuesto-servicio {
+  margin-top: 3px;
+  color: var(--verde-700);
+}
+
+/* Servicio que usa repuestos y todavía no tiene ninguno: se ve antes de
+   intentar completarlo, no recién cuando el sistema lo rechaza. Va en una
+   fila propia, pegada a la del servicio. */
+.tabla tbody tr.con-aviso td {
+  border-bottom: none;
+}
+
+.tabla tbody tr.fila-aviso td {
+  padding-top: 0;
+}
+
+.tabla tbody tr.fila-aviso:hover {
+  background: transparent;
+}
+
+.falta-repuesto {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px 8px;
+  padding: 7px 11px;
+  border-left: 3px solid var(--naranja-600);
+  border-radius: 0 var(--radio-sm) var(--radio-sm) 0;
+  background: var(--naranja-100);
+  color: var(--naranja-700);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.falta-repuesto .btn-enlace {
+  padding: 2px 4px;
+  font-size: 12.5px;
+}
+
+/* Regla del taller antes de sumar un segundo mecánico. */
+.aviso-regla {
+  margin: 0 0 14px;
+  padding: 11px 13px;
+  border-radius: var(--radio-sm);
+  background: var(--naranja-100);
+  color: var(--naranja-700);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.mensaje-aviso {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+/* Historial de la orden: lo registrado en Auditoría, del más reciente al más
+   antiguo. Las excepciones se marcan para que salten a la vista. */
+.historial {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.historial li {
+  padding: 8px 0 8px 10px;
+  border-left: 2px solid var(--gris-200);
+}
+
+.historial li + li {
+  margin-top: 2px;
+}
+
+.historial li.excepcion {
+  border-left-color: var(--brand);
+}
+
+.historial-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--gris-500);
+}
+
+/* Qué pasa al reabrir una orden para corregirla. */
+.efectos-correccion {
+  margin: 12px 0 14px;
+  padding-left: 18px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.efectos-correccion li + li {
+  margin-top: 4px;
+}
+
+.efectos-correccion li.bloquea {
+  color: var(--brand-dk);
+  font-weight: 600;
 }

@@ -1,4 +1,4 @@
-<div class="fila-entre envuelve mb-2">
+<div class="fila-entre envuelve mb-2 encabezado-pagina">
   <div>
     <h1>Catálogo de servicios</h1>
     <p class="texto-tenue texto-sm mb-0">
@@ -8,12 +8,14 @@
   <button
     *appSiRol="['Administrador']"
     type="button"
-    class="btn btn-primario"
+    class="btn btn-primario btn-nuevo"
     appAtajo="n"
     title="Atajo: tecla N"
     (click)="abrirNuevo()"
   >
-    + Nuevo servicio
+    <span class="btn-nuevo-mas" aria-hidden="true">+</span>
+    Nuevo servicio
+    <kbd class="btn-nuevo-atajo" aria-hidden="true">N</kbd>
   </button>
 </div>
 
@@ -65,7 +67,17 @@
           @for (servicio of servicios(); track servicio.servicioId) {
             <tr>
               <td class="codigo">{{ servicio.servicioId }}</td>
-              <td class="texto-fuerte">{{ servicio.nombre }}</td>
+              <td>
+                <div class="texto-fuerte">{{ servicio.nombre }}</div>
+                @if (servicio.requiereRepuesto) {
+                  <span
+                    class="insignia insignia-azul mt-1"
+                    title="En la orden no se completa sin registrar el repuesto usado"
+                  >
+                    Usa repuestos
+                  </span>
+                }
+              </td>
               <td>
                 <!-- Truncada a 2 líneas: una descripción larga no debe deformar
                      el alto de la fila. El texto completo queda en el title. -->
@@ -179,6 +191,17 @@
         />
         <span class="campo-ayuda">
           Es solo referencia: al cargar el servicio en una orden se puede ajustar.
+        </span>
+      </div>
+
+      <div class="campo mb-0">
+        <label class="casilla">
+          <input type="checkbox" style="width: auto" formControlName="requiereRepuesto" />
+          Este servicio usa repuestos (aceite, filtro, batería, pastillas…)
+        </label>
+        <span class="campo-ayuda">
+          En la orden de trabajo no se podrá completar sin registrar el repuesto usado: del
+          inventario, traído por el cliente o comprado afuera.
         </span>
       </div>
     </form>

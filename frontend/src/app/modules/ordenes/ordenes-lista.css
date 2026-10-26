@@ -37,7 +37,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.kpi-valor.verde { color: var(--verde-600); }
+.kpi-valor.verde { color: var(--verde-700); }
 
 .kpi-extra {
   display: flex;
@@ -397,8 +397,8 @@
 }
 
 .tarjeta-cobrar:hover {
-  background: var(--verde-600);
-  border-color: var(--verde-600);
+  background: var(--verde-700);
+  border-color: var(--verde-700);
   color: var(--blanco);
   text-decoration: none;
 }

@@ -26,6 +26,18 @@ public interface IOrdenRepository : IRepository<OrdenTrabajo>
     Task<OrdenMecanico?> GetMecanicoAsignadoAsync(
         string ordenId, string mecanicoId, CancellationToken ct = default);
 
+    /// <summary>Mecánicos asignados a la orden, con nombre, por fecha de asignación.</summary>
+    Task<List<OrdenMecanico>> GetMecanicosAsignadosAsync(
+        string ordenId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Otro servicio del mismo mecánico que está En Proceso en la orden, si lo
+    /// hay (con su tipo de servicio, para poder nombrarlo en el aviso).
+    /// </summary>
+    Task<OrdenServicio?> GetServicioEnCursoAsync(
+        string ordenId, string mecanicoId, string excluirOrdenServicioId,
+        CancellationToken ct = default);
+
     Task<OrdenServicio?> GetServicioAsync(
         string ordenServicioId, CancellationToken ct = default);
 

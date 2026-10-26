@@ -54,9 +54,30 @@ public class OrdenRepository(AppDbContext context)
         => await Context.OrdenMecanicos
             .FirstOrDefaultAsync(m => m.OrdenId == ordenId && m.MecanicoId == mecanicoId, ct);
 
+    public async Task<List<OrdenMecanico>> GetMecanicosAsignadosAsync(
+        string ordenId, CancellationToken ct = default)
+        => await Context.OrdenMecanicos
+            .Include(m => m.Mecanico)
+            .Where(m => m.OrdenId == ordenId)
+            .OrderBy(m => m.FechaAsignacion)
+            .ToListAsync(ct);
+
+    public async Task<OrdenServicio?> GetServicioEnCursoAsync(
+        string ordenId, string mecanicoId, string excluirOrdenServicioId,
+        CancellationToken ct = default)
+        => await Context.OrdenServicios
+            .Include(s => s.Servicio)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.OrdenId == ordenId
+                && s.MecanicoId == mecanicoId
+                && s.OrdenServicioId != excluirOrdenServicioId
+                && s.Estado == EstadoServicioOrden.EnProceso, ct);
+
+    // Con su tipo de servicio: los avisos de las reglas nombran el servicio.
     public async Task<OrdenServicio?> GetServicioAsync(
         string ordenServicioId, CancellationToken ct = default)
         => await Context.OrdenServicios
+            .Include(s => s.Servicio)
             .FirstOrDefaultAsync(s => s.OrdenServicioId == ordenServicioId, ct);
 
     public async Task<OrdenRepuesto?> GetRepuestoAsync(

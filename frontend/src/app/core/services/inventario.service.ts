@@ -11,6 +11,7 @@ import {
   Proveedor,
   ProveedorRequest,
   Repuesto,
+  RepuestoParaVehiculo,
   RepuestoRequest,
   RepuestoUpdate,
   ResumenVentas,
@@ -55,10 +56,17 @@ export class RepuestosService extends ApiBase {
     buscar?: string;
     proveedorId?: string;
     soloStockBajo?: boolean;
+    /** Solo los repuestos que sirven a ese vehículo (universales y compatibles). */
+    vehiculoId?: string;
     pagina?: number;
     tamanoPagina?: number;
   } = {}): Observable<PaginaResultado<Repuesto>> {
     return this.listarPaginado<Repuesto>(filtros);
+  }
+
+  /** Todos los repuestos clasificados para un vehículo: compatibles, universales y no indicados. */
+  paraVehiculo(vehiculoId: string): Observable<RepuestoParaVehiculo[]> {
+    return this.http.get<RepuestoParaVehiculo[]>(this.url('para-vehiculo', vehiculoId));
   }
 
   getById(id: string): Observable<Repuesto> {

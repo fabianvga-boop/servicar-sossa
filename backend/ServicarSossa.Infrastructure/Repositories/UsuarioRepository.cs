@@ -27,15 +27,8 @@ public class UsuarioRepository(AppDbContext context)
     {
         var query = Set.Include(u => u.Rol).AsNoTracking();
 
-        if (!string.IsNullOrWhiteSpace(buscar))
-        {
-            var termino = $"%{buscar.Trim()}%";
-            query = query.Where(u =>
-                EF.Functions.ILike(u.Nombre, termino) ||
-                EF.Functions.ILike(u.Apellido, termino) ||
-                EF.Functions.ILike(u.Username, termino) ||
-                EF.Functions.ILike(u.Email, termino));
-        }
+        query = query.BuscarPorPalabras(buscar,
+            u => u.UsuarioId, u => u.Nombre, u => u.Apellido, u => u.Username, u => u.Email);
 
         return await query.OrderBy(u => u.UsuarioId).ToPagedListAsync(pagina, tamanoPagina, ct);
     }

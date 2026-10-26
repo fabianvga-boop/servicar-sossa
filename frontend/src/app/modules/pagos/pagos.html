@@ -1,16 +1,18 @@
-<div class="fila-entre envuelve mb-2">
+<div class="fila-entre envuelve mb-2 encabezado-pagina">
   <div>
     <h1>Pagos</h1>
     <p class="texto-tenue texto-sm mb-0">Cobros registrados contra proformas emitidas</p>
   </div>
   <button
     type="button"
-    class="btn btn-primario"
+    class="btn btn-primario btn-nuevo"
     appAtajo="n"
     title="Atajo: tecla N"
     (click)="abrirNuevo()"
   >
-    + Registrar pago
+    <span class="btn-nuevo-mas" aria-hidden="true">+</span>
+    Registrar pago
+    <kbd class="btn-nuevo-atajo" aria-hidden="true">N</kbd>
   </button>
 </div>
 
@@ -119,6 +121,32 @@
           <span>Saldo pendiente</span>
           <span class="total-monto">{{ proforma.saldoPendiente | bs }}</span>
         </div>
+
+        <div class="campo">
+          <label>¿Cuánto paga el cliente?</label>
+          <div class="segmentos" role="radiogroup" aria-label="Tipo de pago">
+            <button
+              type="button"
+              role="radio"
+              class="segmento"
+              [class.activo]="nuevo.tipo === 'total'"
+              [attr.aria-checked]="nuevo.tipo === 'total'"
+              (click)="elegirTipo('total')"
+            >
+              Pago total
+            </button>
+            <button
+              type="button"
+              role="radio"
+              class="segmento"
+              [class.activo]="nuevo.tipo === 'cuenta'"
+              [attr.aria-checked]="nuevo.tipo === 'cuenta'"
+              (click)="elegirTipo('cuenta')"
+            >
+              Pago a cuenta (deja saldo)
+            </button>
+          </div>
+        </div>
       }
 
       <div class="rejilla">
@@ -130,9 +158,23 @@
             min="0.01"
             step="0.01"
             name="montoPago"
+            [readonly]="nuevo.tipo === 'total'"
+            [placeholder]="nuevo.tipo === 'cuenta' ? 'Cuánto paga ahora' : ''"
             [(ngModel)]="nuevo.monto"
           />
-          <span class="campo-ayuda">Admite pagos parciales.</span>
+          @if (!proformaElegida()) {
+            <span class="campo-ayuda">Elija la proforma: el monto se completa con su saldo.</span>
+          } @else if (nuevo.tipo === 'total') {
+            <span class="campo-ayuda">Cancela todo el saldo: la proforma queda pagada.</span>
+          } @else if ((nuevo.monto ?? 0) > 0 && saldoQueQueda() > 0) {
+            <span class="campo-ayuda">
+              Quedará un saldo pendiente de <strong>{{ saldoQueQueda() | bs }}</strong>.
+            </span>
+          } @else if ((nuevo.monto ?? 0) > 0) {
+            <span class="campo-error">Ese monto cubre todo el saldo: elija «Pago total».</span>
+          } @else {
+            <span class="campo-ayuda">Escriba cuánto paga ahora; el resto queda como saldo.</span>
+          }
         </div>
 
         <div class="campo">
@@ -166,7 +208,13 @@
         [disabled]="procesando() || proformasCobrables().length === 0"
         (click)="registrar()"
       >
-        {{ procesando() ? 'Registrando…' : 'Registrar pago' }}
+        {{
+          procesando()
+            ? 'Registrando…'
+            : nuevo.tipo === 'cuenta' && proformaElegida()
+              ? 'Registrar pago a cuenta'
+              : 'Registrar pago'
+        }}
       </button>
     </div>
   </app-modal>

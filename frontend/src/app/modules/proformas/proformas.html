@@ -1,16 +1,18 @@
-<div class="fila-entre envuelve mb-2">
+<div class="fila-entre envuelve mb-2 encabezado-pagina">
   <div>
     <h1>Proformas</h1>
     <p class="texto-tenue texto-sm mb-0">Cobro de órdenes finalizadas</p>
   </div>
   <button
     type="button"
-    class="btn btn-primario"
+    class="btn btn-primario btn-nuevo"
     appAtajo="n"
     title="Atajo: tecla N"
     (click)="abrirNueva()"
   >
-    + Emitir proforma
+    <span class="btn-nuevo-mas" aria-hidden="true">+</span>
+    Emitir proforma
+    <kbd class="btn-nuevo-atajo" aria-hidden="true">N</kbd>
   </button>
 </div>
 

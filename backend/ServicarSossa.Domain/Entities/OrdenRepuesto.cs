@@ -17,6 +17,12 @@ public class OrdenRepuesto
 
     public OrigenRepuesto Origen { get; set; } = OrigenRepuesto.Inventario;
 
+    /// <summary>
+    /// Servicio de la orden para el que se usó (opcional). Un servicio que
+    /// requiere repuesto no se completa sin al menos uno asociado.
+    /// </summary>
+    public string? OrdenServicioId { get; set; }
+
     /// <summary>Nombre libre del repuesto cuando no sale del inventario (cliente trae / compra externa).</summary>
     public string? Descripcion { get; set; }
 
@@ -31,4 +37,6 @@ public class OrdenRepuesto
 
     /// <summary>Null cuando el repuesto no proviene del inventario.</summary>
     public Repuesto? Repuesto { get; set; }
+
+    public OrdenServicio? OrdenServicio { get; set; }
 }

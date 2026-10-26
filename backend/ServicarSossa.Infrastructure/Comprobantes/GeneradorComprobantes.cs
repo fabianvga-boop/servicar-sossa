@@ -63,6 +63,13 @@ public class GeneradorComprobantes : IGeneradorComprobantes
                 page.Header().Element(e => Encabezado(e, c));
                 page.Content().PaddingTop(14).Element(e => Cuerpo(e, c));
                 page.Footer().Element(e => Pie(e, c));
+
+                // Una proforma anulada no puede pasar por válida al imprimirla:
+                // además de la etiqueta de la cabecera, el sello cruza la hoja.
+                if (c.Estado.Equals("Anulada", StringComparison.OrdinalIgnoreCase))
+                    page.Foreground().AlignCenter().AlignMiddle().Rotate(-30)
+                        .Text("ANULADA").FontSize(96).Bold().LetterSpacing(0.08f)
+                        .FontColor(Colors.Red.Lighten3);
             });
         });
 

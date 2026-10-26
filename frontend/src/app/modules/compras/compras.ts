@@ -22,6 +22,7 @@ import { OpcionSelector, SelectorBusqueda } from '../../shared/components/select
 import { Atajo } from '../../shared/directives/atajo';
 import { EnfocarError } from '../../shared/directives/enfocar-error';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
+import { coincidePorPalabras } from '../../shared/busqueda';
 
 /** USU029 — registro de compras a proveedores. */
 @Component({
@@ -83,17 +84,10 @@ export class Compras {
     this.lineas().reduce((suma, l) => suma + (l.cantidad || 0) * (l.precioUnitario || 0), 0),
   );
 
-  /** Filtro de texto local (código de compra o nombre del proveedor). */
+  /** Filtro de texto local, por palabras: código de compra y nombre del proveedor. */
   protected readonly comprasFiltradas = computed(() => {
-    const filtro = this.buscarTexto().trim().toLowerCase();
-    const lista = this.compras();
-    if (!filtro) return lista;
-
-    return lista.filter(
-      (c) =>
-        c.compraId.toLowerCase().includes(filtro) ||
-        c.nombreProveedor.toLowerCase().includes(filtro),
-    );
+    const filtro = this.buscarTexto();
+    return this.compras().filter((c) => coincidePorPalabras(filtro, c.compraId, c.nombreProveedor));
   });
 
   // --- KPIs de abastecimiento ------------------------------------------------

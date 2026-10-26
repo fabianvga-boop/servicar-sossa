@@ -60,8 +60,8 @@
   font-variant-numeric: tabular-nums;
 }
 
-.indicador-valor.naranja { color: var(--naranja-600); }
-.indicador-valor.verde { color: var(--verde-600); }
+.indicador-valor.naranja { color: var(--naranja-700); }
+.indicador-valor.verde { color: var(--verde-700); }
 
 .indicador-etiqueta {
   font-size: 12px;
@@ -221,7 +221,7 @@
 /* El color sigue al mismo código que el borde izquierdo de la fila: azul
    para "hay que atender", rojo cuando además es urgente. */
 .acceso-icono {
-  color: var(--azul-600);
+  color: var(--azul-700);
   flex-shrink: 0;
 }
 
@@ -315,7 +315,7 @@
 
 .reponer-stock {
   font-size: 11px;
-  color: var(--naranja-600);
+  color: var(--naranja-700);
   font-weight: 600;
 }
 

@@ -54,6 +54,7 @@ public class TipoServicioService(
             Nombre = nombre,
             Descripcion = string.IsNullOrWhiteSpace(dto.Descripcion) ? null : dto.Descripcion.Trim(),
             PrecioBase = dto.PrecioBase,
+            RequiereRepuesto = dto.RequiereRepuesto,
             Estado = EstadoServicio.Activo
         };
 
@@ -86,6 +87,9 @@ public class TipoServicioService(
         servicio.Nombre = nombre;
         servicio.Descripcion = string.IsNullOrWhiteSpace(dto.Descripcion) ? null : dto.Descripcion.Trim();
         servicio.PrecioBase = dto.PrecioBase;
+        // Solo afecta a las órdenes que carguen el servicio de ahora en adelante:
+        // las ya cargadas conservan la marca con la que se agregaron.
+        servicio.RequiereRepuesto = dto.RequiereRepuesto;
 
         await auditor.RegistrarAsync(
             usuarioId, AccionAuditoria.Editar, "TipoServicio", id,
@@ -125,6 +129,7 @@ public class TipoServicioService(
         Nombre = s.Nombre,
         Descripcion = s.Descripcion,
         PrecioBase = s.PrecioBase,
+        RequiereRepuesto = s.RequiereRepuesto,
         Estado = s.Estado
     };
 }

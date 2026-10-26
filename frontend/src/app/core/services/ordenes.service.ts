@@ -50,12 +50,50 @@ export class OrdenesService extends ApiBase {
 
   // --- Mecánicos (USU022) --------------------------------------------------
 
-  asignarMecanico(ordenId: string, mecanicoId: string): Observable<OrdenDetalle> {
-    return this.http.post<OrdenDetalle>(this.url(ordenId, 'mecanicos'), { mecanicoId });
+  /**
+   * Una orden la trabaja un solo mecánico: si ya tiene uno, sumar otro exige
+   * `motivoExcepcion` (queda en auditoría).
+   */
+  asignarMecanico(
+    ordenId: string,
+    mecanicoId: string,
+    motivoExcepcion: string | null = null,
+  ): Observable<OrdenDetalle> {
+    return this.http.post<OrdenDetalle>(this.url(ordenId, 'mecanicos'), {
+      mecanicoId,
+      motivoExcepcion,
+    });
   }
 
   quitarMecanico(ordenId: string, mecanicoId: string): Observable<OrdenDetalle> {
     return this.http.delete<OrdenDetalle>(this.url(ordenId, 'mecanicos', mecanicoId));
+  }
+
+  /**
+   * Reabre una orden Finalizada o Cerrada para corregirla (solo Administrador):
+   * anula su proforma y, si estaba cerrada, devuelve el stock y quita las
+   * comisiones pendientes. El motivo queda en auditoría.
+   */
+  corregir(ordenId: string, motivo: string): Observable<OrdenDetalle> {
+    return this.http.post<OrdenDetalle>(this.url(ordenId, 'corregir'), { motivo });
+  }
+
+  /** Corrige el precio o el detalle de un servicio cargado (solo Administrador). */
+  editarServicio(
+    ordenId: string,
+    ordenServicioId: string,
+    datos: { precio: number; descripcion: string | null },
+  ): Observable<OrdenDetalle> {
+    return this.http.patch<OrdenDetalle>(this.url(ordenId, 'servicios', ordenServicioId), datos);
+  }
+
+  /** Corrige la cantidad de un repuesto cargado (y el precio, si es Administrador). */
+  editarRepuesto(
+    ordenId: string,
+    ordenRepuestoId: string,
+    datos: { cantidad: number; precioUnitario: number | null },
+  ): Observable<OrdenDetalle> {
+    return this.http.patch<OrdenDetalle>(this.url(ordenId, 'repuestos', ordenRepuestoId), datos);
   }
 
   // --- Servicios (USU023) --------------------------------------------------
@@ -64,14 +102,19 @@ export class OrdenesService extends ApiBase {
     return this.http.post<OrdenDetalle>(this.url(ordenId, 'servicios'), datos);
   }
 
+  /**
+   * `motivoSinRepuesto`: excepción del Administrador para completar un
+   * servicio que requiere repuesto sin haberlo registrado.
+   */
   cambiarEstadoServicio(
     ordenId: string,
     ordenServicioId: string,
     estado: EstadoServicioOrden,
+    motivoSinRepuesto: string | null = null,
   ): Observable<OrdenDetalle> {
     return this.http.patch<OrdenDetalle>(
       this.url(ordenId, 'servicios', ordenServicioId, 'estado'),
-      { estado },
+      { estado, motivoSinRepuesto },
     );
   }
 

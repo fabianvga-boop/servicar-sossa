@@ -15,6 +15,9 @@ public class TipoServicioRequestDto
 
     [Range(0, 99999999.99, ErrorMessage = "El precio base no puede ser negativo.")]
     public decimal PrecioBase { get; set; }
+
+    /// <summary>El servicio consume un repuesto: en la orden no se completa sin registrarlo.</summary>
+    public bool RequiereRepuesto { get; set; }
 }
 
 /// <summary>USU013 — edición de un tipo de servicio.</summary>
@@ -29,6 +32,9 @@ public class TipoServicioUpdateDto
 
     [Range(0, 99999999.99, ErrorMessage = "El precio base no puede ser negativo.")]
     public decimal PrecioBase { get; set; }
+
+    /// <summary>El servicio consume un repuesto: en la orden no se completa sin registrarlo.</summary>
+    public bool RequiereRepuesto { get; set; }
 }
 
 /// <summary>Habilita o deshabilita el servicio en el catálogo (baja lógica).</summary>
@@ -45,5 +51,6 @@ public class TipoServicioResponseDto
     public string Nombre { get; set; } = string.Empty;
     public string? Descripcion { get; set; }
     public decimal PrecioBase { get; set; }
+    public bool RequiereRepuesto { get; set; }
     public EstadoServicio Estado { get; set; }
 }

@@ -21,9 +21,13 @@
       Imprimir / PDF
     </button>
 
-    <div *appSiRol="['Administrador']" class="fila envuelve">
+    <div class="fila envuelve">
+      @if (puedeTrabajar()) {
       @switch (o.estado) {
         @case (EstadoOrden.Abierta) {
+          @if (!puedeGestionar()) {
+            <span class="texto-tenue texto-sm">El Administrador inicia el trabajo.</span>
+          } @else {
           <!-- Deshabilitado con motivo, no oculto: así se aprende el requisito -->
           <button
             type="button"
@@ -38,9 +42,12 @@
           >
             Iniciar trabajo
           </button>
-          <button type="button" class="btn btn-secundario" (click)="porCancelar.set(true)">
-            Cancelar orden
-          </button>
+          }
+          @if (puedeGestionar()) {
+            <button type="button" class="btn btn-secundario" (click)="porCancelar.set(true)">
+              Cancelar orden
+            </button>
+          }
         }
         @case (EstadoOrden.EnProceso) {
           <button
@@ -56,11 +63,14 @@
           >
             Finalizar trabajo
           </button>
-          <button type="button" class="btn btn-secundario" (click)="porCancelar.set(true)">
-            Cancelar orden
-          </button>
+          @if (puedeGestionar()) {
+            <button type="button" class="btn btn-secundario" (click)="porCancelar.set(true)">
+              Cancelar orden
+            </button>
+          }
         }
         @case (EstadoOrden.Finalizada) {
+          @if (puedeGestionar()) {
           <button
             type="button"
             class="btn btn-primario"
@@ -74,7 +84,19 @@
           >
             Cerrar orden
           </button>
+          <button type="button" class="btn btn-secundario" (click)="abrirCorregir()">
+            Corregir orden
+          </button>
+          }
         }
+        @case (EstadoOrden.Cerrada) {
+          @if (puedeGestionar()) {
+            <button type="button" class="btn btn-secundario" (click)="abrirCorregir()">
+              Corregir orden
+            </button>
+          }
+        }
+      }
       }
     </div>
   </div>
@@ -213,8 +235,8 @@
       }
 
       <!-- ------------------------------------------------- Diagnóstico asistido -->
-      @if (sugerenciaOrden(); as s) {
-        <div class="tarjeta mb-2" *appSiRol="['Administrador']">
+      @if (puedeTrabajar() && sugerenciaOrden(); as s) {
+        <div class="tarjeta mb-2">
           <div class="tarjeta-encabezado">
             <h2>Sugerencias para esta orden</h2>
           </div>
@@ -276,16 +298,17 @@
       <div class="tarjeta mb-2">
         <div class="tarjeta-encabezado">
           <h2>Servicios</h2>
-          <button
-            *appSiRol="['Administrador']"
-            type="button"
-            class="btn btn-secundario btn-sm"
-            [disabled]="!editableTrabajo()"
-            [title]="motivoBloqueoTrabajo()"
-            (click)="abrirPanelServicio()"
-          >
-            + Agregar servicio
-          </button>
+          @if (puedeTrabajar()) {
+            <button
+              type="button"
+              class="btn btn-secundario btn-sm"
+              [disabled]="!editableTrabajo()"
+              [title]="motivoBloqueoTrabajo()"
+              (click)="abrirPanelServicio()"
+            >
+              + Agregar servicio
+            </button>
+          }
         </div>
 
         @if (o.servicios.length === 0) {
@@ -313,7 +336,11 @@
               </thead>
               <tbody>
                 @for (servicio of o.servicios; track servicio.ordenServicioId) {
-                  <tr>
+                  @let faltaSuRepuesto =
+                    servicio.requiereRepuesto &&
+                    servicio.estado !== EstadoServicioOrden.Completado &&
+                    repuestosDe(servicio).length === 0;
+                  <tr [class.con-aviso]="faltaSuRepuesto">
                     <td>
                       <div class="texto-fuerte">
                         {{ servicio.nombreServicio }}
@@ -323,6 +350,20 @@
                       </div>
                       @if (servicio.descripcion) {
                         <div class="texto-tenue texto-sm">{{ servicio.descripcion }}</div>
+                      }
+                      @if (servicio.requiereRepuesto) {
+                        @if (repuestosDe(servicio).length > 0) {
+                          <div class="repuesto-servicio texto-sm">
+                            Repuesto: {{ resumenRepuestosDe(servicio) }}
+                          </div>
+                        } @else if (servicio.estado === EstadoServicioOrden.Completado) {
+                          <span
+                            class="insignia insignia-naranja mt-1"
+                            title="Se completó sin repuesto registrado; el motivo está en Auditoría"
+                          >
+                            Completado sin repuesto (excepción)
+                          </span>
+                        }
                       }
                     </td>
                     <td class="texto-sm">
@@ -369,6 +410,16 @@
                         @if (puedeGestionar() && editableTrabajo()) {
                           <button
                             type="button"
+                            class="btn-enlace"
+                            [disabled]="procesando()"
+                            (click)="abrirEditarServicio(servicio)"
+                          >
+                            Editar
+                          </button>
+                        }
+                        @if (puedeTrabajar() && editableTrabajo()) {
+                          <button
+                            type="button"
                             class="btn-enlace texto-rojo"
                             [disabled]="procesando()"
                             (click)="quitarServicio(servicio)"
@@ -379,6 +430,29 @@
                       </div>
                     </td>
                   </tr>
+                  @if (faltaSuRepuesto) {
+                    <!-- Aviso a todo el ancho: en la columna del servicio quedaba apretado. -->
+                    <tr class="fila-aviso">
+                      <td colspan="5">
+                        <div class="falta-repuesto">
+                          <span>
+                            «{{ servicio.nombreServicio }}» usa repuestos: falta registrar el que se
+                            usó para poder completarlo.
+                          </span>
+                          @if (puedeTrabajar() && editableTrabajo()) {
+                            <button
+                              type="button"
+                              class="btn-enlace"
+                              [disabled]="procesando()"
+                              (click)="abrirPanelRepuesto(servicio)"
+                            >
+                              Registrar repuesto
+                            </button>
+                          }
+                        </div>
+                      </td>
+                    </tr>
+                  }
                 }
               </tbody>
             </table>
@@ -390,16 +464,17 @@
       <div class="tarjeta">
         <div class="tarjeta-encabezado">
           <h2>Repuestos utilizados</h2>
-          <button
-            *appSiRol="['Administrador']"
-            type="button"
-            class="btn btn-secundario btn-sm"
-            [disabled]="!editableTrabajo()"
-            [title]="motivoBloqueoTrabajo()"
-            (click)="panelRepuesto.set(true)"
-          >
-            + Agregar repuesto
-          </button>
+          @if (puedeTrabajar()) {
+            <button
+              type="button"
+              class="btn btn-secundario btn-sm"
+              [disabled]="!editableTrabajo()"
+              [title]="motivoBloqueoTrabajo()"
+              (click)="abrirPanelRepuesto()"
+            >
+              + Agregar repuesto
+            </button>
+          }
         </div>
 
         @if (o.repuestos.length === 0) {
@@ -428,10 +503,15 @@
               <tbody>
                 @for (repuesto of o.repuestos; track repuesto.ordenRepuestoId) {
                   <tr>
-                    <td class="texto-fuerte">
-                      {{ repuesto.nombreRepuesto }}
-                      @if (repuesto.origen !== OrigenRepuesto.Inventario) {
-                        <span class="insignia insignia-gris ml-1">{{ ETIQUETAS.origenRepuesto[repuesto.origen] }}</span>
+                    <td>
+                      <div class="texto-fuerte">
+                        {{ repuesto.nombreRepuesto }}
+                        @if (repuesto.origen !== OrigenRepuesto.Inventario) {
+                          <span class="insignia insignia-gris ml-1">{{ ETIQUETAS.origenRepuesto[repuesto.origen] }}</span>
+                        }
+                      </div>
+                      @if (repuesto.nombreServicio) {
+                        <div class="texto-tenue texto-sm">Para: {{ repuesto.nombreServicio }}</div>
                       }
                     </td>
                     <td class="num">{{ repuesto.cantidad }}</td>
@@ -450,8 +530,16 @@
                       }
                     </td>
                     <td>
-                      @if (puedeGestionar() && editableTrabajo()) {
+                      @if (puedeTrabajar() && editableTrabajo()) {
                         <div class="acciones">
+                          <button
+                            type="button"
+                            class="btn-enlace"
+                            [disabled]="procesando()"
+                            (click)="abrirEditarRepuesto(repuesto)"
+                          >
+                            Editar
+                          </button>
                           <button
                             type="button"
                             class="btn-enlace texto-rojo"
@@ -544,7 +632,7 @@
                   <a
                     class="cobro-accion no-imprimir"
                     [routerLink]="['/pagos']"
-                    [queryParams]="{ buscar: o.ordenId }"
+                    [queryParams]="{ proformaId: f.proformaId }"
                   >
                     Cobrar en caja →
                   </a>
@@ -581,10 +669,13 @@
             type="button"
             class="btn btn-secundario btn-sm"
             [disabled]="!editable()"
-            [title]="motivoBloqueoMecanicos()"
-            (click)="panelMecanico.set(true)"
+            [title]="
+              motivoBloqueoMecanicos() ||
+              (asignarEsExcepcion() ? 'Una orden la trabaja un solo mecánico: sumar otro es una excepción' : '')
+            "
+            (click)="abrirPanelMecanico()"
           >
-            + Asignar
+            {{ asignarEsExcepcion() ? '+ Otro (excepción)' : '+ Asignar' }}
           </button>
         </div>
         <div class="tarjeta-cuerpo">
@@ -621,13 +712,50 @@
           }
         </div>
       </div>
+
+      @if (puedeGestionar()) {
+        <!-- Todo lo que se hizo sobre la orden y quién lo hizo (Auditoría). -->
+        <div class="tarjeta mt-2">
+          <div class="tarjeta-encabezado"><h2>Historial</h2></div>
+          <div class="tarjeta-cuerpo">
+            @if (historial().length === 0) {
+              <p class="texto-tenue texto-sm mb-0">Sin movimientos registrados.</p>
+            } @else {
+              <ol class="historial">
+                @for (h of historial(); track h.auditoriaId) {
+                  <li [class.excepcion]="h.accion === AccionAuditoria.Excepcion">
+                    <div class="historial-meta">
+                      {{ h.fecha | date: 'dd/MM HH:mm' }} · {{ h.nombreUsuario }}
+                      @if (h.accion === AccionAuditoria.Excepcion) {
+                        <span class="insignia insignia-roja">Excepción</span>
+                      }
+                    </div>
+                    <div class="texto-sm">{{ h.descripcion }}</div>
+                  </li>
+                }
+              </ol>
+            }
+          </div>
+        </div>
+      }
     </div>
   </div>
 
   <!-- ========================================================== Diálogos -->
 
   @if (panelMecanico()) {
-    <app-modal titulo="Asignar mecánico" [ancho]="460" (cerrar)="panelMecanico.set(false)">
+    <app-modal
+      [titulo]="asignarEsExcepcion() ? 'Sumar otro mecánico (excepción)' : 'Asignar mecánico'"
+      [ancho]="460"
+      (cerrar)="panelMecanico.set(false)"
+    >
+      @if (asignarEsExcepcion()) {
+        <p class="aviso-regla">
+          Esta orden ya la trabaja <strong>{{ o.mecanicos[0].nombreMecanico }}</strong>. Por regla
+          del taller, una orden se trabaja con un solo mecánico: sumar a otro es una excepción y
+          su motivo queda registrado en Auditoría.
+        </p>
+      }
       @if (mecanicosDisponibles().length === 0) {
         <p class="texto-tenue mb-0">
           Todos los mecánicos activos ya están asignados a esta orden.
@@ -652,6 +780,20 @@
             </span>
           }
         </div>
+
+        @if (asignarEsExcepcion()) {
+          <div class="campo mb-0">
+            <label for="motivoExcepcion">Motivo de la excepción <span class="obligatorio">*</span></label>
+            <textarea
+              id="motivoExcepcion"
+              name="motivoExcepcion"
+              rows="2"
+              maxlength="200"
+              placeholder="Ej. Trabajo de dos personas: cambio de caja de cambios"
+              [(ngModel)]="motivoExcepcionMecanico"
+            ></textarea>
+          </div>
+        }
       }
 
       <div pie>
@@ -661,10 +803,12 @@
         <button
           type="button"
           class="btn btn-primario"
-          [disabled]="procesando() || !mecanicoSeleccionado"
+          [disabled]="
+            procesando() || !mecanicoSeleccionado || (asignarEsExcepcion() && !motivoExcepcionMecanico.trim())
+          "
           (click)="asignarMecanico()"
         >
-          Asignar
+          {{ asignarEsExcepcion() ? 'Asignar como excepción' : 'Asignar' }}
         </button>
       </div>
     </app-modal>
@@ -710,6 +854,11 @@
               [(ngModel)]="nuevoServicio.servicioId"
               (seleccion)="onServicioSeleccionado($event)"
             />
+            @if (servicioCatalogoElegido()?.requiereRepuesto) {
+              <span class="campo-ayuda">
+                Usa repuestos: para completarlo habrá que registrar en la orden el repuesto usado.
+              </span>
+            }
           </div>
         } @else {
           <div class="campo">
@@ -723,6 +872,7 @@
               autocomplete="off"
               placeholder="Ej. Reparación de manguera de radiador"
               [(ngModel)]="nuevoServicio.nombreLibre"
+              (ngModelChange)="onNombreLibreCambiado($event)"
             />
             <datalist id="lista-servicios-libres">
               @for (n of nombresServicioLibreSugeridos(); track n) {
@@ -735,7 +885,9 @@
         <div class="rejilla">
           <div class="campo">
             <label>Mecánico responsable</label>
-            @if (o.mecanicos.length === 1) {
+            @if (!puedeGestionar()) {
+              <div class="texto-fuerte">{{ auth.nombreCompleto() }}</div>
+            } @else if (o.mecanicos.length === 1) {
               <div class="texto-fuerte">{{ o.mecanicos[0].nombreMecanico }}</div>
             } @else {
               <app-selector-busqueda
@@ -757,8 +909,12 @@
               min="0"
               step="0.01"
               name="precioServicio"
+              [readonly]="!puedeGestionar() && nuevoServicio.delCatalogo"
               [(ngModel)]="nuevoServicio.precio"
             />
+            @if (!puedeGestionar() && nuevoServicio.delCatalogo) {
+              <span class="campo-ayuda">Precio del catálogo.</span>
+            }
           </div>
         </div>
 
@@ -773,6 +929,16 @@
         </div>
 
         @if (!nuevoServicio.delCatalogo) {
+          <label class="casilla mb-1">
+            <input
+              type="checkbox"
+              style="width: auto"
+              name="requiereRepuestoServicio"
+              [ngModel]="nuevoServicio.requiereRepuesto"
+              (ngModelChange)="onRequiereRepuestoCambiado($event)"
+            />
+            Este trabajo usa repuestos: no se completa sin registrar el que se usó
+          </label>
           <p class="texto-tenue texto-sm mb-0">
             Servicio fuera de catálogo: se registra con el nombre y precio indicados, sin tocar
             el catálogo de servicios.
@@ -847,6 +1013,22 @@
         </div>
       }
 
+      @if (o.servicios.length > 0) {
+        <div class="campo">
+          <label for="servicioRepuesto">Para el servicio</label>
+          <app-selector-busqueda
+            idCampo="servicioRepuesto"
+            name="servicioRepuesto"
+            marcador="Ninguno en particular"
+            [opciones]="opcionesServicioRepuesto()"
+            [(ngModel)]="nuevoRepuesto.ordenServicioId"
+          />
+          <span class="campo-ayuda">
+            Los servicios que usan repuestos no se pueden completar sin uno registrado.
+          </span>
+        </div>
+      }
+
       <div class="rejilla">
         <div class="campo">
           <label for="cantidadRepuesto">Cantidad</label>
@@ -870,8 +1052,12 @@
               min="0"
               step="0.01"
               name="precioRepuesto"
+              [readonly]="!puedeGestionar() && nuevoRepuesto.origen === OrigenRepuesto.Inventario"
               [(ngModel)]="nuevoRepuesto.precioUnitario"
             />
+            @if (!puedeGestionar() && nuevoRepuesto.origen === OrigenRepuesto.Inventario) {
+              <span class="campo-ayuda">Precio de venta del inventario.</span>
+            }
           </div>
         }
       </div>
@@ -974,6 +1160,113 @@
     </app-modal>
   }
 
+  @if (panelCorregir()) {
+    <app-modal titulo="Corregir orden {{ o.ordenId }}" [ancho]="500" (cerrar)="panelCorregir.set(false)">
+      <p class="mensaje-aviso">
+        La orden vuelve a <strong>En proceso</strong> para corregir servicios o repuestos. Después
+        hay que finalizarla y cerrarla de nuevo.
+      </p>
+
+      <ul class="efectos-correccion">
+        @if (o.estado === EstadoOrden.Cerrada) {
+          <li>Los repuestos del inventario vuelven al stock y se quitan las comisiones pendientes; al cerrar de nuevo se descuentan y se calculan con los datos corregidos.</li>
+        }
+        @if (proformaVigente(); as f) {
+          @if (f.totalPagado > 0) {
+            <li class="bloquea">
+              La proforma {{ f.proformaId }} tiene pagos por {{ f.totalPagado | bs }}: revierta primero
+              los pagos en Pagos.
+            </li>
+          } @else {
+            <li>Se anula la proforma {{ f.proformaId }}; después podrá emitir una nueva.</li>
+          }
+        }
+        <li>Si alguna comisión de esta orden ya se le pagó al mecánico, no se puede corregir.</li>
+      </ul>
+
+      <div class="campo mb-0">
+        <label for="motivoCorreccion">Motivo de la corrección <span class="obligatorio">*</span></label>
+        <textarea
+          id="motivoCorreccion"
+          name="motivoCorreccion"
+          rows="2"
+          maxlength="200"
+          placeholder="Ej. Se cargó 1 litro de aceite y se usaron 4"
+          [(ngModel)]="motivoCorreccion"
+        ></textarea>
+        <span class="campo-ayuda">Queda registrado en Auditoría y en el Historial de la orden.</span>
+      </div>
+
+      <div pie>
+        <button type="button" class="btn btn-secundario" (click)="panelCorregir.set(false)">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-primario"
+          [disabled]="procesando() || !motivoCorreccion.trim() || (proformaVigente()?.totalPagado ?? 0) > 0"
+          (click)="corregirOrden()"
+        >
+          {{ procesando() ? 'Procesando…' : 'Reabrir para corregir' }}
+        </button>
+      </div>
+    </app-modal>
+  }
+
+  @if (editandoServicio(); as servicio) {
+    <app-modal titulo="Editar «{{ servicio.nombreServicio }}»" [ancho]="460" (cerrar)="editandoServicio.set(null)">
+      <div class="campo">
+        <label for="precioEdicion">Precio (Bs)</label>
+        <input id="precioEdicion" name="precioEdicion" type="number" min="0" step="0.01" [(ngModel)]="edicion.precio" />
+        <span class="campo-ayuda">La comisión del mecánico se calcula sobre este monto.</span>
+      </div>
+      <div class="campo mb-0">
+        <label for="descripcionEdicion">Detalle del trabajo</label>
+        <input id="descripcionEdicion" name="descripcionEdicion" [(ngModel)]="edicion.descripcion" placeholder="Opcional" />
+      </div>
+      <div pie>
+        <button type="button" class="btn btn-secundario" (click)="editandoServicio.set(null)">Cancelar</button>
+        <button type="button" class="btn btn-primario" [disabled]="procesando()" (click)="guardarServicioEditado()">
+          Guardar
+        </button>
+      </div>
+    </app-modal>
+  }
+
+  @if (editandoRepuesto(); as repuesto) {
+    <app-modal titulo="Editar «{{ repuesto.nombreRepuesto }}»" [ancho]="460" (cerrar)="editandoRepuesto.set(null)">
+      <div class="rejilla">
+        <div class="campo mb-0">
+          <label for="cantidadEdicion">Cantidad</label>
+          <input id="cantidadEdicion" name="cantidadEdicion" type="number" min="1" [(ngModel)]="edicion.cantidad" />
+        </div>
+        @if (repuesto.origen !== OrigenRepuesto.ClienteTrae) {
+          <div class="campo mb-0">
+            <label for="precioRepuestoEdicion">Precio unitario (Bs)</label>
+            <input
+              id="precioRepuestoEdicion"
+              name="precioRepuestoEdicion"
+              type="number"
+              min="0"
+              step="0.01"
+              [readonly]="!puedeGestionar()"
+              [(ngModel)]="edicion.precioUnitario"
+            />
+            @if (!puedeGestionar()) {
+              <span class="campo-ayuda">El precio lo corrige el Administrador.</span>
+            }
+          </div>
+        }
+      </div>
+      <div pie>
+        <button type="button" class="btn btn-secundario" (click)="editandoRepuesto.set(null)">Cancelar</button>
+        <button type="button" class="btn btn-primario" [disabled]="procesando()" (click)="guardarRepuestoEditado()">
+          Guardar
+        </button>
+      </div>
+    </app-modal>
+  }
+
   @if (porCerrar()) {
     <app-confirmacion
       titulo="Cerrar orden de trabajo"
@@ -1003,18 +1296,78 @@
     />
   }
 
-  @if (avisoRepuestoServicio(); as aviso) {
+  @if (faltaRepuesto(); as servicio) {
+    <app-modal titulo="Falta registrar el repuesto" [ancho]="480" (cerrar)="faltaRepuesto.set(null)">
+      <p class="mensaje-aviso">
+        «{{ servicio.nombreServicio }}» usa repuestos. Para completarlo, primero registre en la
+        orden el repuesto que se usó: del inventario, traído por el cliente o comprado afuera.
+      </p>
+
+      @if (!puedeTrabajar()) {
+        <p class="texto-tenue texto-sm mb-0 mt-1">
+          Pida al mecánico de la orden o al Administrador que lo registre; después se podrá
+          completar el servicio.
+        </p>
+      } @else if (mostrarExcepcionRepuesto()) {
+        <div class="campo mt-2 mb-0">
+          <label for="motivoSinRepuesto">
+            Motivo para completarlo sin repuesto <span class="obligatorio">*</span>
+          </label>
+          <textarea
+            id="motivoSinRepuesto"
+            name="motivoSinRepuesto"
+            rows="2"
+            maxlength="200"
+            placeholder="Ej. No hizo falta cambiar la pieza: solo se limpió y ajustó"
+            [(ngModel)]="motivoSinRepuesto"
+          ></textarea>
+          <span class="campo-ayuda">Queda registrado en Auditoría como excepción.</span>
+        </div>
+      }
+
+      <div pie>
+        <button type="button" class="btn btn-secundario" (click)="faltaRepuesto.set(null)">
+          Cerrar
+        </button>
+        @if (puedeTrabajar()) {
+          @if (!mostrarExcepcionRepuesto()) {
+            @if (puedeGestionar()) {
+              <button type="button" class="btn btn-secundario" (click)="mostrarExcepcionRepuesto.set(true)">
+                Completar sin repuesto…
+              </button>
+            }
+            @if (editableTrabajo()) {
+              <button type="button" class="btn btn-primario" (click)="registrarRepuestoPara(servicio)">
+                Registrar repuesto
+              </button>
+            }
+          } @else {
+            <button
+              type="button"
+              class="btn btn-peligro"
+              [disabled]="procesando() || !motivoSinRepuesto.trim()"
+              (click)="completarSinRepuesto(servicio)"
+            >
+              {{ procesando() ? 'Procesando…' : 'Completar como excepción' }}
+            </button>
+          }
+        }
+      </div>
+    </app-modal>
+  }
+
+  @if (avisoRepuestoIncompatible(); as aviso) {
     <app-confirmacion
-      titulo="Falta cargar el repuesto"
+      titulo="Repuesto no indicado para este vehículo"
       [mensaje]="
-        '«' + aviso.nombreServicio + '» suele necesitar ' + aviso.repuestoSugerido +
-        ', y esta orden todavía no tiene ningún repuesto cargado.'
+        '«' + aviso.repuesto.nombre + '» está indicado para ' +
+        aviso.repuesto.resumenCompatibilidad + ', no para ' + o.descripcionVehiculo + '.'
       "
-      advertencia="Puede agregarlo del inventario, como compra externa o indicando que lo trae el cliente. Si ya lo tiene a mano y lo va a cargar después, puede continuar igual."
-      textoConfirmar="Continuar igual"
+      advertencia="Revise que sea la pieza correcta antes de usarla. Si sabe que sirve, puede agregarla igual y conviene completar su compatibilidad en Repuestos."
+      textoConfirmar="Agregar igual"
       [procesando]="procesando()"
-      (confirmar)="confirmarAvanceSinRepuesto()"
-      (cancelar)="avisoRepuestoServicio.set(null)"
+      (confirmar)="agregarRepuesto(true)"
+      (cancelar)="avisoRepuestoIncompatible.set(null)"
     />
   }
 } @else {

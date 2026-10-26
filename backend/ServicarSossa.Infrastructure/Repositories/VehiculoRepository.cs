@@ -24,15 +24,16 @@ public class VehiculoRepository(AppDbContext context)
         if (!string.IsNullOrWhiteSpace(clienteId))
             query = query.Where(v => v.ClienteId == clienteId);       // USU011
 
-        if (!string.IsNullOrWhiteSpace(buscar))
-        {
-            var termino = $"%{buscar.Trim()}%";
-            query = query.Where(v =>
-                EF.Functions.ILike(v.Placa, termino) ||
-                EF.Functions.ILike(v.Marca, termino) ||
-                EF.Functions.ILike(v.Modelo, termino));
-        }
+        // Incluye al dueño: en el taller se pregunta "el auto de Mendoza" tanto
+        // como "la Hilux".
+        query = query.BuscarPorPalabras(buscar,
+            v => v.VehiculoId, v => v.Placa, v => v.Marca, v => v.Modelo,
+            v => v.Cliente.Nombre, v => v.Cliente.Apellido, v => v.Cliente.RazonSocial);
 
-        return await query.OrderBy(v => v.VehiculoId).ToPagedListAsync(pagina, tamanoPagina, ct);
+        // Los más recientes primero, como en clientes: el vehículo recién
+        // registrado queda arriba en la lista y en el selector del diagnóstico.
+        return await query.OrderByDescending(v => v.FechaRegistro)
+                          .ThenByDescending(v => v.VehiculoId)
+                          .ToPagedListAsync(pagina, tamanoPagina, ct);
     }
 }

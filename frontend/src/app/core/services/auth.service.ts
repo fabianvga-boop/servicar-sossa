@@ -34,6 +34,7 @@ export class AuthService {
   readonly estaAutenticado = computed(() => this._sesion() !== null);
   readonly rol = computed(() => this._sesion()?.rol ?? null);
   readonly esAdministrador = computed(() => this.rol() === 'Administrador');
+  readonly usuarioId = computed(() => this._sesion()?.usuarioId ?? null);
   readonly nombreCompleto = computed(() => this._sesion()?.nombreCompleto ?? '');
   readonly fotoUrl = computed(() => this._sesion()?.fotoUrl ?? null);
 

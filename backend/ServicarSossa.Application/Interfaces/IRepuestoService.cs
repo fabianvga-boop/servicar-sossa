@@ -8,9 +8,17 @@ namespace ServicarSossa.Application.Interfaces;
 public interface IRepuestoService
 {
     /// <param name="soloStockBajo">USU030 — alerta de reposición.</param>
+    /// <param name="vehiculoId">Si se indica, solo los repuestos que sirven a ese vehículo.</param>
     Task<Result<ResultadoPaginadoDto<RepuestoResponseDto>>> GetAllAsync(
         string? buscar, string? proveedorId, bool soloStockBajo,
-        int pagina, int tamanoPagina, CancellationToken ct = default);
+        int pagina, int tamanoPagina, CancellationToken ct = default, string? vehiculoId = null);
+
+    /// <summary>
+    /// Todos los repuestos clasificados para un vehículo: compatibles,
+    /// universales y no indicados, en ese orden.
+    /// </summary>
+    Task<Result<List<RepuestoParaVehiculoDto>>> GetParaVehiculoAsync(
+        string vehiculoId, CancellationToken ct = default);
 
     Task<Result<RepuestoResponseDto>> GetByIdAsync(string id, CancellationToken ct = default);
 

@@ -1,6 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 
 import { ETIQUETAS, EstadoProforma, MetodoPago } from '../../core/models/enums';
 import { Proforma, Pago } from '../../core/models/finanzas.model';
@@ -34,6 +35,10 @@ export class Pagos {
   private readonly servicio = inject(PagosService);
   private readonly proformasService = inject(ProformasService);
   private readonly notificacion = inject(NotificacionService);
+  private readonly ruta = inject(ActivatedRoute);
+
+  /** Llega desde la orden ("Cobrar en caja"): abre el cobro de esa proforma. */
+  private proformaPorCobrar = this.ruta.snapshot.queryParamMap.get('proformaId');
 
   protected readonly pagos = signal<Pago[]>([]);
   protected readonly proformas = signal<Proforma[]>([]);
@@ -49,12 +54,7 @@ export class Pagos {
   protected readonly panelNuevo = signal(false);
   protected readonly porRevertir = signal<Pago | null>(null);
 
-  protected nuevo = {
-    proformaId: '',
-    monto: 0,
-    metodoPago: MetodoPago.Efectivo,
-    referencia: '',
-  };
+  protected nuevo = this.pagoVacio();
 
   protected readonly metodos = Object.entries(ETIQUETAS.metodoPago).map(([valor, etiqueta]) => ({
     valor: Number(valor) as MetodoPago,
@@ -66,9 +66,20 @@ export class Pagos {
     this.proformas().filter((f) => f.estado === EstadoProforma.Emitida && !f.estaSaldada),
   );
 
-  protected readonly proformaElegida = computed(() =>
-    this.proformas().find((f) => f.proformaId === this.nuevo.proformaId) ?? null,
-  );
+  /**
+   * Método y no `computed`: `nuevo` es un objeto común (no un signal), así
+   * que un computed quedaba con la primera proforma que vio y el monto no se
+   * completaba al elegir otra.
+   */
+  protected proformaElegida(): Proforma | null {
+    return this.proformas().find((f) => f.proformaId === this.nuevo.proformaId) ?? null;
+  }
+
+  /** Lo que quedará debiendo el cliente después de un pago a cuenta. */
+  protected saldoQueQueda(): number {
+    const saldo = this.proformaElegida()?.saldoPendiente ?? 0;
+    return Math.max(0, Math.round((saldo - (this.nuevo.monto ?? 0)) * 100) / 100);
+  }
 
   /** El saldo va en el detalle: es el dato que decide cuánto se cobra. */
   protected readonly opcionesProforma = computed<OpcionSelector[]>(() =>
@@ -109,7 +120,18 @@ export class Pagos {
   private cargarProformas(): void {
     this.proformasService
       .getAll({ estado: EstadoProforma.Emitida, tamanoPagina: 500 })
-      .subscribe((resultado) => this.proformas.set(resultado.items));
+      .subscribe((resultado) => {
+        this.proformas.set(resultado.items);
+
+        // Una sola vez: si se llegó con ?proformaId=…, abrir su cobro.
+        const id = this.proformaPorCobrar;
+        this.proformaPorCobrar = null;
+        if (id && this.proformasCobrables().some((f) => f.proformaId === id)) {
+          this.abrirNuevo();
+          this.nuevo.proformaId = id;
+          this.onProformaSeleccionada();
+        }
+      });
   }
 
   protected onFiltrarMetodo(valor: string): void {
@@ -133,19 +155,48 @@ export class Pagos {
     return ETIQUETAS.metodoPago[metodo];
   }
 
+  private pagoVacio() {
+    return {
+      proformaId: '',
+      /** Total: cancela todo el saldo. A cuenta: paga una parte y queda saldo. */
+      tipo: 'total' as 'total' | 'cuenta',
+      monto: null as number | null,
+      metodoPago: MetodoPago.Efectivo,
+      referencia: '',
+    };
+  }
+
   protected abrirNuevo(): void {
-    this.nuevo = { proformaId: '', monto: 0, metodoPago: MetodoPago.Efectivo, referencia: '' };
+    this.nuevo = this.pagoVacio();
     this.panelNuevo.set(true);
   }
 
-  /** Propone el saldo completo: lo habitual es cobrar el total pendiente. */
+  /** Al elegir la proforma se propone el pago total, con el saldo ya cargado. */
   protected onProformaSeleccionada(): void {
-    this.nuevo.monto = this.proformaElegida()?.saldoPendiente ?? 0;
+    this.elegirTipo('total');
+  }
+
+  /** Total: el monto es el saldo y no se edita. A cuenta: se escribe cuánto paga. */
+  protected elegirTipo(tipo: 'total' | 'cuenta'): void {
+    this.nuevo.tipo = tipo;
+    this.nuevo.monto = tipo === 'total' ? (this.proformaElegida()?.saldoPendiente ?? null) : null;
   }
 
   protected registrar(): void {
-    if (!this.nuevo.proformaId || this.nuevo.monto <= 0) {
-      this.notificacion.advertencia('Seleccione la proforma e indique un monto mayor a cero.');
+    const proforma = this.proformaElegida();
+    const monto = this.nuevo.monto ?? 0;
+
+    if (!proforma) {
+      this.notificacion.advertencia('Seleccione la proforma que se cobra.');
+      return;
+    }
+
+    if (this.nuevo.tipo === 'cuenta' && (monto <= 0 || monto >= proforma.saldoPendiente)) {
+      this.notificacion.advertencia(
+        monto >= proforma.saldoPendiente
+          ? 'Ese monto cubre todo el saldo: elija «Pago total».'
+          : 'Indique cuánto paga el cliente a cuenta.',
+      );
       return;
     }
 
@@ -153,8 +204,8 @@ export class Pagos {
 
     this.servicio
       .crear({
-        proformaId: this.nuevo.proformaId,
-        monto: this.nuevo.monto,
+        proformaId: proforma.proformaId,
+        monto: this.nuevo.tipo === 'total' ? proforma.saldoPendiente : monto,
         metodoPago: Number(this.nuevo.metodoPago) as MetodoPago,
         referencia: this.nuevo.referencia || null,
       })
@@ -162,8 +213,8 @@ export class Pagos {
         next: (pago) => {
           this.notificacion.exito(
             pago.saldoPendienteProforma <= 0
-              ? 'Pago registrado. La proforma queda saldada.'
-              : `Pago registrado. Saldo pendiente: Bs ${pago.saldoPendienteProforma.toFixed(2)}.`,
+              ? `Pago total registrado: la proforma ${proforma.proformaId} queda saldada.`
+              : `Pago a cuenta registrado. Saldo pendiente: Bs ${pago.saldoPendienteProforma.toFixed(2)}.`,
           );
           this.procesando.set(false);
           this.panelNuevo.set(false);

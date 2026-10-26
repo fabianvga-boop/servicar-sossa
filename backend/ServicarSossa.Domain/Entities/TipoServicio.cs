@@ -11,6 +11,12 @@ public class TipoServicio
     public decimal PrecioBase { get; set; }
     public EstadoServicio Estado { get; set; } = EstadoServicio.Activo;
 
+    /// <summary>
+    /// El servicio consume un repuesto (cambio de aceite, de batería…): en la
+    /// orden no se puede completar sin registrar el repuesto que se usó.
+    /// </summary>
+    public bool RequiereRepuesto { get; set; }
+
     // --- Datos fiscales (preparación SIAT) ------------------------------------
     // La mano de obra también se factura, así que el catálogo de servicios
     // necesita su homologación igual que los repuestos. Ver Repuesto.CodigoSin.

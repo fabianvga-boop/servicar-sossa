@@ -1,6 +1,8 @@
 import { Component, computed, forwardRef, input, output, signal } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
+import { coincidePorPalabras, normalizarTexto } from '../busqueda';
+
 export interface OpcionSelector {
   valor: string;
   etiqueta: string;
@@ -9,21 +11,6 @@ export interface OpcionSelector {
   deshabilitada?: boolean;
   /** Motivo por el que no se puede elegir, como ayuda contextual. */
   razonDeshabilitada?: string;
-}
-
-/**
- * Rango de tildes sueltas que deja `normalize('NFD')` al separar cada letra
- * de su acento (U+0300–U+036F). Se arma con `fromCharCode` para que el código
- * fuente quede en ASCII puro y nadie lo rompa al reindentar o recodificar.
- */
-const DIACRITICOS = new RegExp(
-  `[${String.fromCharCode(0x0300)}-${String.fromCharCode(0x036f)}]`,
-  'g',
-);
-
-/** Quita tildes y pasa a minúscula: "Bujía" y "bujia" deben coincidir. */
-function normalizar(texto: string): string {
-  return texto.toLowerCase().normalize('NFD').replace(DIACRITICOS, '');
 }
 
 /**
@@ -124,6 +111,8 @@ function normalizar(texto: string): string {
       top: calc(100% + 3px);
       left: 0;
       right: 0;
+      /* En una columna angosta (fila de una grilla) la lista igual se lee. */
+      min-width: 220px;
       z-index: 40;
       margin: 0;
       padding: 4px;
@@ -178,6 +167,14 @@ export class SelectorBusqueda implements ControlValueAccessor {
   readonly invalido = input(false);
 
   /**
+   * Cómo se llama un valor nuevo ("marca nueva", "modelo nuevo"). Si se indica, lo escrito que no
+   * esté en la lista aparece al final como opción para agregarlo: se puede
+   * cargar un valor nuevo, pero solo eligiéndolo a propósito, no por tipear
+   * algo parecido a uno existente. En ese caso el valor es el propio texto.
+   */
+  readonly permitirNuevo = input('');
+
+  /**
    * Valor recién elegido (cadena vacía al limpiar).
    *
    * `ngModelChange` solo existe con formularios de plantilla; este output
@@ -201,7 +198,9 @@ export class SelectorBusqueda implements ControlValueAccessor {
   private alTocar: () => void = () => {};
 
   protected readonly etiquetaSeleccionada = computed(
-    () => this.opciones().find((o) => o.valor === this.valorActual())?.etiqueta ?? '',
+    () =>
+      this.opciones().find((o) => o.valor === this.valorActual())?.etiqueta ??
+      (this.permitirNuevo() ? this.valorActual() : ''),
   );
 
   protected readonly textoVisible = computed(
@@ -214,13 +213,20 @@ export class SelectorBusqueda implements ControlValueAccessor {
     // Recién abierto (sin teclear) se ofrece la lista completa.
     if (criterio === null || criterio.trim() === '') return this.opciones();
 
-    const buscado = normalizar(criterio);
-
-    return this.opciones().filter(
-      (o) =>
-        normalizar(o.etiqueta).includes(buscado) ||
-        (o.detalle ? normalizar(o.detalle).includes(buscado) : false),
+    // Cada palabra en la etiqueta o en el detalle: "Hilux Mendoza" encuentra
+    // el vehículo aunque la placa y el dueño estén en líneas distintas.
+    const coincidentes = this.opciones().filter((o) =>
+      coincidePorPalabras(criterio, o.etiqueta, o.detalle),
     );
+
+    const texto = criterio.trim();
+    if (!this.permitirNuevo() || this.coincidenciaExacta(texto)) return coincidentes;
+
+    // Al final, para que Enter prefiera lo que ya existe en la lista.
+    return [
+      ...coincidentes,
+      { valor: texto, etiqueta: `+ ${texto}`, detalle: `agregar ${this.permitirNuevo()}` },
+    ];
   });
 
   // --- ControlValueAccessor ------------------------------------------------
@@ -259,6 +265,15 @@ export class SelectorBusqueda implements ControlValueAccessor {
   }
 
   protected alSalir(): void {
+    // Quien escribe el nombre completo y pasa al campo siguiente con Tab
+    // espera que quede elegido, aunque no haya pulsado Enter.
+    const exacta = this.permitirNuevo() ? this.coincidenciaExacta(this.busqueda()?.trim() ?? '') : null;
+    if (exacta && exacta.valor !== this.valorActual()) {
+      this.elegir(exacta);
+      this.alTocar();
+      return;
+    }
+
     this.abierto.set(false);
     this.busqueda.set(null);
     this.alTocar();
@@ -289,6 +304,9 @@ export class SelectorBusqueda implements ControlValueAccessor {
       }
 
       case 'Escape':
+        // Con la lista abierta, Escape solo la cierra: sin esto el mismo
+        // Escape llegaba al modal y cerraba el formulario entero.
+        if (this.abierto()) evento.stopPropagation();
         this.abierto.set(false);
         this.busqueda.set(null);
         break;
@@ -303,6 +321,13 @@ export class SelectorBusqueda implements ControlValueAccessor {
     this.abierto.set(false);
     this.alCambiar(opcion.valor);
     this.seleccion.emit(opcion.valor);
+  }
+
+  /** Opción cuya etiqueta es exactamente el texto, sin mirar mayúsculas ni tildes. */
+  private coincidenciaExacta(texto: string): OpcionSelector | null {
+    if (!texto) return null;
+    const buscado = normalizarTexto(texto);
+    return this.opciones().find((o) => normalizarTexto(o.etiqueta) === buscado) ?? null;
   }
 
   protected limpiar(): void {

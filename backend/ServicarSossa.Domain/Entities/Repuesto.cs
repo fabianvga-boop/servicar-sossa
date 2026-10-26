@@ -1,3 +1,5 @@
+using ServicarSossa.Domain.Enums;
+
 namespace ServicarSossa.Domain.Entities;
 
 /// <summary>
@@ -37,8 +39,15 @@ public class Repuesto
     /// <summary>Código de unidad de medida del SIN (ej. unidad, litro, juego).</summary>
     public int? UnidadMedidaSin { get; set; }
 
+    /// <summary>
+    /// Universal o Específico. Los específicos tienen al menos una fila en
+    /// <see cref="Compatibilidades"/>; los universales, ninguna.
+    /// </summary>
+    public TipoAplicacionRepuesto TipoAplicacion { get; set; } = TipoAplicacionRepuesto.Universal;
+
     // Navegación
     public Proveedor? Proveedor { get; set; }
+    public ICollection<RepuestoCompatibilidad> Compatibilidades { get; set; } = [];
     public ICollection<CompraDetalle> CompraDetalles { get; set; } = [];
     public ICollection<OrdenRepuesto> OrdenRepuestos { get; set; } = [];
     public ICollection<VentaDetalle> VentaDetalles { get; set; } = [];

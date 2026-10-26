@@ -3,14 +3,58 @@ using ServicarSossa.Domain.Enums;
 
 namespace ServicarSossa.Application.DTOs.Ordenes;
 
+// ---------------------------------------------------------------- Corrección
+
+/// <summary>
+/// Reabre una orden Finalizada o Cerrada para corregir un error (solo
+/// Administrador). El motivo queda en auditoría.
+/// </summary>
+public class CorregirOrdenDto
+{
+    [Required(ErrorMessage = "Indique el motivo de la corrección.")]
+    [MaxLength(200, ErrorMessage = "El motivo no puede superar los 200 caracteres.")]
+    public string Motivo { get; set; } = string.Empty;
+}
+
+/// <summary>Corrige el precio o el detalle de un servicio ya cargado (solo Administrador).</summary>
+public class EditarOrdenServicioDto
+{
+    [Range(0, 99999999.99, ErrorMessage = "El precio no puede ser negativo.")]
+    public decimal Precio { get; set; }
+
+    [MaxLength(255)]
+    public string? Descripcion { get; set; }
+}
+
+/// <summary>
+/// Corrige la cantidad (y, solo el Administrador, el precio) de un repuesto ya
+/// cargado en la orden.
+/// </summary>
+public class EditarOrdenRepuestoDto
+{
+    [Range(1, int.MaxValue, ErrorMessage = "La cantidad debe ser mayor a cero.")]
+    public int Cantidad { get; set; }
+
+    [Range(0, 99999999.99, ErrorMessage = "El precio unitario no puede ser negativo.")]
+    public decimal? PrecioUnitario { get; set; }
+}
+
 // ---------------------------------------------------------------- Mecánicos
 
-/// <summary>USU022 — asigna un mecánico a la orden.</summary>
+/// <summary>
+/// USU022 — asigna un mecánico a la orden. Una orden la trabaja un solo
+/// mecánico: si ya tiene uno, el Administrador puede sumar otro solo como
+/// excepción, escribiendo el motivo, que queda en auditoría.
+/// </summary>
 public class AsignarMecanicoDto
 {
     [Required(ErrorMessage = "El mecánico es obligatorio.")]
     [RegularExpression(@"^USU-\d{3,}$", ErrorMessage = "El mecánico debe tener el formato USU-000.")]
     public string MecanicoId { get; set; } = string.Empty;
+
+    /// <summary>Obligatorio solo si la orden ya tiene un mecánico asignado.</summary>
+    [MaxLength(200, ErrorMessage = "El motivo no puede superar los 200 caracteres.")]
+    public string? MotivoExcepcion { get; set; }
 }
 
 public class OrdenMecanicoResponseDto
@@ -38,10 +82,13 @@ public class OrdenServicioRequestDto : IValidatableObject
     [MaxLength(150, ErrorMessage = "El nombre no puede superar los 150 caracteres.")]
     public string? NombreLibre { get; set; }
 
-    /// <summary>El mecánico que ejecuta; es la base del cálculo de su comisión.</summary>
-    [Required(ErrorMessage = "El mecánico responsable es obligatorio.")]
+    /// <summary>
+    /// El mecánico que ejecuta; es la base del cálculo de su comisión. Si se
+    /// omite, se toma el mecánico de la orden. Solo hace falta indicarlo cuando
+    /// la orden tiene más de uno (excepción).
+    /// </summary>
     [RegularExpression(@"^USU-\d{3,}$", ErrorMessage = "El mecánico debe tener el formato USU-000.")]
-    public string MecanicoId { get; set; } = string.Empty;
+    public string? MecanicoId { get; set; }
 
     /// <summary>Diagnóstico que originó el servicio (opcional).</summary>
     [RegularExpression(@"^DIA-\d{3,}$", ErrorMessage = "El diagnóstico debe tener el formato DIA-000.")]
@@ -53,6 +100,12 @@ public class OrdenServicioRequestDto : IValidatableObject
     /// <summary>Catálogo: si es null se usa el precio base. Fuera de catálogo: obligatorio.</summary>
     [Range(0, 99999999.99, ErrorMessage = "El precio no puede ser negativo.")]
     public decimal? Precio { get; set; }
+
+    /// <summary>
+    /// Solo para servicios fuera de catálogo: si el trabajo consume un repuesto.
+    /// Los del catálogo toman la marca del catálogo y este valor se ignora.
+    /// </summary>
+    public bool? RequiereRepuesto { get; set; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
@@ -74,6 +127,13 @@ public class CambiarEstadoOrdenServicioDto
 {
     [Required(ErrorMessage = "El estado es obligatorio.")]
     public EstadoServicioOrden Estado { get; set; }
+
+    /// <summary>
+    /// Excepción del Administrador: completar un servicio que requiere repuesto
+    /// sin haberlo registrado. Queda en auditoría con este motivo.
+    /// </summary>
+    [MaxLength(200, ErrorMessage = "El motivo no puede superar los 200 caracteres.")]
+    public string? MotivoSinRepuesto { get; set; }
 }
 
 public class OrdenServicioResponseDto
@@ -86,6 +146,7 @@ public class OrdenServicioResponseDto
     public string? DiagnosticoId { get; set; }
     public string? Descripcion { get; set; }
     public decimal Precio { get; set; }
+    public bool RequiereRepuesto { get; set; }
     public EstadoServicioOrden Estado { get; set; }
 }
 
@@ -105,6 +166,10 @@ public class OrdenRepuestoRequestDto : IValidatableObject
     /// <summary>Obligatorio solo cuando el origen es Inventario.</summary>
     [RegularExpression(@"^REP-\d{3,}$", ErrorMessage = "El repuesto debe tener el formato REP-000.")]
     public string? RepuestoId { get; set; }
+
+    /// <summary>Servicio de la orden para el que se usó (opcional).</summary>
+    [RegularExpression(@"^OSR-\d{3,}$", ErrorMessage = "El servicio debe tener el formato OSR-000.")]
+    public string? OrdenServicioId { get; set; }
 
     /// <summary>Nombre libre del repuesto cuando no sale del inventario.</summary>
     [MaxLength(150, ErrorMessage = "La descripción no puede superar los 150 caracteres.")]
@@ -149,6 +214,11 @@ public class OrdenRepuestoResponseDto
     public string? RepuestoId { get; set; }
     public OrigenRepuesto Origen { get; set; }
     public string NombreRepuesto { get; set; } = string.Empty;
+
+    /// <summary>Servicio de la orden para el que se usó, si se indicó.</summary>
+    public string? OrdenServicioId { get; set; }
+    public string? NombreServicio { get; set; }
+
     public int Cantidad { get; set; }
     public decimal PrecioUnitario { get; set; }
     public decimal Subtotal { get; set; }

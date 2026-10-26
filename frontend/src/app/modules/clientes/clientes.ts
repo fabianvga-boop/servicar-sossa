@@ -252,6 +252,8 @@ export class Clientes {
     this.crearOtro = false;
     this.notificacion.exito(mensaje);
     this.guardando.set(false);
+    // El nuevo queda primero en la lista: volver a la página 1 para verlo.
+    if (!this.editando()) this.pagina.set(1);
     if (seguir) {
       this.reiniciarFormulario();
     } else {

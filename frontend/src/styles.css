@@ -17,14 +17,19 @@
   --ink: #111c2d;
   --ink-soft: #3f4c63;
 
-  /* Colores de estado, para insignias y avisos. Cada familia tiene un tono
-     sólido (600, para el texto) y uno suave (100, para el fondo). */
+  /* Colores de estado, para insignias y avisos. Cada familia tiene tres tonos:
+       700 → texto, y fondo de botones con texto blanco (≥ 4,5:1, WCAG AA)
+       600 → acentos sin texto: bordes, puntos, íconos, barras
+       100 → fondo suave de avisos e insignias */
+  --azul-700: #265cc0;
   --azul-600: #2d6cdf;
   --azul-100: #e1eafc;
 
+  --naranja-700: #8a5c00;
   --naranja-600: #c68a00;
   --naranja-100: #fbefd2;
 
+  --verde-700: #1d7438;
   --verde-600: #2f9e52;
   --verde-100: #def3e4;
 
@@ -32,11 +37,13 @@
 
   /* Neutros claros. El extremo oscuro de la escala son --ink/--ink-soft; no
      se repite acá para que cada color tenga un solo nombre.
-       500/400 → texto atenuado
+       500/400 → texto atenuado. Los dos cumplen 4,5:1 (WCAG AA) sobre blanco
+                 y sobre el gris del fondo: antes 400 daba 2,6:1 y había
+                 textos de ayuda que una persona mayor no alcanzaba a leer.
        200     → bordes
        100/50  → rellenos y superficies secundarias */
-  --gris-500: #6b7280;
-  --gris-400: #9aa1ab;
+  --gris-500: #596272;
+  --gris-400: #646d7b;
   --gris-300: #c3cad3;
   --gris-200: #e5eaef;
   --gris-100: #eef3f9;
@@ -302,10 +309,79 @@ a:hover {
 .btn-peligro:not(:disabled):hover { background: var(--brand-soft); filter: none; }
 
 .btn-exito {
-  background: var(--verde-600);
+  background: var(--verde-700);
   color: var(--blanco);
 }
-.btn-exito:not(:disabled):hover { background: #227a3f; filter: none; }
+.btn-exito:not(:disabled):hover { background: #165c2c; filter: none; }
+
+/* Acción "Nuevo…" de cada pantalla (cliente, repuesto, compra…). Es la que
+   más se usa, así que tiene que encontrarse sin buscarla: más grande, con un
+   ícono que se reconoce de lejos, el atajo de teclado a la vista y siempre en
+   pantalla (ver .encabezado-pagina y la versión flotante en el celular). */
+.btn-nuevo {
+  padding: 12px 16px 12px 12px;
+  font-size: 15px;
+  box-shadow: 0 4px 14px rgba(225, 6, 0, 0.32);
+}
+
+.btn-nuevo-mas {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--blanco);
+  color: var(--brand-dk);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.btn-nuevo-atajo {
+  margin-left: 4px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.22);
+  color: var(--blanco);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+/* En computadora la cabecera de la pantalla (título y botón "Nuevo") queda
+   fija debajo de la barra superior al bajar por una lista larga: el botón
+   no se pierde de vista. Los márgenes negativos la estiran sobre el relleno
+   del contenido para que la tabla no asome por los costados al pasar debajo. */
+@media (min-width: 901px) {
+  .encabezado-pagina {
+    position: sticky;
+    top: var(--alto-encabezado);
+    z-index: 30;
+    margin-top: -22px;
+    margin-left: calc(-1 * var(--sangria));
+    margin-right: calc(-1 * var(--sangria));
+    padding: 16px var(--sangria) 10px;
+    background: var(--fondo-app);
+  }
+}
+
+/* En el celular no hay lugar para una cabecera fija: el botón flota abajo a
+   la derecha, al alcance del pulgar, sobre la lista (y debajo del menú y de
+   los diálogos). El atajo de teclado no aplica en una pantalla táctil. */
+@media (max-width: 900px) {
+  .btn-nuevo {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 45;
+    border-radius: 999px;
+    padding: 13px 20px 13px 14px;
+    box-shadow: 0 8px 24px rgba(225, 6, 0, 0.38);
+  }
+
+  .btn-nuevo-atajo { display: none; }
+}
 
 .btn-sm {
   padding: 7px 14px;
@@ -786,8 +862,8 @@ table.tabla tbody tr.fila-agotada:hover {
 }
 
 .acciones .btn-enlace.texto-verde:hover {
-  background: var(--verde-600);
-  border-color: var(--verde-600);
+  background: var(--verde-700);
+  border-color: var(--verde-700);
   color: var(--blanco);
 }
 
@@ -905,7 +981,7 @@ table.tabla th.th-acciones {
 
 /* Verde de marca de WhatsApp: es la única excepción al lenguaje de color del
    sistema, porque identifica una acción hacia un servicio externo puntual. */
-.icono-contacto.whatsapp { color: #25d366; }
+.icono-contacto.whatsapp { color: #128c7e; }
 .icono-contacto.whatsapp:hover { background: #e4f9ec; }
 
 .icono-contacto.correo:hover { background: var(--gris-100); color: var(--ink); }
@@ -915,7 +991,7 @@ table.tabla th.th-acciones {
    no como un valor más de la fila (ej. "Sin estimar", "Sin vehículos"). */
 .texto-placeholder {
   font-size: 14px;
-  color: #9ca3af;
+  color: var(--gris-400);
 }
 
 /* -------------------------------------------------- Chip de orden vinculada
@@ -1300,6 +1376,42 @@ table.tabla th.num {
   border-bottom-color: var(--brand);
 }
 
+/* ------------------------------------------------------ Control segmentado */
+
+/* Elegir una opción entre pocas (origen de un repuesto, pago total o a
+   cuenta): todas a la vista, la elegida resaltada. */
+.segmentos {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  background: var(--gris-100);
+  border-radius: var(--radio);
+}
+
+.segmento {
+  flex: 1;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radio-sm);
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, box-shadow 0.12s;
+}
+
+.segmento:hover {
+  color: var(--ink);
+}
+
+.segmento.activo {
+  background: var(--blanco);
+  color: var(--brand-dk);
+  font-weight: 600;
+  box-shadow: var(--sombra-sm);
+}
+
 /* ---------------------------------------------------------------- Totales */
 
 .total-caja {
@@ -1372,7 +1484,7 @@ table.tabla th.num {
 .texto-sm { font-size: 13px; }
 .texto-fuerte { font-weight: 600; }
 .texto-rojo { color: var(--brand-dk); }
-.texto-verde { color: var(--verde-600); }
+.texto-verde { color: var(--verde-700); }
 
 .mt-0 { margin-top: 0; }
 .mt-1 { margin-top: 8px; }

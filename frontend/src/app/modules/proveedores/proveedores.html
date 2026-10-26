@@ -1,16 +1,18 @@
-<div class="fila-entre envuelve mb-2">
+<div class="fila-entre envuelve mb-2 encabezado-pagina">
   <div>
     <h1>Proveedores</h1>
     <p class="texto-tenue texto-sm mb-0">Abastecedores de repuestos del taller</p>
   </div>
   <button
     type="button"
-    class="btn btn-primario"
+    class="btn btn-primario btn-nuevo"
     appAtajo="n"
     title="Atajo: tecla N"
     (click)="abrirNuevo()"
   >
-    + Nuevo proveedor
+    <span class="btn-nuevo-mas" aria-hidden="true">+</span>
+    Nuevo proveedor
+    <kbd class="btn-nuevo-atajo" aria-hidden="true">N</kbd>
   </button>
 </div>
 

@@ -17,7 +17,9 @@ import { InsigniaEstado } from '../../shared/components/insignia-estado';
 import { Modal } from '../../shared/components/modal';
 import { Paginador } from '../../shared/components/paginador';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
+import { detalleConNuevo } from '../../shared/recientes';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
+import { coincideRepuesto } from '../../shared/busqueda-repuestos';
 
 /** Una línea del carrito, antes de confirmar la venta. */
 interface LineaCarrito {
@@ -151,13 +153,14 @@ export class Ventas implements ConfirmarSalida {
    * del repuesto y es más rápido de tipear que el nombre completo.
    */
   protected readonly productosFiltrados = computed<Repuesto[]>(() => {
-    const filtro = this.buscarProducto().trim().toLowerCase();
+    const filtro = this.buscarProducto();
     const lista = this.repuestos();
 
-    const coincide = (r: Repuesto) =>
-      r.nombre.toLowerCase().includes(filtro) || r.repuestoId.toLowerCase().includes(filtro);
+    // Por palabras: "filtro aceite" encuentra "Filtro de aceite", y "Corolla"
+    // las piezas indicadas para ese modelo.
+    const coincide = (r: Repuesto) => coincideRepuesto(filtro, r);
 
-    return [...(filtro ? lista.filter(coincide) : lista)].sort((a, b) =>
+    return [...lista.filter(coincide)].sort((a, b) =>
       a.nombre.localeCompare(b.nombre),
     );
   });
@@ -166,7 +169,7 @@ export class Ventas implements ConfirmarSalida {
     this.clientes().map((c) => ({
       valor: c.clienteId,
       etiqueta: c.razonSocial?.trim() || `${c.nombre} ${c.apellido ?? ''}`.trim(),
-      detalle: c.ciNit,
+      detalle: detalleConNuevo(c.ciNit, c.fechaRegistro),
     })),
   );
 
