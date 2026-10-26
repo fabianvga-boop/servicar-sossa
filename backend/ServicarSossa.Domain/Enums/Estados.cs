@@ -55,8 +55,13 @@ public enum MetodoPago { Efectivo, Transferencia, Tarjeta, QR, Otro }
 
 public enum FormatoReporte { Pdf, Excel, Csv }
 
-/// <summary>Acción registrada en la bitácora de auditoría (tabla auditoria).</summary>
-public enum AccionAuditoria { Crear, Editar, Eliminar, Anular, Ajustar, CambiarEstado }
+/// <summary>
+/// Acción registrada en la bitácora de auditoría (tabla auditoria).
+/// <c>Excepcion</c> marca lo que una regla de negocio no permite y el
+/// Administrador hizo igual con un motivo escrito: un segundo mecánico en una
+/// orden o un servicio completado sin registrar su repuesto.
+/// </summary>
+public enum AccionAuditoria { Crear, Editar, Eliminar, Anular, Ajustar, CambiarEstado, Excepcion }
 
 /// <summary>
 /// Motivo de un ajuste manual de stock. No se persiste como columna: viaja en
@@ -64,6 +69,17 @@ public enum AccionAuditoria { Crear, Editar, Eliminar, Anular, Ajustar, CambiarE
 /// justificar por qué el stock subió o bajó fuera de compras/ventas/órdenes.
 /// </summary>
 public enum TipoAjusteStock { ConteoFisico, MermaRotura, Correccion, Otro }
+
+/// <summary>
+/// Para qué vehículos sirve un repuesto. Universal: insumos que van en
+/// cualquier auto (aceite, líquido de frenos, fusibles). Específico: piezas que
+/// solo calzan en ciertos vehículos (filtros, pastillas, discos, bujías); sus
+/// vehículos están en <c>repuesto_compatibilidad</c>.
+/// </summary>
+public enum TipoAplicacionRepuesto { Universal, Especifico }
+
+/// <summary>Qué tan adecuado es un repuesto para un vehículo dado.</summary>
+public enum NivelCompatibilidad { Compatible, Universal, NoIndicado }
 
 /// <summary>
 /// Silueta vectorial a usar para el diagrama del vehículo (diagnóstico/orden).

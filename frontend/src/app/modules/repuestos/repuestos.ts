@@ -1,16 +1,24 @@
 import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 
-import { TipoAjusteStock } from '../../core/models/enums';
-import { ProcedenciaRepuesto, Proveedor, Repuesto } from '../../core/models/inventario.model';
+import { TipoAjusteStock, TipoAplicacionRepuesto } from '../../core/models/enums';
+import {
+  CompatibilidadRepuesto,
+  ProcedenciaRepuesto,
+  Proveedor,
+  Repuesto,
+} from '../../core/models/inventario.model';
+import { PlantillaVehiculo, Vehiculo } from '../../core/models/personas.model';
 import { urlArchivo } from '../../core/services/api-base';
 import { AuthService } from '../../core/services/auth.service';
 import { ContadoresService } from '../../core/services/contadores.service';
 import { ProveedoresService, RepuestosService } from '../../core/services/inventario.service';
 import { NotificacionService } from '../../core/services/notificacion.service';
+import { PlantillasVehiculoService } from '../../core/services/plantillas-vehiculo.service';
 import { PreferenciasService } from '../../core/services/preferencias.service';
+import { VehiculosService } from '../../core/services/vehiculos.service';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { Modal } from '../../shared/components/modal';
 import { Paginador } from '../../shared/components/paginador';
@@ -19,15 +27,38 @@ import { Atajo } from '../../shared/directives/atajo';
 import { EnfocarError } from '../../shared/directives/enfocar-error';
 import { SiTieneRol } from '../../shared/directives/si-tiene-rol';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
+import {
+  marcasSugeridas,
+  modelosSugeridos,
+  parecidoEnCatalogo,
+} from '../../shared/vehiculo-sugerencias';
 
 const CLAVE_BUSCAR = 'repuestos.buscar';
 const CLAVE_STOCK_BAJO = 'repuestos.stockBajo';
+
+/** Una fila editable de "Vehículos compatibles" en el formulario. */
+interface FilaCompatibilidad {
+  marca: string;
+  modelo: string;
+  anioDesde: number | null;
+  anioHasta: number | null;
+}
+
+/** Marca o modelo fuera del catálogo que se parece mucho a uno que sí está. */
+interface AvisoCatalogo {
+  campo: 'marca' | 'modelo';
+  escrito: string;
+  sugerido: string;
+}
+
+const SIN_OPCIONES: OpcionSelector[] = [];
 
 /** USU026, USU027, USU030 — inventario de repuestos. */
 @Component({
   selector: 'app-repuestos',
   imports: [
     ReactiveFormsModule,
+    FormsModule,
     DatePipe,
     Modal,
     EstadoTabla,
@@ -44,6 +75,8 @@ const CLAVE_STOCK_BAJO = 'repuestos.stockBajo';
 export class Repuestos {
   private readonly servicio = inject(RepuestosService);
   private readonly proveedoresService = inject(ProveedoresService);
+  private readonly vehiculosService = inject(VehiculosService);
+  private readonly plantillasService = inject(PlantillasVehiculoService);
   private readonly fb = inject(FormBuilder);
   private readonly notificacion = inject(NotificacionService);
   private readonly preferencias = inject(PreferenciasService);
@@ -117,6 +150,70 @@ export class Repuestos {
     return [...new Set(nombres)].sort((a, b) => a.localeCompare(b));
   });
 
+  // --- Compatibilidad por vehículo ---------------------------------------------
+  protected readonly TipoAplicacion = TipoAplicacionRepuesto;
+  protected readonly tipoAplicacion = signal<TipoAplicacionRepuesto>(TipoAplicacionRepuesto.Universal);
+  protected readonly filasCompat = signal<FilaCompatibilidad[]>([]);
+  protected readonly errorCompat = signal('');
+
+  /** Vehículos registrados: alimentan el catálogo de marca/modelo y el filtro. */
+  private readonly vehiculos = signal<Vehiculo[]>([]);
+  /** Plantillas de vehículo: otra fuente del catálogo (solo las ve el Administrador). */
+  private readonly plantillas = signal<PlantillaVehiculo[]>([]);
+  protected readonly anioMaximo = new Date().getFullYear() + 1;
+
+  /**
+   * Catálogo de marcas y modelos para los vehículos compatibles: los
+   * frecuentes de vehiculo-sugerencias, más los de los vehículos registrados
+   * y las plantillas. Así se elige en vez de escribir, con la misma escritura
+   * que tendrán los vehículos contra los que luego se compara.
+   */
+  private readonly registrados = computed(() => [...this.vehiculos(), ...this.plantillas()]);
+  private readonly marcasCatalogo = computed(() => marcasSugeridas(this.registrados()));
+  protected readonly opcionesMarca = computed<OpcionSelector[]>(() =>
+    this.marcasCatalogo().map((m) => ({ valor: m, etiqueta: m })),
+  );
+
+  /** Modelos por marca, calculados una vez por cambio y no en cada detección. */
+  private readonly modelosPorMarca = computed(() => {
+    const mapa = new Map<string, OpcionSelector[]>();
+    for (const fila of this.filasCompat()) {
+      const clave = fila.marca.trim().toLowerCase();
+      if (!clave || mapa.has(clave)) continue;
+      mapa.set(
+        clave,
+        modelosSugeridos(this.registrados(), fila.marca).map((m) => ({ valor: m, etiqueta: m })),
+      );
+    }
+    return mapa;
+  });
+
+  /** Por fila: aviso si la marca o el modelo parece un error de tipeo. */
+  protected readonly avisosCatalogo = computed<(AvisoCatalogo | null)[]>(() =>
+    this.filasCompat().map((f): AvisoCatalogo | null => {
+      const marca = parecidoEnCatalogo(f.marca, this.marcasCatalogo());
+      if (marca) return { campo: 'marca', escrito: f.marca, sugerido: marca };
+
+      const modelos = this.opcionesModelo(f.marca).map((o) => o.valor);
+      const modelo = parecidoEnCatalogo(f.modelo, modelos);
+      return modelo ? { campo: 'modelo', escrito: f.modelo, sugerido: modelo } : null;
+    }),
+  );
+
+  /** Filtro "Para el vehículo…": deja solo universales y compatibles. */
+  protected readonly vehiculoFiltro = signal('');
+  protected readonly opcionesVehiculo = computed<OpcionSelector[]>(() =>
+    this.vehiculos().map((v) => ({
+      valor: v.vehiculoId,
+      etiqueta: `${v.placa} · ${v.marca} ${v.modelo}${v.anio ? ' ' + v.anio : ''}`,
+      detalle: v.nombreCliente,
+    })),
+  );
+
+  protected opcionesModelo(marca: string): OpcionSelector[] {
+    return this.modelosPorMarca().get(marca.trim().toLowerCase()) ?? SIN_OPCIONES;
+  }
+
   protected readonly formulario = this.fb.nonNullable.group({
     nombre: ['', [Validators.required, Validators.maxLength(150)]],
     descripcion: ['', Validators.maxLength(255)],
@@ -157,9 +254,17 @@ export class Repuestos {
     // ?proveedorId=…: es un filtro de paso, no se guarda como preferencia.
     this.proveedorFiltro.set(parametros.get('proveedorId') ?? '');
 
+    this.vehiculoFiltro.set(parametros.get('vehiculoId') ?? '');
+
     this.cargar();
 
+    this.vehiculosService
+      .getAll(undefined, undefined, 1, 500)
+      .subscribe((resultado) => this.vehiculos.set(resultado.items));
+
     if (this.auth.esAdministrador()) {
+      this.plantillasService.getAll().subscribe((lista) => this.plantillas.set(lista));
+
       this.proveedoresService
         .getAll(undefined, 1, 500)
         .subscribe((resultado) => this.proveedores.set(resultado.items));
@@ -174,6 +279,7 @@ export class Repuestos {
         buscar: this.buscar() || undefined,
         soloStockBajo: this.soloStockBajo() || undefined,
         proveedorId: this.proveedorFiltro() || undefined,
+        vehiculoId: this.vehiculoFiltro() || undefined,
         pagina: this.pagina(),
         tamanoPagina: this.tamanoPagina(),
       })
@@ -200,6 +306,104 @@ export class Repuestos {
     this.preferencias.guardar(CLAVE_STOCK_BAJO, this.soloStockBajo());
     this.pagina.set(1);
     this.cargar();
+  }
+
+  protected filtrarPorVehiculo(vehiculoId: string | null): void {
+    this.vehiculoFiltro.set(vehiculoId ?? '');
+    this.pagina.set(1);
+    this.cargar();
+  }
+
+  // --- Edición de la compatibilidad ------------------------------------------
+
+  protected elegirTipoAplicacion(tipo: TipoAplicacionRepuesto): void {
+    this.tipoAplicacion.set(tipo);
+    this.errorCompat.set('');
+    // Al pasar a Específico se ofrece de entrada una fila para completar.
+    if (tipo === TipoAplicacionRepuesto.Especifico && this.filasCompat().length === 0) {
+      this.agregarFilaCompat();
+    }
+  }
+
+  protected agregarFilaCompat(): void {
+    this.filasCompat.update((filas) => [...filas, { marca: '', modelo: '', anioDesde: null, anioHasta: null }]);
+  }
+
+  protected quitarFilaCompat(indice: number): void {
+    this.filasCompat.update((filas) => filas.filter((_, i) => i !== indice));
+  }
+
+  protected actualizarFilaCompat(
+    indice: number,
+    campo: keyof FilaCompatibilidad,
+    valor: string | null,
+  ): void {
+    const limpio = (valor ?? '').trim();
+    const dato = campo === 'anioDesde' || campo === 'anioHasta'
+      ? (limpio === '' ? null : Number(limpio))
+      : limpio;
+
+    // Un modelo de otra marca no tiene sentido: al cambiar la marca se
+    // conserva solo si también existe en la nueva.
+    const modeloSigue = (fila: FilaCompatibilidad) =>
+      !fila.modelo ||
+      modelosSugeridos(this.registrados(), limpio).some(
+        (m) => m.toLowerCase() === fila.modelo.trim().toLowerCase(),
+      );
+
+    this.filasCompat.update((filas) =>
+      filas.map((f, i) => {
+        if (i !== indice) return f;
+        const nueva = { ...f, [campo]: dato };
+        return campo === 'marca' && !modeloSigue(f) ? { ...nueva, modelo: '' } : nueva;
+      }),
+    );
+    this.errorCompat.set('');
+  }
+
+  protected aplicarSugerencia(indice: number, aviso: AvisoCatalogo): void {
+    this.actualizarFilaCompat(indice, aviso.campo, aviso.sugerido);
+  }
+
+  /**
+   * Arma la compatibilidad a enviar y la valida con las mismas reglas que el
+   * backend, para avisar antes de guardar. Devuelve null si hay un error.
+   */
+  private compatibilidadParaEnviar(): CompatibilidadRepuesto[] | null {
+    if (this.tipoAplicacion() === TipoAplicacionRepuesto.Universal) return [];
+
+    const filas = this.filasCompat().filter(
+      (f) => f.marca.trim() || f.modelo.trim() || f.anioDesde !== null || f.anioHasta !== null,
+    );
+
+    if (filas.length === 0) {
+      this.errorCompat.set('Agregue al menos un vehículo compatible, o marque el repuesto como Universal.');
+      return null;
+    }
+
+    for (const f of filas) {
+      if (!f.marca.trim()) {
+        this.errorCompat.set('Cada vehículo compatible debe indicar la marca.');
+        return null;
+      }
+      for (const anio of [f.anioDesde, f.anioHasta]) {
+        if (anio !== null && (!Number.isInteger(anio) || anio < 1950 || anio > this.anioMaximo)) {
+          this.errorCompat.set(`Los años deben estar entre 1950 y ${this.anioMaximo}.`);
+          return null;
+        }
+      }
+      if (f.anioDesde !== null && f.anioHasta !== null && f.anioDesde > f.anioHasta) {
+        this.errorCompat.set(`En ${f.marca} ${f.modelo}: el año «desde» es mayor que «hasta».`);
+        return null;
+      }
+    }
+
+    return filas.map((f) => ({
+      marca: f.marca.trim(),
+      modelo: f.modelo.trim() || null,
+      anioDesde: f.anioDesde,
+      anioHasta: f.anioHasta,
+    }));
   }
 
   protected limpiarFiltroProveedor(): void {
@@ -257,6 +461,9 @@ export class Repuestos {
     this.previsualizacionFoto.set(null);
     this.precioCompraActual.set(0);
     this.precioVentaActual.set(0);
+    this.tipoAplicacion.set(TipoAplicacionRepuesto.Universal);
+    this.filasCompat.set([]);
+    this.errorCompat.set('');
   }
 
   protected abrirNuevo(): void {
@@ -287,6 +494,16 @@ export class Repuestos {
     this.previsualizacionFoto.set(repuesto.fotoUrl ? this.urlArchivo(repuesto.fotoUrl) : null);
     this.precioCompraActual.set(repuesto.precioCompra ?? 0);
     this.precioVentaActual.set(repuesto.precioVenta ?? 0);
+    this.tipoAplicacion.set(repuesto.tipoAplicacion ?? TipoAplicacionRepuesto.Universal);
+    this.filasCompat.set(
+      (repuesto.compatibilidades ?? []).map((c) => ({
+        marca: c.marca,
+        modelo: c.modelo ?? '',
+        anioDesde: c.anioDesde ?? null,
+        anioHasta: c.anioHasta ?? null,
+      })),
+    );
+    this.errorCompat.set('');
     this.formularioAbierto.set(true);
   }
 
@@ -340,7 +557,9 @@ export class Repuestos {
   }
 
   protected guardar(): void {
-    if (this.formulario.invalid) {
+    const compatibilidades = this.compatibilidadParaEnviar();
+
+    if (this.formulario.invalid || compatibilidades === null) {
       this.crearOtro = false;
       this.formulario.markAllAsTouched();
       return;
@@ -349,6 +568,7 @@ export class Repuestos {
     this.guardando.set(true);
     const datos = this.formulario.getRawValue();
     const enEdicion = this.editando();
+    const tipoAplicacion = this.tipoAplicacion();
 
     const peticion = enEdicion
       ? this.servicio.actualizar(enEdicion.repuestoId, {
@@ -358,8 +578,15 @@ export class Repuestos {
           precioCompra: datos.precioCompra,
           precioVenta: datos.precioVenta,
           proveedorId: datos.proveedorId || null,
+          tipoAplicacion,
+          compatibilidades,
         })
-      : this.servicio.crear({ ...datos, proveedorId: datos.proveedorId || null });
+      : this.servicio.crear({
+          ...datos,
+          proveedorId: datos.proveedorId || null,
+          tipoAplicacion,
+          compatibilidades,
+        });
 
     peticion.subscribe({
       next: (repuesto) => {

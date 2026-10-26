@@ -15,17 +15,16 @@ public class ClienteRepository(AppDbContext context)
     {
         var query = Set.AsNoTracking();
 
-        if (!string.IsNullOrWhiteSpace(buscar))
-        {
-            var termino = $"%{buscar.Trim()}%";
-            query = query.Where(c =>
-                EF.Functions.ILike(c.Nombre, termino) ||
-                EF.Functions.ILike(c.Apellido ?? "", termino) ||
-                EF.Functions.ILike(c.RazonSocial ?? "", termino) ||
-                EF.Functions.ILike(c.CiNit, termino));
-        }
+        query = query.BuscarPorPalabras(buscar,
+            c => c.ClienteId, c => c.Nombre, c => c.Apellido, c => c.RazonSocial,
+            c => c.CiNit, c => c.Telefono);
 
-        return await query.OrderBy(c => c.ClienteId).ToPagedListAsync(pagina, tamanoPagina, ct);
+        // Los más recientes primero: el cliente recién registrado aparece arriba
+        // en la lista y en los selectores (propietario, venta…), no en la última
+        // página. El código desempata los registrados en el mismo instante.
+        return await query.OrderByDescending(c => c.FechaRegistro)
+                          .ThenByDescending(c => c.ClienteId)
+                          .ToPagedListAsync(pagina, tamanoPagina, ct);
     }
 
     public async Task<Dictionary<string, List<string>>> ObtenerPlacasPorClienteAsync(

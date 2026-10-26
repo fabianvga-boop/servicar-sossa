@@ -76,7 +76,7 @@ import { Component, input } from '@angular/core';
       font-size: 12.5px;
       font-weight: 800;
       letter-spacing: 0.03em;
-      color: var(--azul-600);
+      color: var(--azul-700);
       line-height: 1.15;
       text-align: center;
       white-space: nowrap;

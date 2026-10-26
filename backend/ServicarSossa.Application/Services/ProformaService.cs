@@ -91,7 +91,9 @@ public class ProformaService(
                 ? null
                 : dto.NitRazonSocial.Trim(),
             Total = total,
-            Estado = EstadoProforma.Emitida
+            Estado = EstadoProforma.Emitida,
+            // Lo que se entrega queda fijo, aunque la orden se corrija después.
+            Detalle = ArmadorComprobantes.CopiaDetalle(orden)
         };
 
         await proformas.AddAsync(proforma, ct);
@@ -123,6 +125,11 @@ public class ProformaService(
                 "No se puede anular la proforma: tiene pagos registrados. " +
                 "Revierta primero los pagos.");
 
+        // Emitida antes de guardar copias: se copia ahora, mientras la orden
+        // todavía coincide con lo que se entregó.
+        if (proforma.Detalle is null && await ordenes.GetDetalleAsync(proforma.OrdenId, ct) is { } orden)
+            proforma.Detalle = ArmadorComprobantes.CopiaDetalle(orden);
+
         proforma.Estado = EstadoProforma.Anulada;
 
         await auditor.RegistrarAsync(
@@ -136,10 +143,9 @@ public class ProformaService(
     }
 
     /// <summary>
-    /// Arma el comprobante en el momento leyendo la orden: no se guarda el PDF.
-    /// Es seguro porque una orden Finalizada o Cerrada ya no admite cambios en
-    /// sus servicios ni repuestos, así que el detalle impreso siempre coincide
-    /// con el total que quedó registrado en la proforma.
+    /// Arma el PDF en el momento (no se guarda el archivo) desde la copia del
+    /// detalle que se guardó al emitir: si la orden se corrige después, la
+    /// proforma —sobre todo una anulada— sigue mostrando lo que se entregó.
     /// </summary>
     public async Task<Result<ArchivoComprobanteDto>> GetPdfAsync(
         string id, CancellationToken ct = default)
@@ -155,7 +161,7 @@ public class ProformaService(
             return Result<ArchivoComprobanteDto>.Fail(
                 $"La orden {proforma.OrdenId} de la proforma ya no existe.");
 
-        var comprobante = ArmadorComprobantes.DesdeOrden(orden);
+        var comprobante = ArmadorComprobantes.DesdeProforma(proforma, orden);
 
         comprobante.Numero = proforma.ProformaId;
         comprobante.FechaEmision = proforma.FechaEmision;

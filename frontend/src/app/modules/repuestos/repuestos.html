@@ -1,4 +1,4 @@
-<div class="fila-entre envuelve mb-2">
+<div class="fila-entre envuelve mb-2 encabezado-pagina">
   <div>
     <h1>Repuestos</h1>
     <p class="texto-tenue texto-sm mb-0">Inventario del taller</p>
@@ -6,12 +6,14 @@
   <button
     *appSiRol="['Administrador']"
     type="button"
-    class="btn btn-primario"
+    class="btn btn-primario btn-nuevo"
     appAtajo="n"
     title="Atajo: tecla N"
     (click)="abrirNuevo()"
   >
-    + Nuevo repuesto
+    <span class="btn-nuevo-mas" aria-hidden="true">+</span>
+    Nuevo repuesto
+    <kbd class="btn-nuevo-atajo" aria-hidden="true">N</kbd>
   </button>
 </div>
 
@@ -21,7 +23,7 @@
       <input
         type="search"
         maxlength="100"
-        placeholder="Buscar repuesto…"
+        placeholder="Buscar repuesto o vehículo…"
         style="max-width: 280px"
         [value]="buscar()"
         (input)="onBuscar($any($event.target).value)"
@@ -35,6 +37,17 @@
         />
         Solo stock bajo
       </label>
+
+      <!-- Repuestos que sirven a un vehículo: universales y compatibles. -->
+      <div class="filtro-vehiculo">
+        <app-selector-busqueda
+          idCampo="filtroVehiculo"
+          marcador="Para el vehículo…"
+          [opciones]="opcionesVehiculo()"
+          [ngModel]="vehiculoFiltro()"
+          (ngModelChange)="filtrarPorVehiculo($event)"
+        />
+      </div>
 
       @if (proveedorFiltro()) {
         <span class="chip-filtro-proveedor">
@@ -55,7 +68,7 @@
   @if (cargando() || repuestos().length === 0) {
     <app-estado-tabla
       [cargando]="cargando()"
-      [hayFiltro]="buscar().length > 0 || soloStockBajo() || proveedorFiltro().length > 0"
+      [hayFiltro]="buscar().length > 0 || soloStockBajo() || proveedorFiltro().length > 0 || vehiculoFiltro().length > 0"
       titulo="Sin repuestos en inventario"
       descripcion="Registre los repuestos que maneja el taller."
     />
@@ -97,6 +110,15 @@
             <span class="codigo">{{ repuesto.repuestoId }}</span>
             <h3 class="repuesto-nombre">{{ repuesto.nombre }}</h3>
             <span class="texto-tenue texto-sm">{{ repuesto.nombreProveedor || 'Sin proveedor' }}</span>
+            <span
+              class="insignia-aplicacion"
+              [class.especifico]="repuesto.tipoAplicacion === TipoAplicacion.Especifico"
+              [title]="repuesto.tipoAplicacion === TipoAplicacion.Especifico
+                ? 'Compatible con: ' + repuesto.resumenCompatibilidad
+                : 'Sirve en cualquier vehículo'"
+            >
+              {{ repuesto.resumenCompatibilidad || 'Universal' }}
+            </span>
             <span class="repuesto-precio">{{ repuesto.precioVenta | bs }}</span>
           </div>
 
@@ -251,6 +273,116 @@
           [opciones]="opcionesProveedor()"
         />
       </div>
+
+      <!-- Compatibilidad por vehículo: Universal o Específico de ciertos autos. -->
+      <div class="campo">
+        <label>Aplicación <span class="obligatorio">*</span></label>
+        <div class="selector-aplicacion" role="radiogroup" aria-label="Aplicación del repuesto">
+          <button
+            type="button"
+            role="radio"
+            [attr.aria-checked]="tipoAplicacion() === TipoAplicacion.Universal"
+            [class.activo]="tipoAplicacion() === TipoAplicacion.Universal"
+            (click)="elegirTipoAplicacion(TipoAplicacion.Universal)"
+          >
+            <strong>Universal</strong>
+            <span>Sirve en cualquier vehículo: aceite, líquido de frenos, fusibles, refrigerante.</span>
+          </button>
+          <button
+            type="button"
+            role="radio"
+            [attr.aria-checked]="tipoAplicacion() === TipoAplicacion.Especifico"
+            [class.activo]="tipoAplicacion() === TipoAplicacion.Especifico"
+            (click)="elegirTipoAplicacion(TipoAplicacion.Especifico)"
+          >
+            <strong>Específico de modelo</strong>
+            <span>Solo calza en ciertos autos: filtros, pastillas, discos, bujías, amortiguadores.</span>
+          </button>
+        </div>
+      </div>
+
+      @if (tipoAplicacion() === TipoAplicacion.Especifico) {
+        <div class="campo">
+          <label>Vehículos compatibles <span class="obligatorio">*</span></label>
+
+          <div class="filas-compat">
+            <div class="fila-compat encabezado" aria-hidden="true">
+              <span>Marca</span><span>Modelo</span><span>Año desde</span><span>Año hasta</span><span></span>
+            </div>
+            @for (fila of filasCompat(); track $index; let i = $index) {
+              <div class="fila-compat">
+                <!-- Marca y modelo se eligen del catálogo (marcas frecuentes,
+                     vehículos registrados y plantillas); uno nuevo se agrega
+                     solo a propósito, con la opción "+" del final. -->
+                <app-selector-busqueda
+                  marcador="Elegir marca"
+                  permitirNuevo="marca nueva"
+                  [idCampo]="'compat-marca-' + i"
+                  [opciones]="opcionesMarca()"
+                  [ngModel]="fila.marca"
+                  [ngModelOptions]="{ standalone: true }"
+                  (ngModelChange)="actualizarFilaCompat(i, 'marca', $event)"
+                />
+                <app-selector-busqueda
+                  marcador="Todos los modelos"
+                  permitirNuevo="modelo nuevo"
+                  [idCampo]="'compat-modelo-' + i"
+                  [opciones]="opcionesModelo(fila.marca)"
+                  [ngModel]="fila.modelo"
+                  [ngModelOptions]="{ standalone: true }"
+                  (ngModelChange)="actualizarFilaCompat(i, 'modelo', $event)"
+                />
+                <input
+                  type="number"
+                  min="1950"
+                  [max]="anioMaximo"
+                  placeholder="—"
+                  aria-label="Año desde"
+                  [value]="fila.anioDesde ?? ''"
+                  (input)="actualizarFilaCompat(i, 'anioDesde', $any($event.target).value)"
+                />
+                <input
+                  type="number"
+                  min="1950"
+                  [max]="anioMaximo"
+                  placeholder="—"
+                  aria-label="Año hasta"
+                  [value]="fila.anioHasta ?? ''"
+                  (input)="actualizarFilaCompat(i, 'anioHasta', $any($event.target).value)"
+                />
+                <button
+                  type="button"
+                  class="btn-enlace texto-rojo"
+                  aria-label="Quitar este vehículo"
+                  title="Quitar"
+                  (click)="quitarFilaCompat(i)"
+                >
+                  ×
+                </button>
+              </div>
+              @if (avisosCatalogo()[i]; as aviso) {
+                <div class="aviso-catalogo">
+                  «{{ aviso.escrito }}» no está en el catálogo. ¿Quiso decir
+                  <button type="button" class="btn-enlace" (click)="aplicarSugerencia(i, aviso)">
+                    {{ aviso.sugerido }}</button>?
+                </div>
+              }
+            }
+          </div>
+
+          <button type="button" class="btn-enlace mt-1" (click)="agregarFilaCompat()">
+            + Agregar vehículo
+          </button>
+
+          @if (errorCompat()) {
+            <span class="campo-error">{{ errorCompat() }}</span>
+          } @else {
+            <span class="texto-tenue texto-sm">
+              Sin modelo: todos los modelos de la marca. Años vacíos: sin límite.
+            </span>
+          }
+        </div>
+      }
 
       <div class="campo">
         <label>Foto <span class="texto-tenue">(opcional)</span></label>

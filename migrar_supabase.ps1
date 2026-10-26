@@ -6,7 +6,7 @@
       1. Respaldo completo con pg_dump. Si falla, NO sigue.
       2. Inventario del esquema actual, para saber de donde partimos.
       3. Aplica las migraciones pendientes, una por una, deteniendose al primer error.
-      4. Verifica que queden las 28 tablas y que pagos apunte a proformas.
+      4. Verifica que queden las 29 tablas y que pagos apunte a proformas.
 
     NO aplica migracion_eliminar_proforma.sql A PROPOSITO: es un paso historico
     del 23/08 que hace DROP TABLE proformas. Correrlo hoy borraria la tabla de
@@ -62,7 +62,10 @@ $migraciones = @(
     'migracion_zonas_vehiculo.sql',
     'migracion_plantillas_vehiculo.sql',
     'migracion_siat_preparacion.sql',
-    'migracion_proformas_y_facturas.sql'
+    'migracion_proformas_y_facturas.sql',
+    'migracion_repuesto_compatibilidad.sql',
+    'migracion_reglas_orden.sql',
+    'migracion_detalle_proforma.sql'
 )
 
 function Consultar($sql) {
@@ -167,7 +170,7 @@ Write-Host "=== 5. Verificacion final ===" -ForegroundColor Cyan
 $esperadas = @('auditoria','clientes','comisiones','comisiones_config','compra_detalle','compras',
                'diagnosticos','facturas','orden_mecanicos','orden_repuestos','orden_servicios',
                'ordenes_trabajo','pagos','permisos','plantillas_vehiculo','proformas','proveedores',
-               'reportes_generados','repuestos','rol_permisos','roles','tipos_servicio','usuarios',
+               'reportes_generados','repuesto_compatibilidad','repuestos','rol_permisos','roles','tipos_servicio','usuarios',
                'vehiculo_fotos','vehiculo_zonas','vehiculos','venta_detalle','ventas')
 
 $final    = Consultar "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' ORDER BY 1;"
@@ -177,7 +180,7 @@ $nProf    = Consultar "SELECT count(*) FROM proformas;"
 $malCodif = Consultar "SELECT count(*) FROM proformas WHERE proforma_id NOT LIKE 'PRF-%';"
 
 $sobran = $final | Where-Object { $esperadas -notcontains $_ }
-Write-Host "    tablas presentes    : $($final.Count) de 28"
+Write-Host "    tablas presentes    : $($final.Count) de 29"
 if ($sobran) { Write-Host "    tablas inesperadas  : $($sobran -join ', ')" -ForegroundColor Yellow }
 Write-Host "    pagos.proforma_id   : $(if ($columna -eq '1') {'si'} else {'NO'})"
 Write-Host "    proformas           : $nProf filas, $malCodif sin prefijo PRF-"

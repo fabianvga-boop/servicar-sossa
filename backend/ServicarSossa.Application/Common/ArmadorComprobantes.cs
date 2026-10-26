@@ -1,3 +1,4 @@
+using System.Text.Json;
 using ServicarSossa.Application.DTOs.Comprobantes;
 using ServicarSossa.Application.DTOs.Facturacion;
 using ServicarSossa.Domain.Entities;
@@ -14,6 +15,22 @@ namespace ServicarSossa.Application.Common;
 /// </summary>
 internal static class ArmadorComprobantes
 {
+    /// <summary>
+    /// Detalle de la orden para guardar como copia en la proforma
+    /// (<see cref="Proforma.Detalle"/>): lo que el cliente recibe impreso.
+    /// </summary>
+    public static string CopiaDetalle(OrdenTrabajo orden)
+        => JsonSerializer.Serialize(DesdeOrden(orden));
+
+    /// <summary>
+    /// Comprobante de una proforma: de su copia si la tiene; si no (emitida
+    /// antes de guardar copias), de la orden, que en ese caso no cambió.
+    /// </summary>
+    public static ComprobanteDto DesdeProforma(Proforma proforma, OrdenTrabajo orden)
+        => proforma.Detalle is { } copia
+            ? JsonSerializer.Deserialize<ComprobanteDto>(copia) ?? DesdeOrden(orden)
+            : DesdeOrden(orden);
+
     public static ComprobanteDto DesdeOrden(OrdenTrabajo orden)
     {
         var cliente = orden.Cliente;

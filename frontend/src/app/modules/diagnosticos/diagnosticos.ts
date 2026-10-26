@@ -23,6 +23,7 @@ import { Modal } from '../../shared/components/modal';
 import { Paginador } from '../../shared/components/paginador';
 import { Placa } from '../../shared/components/placa';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
+import { detalleConNuevo } from '../../shared/recientes';
 import { Atajo } from '../../shared/directives/atajo';
 import { EnfocarError } from '../../shared/directives/enfocar-error';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
@@ -115,7 +116,7 @@ export class Diagnosticos {
     this.vehiculos().map((v) => ({
       valor: v.vehiculoId,
       etiqueta: `${v.placa} — ${v.marca} ${v.modelo}`,
-      detalle: v.nombreCliente,
+      detalle: detalleConNuevo(v.nombreCliente, v.fechaRegistro),
     })),
   );
 

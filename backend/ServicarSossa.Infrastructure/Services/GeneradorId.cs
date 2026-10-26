@@ -35,6 +35,15 @@ public class GeneradorId(AppDbContext context) : IGeneradorId
             .Where(c => c.StartsWith(prefijo + "-"))
             .ToListAsync(ct);
 
+        // También los agregados en esta misma operación y todavía sin guardar:
+        // sin esto, dos registros creados antes de un único SaveChanges (por
+        // ejemplo dos entradas de auditoría) recibían el mismo código.
+        codigos.AddRange(context.ChangeTracker.Entries<T>()
+            .Where(e => e.State == EntityState.Added)
+            .Select(e => e.Property(nombrePk).CurrentValue as string)
+            .OfType<string>()
+            .Where(c => c.StartsWith(prefijo + "-")));
+
         var maximo = codigos
             .Select(c => int.TryParse(c[(prefijo.Length + 1)..], out var n) ? n : 0)
             .DefaultIfEmpty(0)

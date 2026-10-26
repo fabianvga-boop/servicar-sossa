@@ -31,6 +31,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<OrdenServicio> OrdenServicios => Set<OrdenServicio>();
     public DbSet<Proveedor> Proveedores => Set<Proveedor>();
     public DbSet<Repuesto> Repuestos => Set<Repuesto>();
+    public DbSet<RepuestoCompatibilidad> RepuestoCompatibilidades => Set<RepuestoCompatibilidad>();
     public DbSet<Compra> Compras => Set<Compra>();
     public DbSet<CompraDetalle> CompraDetalles => Set<CompraDetalle>();
     public DbSet<OrdenRepuesto> OrdenRepuestos => Set<OrdenRepuesto>();
@@ -232,6 +233,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .HasConversion<string>().IsRequired();
             e.Property(x => x.CodigoSin).HasColumnName("codigo_sin").HasMaxLength(20);
             e.Property(x => x.UnidadMedidaSin).HasColumnName("unidad_medida_sin");
+            e.Property(x => x.RequiereRepuesto).HasColumnName("requiere_repuesto");
         });
 
         b.Entity<Diagnostico>(e =>
@@ -319,6 +321,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.MecanicoId).HasColumnName("mecanico_id").HasMaxLength(20).IsRequired();
             e.Property(x => x.Descripcion).HasColumnName("descripcion").HasMaxLength(255);
             e.Property(x => x.Precio).HasColumnName("precio").HasPrecision(10, 2);
+            e.Property(x => x.RequiereRepuesto).HasColumnName("requiere_repuesto");
             e.Property(x => x.Estado).HasColumnName("estado").HasMaxLength(20)
                 .HasConversion<string>().IsRequired();
             e.HasIndex(x => x.OrdenId).HasDatabaseName("idx_orden_servicios_orden");
@@ -364,8 +367,25 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.NombreArchivoFoto).HasColumnName("nombre_archivo_foto").HasMaxLength(255);
             e.Property(x => x.CodigoSin).HasColumnName("codigo_sin").HasMaxLength(20);
             e.Property(x => x.UnidadMedidaSin).HasColumnName("unidad_medida_sin");
+            e.Property(x => x.TipoAplicacion).HasColumnName("tipo_aplicacion").HasMaxLength(20)
+                .HasConversion<string>().IsRequired();
             e.HasOne(x => x.Proveedor).WithMany(p => p.Repuestos)
                 .HasForeignKey(x => x.ProveedorId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        b.Entity<RepuestoCompatibilidad>(e =>
+        {
+            e.ToTable("repuesto_compatibilidad");
+            e.HasKey(x => x.CompatibilidadId);
+            e.Property(x => x.CompatibilidadId).HasColumnName("compatibilidad_id").HasMaxLength(20);
+            e.Property(x => x.RepuestoId).HasColumnName("repuesto_id").HasMaxLength(20).IsRequired();
+            e.Property(x => x.Marca).HasColumnName("marca").HasMaxLength(50).IsRequired();
+            e.Property(x => x.Modelo).HasColumnName("modelo").HasMaxLength(50);
+            e.Property(x => x.AnioDesde).HasColumnName("anio_desde");
+            e.Property(x => x.AnioHasta).HasColumnName("anio_hasta");
+            e.HasIndex(x => x.RepuestoId).HasDatabaseName("idx_repuesto_compatibilidad_repuesto");
+            e.HasOne(x => x.Repuesto).WithMany(r => r.Compatibilidades)
+                .HasForeignKey(x => x.RepuestoId).OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<Compra>(e =>
@@ -409,6 +429,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.OrdenId).HasColumnName("orden_id").HasMaxLength(20).IsRequired();
             // repuesto_id es opcional: solo lo llevan los repuestos de inventario.
             e.Property(x => x.RepuestoId).HasColumnName("repuesto_id").HasMaxLength(20);
+            e.Property(x => x.OrdenServicioId).HasColumnName("orden_servicio_id").HasMaxLength(20);
             e.Property(x => x.Origen).HasColumnName("origen").HasMaxLength(20)
                 .HasConversion<string>().IsRequired();
             e.Property(x => x.Descripcion).HasColumnName("descripcion").HasMaxLength(150);
@@ -417,8 +438,14 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Subtotal).HasColumnName("subtotal").HasPrecision(12, 2)
                 .HasComputedColumnSql("cantidad * precio_unitario", stored: true);
             e.HasIndex(x => x.OrdenId).HasDatabaseName("idx_orden_repuestos_orden");
+            e.HasIndex(x => x.OrdenServicioId).HasDatabaseName("idx_orden_repuestos_servicio");
             e.HasOne(x => x.Orden).WithMany(o => o.Repuestos)
                 .HasForeignKey(x => x.OrdenId).OnDelete(DeleteBehavior.Cascade);
+            // Si se quita el servicio de la orden, el repuesto queda sin servicio
+            // asociado (no se borra): sigue siendo un consumo real de la orden.
+            e.HasOne(x => x.OrdenServicio).WithMany(s => s.Repuestos)
+                .HasForeignKey(x => x.OrdenServicioId).IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
             e.HasOne(x => x.Repuesto).WithMany(r => r.OrdenRepuestos)
                 .HasForeignKey(x => x.RepuestoId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
         });
@@ -477,6 +504,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Total).HasColumnName("total").HasPrecision(12, 2);
             e.Property(x => x.Estado).HasColumnName("estado").HasMaxLength(20)
                 .HasConversion<string>().IsRequired();
+            e.Property(x => x.Detalle).HasColumnName("detalle").HasColumnType("jsonb");
             e.HasIndex(x => x.OrdenId).HasDatabaseName("idx_proformas_orden");
             e.HasOne(x => x.Orden).WithMany(o => o.Proformas)
                 .HasForeignKey(x => x.OrdenId).OnDelete(DeleteBehavior.Restrict);

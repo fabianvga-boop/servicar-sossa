@@ -13,6 +13,12 @@ import {
 let contadorModal = 0;
 
 /**
+ * Modales abiertos a la vez (uno puede abrir otro encima, como una
+ * confirmación). La página de atrás se libera recién al cerrar el último.
+ */
+let modalesAbiertos = 0;
+
+/**
  * Diálogo modal genérico. El contenido y los botones se proyectan:
  *
  *   <app-modal titulo="Nuevo cliente" (cerrar)="..."> ... </app-modal>
@@ -24,7 +30,7 @@ let contadorModal = 0;
 @Component({
   selector: 'app-modal',
   template: `
-    <div class="fondo" (click)="cerrar.emit()">
+    <div class="fondo" (mousedown)="alPresionarFondo($event)" (click)="alSoltarEnFondo($event)">
       <!-- El clic dentro del panel no debe cerrar el modal -->
       <div
         #panel
@@ -171,9 +177,12 @@ let contadorModal = 0;
       color: var(--ink-soft);
     }
 
+    /* overscroll-behavior: al llegar al final del formulario, la rueda del
+       mouse no sigue desplazando la tabla de atrás. */
     .cuerpo {
       padding: 20px;
       overflow-y: auto;
+      overscroll-behavior: contain;
       flex: 1;
     }
 
@@ -206,12 +215,70 @@ export class Modal {
   /** Quién tenía el foco antes de abrir, para devolvérselo al cerrar. */
   private readonly origenFoco = document.activeElement as HTMLElement | null;
 
+  /** Si el botón del mouse se presionó sobre el fondo (y no dentro del panel). */
+  private presionEnFondo = false;
+
   constructor() {
     afterNextRender(() => this.enfocarPrimero());
+    bloquearScrollDePagina();
 
     // Al cerrarse, el foco vuelve al botón que abrió el modal; si no, queda
     // en el <body> y el siguiente Tab arranca desde el principio de la página.
-    inject(DestroyRef).onDestroy(() => this.origenFoco?.focus?.());
+    inject(DestroyRef).onDestroy(() => {
+      liberarScrollDePagina();
+      this.origenFoco?.focus?.();
+    });
+  }
+
+  protected alPresionarFondo(evento: MouseEvent): void {
+    this.presionEnFondo = evento.target === evento.currentTarget;
+  }
+
+  /**
+   * Clic en el fondo oscuro. Solo cuenta si empezó y terminó afuera: quien
+   * selecciona texto de un campo y suelta el botón fuera del panel no está
+   * pidiendo cerrar. Y si el diálogo tiene campos, un clic afuera no lo
+   * cierra nunca: perder lo cargado por un clic en falso es peor que tener
+   * que usar Cancelar o la ×. Los diálogos de solo lectura sí se cierran.
+   */
+  protected alSoltarEnFondo(evento: MouseEvent): void {
+    const desdeElFondo = this.presionEnFondo && evento.target === evento.currentTarget;
+    this.presionEnFondo = false;
+    if (!desdeElFondo) return;
+
+    if (this.tieneCampos()) {
+      this.sacudirPanel();
+      return;
+    }
+
+    this.cerrar.emit();
+  }
+
+  /**
+   * Sacudida breve para avisar que el formulario sigue abierto. Va por la
+   * Web Animations API y no por una clase CSS: al quitar la clase, el panel
+   * volvía a su animación de entrada y parecía que el formulario se recargaba.
+   */
+  private sacudirPanel(): void {
+    const panel = this.panel()?.nativeElement;
+    if (!panel || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    panel.animate(
+      [
+        { transform: 'translateX(0)' },
+        { transform: 'translateX(-5px)' },
+        { transform: 'translateX(5px)' },
+        { transform: 'translateX(-3px)' },
+        { transform: 'translateX(0)' },
+      ],
+      { duration: 280, easing: 'ease-in-out' },
+    );
+  }
+
+  private tieneCampos(): boolean {
+    return !!this.panel()?.nativeElement.querySelector(
+      '.cuerpo input:not([type="hidden"]), .cuerpo select, .cuerpo textarea',
+    );
   }
 
   /**
@@ -270,4 +337,23 @@ export class Modal {
 
     (campo ?? panel).focus();
   }
+}
+
+/**
+ * Mientras haya un modal abierto, la página de atrás no se desplaza: la rueda
+ * del mouse sobre el fondo oscuro movía la tabla tapada. Se compensa el ancho
+ * de la barra de desplazamiento para que el contenido no salte al ocultarla.
+ */
+function bloquearScrollDePagina(): void {
+  if (modalesAbiertos++ > 0) return;
+  const barra = window.innerWidth - document.documentElement.clientWidth;
+  document.documentElement.style.overflow = 'hidden';
+  if (barra > 0) document.body.style.paddingRight = `${barra}px`;
+}
+
+function liberarScrollDePagina(): void {
+  if (--modalesAbiertos > 0) return;
+  modalesAbiertos = 0;
+  document.documentElement.style.overflow = '';
+  document.body.style.paddingRight = '';
 }

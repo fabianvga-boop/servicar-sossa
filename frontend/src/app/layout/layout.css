@@ -375,7 +375,8 @@
 
   .cortina { display: block; }
 
-  .contenido { padding: 16px; }
+  /* Abajo queda lugar para el botón "Nuevo" flotante (ver .btn-nuevo). */
+  .contenido { padding: 16px 16px 88px; }
 
   .usuario-datos { display: none; }
 

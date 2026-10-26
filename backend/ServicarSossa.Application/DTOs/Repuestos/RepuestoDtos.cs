@@ -28,6 +28,12 @@ public class RepuestoRequestDto
 
     [RegularExpression(@"^PRO-\d{3,}$", ErrorMessage = "El proveedor debe tener el formato PRO-000.")]
     public string? ProveedorId { get; set; }
+
+    /// <summary>Universal (sirve en cualquier vehículo) o Específico (ver <see cref="Compatibilidades"/>).</summary>
+    public TipoAplicacionRepuesto TipoAplicacion { get; set; } = TipoAplicacionRepuesto.Universal;
+
+    /// <summary>Vehículos en los que calza. Obligatorio si es Específico; se ignora si es Universal.</summary>
+    public List<CompatibilidadRepuestoDto> Compatibilidades { get; set; } = [];
 }
 
 /// <summary>
@@ -54,6 +60,12 @@ public class RepuestoUpdateDto
 
     [RegularExpression(@"^PRO-\d{3,}$", ErrorMessage = "El proveedor debe tener el formato PRO-000.")]
     public string? ProveedorId { get; set; }
+
+    /// <summary>Universal (sirve en cualquier vehículo) o Específico (ver <see cref="Compatibilidades"/>).</summary>
+    public TipoAplicacionRepuesto TipoAplicacion { get; set; } = TipoAplicacionRepuesto.Universal;
+
+    /// <summary>Vehículos en los que calza. Obligatorio si es Específico; se ignora si es Universal.</summary>
+    public List<CompatibilidadRepuestoDto> Compatibilidades { get; set; } = [];
 }
 
 /// <summary>
@@ -98,6 +110,12 @@ public class RepuestoResponseDto
 
     /// <summary>Valor de reposición del inventario: lo que costaría volver a comprar el stock actual.</summary>
     public decimal ValorInventario => StockActual * PrecioCompra;
+
+    public TipoAplicacionRepuesto TipoAplicacion { get; set; }
+    public List<CompatibilidadRepuestoDto> Compatibilidades { get; set; } = [];
+
+    /// <summary>Resumen para listados: "Universal" o "Toyota Corolla 2015–2020 +1".</summary>
+    public string ResumenCompatibilidad { get; set; } = string.Empty;
 }
 
 /// <summary>
@@ -142,4 +160,40 @@ public class CompraRepuestoLineaDto
     public string NombreProveedor { get; set; } = string.Empty;
     public int Cantidad { get; set; }
     public decimal PrecioUnitario { get; set; }
+}
+
+/// <summary>
+/// Un vehículo en el que calza un repuesto Específico. Modelo vacío = todos los
+/// modelos de la marca; años vacíos = sin límite.
+/// </summary>
+public class CompatibilidadRepuestoDto
+{
+    /// <summary>Solo en respuestas (RCP-000).</summary>
+    public string? CompatibilidadId { get; set; }
+
+    [Required(ErrorMessage = "Indique la marca del vehículo compatible.")]
+    [MaxLength(50)]
+    public string Marca { get; set; } = string.Empty;
+
+    [MaxLength(50)]
+    public string? Modelo { get; set; }
+
+    public short? AnioDesde { get; set; }
+    public short? AnioHasta { get; set; }
+
+    /// <summary>Solo en respuestas: "Toyota Corolla 2015–2020".</summary>
+    public string? Descripcion { get; set; }
+}
+
+/// <summary>
+/// Un repuesto evaluado contra el vehículo de una orden: si es compatible,
+/// universal o no está indicado para ese vehículo, y por qué.
+/// </summary>
+public class RepuestoParaVehiculoDto
+{
+    public RepuestoResponseDto Repuesto { get; set; } = new();
+    public NivelCompatibilidad Nivel { get; set; }
+
+    /// <summary>Explicación breve: "Compatible: Toyota Rav4 2015–2020", "Año del vehículo no registrado"…</summary>
+    public string Motivo { get; set; } = string.Empty;
 }

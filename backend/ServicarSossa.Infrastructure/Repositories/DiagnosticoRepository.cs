@@ -63,14 +63,11 @@ public class DiagnosticoRepository(AppDbContext context)
         if (estado.HasValue)
             query = query.Where(d => d.Estado == estado.Value);
 
-        if (!string.IsNullOrWhiteSpace(buscar))
-        {
-            var termino = $"%{buscar.Trim()}%";
-            query = query.Where(d =>
-                EF.Functions.ILike(d.DescripcionFalla, termino) ||
-                (d.ObservacionesTecnicas != null && EF.Functions.ILike(d.ObservacionesTecnicas, termino)) ||
-                EF.Functions.ILike(d.Vehiculo.Placa, termino));
-        }
+        query = query.BuscarPorPalabras(buscar,
+            d => d.DiagnosticoId, d => d.DescripcionFalla, d => d.ObservacionesTecnicas,
+            d => d.Vehiculo.Placa, d => d.Vehiculo.Marca, d => d.Vehiculo.Modelo,
+            d => d.Vehiculo.Cliente.Nombre, d => d.Vehiculo.Cliente.Apellido,
+            d => d.Vehiculo.Cliente.RazonSocial);
 
         return query.OrderByDescending(d => d.Fecha);
     }

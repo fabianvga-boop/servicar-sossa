@@ -22,6 +22,8 @@ public class OrdenService(
     IRepository<Comision> comisiones,
     IRepository<OrdenServicio> ordenServicios,
     IRepository<OrdenRepuesto> ordenRepuestos,
+    IProformaRepository proformas,
+    IRepository<Factura> facturas,
     IGeneradorId generadorId,
     IUnitOfWork unitOfWork,
     IAuditor auditor) : IOrdenService
@@ -167,7 +169,7 @@ public class OrdenService(
     }
 
     public async Task<Result<OrdenDetalleResponseDto>> UpdateAsync(
-        string id, OrdenUpdateDto dto, CancellationToken ct = default)
+        string id, OrdenUpdateDto dto, string usuarioId, CancellationToken ct = default)
     {
         var orden = await ordenes.FirstOrDefaultAsync(o => o.OrdenId == id, ct);
 
@@ -183,18 +185,40 @@ public class OrdenService(
             ? null
             : dto.Observaciones.Trim();
 
+        await auditor.RegistrarAsync(
+            usuarioId, AccionAuditoria.Editar, "Orden", id,
+            $"Actualizó la fecha estimada y las observaciones de la orden {id}.", ct);
+
         await ordenes.SaveChangesAsync(ct);
 
         return await RecargarAsync(id, "Orden actualizada correctamente.", ct);
     }
 
     public async Task<Result<OrdenDetalleResponseDto>> CambiarEstadoAsync(
-        string id, CambiarEstadoOrdenDto dto, string usuarioId, CancellationToken ct = default)
+        string id, CambiarEstadoOrdenDto dto, string usuarioId, bool esAdministrador,
+        CancellationToken ct = default)
     {
         var orden = await ordenes.FirstOrDefaultAsync(o => o.OrdenId == id, ct);
 
         if (orden is null)
             return Result<OrdenDetalleResponseDto>.NoEncontrado($"No existe la orden {id}.");
+
+        // El Administrador asigna el mecánico e inicia el trabajo; el mecánico
+        // asignado lo finaliza. Cancelar y cerrar también son del Administrador:
+        // el cierre descuenta stock y calcula comisiones.
+        if (!esAdministrador)
+        {
+            if (dto.Estado is EstadoOrden.EnProceso)
+                return Result<OrdenDetalleResponseDto>.Fail(
+                    "Solo el Administrador puede iniciar el trabajo de una orden.");
+
+            if (dto.Estado is EstadoOrden.Cancelada or EstadoOrden.Cerrada)
+                return Result<OrdenDetalleResponseDto>.Fail(
+                    "Solo el Administrador puede cancelar o cerrar una orden.");
+
+            var acceso = await ValidarResponsableAsync(id, usuarioId, esAdministrador, ct);
+            if (acceso is not null) return acceso;
+        }
 
         if (orden.Estado == dto.Estado)
             return Result<OrdenDetalleResponseDto>.Fail($"La orden ya está {dto.Estado}.");
@@ -340,10 +364,119 @@ public class OrdenService(
             : Result<OrdenDetalleResponseDto>.Fail("No se pudo cerrar la orden.");
     }
 
+    // ================================================================= CORRECCIÓN
+
+    public async Task<Result<OrdenDetalleResponseDto>> CorregirAsync(
+        string ordenId, CorregirOrdenDto dto, string usuarioId, CancellationToken ct = default)
+    {
+        var orden = await ordenes.GetParaCierreAsync(ordenId, ct);
+
+        if (orden is null)
+            return Result<OrdenDetalleResponseDto>.NoEncontrado($"No existe la orden {ordenId}.");
+
+        if (orden.Estado is not (EstadoOrden.Finalizada or EstadoOrden.Cerrada))
+            return Result<OrdenDetalleResponseDto>.Fail(orden.Estado == EstadoOrden.EnProceso
+                ? "La orden está en proceso: sus servicios y repuestos ya se pueden editar."
+                : $"Una orden {orden.Estado} no se puede corregir.");
+
+        // Lo que ya salió del taller no se reescribe en silencio: una factura
+        // fiscal, pagos del cliente o una comisión ya pagada al mecánico.
+        var factura = await facturas.FirstOrDefaultAsync(
+            f => f.OrdenId == ordenId && f.Estado == EstadoFactura.Emitida, ct);
+
+        if (factura is not null)
+            return Result<OrdenDetalleResponseDto>.Conflicto(
+                $"La orden tiene la factura {factura.FacturaId} emitida: anúlela antes de corregir la orden.");
+
+        var proforma = await proformas.FirstOrDefaultAsync(
+            p => p.OrdenId == ordenId && p.Estado == EstadoProforma.Emitida, ct);
+
+        if (proforma is not null && await proformas.TienePagosAsync(proforma.ProformaId, ct))
+            return Result<OrdenDetalleResponseDto>.Conflicto(
+                $"La proforma {proforma.ProformaId} tiene pagos registrados: revierta primero los pagos " +
+                "en Pagos y vuelva a intentar.");
+
+        var comisionesOrden = (await comisiones.FindAsync(c => c.OrdenId == ordenId, ct)).ToList();
+        var pagada = comisionesOrden.FirstOrDefault(c => c.EstadoPago == EstadoPago.Pagado);
+
+        if (pagada is not null)
+            return Result<OrdenDetalleResponseDto>.Conflicto(
+                $"La comisión {pagada.ComisionId} de esta orden ya se le pagó al mecánico: " +
+                "por ahora una orden con comisión pagada no se puede corregir.");
+
+        // Las proformas emitidas antes de guardar copias del detalle se copian
+        // ahora, antes de que la orden cambie: así su PDF sigue mostrando lo
+        // que se le entregó al cliente.
+        var sinCopia = (await proformas.FindAsync(p => p.OrdenId == ordenId && p.Detalle == null, ct)).ToList();
+        if (sinCopia.Count > 0 && await ordenes.GetDetalleAsync(ordenId, ct) is { } detalleActual)
+        {
+            var copia = ArmadorComprobantes.CopiaDetalle(detalleActual);
+            foreach (var p in sinCopia)
+            {
+                if (proforma is not null && p.ProformaId == proforma.ProformaId)
+                    proforma.Detalle = copia;
+                else
+                {
+                    p.Detalle = copia;
+                    proformas.Update(p);
+                }
+            }
+        }
+
+        var estabaCerrada = orden.Estado == EstadoOrden.Cerrada;
+        var hechos = new List<string>();
+
+        var resultado = await unitOfWork.EjecutarEnTransaccionAsync(async token =>
+        {
+            // Deshacer el cierre: al volver a cerrar se descuenta el stock y se
+            // calculan las comisiones de nuevo, con los datos ya corregidos.
+            if (estabaCerrada)
+            {
+                var devueltas = 0;
+                foreach (var consumo in orden.Repuestos.Where(r => r.Origen == OrigenRepuesto.Inventario && r.RepuestoId is not null))
+                {
+                    var repuesto = await repuestos.GetByIdAsync(consumo.RepuestoId!, token);
+                    if (repuesto is null) continue;
+                    repuesto.StockActual += consumo.Cantidad;
+                    devueltas += consumo.Cantidad;
+                }
+                if (devueltas > 0) hechos.Add($"devolvió {devueltas} unidad(es) de repuesto al stock");
+
+                foreach (var comision in comisionesOrden) comisiones.Remove(comision);
+                if (comisionesOrden.Count > 0) hechos.Add($"quitó {comisionesOrden.Count} comisión(es) pendiente(s)");
+
+                orden.FechaCierre = null;
+            }
+
+            if (proforma is not null)
+            {
+                proforma.Estado = EstadoProforma.Anulada;
+                hechos.Add($"anuló la proforma {proforma.ProformaId}");
+                await auditor.RegistrarAsync(
+                    usuarioId, AccionAuditoria.Anular, "Proforma", proforma.ProformaId,
+                    $"Anuló la proforma {proforma.ProformaId} para corregir la orden {ordenId}.", token);
+            }
+
+            orden.Estado = EstadoOrden.EnProceso;
+
+            await auditor.RegistrarAsync(
+                usuarioId, AccionAuditoria.Excepcion, "Orden", ordenId,
+                $"Reabrió la orden {ordenId} ({(estabaCerrada ? "Cerrada" : "Finalizada")}) para corregirla" +
+                (hechos.Count > 0 ? $": {string.Join(", ", hechos)}" : "") + $". Motivo: {dto.Motivo.Trim()}", token);
+
+            await ordenes.SaveChangesAsync(token);
+            return true;
+        }, ct);
+
+        return resultado
+            ? await RecargarAsync(ordenId, "Orden reabierta para corregir.", ct)
+            : Result<OrdenDetalleResponseDto>.Fail("No se pudo reabrir la orden.");
+    }
+
     // ================================================================== MECÁNICOS
 
     public async Task<Result<OrdenDetalleResponseDto>> AsignarMecanicoAsync(
-        string ordenId, AsignarMecanicoDto dto, CancellationToken ct = default)
+        string ordenId, AsignarMecanicoDto dto, string usuarioId, CancellationToken ct = default)
     {
         var validacion = await ValidarOrdenEditableAsync(ordenId, ct);
         if (validacion is not null) return validacion;
@@ -363,11 +496,22 @@ public class OrdenService(
             return Result<OrdenDetalleResponseDto>.Fail(
                 $"{mecanico.Nombre} {mecanico.Apellido} está inactivo.");
 
-        var yaAsignado = await ordenes.GetMecanicoAsignadoAsync(ordenId, dto.MecanicoId, ct);
+        var asignados = await ordenes.GetMecanicosAsignadosAsync(ordenId, ct);
 
-        if (yaAsignado is not null)
+        if (asignados.Any(a => a.MecanicoId == dto.MecanicoId))
             return Result<OrdenDetalleResponseDto>.Conflicto(
                 "El mecánico ya está asignado a esta orden.");
+
+        // Regla del taller: una orden la trabaja un solo mecánico. Sumar otro es
+        // una excepción del Administrador y exige dejar escrito por qué.
+        var motivo = dto.MotivoExcepcion?.Trim();
+        var esExcepcion = asignados.Count > 0;
+
+        if (esExcepcion && string.IsNullOrEmpty(motivo))
+            return Result<OrdenDetalleResponseDto>.Conflicto(
+                $"La orden ya la trabaja {NombreDe(asignados[0].Mecanico)}. " +
+                "Una orden se trabaja con un solo mecánico: para sumar a otro, " +
+                "indique el motivo de la excepción.");
 
         // Aviso blando: no se bloquea trabajar dos vehículos, pero se advierte.
         var enOtraOrden = await ordenes.ExistsAsync(
@@ -382,17 +526,30 @@ public class OrdenService(
             FechaAsignacion = DateTime.UtcNow
         });
 
+        if (!esExcepcion)
+            await auditor.RegistrarAsync(
+                usuarioId, AccionAuditoria.Editar, "Orden", ordenId,
+                $"Asignó a {NombreDe(mecanico)} como mecánico de la orden {ordenId}.", ct);
+        else
+            await auditor.RegistrarAsync(
+                usuarioId, AccionAuditoria.Excepcion, "Orden", ordenId,
+                $"Asignó a {NombreDe(mecanico)} como mecánico adicional de la orden {ordenId} " +
+                $"(ya la trabajaba {string.Join(", ", asignados.Select(a => NombreDe(a.Mecanico)))}). " +
+                $"Motivo: {motivo}", ct);
+
         await ordenes.SaveChangesAsync(ct);
 
-        var mensaje = enOtraOrden
-            ? $"Mecánico asignado. Aviso: {mecanico.Nombre} ya está trabajando en otra orden activa."
-            : "Mecánico asignado correctamente.";
+        var mensaje = esExcepcion
+            ? "Mecánico asignado como excepción: quedó registrado en auditoría."
+            : enOtraOrden
+                ? $"Mecánico asignado. Aviso: {mecanico.Nombre} ya está trabajando en otra orden activa."
+                : "Mecánico asignado correctamente.";
 
         return await RecargarAsync(ordenId, mensaje, ct);
     }
 
     public async Task<Result<OrdenDetalleResponseDto>> QuitarMecanicoAsync(
-        string ordenId, string mecanicoId, CancellationToken ct = default)
+        string ordenId, string mecanicoId, string usuarioId, CancellationToken ct = default)
     {
         var validacion = await ValidarOrdenEditableAsync(ordenId, ct);
         if (validacion is not null) return validacion;
@@ -412,7 +569,14 @@ public class OrdenService(
                 "No se puede desasignar al mecánico: tiene servicios registrados en la orden. " +
                 "Quite primero esos servicios.");
 
+        var mecanico = await usuarios.GetByIdConRolAsync(mecanicoId, ct);
+
         ordenes.QuitarMecanico(asignacion);
+
+        await auditor.RegistrarAsync(
+            usuarioId, AccionAuditoria.Editar, "Orden", ordenId,
+            $"Quitó a {NombreDe(mecanico)} de la orden {ordenId}.", ct);
+
         await ordenes.SaveChangesAsync(ct);
 
         return await RecargarAsync(ordenId, "Mecánico desasignado correctamente.", ct);
@@ -421,18 +585,42 @@ public class OrdenService(
     // ================================================================== SERVICIOS
 
     public async Task<Result<OrdenDetalleResponseDto>> AgregarServicioAsync(
-        string ordenId, OrdenServicioRequestDto dto, CancellationToken ct = default)
+        string ordenId, OrdenServicioRequestDto dto, string usuarioId, bool esAdministrador,
+        CancellationToken ct = default)
     {
-        var validacion = await ValidarOrdenParaTrabajoAsync(ordenId, ct);
+        var validacion = await ValidarOrdenParaTrabajoAsync(ordenId, ct)
+            ?? await ValidarResponsableAsync(ordenId, usuarioId, esAdministrador, ct);
         if (validacion is not null) return validacion;
 
-        // El mecánico debe estar asignado: así la orden refleja quién trabajó en ella.
-        var asignado = await ordenes.GetMecanicoAsignadoAsync(ordenId, dto.MecanicoId, ct);
+        // El servicio lo ejecuta el mecánico de la orden. Solo hay que elegir
+        // cuando la orden tiene más de uno (excepción); si no, se toma el único.
+        var asignados = await ordenes.GetMecanicosAsignadosAsync(ordenId, ct);
+        string mecanicoId;
 
-        if (asignado is null)
-            return Result<OrdenDetalleResponseDto>.Fail(
-                $"El mecánico {dto.MecanicoId} no está asignado a esta orden. " +
-                "Asígnelo antes de registrarle servicios.");
+        if (!esAdministrador)
+        {
+            // El mecánico registra su propio trabajo, no el de otro.
+            mecanicoId = usuarioId;
+        }
+        else if (!string.IsNullOrWhiteSpace(dto.MecanicoId))
+        {
+            if (asignados.All(a => a.MecanicoId != dto.MecanicoId))
+                return Result<OrdenDetalleResponseDto>.Fail(
+                    $"El mecánico {dto.MecanicoId} no está asignado a esta orden. " +
+                    "Asígnelo antes de registrarle servicios.");
+
+            mecanicoId = dto.MecanicoId;
+        }
+        else if (asignados.Count == 1)
+        {
+            mecanicoId = asignados[0].MecanicoId;
+        }
+        else
+        {
+            return Result<OrdenDetalleResponseDto>.Fail(asignados.Count == 0
+                ? "Asigne primero el mecánico de la orden: el servicio debe tener un responsable."
+                : "La orden tiene más de un mecánico: indique quién ejecuta el servicio.");
+        }
 
         if (!string.IsNullOrWhiteSpace(dto.DiagnosticoId)
             && !await diagnosticos.ExistsAsync(d => d.DiagnosticoId == dto.DiagnosticoId, ct))
@@ -444,10 +632,12 @@ public class OrdenService(
             OrdenServicioId = await generadorId.SiguienteAsync<OrdenServicio>("OSR", ct),
             OrdenId = ordenId,
             DiagnosticoId = string.IsNullOrWhiteSpace(dto.DiagnosticoId) ? null : dto.DiagnosticoId,
-            MecanicoId = dto.MecanicoId,
+            MecanicoId = mecanicoId,
             Descripcion = string.IsNullOrWhiteSpace(dto.Descripcion) ? null : dto.Descripcion.Trim(),
             Estado = EstadoServicioOrden.Pendiente
         };
+
+        string nombreServicio;
 
         if (!string.IsNullOrWhiteSpace(dto.ServicioId))
         {
@@ -463,26 +653,43 @@ public class OrdenService(
 
             servicio.ServicioId = tipoServicio.ServicioId;
             // Congela el precio: si el catálogo cambia después, la orden no se altera.
-            servicio.Precio = dto.Precio ?? tipoServicio.PrecioBase;
+            // Solo el Administrador lo ajusta; el mecánico cobra el del catálogo
+            // (su comisión se calcula sobre este monto).
+            servicio.Precio = esAdministrador
+                ? dto.Precio ?? tipoServicio.PrecioBase
+                : tipoServicio.PrecioBase;
+            // Igual con la regla del repuesto: la decide el catálogo, no la orden.
+            servicio.RequiereRepuesto = tipoServicio.RequiereRepuesto;
+            nombreServicio = tipoServicio.Nombre;
         }
         else
         {
             // Servicio fuera de catálogo: nombre y precio se registran sueltos.
             servicio.NombreLibre = dto.NombreLibre!.Trim();
             servicio.Precio = dto.Precio!.Value;
+            servicio.RequiereRepuesto = dto.RequiereRepuesto ?? false;
+            nombreServicio = servicio.NombreLibre;
         }
 
         await ordenes.AgregarServicioAsync(servicio, ct);
+
+        var responsable = asignados.FirstOrDefault(a => a.MecanicoId == mecanicoId)?.Mecanico;
+        await auditor.RegistrarAsync(
+            usuarioId, AccionAuditoria.Crear, "Orden", ordenId,
+            $"Agregó el servicio «{nombreServicio}» " +
+            $"(Bs {servicio.Precio:N2}) a la orden {ordenId}, a cargo de {NombreDe(responsable)}.", ct);
+
         await ordenes.SaveChangesAsync(ct);
 
         return await RecargarAsync(ordenId, "Servicio agregado a la orden.", ct);
     }
 
     public async Task<Result<OrdenDetalleResponseDto>> CambiarEstadoServicioAsync(
-        string ordenId, string ordenServicioId,
-        CambiarEstadoOrdenServicioDto dto, CancellationToken ct = default)
+        string ordenId, string ordenServicioId, CambiarEstadoOrdenServicioDto dto,
+        string usuarioId, bool esAdministrador, CancellationToken ct = default)
     {
-        var validacion = await ValidarAvanceServiciosAsync(ordenId, ct);
+        var validacion = await ValidarAvanceServiciosAsync(ordenId, ct)
+            ?? await ValidarResponsableAsync(ordenId, usuarioId, esAdministrador, ct);
         if (validacion is not null) return validacion;
 
         var servicio = await ordenes.GetServicioAsync(ordenServicioId, ct);
@@ -494,14 +701,59 @@ public class OrdenService(
         if (servicio.Estado == dto.Estado)
             return Result<OrdenDetalleResponseDto>.Fail($"El servicio ya está {dto.Estado}.");
 
+        // Un servicio a la vez: el mecánico no empieza (ni da por hecho) otro
+        // trabajo mientras tiene uno en proceso en esta misma orden.
+        var arranca = dto.Estado == EstadoServicioOrden.EnProceso
+            || (dto.Estado == EstadoServicioOrden.Completado && servicio.Estado == EstadoServicioOrden.Pendiente);
+
+        if (arranca)
+        {
+            var enCurso = await ordenes.GetServicioEnCursoAsync(
+                ordenId, servicio.MecanicoId, ordenServicioId, ct);
+
+            if (enCurso is not null)
+                return Result<OrdenDetalleResponseDto>.Conflicto(
+                    $"Primero termine «{NombreDe(enCurso)}», que está en proceso. " +
+                    $"Recién después puede {(dto.Estado == EstadoServicioOrden.EnProceso ? "iniciar" : "completar")} " +
+                    $"«{NombreDe(servicio)}»: un mecánico trabaja un servicio a la vez.");
+        }
+
+        // Sin el repuesto registrado, completar el servicio deja la orden
+        // inconsistente (un cambio de aceite sin aceite). Solo el Administrador
+        // puede hacerlo igual, escribiendo el motivo.
+        if (dto.Estado == EstadoServicioOrden.Completado && servicio.RequiereRepuesto
+            && !await ordenRepuestos.ExistsAsync(r => r.OrdenServicioId == ordenServicioId, ct))
+        {
+            var motivo = dto.MotivoSinRepuesto?.Trim();
+
+            if (string.IsNullOrEmpty(motivo))
+                return Result<OrdenDetalleResponseDto>.Conflicto(
+                    $"«{NombreDe(servicio)}» usa repuestos: registre en la orden el repuesto que se usó " +
+                    "(del inventario, traído por el cliente o comprado afuera) antes de completarlo.");
+
+            if (!esAdministrador)
+                return Result<OrdenDetalleResponseDto>.Fail(
+                    "Solo el Administrador puede completar un servicio sin registrar su repuesto.");
+
+            await auditor.RegistrarAsync(
+                usuarioId, AccionAuditoria.Excepcion, "Orden", ordenId,
+                $"Completó «{NombreDe(servicio)}» ({ordenServicioId}) sin registrar repuesto. " +
+                $"Motivo: {motivo}", ct);
+        }
+
+        await auditor.RegistrarAsync(
+            usuarioId, AccionAuditoria.CambiarEstado, "Orden", ordenId,
+            $"Marcó «{NombreDe(servicio)}» como {Etiqueta(dto.Estado)} en la orden {ordenId}.", ct);
+
         servicio.Estado = dto.Estado;
         await ordenes.SaveChangesAsync(ct);
 
         return await RecargarAsync(ordenId, $"Servicio marcado como {dto.Estado}.", ct);
     }
 
-    public async Task<Result<OrdenDetalleResponseDto>> QuitarServicioAsync(
-        string ordenId, string ordenServicioId, CancellationToken ct = default)
+    public async Task<Result<OrdenDetalleResponseDto>> EditarServicioAsync(
+        string ordenId, string ordenServicioId, EditarOrdenServicioDto dto, string usuarioId,
+        CancellationToken ct = default)
     {
         var validacion = await ValidarOrdenParaTrabajoAsync(ordenId, ct);
         if (validacion is not null) return validacion;
@@ -512,7 +764,42 @@ public class OrdenService(
             return Result<OrdenDetalleResponseDto>.NoEncontrado(
                 $"El servicio {ordenServicioId} no pertenece a la orden {ordenId}.");
 
+        var antes = servicio.Precio;
+        servicio.Precio = dto.Precio;
+        servicio.Descripcion = string.IsNullOrWhiteSpace(dto.Descripcion) ? null : dto.Descripcion.Trim();
+
+        await auditor.RegistrarAsync(
+            usuarioId, AccionAuditoria.Editar, "Orden", ordenId,
+            antes == dto.Precio
+                ? $"Editó el detalle de «{NombreDe(servicio)}» en la orden {ordenId}."
+                : $"Cambió el precio de «{NombreDe(servicio)}» de Bs {antes:N2} a Bs {dto.Precio:N2} en la orden {ordenId}.",
+            ct);
+
+        await ordenes.SaveChangesAsync(ct);
+
+        return await RecargarAsync(ordenId, "Servicio actualizado.", ct);
+    }
+
+    public async Task<Result<OrdenDetalleResponseDto>> QuitarServicioAsync(
+        string ordenId, string ordenServicioId, string usuarioId, bool esAdministrador,
+        CancellationToken ct = default)
+    {
+        var validacion = await ValidarOrdenParaTrabajoAsync(ordenId, ct)
+            ?? await ValidarResponsableAsync(ordenId, usuarioId, esAdministrador, ct);
+        if (validacion is not null) return validacion;
+
+        var servicio = await ordenes.GetServicioAsync(ordenServicioId, ct);
+
+        if (servicio is null || servicio.OrdenId != ordenId)
+            return Result<OrdenDetalleResponseDto>.NoEncontrado(
+                $"El servicio {ordenServicioId} no pertenece a la orden {ordenId}.");
+
         ordenes.QuitarServicio(servicio);
+
+        await auditor.RegistrarAsync(
+            usuarioId, AccionAuditoria.Eliminar, "Orden", ordenId,
+            $"Quitó el servicio «{NombreDe(servicio)}» (Bs {servicio.Precio:N2}) de la orden {ordenId}.", ct);
+
         await ordenes.SaveChangesAsync(ct);
 
         return await RecargarAsync(ordenId, "Servicio quitado de la orden.", ct);
@@ -521,15 +808,31 @@ public class OrdenService(
     // ================================================================== REPUESTOS
 
     public async Task<Result<OrdenDetalleResponseDto>> AgregarRepuestoAsync(
-        string ordenId, OrdenRepuestoRequestDto dto, CancellationToken ct = default)
+        string ordenId, OrdenRepuestoRequestDto dto, string usuarioId, bool esAdministrador,
+        CancellationToken ct = default)
     {
-        var validacion = await ValidarOrdenParaTrabajoAsync(ordenId, ct);
+        var validacion = await ValidarOrdenParaTrabajoAsync(ordenId, ct)
+            ?? await ValidarResponsableAsync(ordenId, usuarioId, esAdministrador, ct);
         if (validacion is not null) return validacion;
+
+        OrdenServicio? servicio = null;
+
+        if (!string.IsNullOrWhiteSpace(dto.OrdenServicioId))
+        {
+            servicio = await ordenes.GetServicioAsync(dto.OrdenServicioId, ct);
+
+            if (servicio is null || servicio.OrdenId != ordenId)
+                return Result<OrdenDetalleResponseDto>.Fail(
+                    $"El servicio {dto.OrdenServicioId} no pertenece a la orden {ordenId}.");
+        }
+
+        string nombreRepuesto;
 
         var linea = new OrdenRepuesto
         {
             OrdenRepuestoId = await generadorId.SiguienteAsync<OrdenRepuesto>("ORE", ct),
             OrdenId = ordenId,
+            OrdenServicioId = string.IsNullOrWhiteSpace(dto.OrdenServicioId) ? null : dto.OrdenServicioId,
             Origen = dto.Origen,
             Cantidad = dto.Cantidad
         };
@@ -548,8 +851,12 @@ public class OrdenService(
                     $"disponibles {repuesto.StockActual}, solicitados {dto.Cantidad}.");
 
             linea.RepuestoId = repuesto.RepuestoId;
-            // Congela el precio de venta vigente al momento del consumo.
-            linea.PrecioUnitario = dto.PrecioUnitario ?? repuesto.PrecioVenta;
+            // Congela el precio de venta vigente al momento del consumo. Solo el
+            // Administrador puede cobrar otro precio que el del inventario.
+            linea.PrecioUnitario = esAdministrador
+                ? dto.PrecioUnitario ?? repuesto.PrecioVenta
+                : repuesto.PrecioVenta;
+            nombreRepuesto = repuesto.Nombre;
         }
         else
         {
@@ -559,18 +866,27 @@ public class OrdenService(
             linea.PrecioUnitario = dto.Origen == OrigenRepuesto.ClienteTrae
                 ? 0m
                 : dto.PrecioUnitario ?? 0m;
+            nombreRepuesto = linea.Descripcion;
         }
 
         await ordenes.AgregarRepuestoAsync(linea, ct);
+
+        await auditor.RegistrarAsync(
+            usuarioId, AccionAuditoria.Crear, "Orden", ordenId,
+            $"Agregó {linea.Cantidad} × «{nombreRepuesto}» ({Etiqueta(linea.Origen)}) a la orden {ordenId}" +
+            (servicio is null ? "." : $" para «{NombreDe(servicio)}»."), ct);
+
         await ordenes.SaveChangesAsync(ct);
 
         return await RecargarAsync(ordenId, "Repuesto agregado a la orden.", ct);
     }
 
-    public async Task<Result<OrdenDetalleResponseDto>> QuitarRepuestoAsync(
-        string ordenId, string ordenRepuestoId, CancellationToken ct = default)
+    public async Task<Result<OrdenDetalleResponseDto>> EditarRepuestoAsync(
+        string ordenId, string ordenRepuestoId, EditarOrdenRepuestoDto dto, string usuarioId,
+        bool esAdministrador, CancellationToken ct = default)
     {
-        var validacion = await ValidarOrdenParaTrabajoAsync(ordenId, ct);
+        var validacion = await ValidarOrdenParaTrabajoAsync(ordenId, ct)
+            ?? await ValidarResponsableAsync(ordenId, usuarioId, esAdministrador, ct);
         if (validacion is not null) return validacion;
 
         var consumo = await ordenes.GetRepuestoAsync(ordenRepuestoId, ct);
@@ -579,14 +895,121 @@ public class OrdenService(
             return Result<OrdenDetalleResponseDto>.NoEncontrado(
                 $"El repuesto {ordenRepuestoId} no pertenece a la orden {ordenId}.");
 
+        var nombre = consumo.Descripcion;
+
+        if (consumo.Origen == OrigenRepuesto.Inventario && consumo.RepuestoId is not null)
+        {
+            var repuesto = await repuestos.GetByIdAsync(consumo.RepuestoId, ct);
+            nombre = repuesto?.Nombre ?? consumo.RepuestoId;
+
+            // Regla de negocio 3: el stock debe alcanzar para la cantidad nueva.
+            if (repuesto is not null && repuesto.StockActual < dto.Cantidad)
+                return Result<OrdenDetalleResponseDto>.Conflicto(
+                    $"Stock insuficiente de '{repuesto.Nombre}': " +
+                    $"disponibles {repuesto.StockActual}, solicitados {dto.Cantidad}.");
+        }
+
+        var cantidadAntes = consumo.Cantidad;
+        var precioAntes = consumo.PrecioUnitario;
+        consumo.Cantidad = dto.Cantidad;
+
+        // El precio lo corrige solo el Administrador; el que trae el cliente sigue sin cargo.
+        if (esAdministrador && dto.PrecioUnitario is not null && consumo.Origen != OrigenRepuesto.ClienteTrae)
+            consumo.PrecioUnitario = dto.PrecioUnitario.Value;
+
+        var cambios = new List<string>();
+        if (cantidadAntes != consumo.Cantidad) cambios.Add($"cantidad {cantidadAntes} → {consumo.Cantidad}");
+        if (precioAntes != consumo.PrecioUnitario) cambios.Add($"precio Bs {precioAntes:N2} → Bs {consumo.PrecioUnitario:N2}");
+
+        if (cambios.Count == 0)
+            return await RecargarAsync(ordenId, "Sin cambios.", ct);
+
+        await auditor.RegistrarAsync(
+            usuarioId, AccionAuditoria.Editar, "Orden", ordenId,
+            $"Corrigió «{nombre}» en la orden {ordenId}: {string.Join(", ", cambios)}.", ct);
+
+        await ordenes.SaveChangesAsync(ct);
+
+        return await RecargarAsync(ordenId, "Repuesto actualizado.", ct);
+    }
+
+    public async Task<Result<OrdenDetalleResponseDto>> QuitarRepuestoAsync(
+        string ordenId, string ordenRepuestoId, string usuarioId, bool esAdministrador,
+        CancellationToken ct = default)
+    {
+        var validacion = await ValidarOrdenParaTrabajoAsync(ordenId, ct)
+            ?? await ValidarResponsableAsync(ordenId, usuarioId, esAdministrador, ct);
+        if (validacion is not null) return validacion;
+
+        var consumo = await ordenes.GetRepuestoAsync(ordenRepuestoId, ct);
+
+        if (consumo is null || consumo.OrdenId != ordenId)
+            return Result<OrdenDetalleResponseDto>.NoEncontrado(
+                $"El repuesto {ordenRepuestoId} no pertenece a la orden {ordenId}.");
+
+        // Quitar el único repuesto de un servicio ya completado que lo requiere
+        // dejaría justo la inconsistencia que la regla evita.
+        if (consumo.OrdenServicioId is not null)
+        {
+            var servicio = await ordenes.GetServicioAsync(consumo.OrdenServicioId, ct);
+            var esElUnico = !await ordenRepuestos.ExistsAsync(
+                r => r.OrdenServicioId == consumo.OrdenServicioId
+                     && r.OrdenRepuestoId != consumo.OrdenRepuestoId, ct);
+
+            if (servicio is { RequiereRepuesto: true, Estado: EstadoServicioOrden.Completado } && esElUnico)
+                return Result<OrdenDetalleResponseDto>.Conflicto(
+                    $"Es el único repuesto registrado de «{NombreDe(servicio)}», que ya está completado. " +
+                    "Agregue primero el repuesto correcto y después quite este.");
+        }
+
+        var nombre = consumo.Descripcion
+            ?? (consumo.RepuestoId is null ? null : (await repuestos.GetByIdAsync(consumo.RepuestoId, ct))?.Nombre)
+            ?? ordenRepuestoId;
+
         // El stock aún no se descontó (eso ocurre al cerrar), así que no hay que devolverlo.
         ordenes.QuitarRepuesto(consumo);
+
+        await auditor.RegistrarAsync(
+            usuarioId, AccionAuditoria.Eliminar, "Orden", ordenId,
+            $"Quitó {consumo.Cantidad} × «{nombre}» de la orden {ordenId}.", ct);
+
         await ordenes.SaveChangesAsync(ct);
 
         return await RecargarAsync(ordenId, "Repuesto quitado de la orden.", ct);
     }
 
     // ==================================================================== APOYO
+
+    /// <summary>
+    /// El Administrador trabaja cualquier orden; el mecánico, solo las que tiene
+    /// asignadas. Devuelve null si puede, o el error a retornar.
+    /// </summary>
+    private async Task<Result<OrdenDetalleResponseDto>?> ValidarResponsableAsync(
+        string ordenId, string usuarioId, bool esAdministrador, CancellationToken ct)
+    {
+        if (esAdministrador) return null;
+
+        var asignado = await ordenes.GetMecanicoAsignadoAsync(ordenId, usuarioId, ct);
+
+        return asignado is null
+            ? Result<OrdenDetalleResponseDto>.Fail(
+                "Solo el mecánico asignado a esta orden o el Administrador pueden registrar cambios en ella.")
+            : null;
+    }
+
+    private static string Etiqueta(EstadoServicioOrden estado) => estado switch
+    {
+        EstadoServicioOrden.EnProceso => "En proceso",
+        EstadoServicioOrden.Completado => "Completado",
+        _ => "Pendiente"
+    };
+
+    private static string Etiqueta(OrigenRepuesto origen) => origen switch
+    {
+        OrigenRepuesto.ClienteTrae => "lo trajo el cliente",
+        OrigenRepuesto.CompraExterna => "compra externa",
+        _ => "del inventario"
+    };
 
     /// <summary>
     /// Devuelve null si la orden existe y admite cambios; si no, el error a retornar.
@@ -653,6 +1076,11 @@ public class OrdenService(
 
     private static OrdenResponseDto MapearResumen(OrdenTrabajo o) => Rellenar(new OrdenResponseDto(), o);
 
+    /// <summary>Del catálogo, su nombre de catálogo; suelto, su nombre libre.</summary>
+    private static string NombreDe(OrdenServicio s) => s.Servicio?.Nombre ?? s.NombreLibre ?? s.OrdenServicioId;
+
+    private static string NombreDe(Usuario? u) => u is null ? "otro mecánico" : $"{u.Nombre} {u.Apellido}".Trim();
+
     private static OrdenDetalleResponseDto MapearDetalle(OrdenTrabajo o)
     {
         var dto = Rellenar(new OrdenDetalleResponseDto(), o);
@@ -661,8 +1089,7 @@ public class OrdenService(
         {
             OrdenServicioId = s.OrdenServicioId,
             ServicioId = s.ServicioId,
-            // Del catálogo muestra el nombre del catálogo; suelto, su nombre libre.
-            NombreServicio = s.Servicio?.Nombre ?? s.NombreLibre ?? string.Empty,
+            NombreServicio = NombreDe(s),
             MecanicoId = s.MecanicoId,
             NombreMecanico = s.Mecanico is null
                 ? string.Empty
@@ -670,6 +1097,7 @@ public class OrdenService(
             DiagnosticoId = s.DiagnosticoId,
             Descripcion = s.Descripcion,
             Precio = s.Precio,
+            RequiereRepuesto = s.RequiereRepuesto,
             Estado = s.Estado
         })];
 
@@ -680,6 +1108,12 @@ public class OrdenService(
             Origen = r.Origen,
             // Inventario muestra el nombre del catálogo; los demás, su descripción libre.
             NombreRepuesto = r.Repuesto?.Nombre ?? r.Descripcion ?? string.Empty,
+            OrdenServicioId = r.OrdenServicioId,
+            NombreServicio = r.OrdenServicioId is null
+                ? null
+                : o.Servicios.FirstOrDefault(s => s.OrdenServicioId == r.OrdenServicioId) is { } servicio
+                    ? NombreDe(servicio)
+                    : null,
             Cantidad = r.Cantidad,
             PrecioUnitario = r.PrecioUnitario,
             Subtotal = r.Cantidad * r.PrecioUnitario

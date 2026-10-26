@@ -88,6 +88,22 @@ export enum TipoReporte {
   Ordenes = 3,
 }
 
+/**
+ * Para qué vehículos sirve un repuesto; debe coincidir con el backend.
+ * Universal: aceite, líquidos, fusibles. Específico: filtros, pastillas, bujías…
+ */
+export enum TipoAplicacionRepuesto {
+  Universal = 0,
+  Especifico = 1,
+}
+
+/** Qué tan adecuado es un repuesto para el vehículo de una orden. */
+export enum NivelCompatibilidad {
+  Compatible = 0,
+  Universal = 1,
+  NoIndicado = 2,
+}
+
 /** Motivo de un ajuste manual de stock; debe coincidir con el backend. */
 export enum TipoAjusteStock {
   ConteoFisico = 0,
@@ -110,6 +126,8 @@ export enum AccionAuditoria {
   Anular = 3,
   Ajustar = 4,
   CambiarEstado = 5,
+  /** Lo que una regla no permite y el Administrador hizo igual, con motivo. */
+  Excepcion = 6,
 }
 
 /** Etiquetas legibles para mostrar en pantalla. */
@@ -176,6 +194,7 @@ export const ETIQUETAS = {
     [AccionAuditoria.Anular]: 'Anuló',
     [AccionAuditoria.Ajustar]: 'Ajustó',
     [AccionAuditoria.CambiarEstado]: 'Cambió estado',
+    [AccionAuditoria.Excepcion]: 'Excepción',
   },
 } as const;
 

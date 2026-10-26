@@ -10,6 +10,7 @@ namespace ServicarSossa.Application.Services;
 /// <summary>USU026, USU027, USU030 — inventario de repuestos.</summary>
 public class RepuestoService(
     IRepuestoRepository repuestos,
+    IVehiculoRepository vehiculos,
     IProveedorRepository proveedores,
     ICompraRepository compras,
     IAuditoriaRepository auditoria,
@@ -29,15 +30,24 @@ public class RepuestoService(
     private const string SubcarpetaFotos = "repuestos";
     public async Task<Result<ResultadoPaginadoDto<RepuestoResponseDto>>> GetAllAsync(
         string? buscar, string? proveedorId, bool soloStockBajo,
-        int pagina, int tamanoPagina, CancellationToken ct = default)
+        int pagina, int tamanoPagina, CancellationToken ct = default, string? vehiculoId = null)
     {
+        Vehiculo? vehiculo = null;
+        if (!string.IsNullOrWhiteSpace(vehiculoId))
+        {
+            vehiculo = await vehiculos.FirstOrDefaultAsync(v => v.VehiculoId == vehiculoId, ct);
+            if (vehiculo is null)
+                return Result<ResultadoPaginadoDto<RepuestoResponseDto>>.NoEncontrado(
+                    $"No existe el vehículo {vehiculoId}.");
+        }
+
         if (!string.IsNullOrWhiteSpace(proveedorId)
             && !await proveedores.ExistsAsync(p => p.ProveedorId == proveedorId, ct))
             return Result<ResultadoPaginadoDto<RepuestoResponseDto>>.NoEncontrado(
                 $"No existe el proveedor {proveedorId}.");
 
         var (items, total) = await repuestos.BuscarAsync(
-            buscar, proveedorId, soloStockBajo, pagina, tamanoPagina, ct);
+            buscar, proveedorId, soloStockBajo, pagina, tamanoPagina, ct, vehiculo);
 
         return Result<ResultadoPaginadoDto<RepuestoResponseDto>>.Ok(
             new ResultadoPaginadoDto<RepuestoResponseDto>
@@ -71,6 +81,10 @@ public class RepuestoService(
         var error = await ValidarProveedorAsync(dto.ProveedorId, ct);
         if (error is not null) return error;
 
+        var (errorCompat, compatibilidades) = NormalizarCompatibilidad(dto.TipoAplicacion, dto.Compatibilidades);
+        if (errorCompat is not null) return Result<RepuestoResponseDto>.Fail(errorCompat);
+        await UnificarEscrituraAsync(compatibilidades, ct);
+
         var repuesto = new Repuesto
         {
             RepuestoId = await generadorId.SiguienteAsync<Repuesto>("REP", ct),
@@ -80,14 +94,16 @@ public class RepuestoService(
             StockMinimo = dto.StockMinimo,
             PrecioCompra = dto.PrecioCompra,
             PrecioVenta = dto.PrecioVenta,
-            ProveedorId = string.IsNullOrWhiteSpace(dto.ProveedorId) ? null : dto.ProveedorId
+            ProveedorId = string.IsNullOrWhiteSpace(dto.ProveedorId) ? null : dto.ProveedorId,
+            TipoAplicacion = dto.TipoAplicacion
         };
 
+        await AgregarCompatibilidadesAsync(repuesto, compatibilidades, ct);
         await repuestos.AddAsync(repuesto, ct);
 
         await auditor.RegistrarAsync(
             usuarioId, AccionAuditoria.Crear, "Repuesto", repuesto.RepuestoId,
-            $"Registró el repuesto '{repuesto.Nombre}'.", ct);
+            $"Registró el repuesto '{repuesto.Nombre}' ({Resumen(repuesto)}).", ct);
 
         await repuestos.SaveChangesAsync(ct);
 
@@ -98,7 +114,7 @@ public class RepuestoService(
     public async Task<Result<RepuestoResponseDto>> UpdateAsync(
         string id, RepuestoUpdateDto dto, string usuarioId, CancellationToken ct = default)
     {
-        var repuesto = await repuestos.FirstOrDefaultAsync(r => r.RepuestoId == id, ct);
+        var repuesto = await repuestos.GetParaEditarAsync(id, ct);
 
         if (repuesto is null)
             return Result<RepuestoResponseDto>.NoEncontrado($"No existe el repuesto {id}.");
@@ -113,16 +129,22 @@ public class RepuestoService(
         var error = await ValidarProveedorAsync(dto.ProveedorId, ct);
         if (error is not null) return error;
 
+        var (errorCompat, compatibilidades) = NormalizarCompatibilidad(dto.TipoAplicacion, dto.Compatibilidades);
+        if (errorCompat is not null) return Result<RepuestoResponseDto>.Fail(errorCompat);
+        await UnificarEscrituraAsync(compatibilidades, ct);
+
         repuesto.Nombre = nombre;
         repuesto.Descripcion = string.IsNullOrWhiteSpace(dto.Descripcion) ? null : dto.Descripcion.Trim();
         repuesto.StockMinimo = dto.StockMinimo;
         repuesto.PrecioCompra = dto.PrecioCompra;
         repuesto.PrecioVenta = dto.PrecioVenta;
         repuesto.ProveedorId = string.IsNullOrWhiteSpace(dto.ProveedorId) ? null : dto.ProveedorId;
+        repuesto.TipoAplicacion = dto.TipoAplicacion;
+        await ReemplazarCompatibilidadesAsync(repuesto, compatibilidades, ct);
 
         await auditor.RegistrarAsync(
             usuarioId, AccionAuditoria.Editar, "Repuesto", id,
-            $"Editó el repuesto '{repuesto.Nombre}'.", ct);
+            $"Editó el repuesto '{repuesto.Nombre}' ({Resumen(repuesto)}).", ct);
 
         await repuestos.SaveChangesAsync(ct);
 
@@ -284,6 +306,207 @@ public class RepuestoService(
         });
     }
 
+    // --- Compatibilidad por vehículo -----------------------------------------
+
+    /// <summary>Tope de filas por repuesto: más que eso es un error de carga.</summary>
+    private const int MaximoCompatibilidades = 30;
+
+    /// <summary>Primer año aceptado en un rango de compatibilidad.</summary>
+    private const short AnioMinimo = 1950;
+
+    /// <summary>
+    /// Todos los repuestos evaluados contra un vehículo: primero los
+    /// compatibles, después los universales y al final los que no están
+    /// indicados para él. Alimenta el selector de repuestos de la orden.
+    /// </summary>
+    public async Task<Result<List<RepuestoParaVehiculoDto>>> GetParaVehiculoAsync(
+        string vehiculoId, CancellationToken ct = default)
+    {
+        var vehiculo = await vehiculos.FirstOrDefaultAsync(v => v.VehiculoId == vehiculoId, ct);
+        if (vehiculo is null)
+            return Result<List<RepuestoParaVehiculoDto>>.NoEncontrado($"No existe el vehículo {vehiculoId}.");
+
+        // 500 es el tope de una página; un taller tiene bastantes menos repuestos.
+        var (items, _) = await repuestos.BuscarAsync(null, null, false, 1, 500, ct);
+
+        var nombreVehiculo = $"{vehiculo.Marca} {vehiculo.Modelo}".Trim();
+        var resultado = items
+            .Select(r => Clasificar(r, vehiculo, nombreVehiculo))
+            .OrderBy(x => x.Nivel)
+            .ThenBy(x => x.Repuesto.Nombre)
+            .ToList();
+
+        return Result<List<RepuestoParaVehiculoDto>>.Ok(resultado);
+    }
+
+    private RepuestoParaVehiculoDto Clasificar(Repuesto r, Vehiculo vehiculo, string nombreVehiculo)
+    {
+        if (r.TipoAplicacion == TipoAplicacionRepuesto.Universal)
+            return new RepuestoParaVehiculoDto
+            {
+                Repuesto = Mapear(r),
+                Nivel = NivelCompatibilidad.Universal,
+                Motivo = "Universal: sirve en cualquier vehículo"
+            };
+
+        var coincidencia = r.Compatibilidades.FirstOrDefault(
+            c => c.Admite(vehiculo.Marca, vehiculo.Modelo, vehiculo.Anio));
+
+        if (coincidencia is not null)
+        {
+            var sinAnio = vehiculo.Anio is null && (coincidencia.AnioDesde is not null || coincidencia.AnioHasta is not null)
+                ? " (el año del vehículo no está registrado)"
+                : string.Empty;
+            return new RepuestoParaVehiculoDto
+            {
+                Repuesto = Mapear(r),
+                Nivel = NivelCompatibilidad.Compatible,
+                Motivo = $"Compatible: {coincidencia.Descripcion()}{sinAnio}"
+            };
+        }
+
+        return new RepuestoParaVehiculoDto
+        {
+            Repuesto = Mapear(r),
+            Nivel = NivelCompatibilidad.NoIndicado,
+            Motivo = $"No indicado para {nombreVehiculo}: es para {Resumen(r)}"
+        };
+    }
+
+    /// <summary>
+    /// Valida y limpia la compatibilidad recibida. Un Universal no lleva filas;
+    /// un Específico necesita al menos una. Quita espacios y repetidos.
+    /// </summary>
+    private static (string? Error, List<RepuestoCompatibilidad> Filas) NormalizarCompatibilidad(
+        TipoAplicacionRepuesto tipo, List<CompatibilidadRepuestoDto>? recibidas)
+    {
+        if (tipo == TipoAplicacionRepuesto.Universal) return (null, []);
+
+        recibidas ??= [];
+        if (recibidas.Count == 0)
+            return ("Un repuesto específico necesita al menos un vehículo compatible (marca y, si corresponde, modelo y años).", []);
+        if (recibidas.Count > MaximoCompatibilidades)
+            return ($"Un repuesto admite como máximo {MaximoCompatibilidades} vehículos compatibles.", []);
+
+        var anioMaximo = (short)(DateTime.UtcNow.Year + 1);
+        var filas = new List<RepuestoCompatibilidad>();
+
+        foreach (var c in recibidas)
+        {
+            var marca = c.Marca?.Trim() ?? string.Empty;
+            var modelo = string.IsNullOrWhiteSpace(c.Modelo) ? null : c.Modelo.Trim();
+
+            if (marca.Length == 0)
+                return ("Cada vehículo compatible debe indicar la marca.", []);
+
+            var vehiculo = modelo is null ? marca : $"{marca} {modelo}";
+
+            foreach (var anio in new[] { c.AnioDesde, c.AnioHasta })
+                if (anio is not null && (anio < AnioMinimo || anio > anioMaximo))
+                    return ($"Los años deben estar entre {AnioMinimo} y {anioMaximo} ({vehiculo}).", []);
+
+            if (c.AnioDesde is not null && c.AnioHasta is not null && c.AnioDesde > c.AnioHasta)
+                return ($"En {vehiculo}, el año «desde» ({c.AnioDesde}) es mayor que «hasta» ({c.AnioHasta}).", []);
+
+            var fila = new RepuestoCompatibilidad
+            {
+                Marca = marca,
+                Modelo = modelo,
+                AnioDesde = c.AnioDesde,
+                AnioHasta = c.AnioHasta
+            };
+
+            if (!filas.Any(f => MismaFila(f, fila))) filas.Add(fila);
+        }
+
+        return (null, filas);
+    }
+
+    /// <summary>
+    /// Adopta la escritura de las marcas y modelos ya registrados en Vehículos:
+    /// " toyota " y "COROLLA" quedan como "Toyota" y "Corolla". Una marca o un
+    /// modelo nuevos se guardan tal como se escribieron (sin espacios extra).
+    /// </summary>
+    private async Task UnificarEscrituraAsync(List<RepuestoCompatibilidad> filas, CancellationToken ct)
+    {
+        if (filas.Count == 0) return;
+
+        var registrados = (await vehiculos.GetAllAsync(ct)).ToList();
+
+        foreach (var fila in filas)
+        {
+            var marca = registrados
+                .Select(v => v.Marca.Trim())
+                .FirstOrDefault(m => m.Equals(fila.Marca, StringComparison.OrdinalIgnoreCase));
+            if (marca is not null) fila.Marca = marca;
+
+            if (fila.Modelo is null) continue;
+            var modelo = registrados
+                .Where(v => v.Marca.Trim().Equals(fila.Marca, StringComparison.OrdinalIgnoreCase))
+                .Select(v => v.Modelo.Trim())
+                .FirstOrDefault(m => m.Equals(fila.Modelo, StringComparison.OrdinalIgnoreCase));
+            if (modelo is not null) fila.Modelo = modelo;
+        }
+    }
+
+    private async Task AgregarCompatibilidadesAsync(
+        Repuesto repuesto, List<RepuestoCompatibilidad> nuevas, CancellationToken ct)
+    {
+        if (nuevas.Count == 0) return;
+
+        // GeneradorId devuelve el mismo código mientras no se guarde: con
+        // varias filas a la vez, se numeran a partir del último existente.
+        var numero = await repuestos.UltimoNumeroCompatibilidadAsync(ct);
+        foreach (var fila in nuevas)
+        {
+            fila.CompatibilidadId = $"RCP-{++numero:D3}";
+            fila.RepuestoId = repuesto.RepuestoId;
+            repuesto.Compatibilidades.Add(fila);
+        }
+    }
+
+    /// <summary>
+    /// Deja la colección igual a <paramref name="deseadas"/>: conserva las filas
+    /// que no cambiaron (mantienen su código), borra las que ya no están y
+    /// agrega las nuevas.
+    /// </summary>
+    private async Task ReemplazarCompatibilidadesAsync(
+        Repuesto repuesto, List<RepuestoCompatibilidad> deseadas, CancellationToken ct)
+    {
+        foreach (var actual in repuesto.Compatibilidades.ToList())
+            if (!deseadas.Any(d => MismaFila(d, actual)))
+                repuesto.Compatibilidades.Remove(actual);
+
+        var nuevas = deseadas
+            .Where(d => !repuesto.Compatibilidades.Any(a => MismaFila(a, d)))
+            .ToList();
+
+        await AgregarCompatibilidadesAsync(repuesto, nuevas, ct);
+    }
+
+    private static bool MismaFila(RepuestoCompatibilidad a, RepuestoCompatibilidad b)
+        => string.Equals(a.Marca, b.Marca, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(a.Modelo ?? string.Empty, b.Modelo ?? string.Empty, StringComparison.OrdinalIgnoreCase)
+        && a.AnioDesde == b.AnioDesde
+        && a.AnioHasta == b.AnioHasta;
+
+    /// <summary>"Universal" o "Toyota Corolla 2015–2020 +1".</summary>
+    private static string Resumen(Repuesto r)
+    {
+        if (r.TipoAplicacion == TipoAplicacionRepuesto.Universal) return "Universal";
+
+        var filas = r.Compatibilidades
+            .OrderBy(c => c.Marca).ThenBy(c => c.Modelo).ThenBy(c => c.AnioDesde)
+            .ToList();
+
+        return filas.Count switch
+        {
+            0 => "Específico (sin vehículos cargados)",
+            1 => filas[0].Descripcion(),
+            _ => $"{filas[0].Descripcion()} +{filas.Count - 1}"
+        };
+    }
+
     private async Task<Result<RepuestoResponseDto>?> ValidarProveedorAsync(
         string? proveedorId, CancellationToken ct)
     {
@@ -307,6 +530,19 @@ public class RepuestoService(
         NombreProveedor = r.Proveedor?.Nombre,
         FotoUrl = r.NombreArchivoFoto is null
             ? null
-            : archivos.RutaPublica(SubcarpetaFotos, r.NombreArchivoFoto)
+            : archivos.RutaPublica(SubcarpetaFotos, r.NombreArchivoFoto),
+        TipoAplicacion = r.TipoAplicacion,
+        Compatibilidades = r.Compatibilidades
+            .OrderBy(c => c.Marca).ThenBy(c => c.Modelo).ThenBy(c => c.AnioDesde)
+            .Select(c => new CompatibilidadRepuestoDto
+            {
+                CompatibilidadId = c.CompatibilidadId,
+                Marca = c.Marca,
+                Modelo = c.Modelo,
+                AnioDesde = c.AnioDesde,
+                AnioHasta = c.AnioHasta,
+                Descripcion = c.Descripcion()
+            }).ToList(),
+        ResumenCompatibilidad = Resumen(r)
     };
 }

@@ -15,13 +15,8 @@ public class ProveedorRepository(AppDbContext context)
     {
         var query = Set.AsNoTracking();
 
-        if (!string.IsNullOrWhiteSpace(buscar))
-        {
-            var termino = $"%{buscar.Trim()}%";
-            query = query.Where(p =>
-                EF.Functions.ILike(p.Nombre, termino) ||
-                EF.Functions.ILike(p.Contacto ?? "", termino));
-        }
+        query = query.BuscarPorPalabras(buscar,
+            p => p.ProveedorId, p => p.Nombre, p => p.Contacto, p => p.Telefono);
 
         return await query.OrderBy(p => p.Nombre).ToPagedListAsync(pagina, tamanoPagina, ct);
     }

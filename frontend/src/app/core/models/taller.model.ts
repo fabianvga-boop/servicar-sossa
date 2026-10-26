@@ -14,6 +14,8 @@ export interface TipoServicio {
   nombre: string;
   descripcion?: string | null;
   precioBase: number;
+  /** Consume un repuesto: en la orden no se completa sin registrarlo. */
+  requiereRepuesto: boolean;
   estado: EstadoServicio;
 }
 
@@ -21,6 +23,7 @@ export interface TipoServicioRequest {
   nombre: string;
   descripcion?: string | null;
   precioBase: number;
+  requiereRepuesto: boolean;
 }
 
 // -------------------------------------------------------------- Diagnósticos
@@ -154,6 +157,8 @@ export interface OrdenServicio {
   diagnosticoId?: string | null;
   descripcion?: string | null;
   precio: number;
+  /** Para completarse necesita al menos un repuesto registrado para él. */
+  requiereRepuesto: boolean;
   estado: EstadoServicioOrden;
 }
 
@@ -163,6 +168,9 @@ export interface OrdenRepuesto {
   repuestoId?: string | null;
   origen: OrigenRepuesto;
   nombreRepuesto: string;
+  /** Servicio de la orden para el que se usó, si se indicó. */
+  ordenServicioId?: string | null;
+  nombreServicio?: string | null;
   cantidad: number;
   precioUnitario: number;
   subtotal: number;
@@ -184,11 +192,14 @@ export interface OrdenServicioRequest {
   servicioId?: string | null;
   /** Nombre libre del servicio cuando no está en el catálogo. */
   nombreLibre?: string | null;
-  mecanicoId: string;
+  /** Si se omite, el backend toma el mecánico de la orden. */
+  mecanicoId?: string | null;
   diagnosticoId?: string | null;
   descripcion?: string | null;
   /** Catálogo: opcional (usa el precio base). Fuera de catálogo: obligatorio. */
   precio?: number | null;
+  /** Solo fuera de catálogo: si el trabajo consume un repuesto. */
+  requiereRepuesto?: boolean | null;
 }
 
 export interface OrdenRepuestoRequest {
@@ -199,4 +210,6 @@ export interface OrdenRepuestoRequest {
   descripcion?: string | null;
   cantidad: number;
   precioUnitario?: number | null;
+  /** Servicio de la orden para el que se usó (opcional). */
+  ordenServicioId?: string | null;
 }

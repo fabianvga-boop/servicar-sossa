@@ -3,7 +3,7 @@
    un dato más de la fila. */
 .sin-vehiculos {
   font-size: 13px;
-  color: #9ca3af;
+  color: var(--gris-400);
 }
 
 /* ------------------------------------------------------- Fila de acciones

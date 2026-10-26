@@ -24,6 +24,14 @@ public class OrdenServicio
     public string MecanicoId { get; set; } = string.Empty;
     public string? Descripcion { get; set; }
     public decimal Precio { get; set; }
+
+    /// <summary>
+    /// Copia de <see cref="TipoServicio.RequiereRepuesto"/> al cargar el servicio
+    /// (o lo que indique el Administrador si es fuera de catálogo). Se congela
+    /// como el precio: si el catálogo cambia, la orden en curso no cambia sus reglas.
+    /// </summary>
+    public bool RequiereRepuesto { get; set; }
+
     public EstadoServicioOrden Estado { get; set; } = EstadoServicioOrden.Pendiente;
 
     // Navegación
@@ -33,4 +41,7 @@ public class OrdenServicio
     public TipoServicio? Servicio { get; set; }
     public Diagnostico? Diagnostico { get; set; }
     public Usuario Mecanico { get; set; } = null!;
+
+    /// <summary>Repuestos registrados para este servicio.</summary>
+    public ICollection<OrdenRepuesto> Repuestos { get; set; } = [];
 }

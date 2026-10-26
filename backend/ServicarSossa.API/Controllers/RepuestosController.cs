@@ -25,8 +25,21 @@ public class RepuestosController(IRepuestoService service) : ApiControllerBase
         [FromQuery] bool soloStockBajo = false,
         [FromQuery] int pagina = 1,
         [FromQuery] int tamanoPagina = 20,
+        [FromQuery] string? vehiculoId = null,
         CancellationToken ct = default)
-        => Responder(await service.GetAllAsync(buscar, proveedorId, soloStockBajo, pagina, tamanoPagina, ct));
+        => Responder(await service.GetAllAsync(
+            buscar, proveedorId, soloStockBajo, pagina, tamanoPagina, ct, vehiculoId));
+
+    /// <summary>
+    /// Repuestos evaluados contra un vehículo: primero los compatibles con su
+    /// marca, modelo y año, después los universales y al final los que no
+    /// están indicados para él. Lo usa la carga de repuestos de la orden.
+    /// </summary>
+    [HttpGet("para-vehiculo/{vehiculoId}")]
+    [ProducesResponseType(typeof(List<RepuestoParaVehiculoDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetParaVehiculo(string vehiculoId, CancellationToken ct)
+        => Responder(await service.GetParaVehiculoAsync(vehiculoId, ct));
 
     /// <summary>Obtiene un repuesto por su código (REP-000).</summary>
     [HttpGet("{id}")]

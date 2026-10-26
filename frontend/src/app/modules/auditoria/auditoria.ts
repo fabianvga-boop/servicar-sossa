@@ -131,6 +131,7 @@ export class Auditoria {
         return 'insignia-verde';
       case AccionAuditoria.Eliminar:
       case AccionAuditoria.Anular:
+      case AccionAuditoria.Excepcion:
         return 'insignia-roja';
       case AccionAuditoria.CambiarEstado:
         return 'insignia-naranja';

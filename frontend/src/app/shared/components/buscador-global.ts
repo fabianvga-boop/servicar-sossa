@@ -11,6 +11,8 @@ import { ClientesService } from '../../core/services/clientes.service';
 import { RepuestosService } from '../../core/services/inventario.service';
 import { OrdenesService } from '../../core/services/ordenes.service';
 import { VehiculosService } from '../../core/services/vehiculos.service';
+import { coincidePorPalabras, palabrasDeBusqueda } from '../busqueda';
+import { coincideRepuesto } from '../busqueda-repuestos';
 import { IconoMenu, NombreIconoMenu } from './icono-menu';
 
 interface Resultado {
@@ -23,14 +25,6 @@ interface Resultado {
   parametros?: Record<string, string>;
 }
 
-const DIACRITICOS = new RegExp(
-  `[${String.fromCharCode(0x0300)}-${String.fromCharCode(0x036f)}]`,
-  'g',
-);
-
-function normalizar(texto: string): string {
-  return texto.toLowerCase().normalize('NFD').replace(DIACRITICOS, '');
-}
 
 /**
  * Buscador global (Ctrl+K). Cruza órdenes, clientes, vehículos y repuestos en
@@ -265,17 +259,19 @@ export class BuscadorGlobal {
     ];
 
   protected readonly resultados = computed<Resultado[]>(() => {
-    const criterio = normalizar(this.consulta().trim());
-    if (!criterio) return [];
+    const consulta = this.consulta();
+    if (palabrasDeBusqueda(consulta).length === 0) return [];
 
+    // Cada palabra debe estar en algún campo: "Toyota Hilux" o "ORD-013 Mendoza".
     const coincide = (...campos: (string | null | undefined)[]) =>
-      campos.some((c) => c && normalizar(c).includes(criterio));
+      coincidePorPalabras(consulta, ...campos);
 
     const esAdmin = this.auth.esAdministrador();
     const salida: Resultado[] = [];
 
     for (const orden of this.ordenes()) {
-      if (!coincide(orden.ordenId, orden.placaVehiculo, orden.nombreCliente)) continue;
+      if (!coincide(orden.ordenId, orden.placaVehiculo, orden.nombreCliente, orden.descripcionVehiculo))
+        continue;
       salida.push({
         grupo: 'Órdenes',
         icono: 'ordenes',
@@ -317,12 +313,15 @@ export class BuscadorGlobal {
     }
 
     for (const repuesto of this.repuestos()) {
-      if (!coincide(repuesto.nombre, repuesto.descripcion)) continue;
+      // También por vehículo compatible: "Corolla" trae las piezas para ese modelo.
+      if (!coincideRepuesto(consulta, repuesto)) continue;
       salida.push({
         grupo: 'Repuestos',
         icono: 'repuestos',
         etiqueta: repuesto.nombre,
-        detalle: `stock ${repuesto.stockActual}`,
+        detalle: repuesto.resumenCompatibilidad && repuesto.resumenCompatibilidad !== 'Universal'
+          ? `${repuesto.resumenCompatibilidad} · stock ${repuesto.stockActual}`
+          : `stock ${repuesto.stockActual}`,
         ruta: '/repuestos',
         parametros: { buscar: repuesto.nombre },
       });

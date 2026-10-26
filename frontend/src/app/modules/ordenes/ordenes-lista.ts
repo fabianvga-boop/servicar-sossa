@@ -14,6 +14,7 @@ import { Modal } from '../../shared/components/modal';
 import { Placa } from '../../shared/components/placa';
 import { SiTieneRol } from '../../shared/directives/si-tiene-rol';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
+import { coincidePorPalabras } from '../../shared/busqueda';
 
 /** Una columna del tablero: un estado real de la orden y sus tarjetas. */
 interface Columna {
@@ -122,21 +123,20 @@ export class OrdenesLista {
 
   // --- Filtro (búsqueda + rango de fechas) ------------------------------------
 
-  /** Búsqueda por código, cliente o placa, más el rango de fechas. */
+  /**
+   * Búsqueda por palabras en código, cliente, placa y vehículo ("Corolla
+   * Vega"), más el rango de fechas.
+   */
   protected readonly filtradas = computed<Orden[]>(() => {
-    const texto = this.buscar().trim().toLowerCase();
+    const texto = this.buscar();
     const desde = this.desde();
     const hasta = this.hasta();
 
     return this.ordenes().filter((o) => {
-      if (texto) {
-        const coincide =
-          o.ordenId.toLowerCase().includes(texto) ||
-          o.nombreCliente.toLowerCase().includes(texto) ||
-          o.placaVehiculo.toLowerCase().includes(texto);
-
-        if (!coincide) return false;
-      }
+      if (
+        !coincidePorPalabras(texto, o.ordenId, o.nombreCliente, o.placaVehiculo, o.descripcionVehiculo)
+      )
+        return false;
 
       // Las fechas llegan en ISO: comparar los diez primeros caracteres evita
       // que el huso horario mueva una orden al día anterior.

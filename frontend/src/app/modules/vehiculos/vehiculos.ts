@@ -24,6 +24,7 @@ import { Modal } from '../../shared/components/modal';
 import { Paginador } from '../../shared/components/paginador';
 import { Placa } from '../../shared/components/placa';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
+import { detalleConNuevo } from '../../shared/recientes';
 import { Atajo } from '../../shared/directives/atajo';
 import { EnfocarError } from '../../shared/directives/enfocar-error';
 import { SiTieneRol } from '../../shared/directives/si-tiene-rol';
@@ -141,7 +142,8 @@ export class Vehiculos {
     this.clientes().map((c) => ({
       valor: c.clienteId,
       etiqueta: c.razonSocial?.trim() || `${c.nombre} ${c.apellido ?? ''}`.trim(),
-      detalle: c.ciNit,
+      // La lista ya viene con los más recientes primero; "Nuevo" lo hace evidente.
+      detalle: detalleConNuevo(c.ciNit, c.fechaRegistro),
     })),
   );
 
@@ -474,6 +476,8 @@ export class Vehiculos {
         );
         this.guardando.set(false);
         this.cerrarFormulario();
+        // El nuevo queda primero en la lista: volver a la página 1 para verlo.
+        if (!enEdicion) this.pagina.set(1);
         this.cargar();
       },
       error: () => this.guardando.set(false),

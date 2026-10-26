@@ -88,6 +88,7 @@ export class TiposServicio {
     nombre: ['', [Validators.required, Validators.maxLength(100)]],
     descripcion: ['', Validators.maxLength(255)],
     precioBase: [0, [Validators.required, Validators.min(0)]],
+    requiereRepuesto: [false],
   });
 
   constructor() {
@@ -160,7 +161,7 @@ export class TiposServicio {
 
   protected abrirNuevo(): void {
     this.editando.set(null);
-    this.formulario.reset({ nombre: '', descripcion: '', precioBase: 0 });
+    this.formulario.reset({ nombre: '', descripcion: '', precioBase: 0, requiereRepuesto: false });
     this.formularioAbierto.set(true);
   }
 
@@ -170,6 +171,7 @@ export class TiposServicio {
       nombre: servicio.nombre,
       descripcion: servicio.descripcion ?? '',
       precioBase: servicio.precioBase,
+      requiereRepuesto: servicio.requiereRepuesto,
     });
     this.formularioAbierto.set(true);
   }

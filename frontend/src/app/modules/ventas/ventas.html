@@ -46,8 +46,8 @@
           #campoBusqueda
           type="search"
           maxlength="100"
-          placeholder="Buscar por nombre o código (REP-012)…"
-          aria-label="Buscar producto por nombre o código"
+          placeholder="Buscar por nombre, código (REP-012) o vehículo…"
+          aria-label="Buscar producto por nombre, código o vehículo"
           [value]="buscarProducto()"
           (input)="buscarProducto.set($any($event.target).value); categoriaActiva.set('')"
           (keydown)="alTeclearBusqueda($event)"

@@ -1,4 +1,4 @@
-import { EstadoVenta, MetodoPago } from './enums';
+import { EstadoVenta, MetodoPago, NivelCompatibilidad, TipoAplicacionRepuesto } from './enums';
 
 // ------------------------------------------------------------- Proveedores
 
@@ -41,6 +41,24 @@ export interface Repuesto {
   /** Ganancia por unidad: precioVenta - precioCompra. */
   margen: number;
   valorInventario: number;
+  tipoAplicacion: TipoAplicacionRepuesto;
+  compatibilidades: CompatibilidadRepuesto[];
+  /** "Universal" o "Toyota Corolla 2015–2020 +1". */
+  resumenCompatibilidad: string;
+}
+
+/**
+ * Un vehículo en el que calza un repuesto específico. Modelo vacío = todos los
+ * modelos de la marca; años vacíos = sin límite.
+ */
+export interface CompatibilidadRepuesto {
+  compatibilidadId?: string | null;
+  marca: string;
+  modelo?: string | null;
+  anioDesde?: number | null;
+  anioHasta?: number | null;
+  /** Solo en respuestas: "Toyota Corolla 2015–2020". */
+  descripcion?: string | null;
 }
 
 export interface RepuestoRequest {
@@ -51,6 +69,16 @@ export interface RepuestoRequest {
   precioCompra: number;
   precioVenta: number;
   proveedorId?: string | null;
+  tipoAplicacion: TipoAplicacionRepuesto;
+  compatibilidades: CompatibilidadRepuesto[];
+}
+
+/** Un repuesto evaluado contra el vehículo de una orden. */
+export interface RepuestoParaVehiculo {
+  repuesto: Repuesto;
+  nivel: NivelCompatibilidad;
+  /** "Compatible: Toyota Rav4 2015–2020", "No indicado para…". */
+  motivo: string;
 }
 
 export type RepuestoUpdate = Omit<RepuestoRequest, 'stockActual'>;
