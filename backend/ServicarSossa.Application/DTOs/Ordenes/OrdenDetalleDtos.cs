@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using ServicarSossa.Application.DTOs.CategoriasRepuesto;
 using ServicarSossa.Domain.Enums;
 
 namespace ServicarSossa.Application.DTOs.Ordenes;
@@ -147,6 +148,13 @@ public class OrdenServicioResponseDto
     public string? Descripcion { get; set; }
     public decimal Precio { get; set; }
     public bool RequiereRepuesto { get; set; }
+
+    /// <summary>
+    /// Tipos de repuesto que lleva, tomados del catálogo. Vacío = acepta
+    /// cualquiera (servicio sin categorías o fuera de catálogo).
+    /// </summary>
+    public List<CategoriaResumenDto> Categorias { get; set; } = [];
+
     public EstadoServicioOrden Estado { get; set; }
 }
 
@@ -184,6 +192,13 @@ public class OrdenRepuestoRequestDto : IValidatableObject
     /// </summary>
     [Range(0, 99999999.99, ErrorMessage = "El precio unitario no puede ser negativo.")]
     public decimal? PrecioUnitario { get; set; }
+
+    /// <summary>
+    /// Excepción del Administrador: registrar para un servicio un repuesto de
+    /// otra categoría (aceite para "Cambio de bujías"). Queda en auditoría.
+    /// </summary>
+    [MaxLength(200, ErrorMessage = "El motivo no puede superar los 200 caracteres.")]
+    public string? MotivoCategoria { get; set; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {

@@ -6,6 +6,7 @@ import { AccionAuditoria, ETIQUETAS } from '../../core/models/enums';
 import { Auditoria as AuditoriaFila } from '../../core/models/auditoria.model';
 import { AuditoriaService } from '../../core/services/auditoria.service';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
+import { TextoResaltado } from '../../shared/components/texto-resaltado';
 import { Paginador } from '../../shared/components/paginador';
 
 const ENTIDADES = [
@@ -28,7 +29,7 @@ const ENTIDADES = [
 /** Bitácora de auditoría: quién hizo qué, cuándo, sobre qué registro. */
 @Component({
   selector: 'app-auditoria',
-  imports: [FormsModule, DatePipe, EstadoTabla, Paginador],
+  imports: [FormsModule, DatePipe, EstadoTabla, Paginador, TextoResaltado],
   templateUrl: './auditoria.html',
   styleUrl: './auditoria.css',
 })

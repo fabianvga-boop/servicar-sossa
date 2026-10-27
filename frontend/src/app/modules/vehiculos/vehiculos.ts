@@ -19,6 +19,7 @@ import { urlArchivo } from '../../core/services/api-base';
 import { VehiculosService } from '../../core/services/vehiculos.service';
 import { DiagramaVehiculo } from '../../shared/components/diagrama-vehiculo';
 import { Esqueleto } from '../../shared/components/esqueleto';
+import { ElegirFoto } from '../../shared/components/elegir-foto';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { Modal } from '../../shared/components/modal';
 import { Paginador } from '../../shared/components/paginador';
@@ -47,6 +48,7 @@ const CLAVE_BUSCAR = 'vehiculos.buscar';
     DatePipe,
     DecimalPipe,
     Modal,
+    ElegirFoto,
     EstadoTabla,
     Paginador,
     SelectorBusqueda,
@@ -347,17 +349,10 @@ export class Vehiculos {
     });
   }
 
-  protected onArchivoSeleccionado(evento: Event): void {
-    const input = evento.target as HTMLInputElement;
-    const archivo = input.files?.[0];
+  /** La foto llega ya validada y achicada por app-elegir-foto. */
+  protected onArchivoSeleccionado(archivo: File): void {
     const vehiculo = this.galeriaDe();
-    if (!archivo || !vehiculo) return;
-
-    if (archivo.size > 8 * 1024 * 1024) {
-      this.notificacion.advertencia('La foto no puede superar los 8 MB.');
-      input.value = '';
-      return;
-    }
+    if (!vehiculo) return;
 
     this.subiendoFoto.set(true);
 
@@ -365,12 +360,8 @@ export class Vehiculos {
       next: (foto) => {
         this.fotos.update((lista) => [foto, ...lista]);
         this.subiendoFoto.set(false);
-        input.value = '';
       },
-      error: () => {
-        this.subiendoFoto.set(false);
-        input.value = '';
-      },
+      error: () => this.subiendoFoto.set(false),
     });
   }
 

@@ -73,6 +73,16 @@
 
       <div class="crece"></div>
 
+      <button
+        type="button"
+        class="boton-atajos"
+        title="Atajos de teclado (tecla ?)"
+        aria-label="Atajos de teclado"
+        (click)="ayudaAtajos.set(true)"
+      >
+        ?
+      </button>
+
       <div class="usuario">
         <button type="button" class="usuario-btn" (click)="alternarMenuUsuario()">
           <!-- Foto de perfil si la subió; si no, sus iniciales sobre el rojo de marca -->
@@ -103,3 +113,5 @@
 </div>
 
 <app-buscador-global />
+<app-aviso-inactividad />
+<app-ayuda-atajos [abierta]="ayudaAtajos()" (cerrar)="ayudaAtajos.set(false)" />

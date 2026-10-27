@@ -76,25 +76,3 @@
   cursor: default;
 }
 
-.galeria-subir {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  aspect-ratio: 4 / 3;
-  border: 1.5px dashed var(--gris-200);
-  border-radius: var(--radio-sm);
-  color: var(--gris-500);
-  font-size: 13px;
-  text-align: center;
-  cursor: pointer;
-  padding: 8px;
-}
-
-.galeria-subir:hover {
-  border-color: var(--brand);
-  color: var(--brand-dk);
-}
-
-.galeria-subir input[type='file'] {
-  display: none;
-}

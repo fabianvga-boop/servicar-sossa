@@ -194,7 +194,7 @@ export class Pagos {
     if (this.nuevo.tipo === 'cuenta' && (monto <= 0 || monto >= proforma.saldoPendiente)) {
       this.notificacion.advertencia(
         monto >= proforma.saldoPendiente
-          ? 'Ese monto cubre todo el saldo: elija «Pago total».'
+          ? 'Ese monto cubre todo el saldo: elija “Pago total”.'
           : 'Indique cuánto paga el cliente a cuenta.',
       );
       return;

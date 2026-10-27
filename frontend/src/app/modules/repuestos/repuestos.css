@@ -281,37 +281,7 @@
   color: #14417f;
 }
 
-/* Dos opciones grandes en lugar de un <select>: se entiende sin leer ayuda. */
-.selector-aplicacion {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.selector-aplicacion button {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 10px 12px;
-  border: 1px solid var(--gris-200);
-  border-radius: var(--radio-sm);
-  background: var(--blanco);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 0.12s, background-color 0.12s;
-}
-
-.selector-aplicacion button span {
-  font-size: 12px;
-  color: var(--gris-500);
-}
-
-.selector-aplicacion button.activo {
-  border-color: var(--brand);
-  background: var(--brand-soft);
-}
-
+/* .selector-aplicacion (las dos tarjetas de Aplicación) vive en styles.css. */
 .filas-compat {
   display: flex;
   flex-direction: column;
@@ -355,3 +325,11 @@
     display: none;
   }
 }
+
+/* Repuesto sin categoría: se ve en la tarjeta para completarlo. */
+.sin-categoria {
+  color: var(--naranja-700);
+  font-style: italic;
+}
+
+.aviso-sin-categoria { color: var(--naranja-700); }

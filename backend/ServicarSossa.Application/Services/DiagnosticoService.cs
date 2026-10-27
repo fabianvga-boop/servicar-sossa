@@ -334,8 +334,12 @@ public class DiagnosticoService(
             await CalcularSugerenciasAsync(diagnostico.DescripcionFalla, diagnosticoId, ct));
     }
 
-    /// <summary>Umbral mínimo de similitud (Jaccard sobre palabras) para considerar dos fallas "parecidas".</summary>
-    private const double UmbralSimilitud = 0.15;
+    /// <summary>
+    /// Umbral mínimo de similitud (Jaccard sobre raíces de palabras) para considerar
+    /// dos fallas "parecidas". Con 0,15 bastaba compartir solo "ruido" para que
+    /// "Ruido en el motor" trajera los casos de suspensión.
+    /// </summary>
+    private const double UmbralSimilitud = 0.2;
     private const int MaximoCasosSimilares = 8;
 
     private async Task<SugerenciaDiagnosticoDto> CalcularSugerenciasAsync(
@@ -376,7 +380,11 @@ public class DiagnosticoService(
                     PrecioPromedio = Math.Round(g.Average(x => x.Servicio.Precio), 2)
                 };
             })
+            // A igual frecuencia, primero lo que nombra la parte de la falla:
+            // con "los frenos chillan", las pastillas antes que el cambio de aceite
+            // que se hizo de paso en esa misma orden.
             .OrderByDescending(s => s.Frecuencia)
+            .ThenByDescending(s => Relacion(s.Nombre, palabrasNuevas))
             .ThenBy(s => s.Nombre)
             .Take(6)
             .ToList();
@@ -397,6 +405,7 @@ public class DiagnosticoService(
                 };
             })
             .OrderByDescending(r => r.Frecuencia)
+            .ThenByDescending(r => Relacion(r.Nombre, palabrasNuevas))
             .ThenBy(r => r.Nombre)
             .Take(6)
             .ToList();
@@ -433,6 +442,13 @@ public class DiagnosticoService(
         "el", "la", "los", "las", "un", "una", "unos", "unas", "de", "del", "al",
         "a", "en", "y", "o", "que", "se", "no", "con", "sin", "por", "para",
         "es", "esta", "muy", "mas", "su", "sus", "le", "lo", "cuando",
+        // Palabras de taller que aparecen en casi cualquier falla y no dicen
+        // DÓNDE está el problema: "Problemas con la caja" no se parece a
+        // "Problemas con la gasolina" solo por decir "problemas".
+        "problema", "problemas", "falla", "fallas", "revisar", "revision",
+        "cambio", "cambiar", "necesita", "tiene", "hace", "presenta", "verifico",
+        "auto", "vehiculo", "carro", "coche", "movil", "cliente", "indica", "dice",
+        "mal", "raro", "parte", "prueba", "realizar", "arreglar", "reparar", "reparacion",
     };
 
     private static HashSet<string> Tokenizar(string texto)
@@ -442,12 +458,27 @@ public class DiagnosticoService(
             [' ', '\t', '\n', '\r', ',', '.', ';', ':', '!', '¡', '?', '¿', '(', ')', '"', '\''],
             StringSplitOptions.RemoveEmptyEntries);
 
-        return crudas.Where(p => p.Length > 2 && !PalabrasVacias.Contains(p)).ToHashSet();
+        return crudas
+            .Where(p => p.Length > 2 && !PalabrasVacias.Contains(p))
+            .Select(Raiz)
+            .ToHashSet();
     }
+
+    /// <summary>
+    /// Raíz aproximada: las primeras 4 letras. Así "frenos", "frenar" y
+    /// "frenado" cuentan como la misma palabra, y "válvula" con "valvulas".
+    /// Es tosco a propósito: sin diccionario, une las formas de una palabra
+    /// mucho más de lo que confunde palabras distintas.
+    /// </summary>
+    private static string Raiz(string palabra) => palabra.Length > 4 ? palabra[..4] : palabra;
 
     private static string QuitarAcentos(string texto) => texto
         .Replace('á', 'a').Replace('é', 'e').Replace('í', 'i').Replace('ó', 'o').Replace('ú', 'u')
         .Replace('ñ', 'n').Replace('ü', 'u');
+
+    /// <summary>Cuántas raíces de la falla aparecen en el nombre de un servicio o repuesto.</summary>
+    private static int Relacion(string nombre, HashSet<string> palabrasFalla)
+        => Tokenizar(nombre).Count(palabrasFalla.Contains);
 
     /// <summary>Similitud de Jaccard: |A ∩ B| / |A ∪ B|. Simple, determinística y fácil de explicar.</summary>
     private static double Similitud(HashSet<string> a, HashSet<string> b)

@@ -157,6 +157,26 @@
   outline-color: var(--brand);
 }
 
+/* Ayuda de atajos de teclado: un "?" redondo junto al buscador. */
+.boton-atajos {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border: 1px solid var(--gris-200);
+  border-radius: 50%;
+  background: var(--blanco);
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.boton-atajos:hover {
+  border-color: var(--gris-400);
+  color: var(--ink);
+}
+
 /* ------------------------------------------------------------ Principal */
 
 .principal {

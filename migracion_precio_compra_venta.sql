@@ -14,12 +14,20 @@ BEGIN
     END IF;
 END $$;
 
-ALTER TABLE repuestos
-    ADD COLUMN IF NOT EXISTS precio_compra DECIMAL(10,2) NOT NULL DEFAULT 0;
-
 -- Arranque razonable: el costo parte igual al precio de venta que ya tenían
--- cargado (ajustable luego desde el formulario de cada repuesto).
-UPDATE repuestos SET precio_compra = precio_venta WHERE precio_compra = 0;
+-- cargado (ajustable luego desde el formulario de cada repuesto). Solo al
+-- crear la columna: si el script se vuelve a correr, no debe pisar el costo
+-- de repuestos cargados después con precio de compra 0.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'repuestos' AND column_name = 'precio_compra'
+    ) THEN
+        ALTER TABLE repuestos ADD COLUMN precio_compra DECIMAL(10,2) NOT NULL DEFAULT 0;
+        UPDATE repuestos SET precio_compra = precio_venta;
+    END IF;
+END $$;
 
 ALTER TABLE repuestos
     ALTER COLUMN precio_venta SET NOT NULL,

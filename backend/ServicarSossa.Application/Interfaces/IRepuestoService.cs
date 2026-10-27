@@ -11,7 +11,8 @@ public interface IRepuestoService
     /// <param name="vehiculoId">Si se indica, solo los repuestos que sirven a ese vehículo.</param>
     Task<Result<ResultadoPaginadoDto<RepuestoResponseDto>>> GetAllAsync(
         string? buscar, string? proveedorId, bool soloStockBajo,
-        int pagina, int tamanoPagina, CancellationToken ct = default, string? vehiculoId = null);
+        int pagina, int tamanoPagina, CancellationToken ct = default, string? vehiculoId = null,
+        string? categoriaId = null);
 
     /// <summary>
     /// Todos los repuestos clasificados para un vehículo: compatibles,

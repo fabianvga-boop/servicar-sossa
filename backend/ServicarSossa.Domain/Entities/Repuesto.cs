@@ -45,8 +45,16 @@ public class Repuesto
     /// </summary>
     public TipoAplicacionRepuesto TipoAplicacion { get; set; } = TipoAplicacionRepuesto.Universal;
 
+    /// <summary>
+    /// Tipo de repuesto (opcional). Con él se controla que en la orden se use
+    /// para el servicio que corresponde: aceite para el cambio de aceite, no para
+    /// el de bujías.
+    /// </summary>
+    public string? CategoriaId { get; set; }
+
     // Navegación
     public Proveedor? Proveedor { get; set; }
+    public CategoriaRepuesto? Categoria { get; set; }
     public ICollection<RepuestoCompatibilidad> Compatibilidades { get; set; } = [];
     public ICollection<CompraDetalle> CompraDetalles { get; set; } = [];
     public ICollection<OrdenRepuesto> OrdenRepuestos { get; set; } = [];

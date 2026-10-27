@@ -24,6 +24,15 @@ import { Paginador } from '../../shared/components/paginador';
 import { Placa } from '../../shared/components/placa';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
 import { detalleConNuevo } from '../../shared/recientes';
+import { Borrador, borrarBorrador, guardarBorrador, leerBorrador } from '../../shared/borradores';
+
+/** Lo que se guarda como borrador de un diagnóstico a medio escribir. */
+interface DatosDiagnostico {
+  vehiculoId: string;
+  descripcionFalla: string;
+  observacionesTecnicas: string;
+  montoEstimado: number | null;
+}
 import { Atajo } from '../../shared/directives/atajo';
 import { EnfocarError } from '../../shared/directives/enfocar-error';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
@@ -105,6 +114,19 @@ export class Diagnosticos {
     montoEstimado: this.fb.control<number | null>(null),
   });
 
+  // --- Borrador: lo escrito no se pierde si la sesión se cierra -------------
+
+  /** Borrador encontrado al abrir el formulario, a la espera de recuperar o descartar. */
+  protected readonly borradorPendiente = signal<Borrador<DatosDiagnostico> | null>(null);
+
+  /** Borrador de un diagnóstico nuevo, para avisarlo en la pantalla al volver a entrar. */
+  protected readonly borradorEnPantalla = signal<Borrador<DatosDiagnostico> | null>(null);
+
+  private claveBorrador(): string {
+    const editando = this.editando();
+    return editando ? `diagnostico.${editando.diagnosticoId}` : 'diagnostico.nuevo';
+  }
+
   // --- Diagnóstico asistido: sugerencias mientras se redacta la falla --------
   protected readonly sugerencia = signal<SugerenciaDiagnostico | null>(null);
   protected readonly cargandoSugerencia = signal(false);
@@ -122,6 +144,19 @@ export class Diagnosticos {
 
   constructor() {
     this.estadoFiltro.set(this.preferencias.leer(CLAVE_FILTRO, ''));
+    this.borradorEnPantalla.set(leerBorrador(this.auth.usuarioId(), 'diagnostico.nuevo'));
+
+    // Mientras se escribe, lo cargado se guarda como borrador cada pocos
+    // segundos. Mientras se decide qué hacer con un borrador anterior no se
+    // guarda nada, para no pisarlo antes de que el usuario elija.
+    this.formulario.valueChanges.pipe(debounceTime(600)).subscribe(() => {
+      if (!this.formularioAbierto() || this.borradorPendiente()) return;
+
+      const datos = this.formulario.getRawValue();
+      if (!datos.descripcionFalla.trim() && !datos.observacionesTecnicas.trim()) return;
+
+      guardarBorrador<DatosDiagnostico>(this.auth.usuarioId(), this.claveBorrador(), datos);
+    });
 
     this.cargar();
     this.vehiculosService
@@ -290,6 +325,7 @@ export class Diagnosticos {
     this.formulario.reset();
     this.formulario.controls.vehiculoId.enable();
     this.sugerencia.set(null);
+    this.borradorPendiente.set(leerBorrador(this.auth.usuarioId(), this.claveBorrador()));
     this.formularioAbierto.set(true);
   }
 
@@ -305,10 +341,42 @@ export class Diagnosticos {
 
     // El vehículo no se reasigna: sería otro diagnóstico.
     this.formulario.controls.vehiculoId.disable();
+    this.borradorPendiente.set(leerBorrador(this.auth.usuarioId(), this.claveBorrador()));
     this.formularioAbierto.set(true);
   }
 
+  /** Vuelve a cargar en el formulario lo que había quedado escrito. */
+  protected recuperarBorrador(): void {
+    const borrador = this.borradorPendiente();
+    if (!borrador) return;
+
+    const { vehiculoId, ...resto } = borrador.datos;
+    this.formulario.patchValue(this.editando() ? resto : { vehiculoId, ...resto });
+    this.borradorPendiente.set(null);
+  }
+
+  protected descartarBorrador(): void {
+    borrarBorrador(this.auth.usuarioId(), this.claveBorrador());
+    this.borradorPendiente.set(null);
+    if (!this.editando()) this.borradorEnPantalla.set(null);
+  }
+
+  /** Desde el aviso de la pantalla: abre el formulario con el borrador ya cargado. */
+  protected continuarBorrador(): void {
+    this.abrirNuevo();
+    this.recuperarBorrador();
+  }
+
+  /**
+   * Cancelar a propósito descarta el borrador del formulario; guardar también
+   * (ya no hace falta). Si quedó un borrador anterior sin decidir, se conserva.
+   */
   protected cerrarFormulario(): void {
+    if (!this.borradorPendiente()) {
+      borrarBorrador(this.auth.usuarioId(), this.claveBorrador());
+      if (!this.editando()) this.borradorEnPantalla.set(null);
+    }
+    this.borradorPendiente.set(null);
     this.formularioAbierto.set(false);
     this.editando.set(null);
   }

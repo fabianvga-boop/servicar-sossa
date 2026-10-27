@@ -73,11 +73,12 @@ public class OrdenRepository(AppDbContext context)
                 && s.OrdenServicioId != excluirOrdenServicioId
                 && s.Estado == EstadoServicioOrden.EnProceso, ct);
 
-    // Con su tipo de servicio: los avisos de las reglas nombran el servicio.
+    // Con su tipo de servicio: los avisos de las reglas nombran el servicio y
+    // las categorías del catálogo deciden qué repuestos admite.
     public async Task<OrdenServicio?> GetServicioAsync(
         string ordenServicioId, CancellationToken ct = default)
         => await Context.OrdenServicios
-            .Include(s => s.Servicio)
+            .Include(s => s.Servicio).ThenInclude(t => t!.Categorias).ThenInclude(c => c.Categoria)
             .FirstOrDefaultAsync(s => s.OrdenServicioId == ordenServicioId, ct);
 
     public async Task<OrdenRepuesto?> GetRepuestoAsync(
@@ -112,6 +113,7 @@ public class OrdenRepository(AppDbContext context)
             .Include(o => o.Diagnostico)
             .Include(o => o.Mecanicos).ThenInclude(m => m.Mecanico)
             .Include(o => o.Servicios).ThenInclude(s => s.Servicio)
+                .ThenInclude(t => t!.Categorias).ThenInclude(c => c.Categoria)
             .Include(o => o.Servicios).ThenInclude(s => s.Mecanico)
             .Include(o => o.Repuestos).ThenInclude(r => r.Repuesto);
 }

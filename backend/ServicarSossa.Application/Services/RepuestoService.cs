@@ -12,6 +12,7 @@ public class RepuestoService(
     IRepuestoRepository repuestos,
     IVehiculoRepository vehiculos,
     IProveedorRepository proveedores,
+    ICategoriaRepuestoRepository categorias,
     ICompraRepository compras,
     IAuditoriaRepository auditoria,
     IAlmacenArchivos archivos,
@@ -30,7 +31,8 @@ public class RepuestoService(
     private const string SubcarpetaFotos = "repuestos";
     public async Task<Result<ResultadoPaginadoDto<RepuestoResponseDto>>> GetAllAsync(
         string? buscar, string? proveedorId, bool soloStockBajo,
-        int pagina, int tamanoPagina, CancellationToken ct = default, string? vehiculoId = null)
+        int pagina, int tamanoPagina, CancellationToken ct = default, string? vehiculoId = null,
+        string? categoriaId = null)
     {
         Vehiculo? vehiculo = null;
         if (!string.IsNullOrWhiteSpace(vehiculoId))
@@ -47,7 +49,7 @@ public class RepuestoService(
                 $"No existe el proveedor {proveedorId}.");
 
         var (items, total) = await repuestos.BuscarAsync(
-            buscar, proveedorId, soloStockBajo, pagina, tamanoPagina, ct, vehiculo);
+            buscar, proveedorId, soloStockBajo, pagina, tamanoPagina, ct, vehiculo, categoriaId);
 
         return Result<ResultadoPaginadoDto<RepuestoResponseDto>>.Ok(
             new ResultadoPaginadoDto<RepuestoResponseDto>
@@ -78,7 +80,8 @@ public class RepuestoService(
             return Result<RepuestoResponseDto>.Conflicto(
                 $"Ya existe un repuesto llamado '{nombre}'.");
 
-        var error = await ValidarProveedorAsync(dto.ProveedorId, ct);
+        var error = await ValidarProveedorAsync(dto.ProveedorId, ct)
+            ?? await ValidarCategoriaAsync(dto.CategoriaId, ct);
         if (error is not null) return error;
 
         var (errorCompat, compatibilidades) = NormalizarCompatibilidad(dto.TipoAplicacion, dto.Compatibilidades);
@@ -95,6 +98,7 @@ public class RepuestoService(
             PrecioCompra = dto.PrecioCompra,
             PrecioVenta = dto.PrecioVenta,
             ProveedorId = string.IsNullOrWhiteSpace(dto.ProveedorId) ? null : dto.ProveedorId,
+            CategoriaId = string.IsNullOrWhiteSpace(dto.CategoriaId) ? null : dto.CategoriaId,
             TipoAplicacion = dto.TipoAplicacion
         };
 
@@ -126,7 +130,8 @@ public class RepuestoService(
             return Result<RepuestoResponseDto>.Conflicto(
                 $"Ya existe otro repuesto llamado '{nombre}'.");
 
-        var error = await ValidarProveedorAsync(dto.ProveedorId, ct);
+        var error = await ValidarProveedorAsync(dto.ProveedorId, ct)
+            ?? await ValidarCategoriaAsync(dto.CategoriaId, ct);
         if (error is not null) return error;
 
         var (errorCompat, compatibilidades) = NormalizarCompatibilidad(dto.TipoAplicacion, dto.Compatibilidades);
@@ -140,6 +145,7 @@ public class RepuestoService(
         repuesto.PrecioVenta = dto.PrecioVenta;
         repuesto.ProveedorId = string.IsNullOrWhiteSpace(dto.ProveedorId) ? null : dto.ProveedorId;
         repuesto.TipoAplicacion = dto.TipoAplicacion;
+        repuesto.CategoriaId = string.IsNullOrWhiteSpace(dto.CategoriaId) ? null : dto.CategoriaId;
         await ReemplazarCompatibilidadesAsync(repuesto, compatibilidades, ct);
 
         await auditor.RegistrarAsync(
@@ -346,7 +352,7 @@ public class RepuestoService(
             {
                 Repuesto = Mapear(r),
                 Nivel = NivelCompatibilidad.Universal,
-                Motivo = "Universal: sirve en cualquier vehículo"
+                Motivo = "Uso general: sirve en cualquier vehículo"
             };
 
         var coincidencia = r.Compatibilidades.FirstOrDefault(
@@ -406,7 +412,7 @@ public class RepuestoService(
                     return ($"Los años deben estar entre {AnioMinimo} y {anioMaximo} ({vehiculo}).", []);
 
             if (c.AnioDesde is not null && c.AnioHasta is not null && c.AnioDesde > c.AnioHasta)
-                return ($"En {vehiculo}, el año «desde» ({c.AnioDesde}) es mayor que «hasta» ({c.AnioHasta}).", []);
+                return ($"En {vehiculo}, el año “desde” ({c.AnioDesde}) es mayor que “hasta” ({c.AnioHasta}).", []);
 
             var fila = new RepuestoCompatibilidad
             {
@@ -490,10 +496,10 @@ public class RepuestoService(
         && a.AnioDesde == b.AnioDesde
         && a.AnioHasta == b.AnioHasta;
 
-    /// <summary>"Universal" o "Toyota Corolla 2015–2020 +1".</summary>
+    /// <summary>"Uso general" o "Toyota Corolla 2015–2020 +1".</summary>
     private static string Resumen(Repuesto r)
     {
-        if (r.TipoAplicacion == TipoAplicacionRepuesto.Universal) return "Universal";
+        if (r.TipoAplicacion == TipoAplicacionRepuesto.Universal) return "Uso general";
 
         var filas = r.Compatibilidades
             .OrderBy(c => c.Marca).ThenBy(c => c.Modelo).ThenBy(c => c.AnioDesde)
@@ -517,6 +523,17 @@ public class RepuestoService(
             : Result<RepuestoResponseDto>.Fail($"El proveedor {proveedorId} no existe.");
     }
 
+    private async Task<Result<RepuestoResponseDto>?> ValidarCategoriaAsync(
+        string? categoriaId, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(categoriaId)) return null;
+
+        return await categorias.ExistsAsync(c => c.CategoriaId == categoriaId, ct)
+            ? null
+            : Result<RepuestoResponseDto>.Fail(
+                $"La categoría {categoriaId} no existe (puede que la hayan borrado). Elija otra.");
+    }
+
     private RepuestoResponseDto Mapear(Repuesto r) => new()
     {
         RepuestoId = r.RepuestoId,
@@ -532,6 +549,8 @@ public class RepuestoService(
             ? null
             : archivos.RutaPublica(SubcarpetaFotos, r.NombreArchivoFoto),
         TipoAplicacion = r.TipoAplicacion,
+        CategoriaId = r.CategoriaId,
+        NombreCategoria = r.Categoria?.Nombre,
         Compatibilidades = r.Compatibilidades
             .OrderBy(c => c.Marca).ThenBy(c => c.Modelo).ThenBy(c => c.AnioDesde)
             .Select(c => new CompatibilidadRepuestoDto

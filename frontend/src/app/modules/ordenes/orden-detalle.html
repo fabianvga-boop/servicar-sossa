@@ -258,7 +258,7 @@
                       [title]="motivoBloqueoTrabajo()"
                       (click)="abrirPanelServicioSugerido(sv)"
                     >
-                      + {{ sv.nombre }} · {{ sv.porcentaje }}%
+                      + {{ sv.nombre }} · {{ sv.frecuencia }} de {{ s.basadoEnCasos }}
                     </button>
                   }
                 </div>
@@ -277,7 +277,7 @@
                       [title]="motivoBloqueoTrabajo()"
                       (click)="abrirPanelRepuestoSugerido(rp)"
                     >
-                      + {{ rp.nombre }} · {{ rp.porcentaje }}%
+                      + {{ rp.nombre }} · {{ rp.frecuencia }} de {{ s.basadoEnCasos }}
                     </button>
                   }
                 </div>
@@ -395,7 +395,7 @@
                               [disabled]="procesando()"
                               (click)="avanzarServicio(servicio.ordenServicioId, EstadoServicioOrden.Pendiente)"
                             >
-                              Quitar «en proceso»
+                              Volver a pendiente
                             </button>
                           }
                           <button
@@ -436,7 +436,7 @@
                       <td colspan="5">
                         <div class="falta-repuesto">
                           <span>
-                            «{{ servicio.nombreServicio }}» usa repuestos: falta registrar el que se
+                            <strong>{{ servicio.nombreServicio }}</strong> usa repuestos: falta registrar el que se
                             usó para poder completarlo.
                           </span>
                           @if (puedeTrabajar() && editableTrabajo()) {
@@ -723,14 +723,23 @@
             } @else {
               <ol class="historial">
                 @for (h of historial(); track h.auditoriaId) {
-                  <li [class.excepcion]="h.accion === AccionAuditoria.Excepcion">
-                    <div class="historial-meta">
-                      {{ h.fecha | date: 'dd/MM HH:mm' }} · {{ h.nombreUsuario }}
-                      @if (h.accion === AccionAuditoria.Excepcion) {
-                        <span class="insignia insignia-roja">Excepción</span>
-                      }
+                  @let estilo = ESTILO_HISTORIAL[h.accion];
+                  <li
+                    [class]="'tono-' + estilo.tono"
+                    [class.excepcion]="h.accion === AccionAuditoria.Excepcion"
+                  >
+                    <span class="historial-icono" [attr.title]="estilo.etiqueta" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><path [attr.d]="estilo.icono" /></svg>
+                    </span>
+                    <div class="historial-cuerpo">
+                      <div class="historial-meta">
+                        @if (h.accion === AccionAuditoria.Excepcion) {
+                          <span class="historial-accion">{{ estilo.etiqueta }}</span>
+                        }
+                        <span>{{ h.fecha | date: 'dd/MM HH:mm' }} · {{ h.nombreUsuario }}</span>
+                      </div>
+                      <div class="historial-texto"><app-texto-resaltado [texto]="h.descripcion" /></div>
                     </div>
-                    <div class="texto-sm">{{ h.descripcion }}</div>
                   </li>
                 }
               </ol>
@@ -980,6 +989,37 @@
         </div>
       </div>
 
+      <!-- Primero el servicio: la lista de repuestos se ordena según lo que lleva. -->
+      @if (o.servicios.length > 0) {
+        <div class="campo">
+          <label for="servicioRepuesto">Para el servicio</label>
+          <app-selector-busqueda
+            idCampo="servicioRepuesto"
+            name="servicioRepuesto"
+            marcador="Ninguno en particular"
+            [opciones]="opcionesServicioRepuesto()"
+            [(ngModel)]="nuevoRepuesto.ordenServicioId"
+            (ngModelChange)="servicioRepuesto.set($event ?? '')"
+          />
+          @if (servicioDelRepuesto(); as servicio) {
+            @if (servicio.categorias.length > 0 && nuevoRepuesto.origen === OrigenRepuesto.Inventario) {
+              <span class="campo-ayuda">
+                <strong>{{ servicio.nombreServicio }}</strong> lleva <strong>{{ llevaDe(servicio) }}</strong>:
+                esos repuestos aparecen primero en la lista.
+              </span>
+            } @else {
+              <span class="campo-ayuda">
+                Los servicios que usan repuestos no se pueden completar sin uno registrado.
+              </span>
+            }
+          } @else {
+            <span class="campo-ayuda">
+              Los servicios que usan repuestos no se pueden completar sin uno registrado.
+            </span>
+          }
+        </div>
+      }
+
       @if (nuevoRepuesto.origen === OrigenRepuesto.Inventario) {
         <div class="campo">
           <label for="repuesto">Repuesto</label>
@@ -988,9 +1028,37 @@
             name="repuesto"
             marcador="Escriba el nombre del repuesto…"
             [opciones]="opcionesRepuesto()"
+            [listaEnLinea]="true"
             [(ngModel)]="nuevoRepuesto.repuestoId"
             (seleccion)="onRepuestoSeleccionado($event)"
           />
+          <!-- Ficha del elegido: con la foto se confirma que es la pieza correcta. -->
+          @if (repuestoElegido(); as elegido) {
+            <div class="repuesto-elegido">
+              @if (elegido.fotoUrl) {
+                <img [src]="urlArchivo(elegido.fotoUrl)" [alt]="elegido.nombre" />
+              } @else {
+                <span class="sin-foto" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 8l9-5 9 5-9 5-9-5Z" /><path d="M3 8v8l9 5 9-5V8" />
+                  </svg>
+                </span>
+              }
+              <div class="crece">
+                <div class="texto-fuerte">{{ elegido.nombre }}</div>
+                <div class="texto-tenue texto-sm">
+                  {{ elegido.repuestoId }} · {{ elegido.nombreCategoria || 'Sin categoría' }} ·
+                  {{ elegido.resumenCompatibilidad || 'Uso general' }}
+                </div>
+                <div class="texto-sm">
+                  {{ elegido.precioVenta | bs }} · {{ elegido.stockActual }} en stock
+                  @if (!elegido.fotoUrl) {
+                    <span class="texto-tenue">· sin foto (se carga en Repuestos)</span>
+                  }
+                </div>
+              </div>
+            </div>
+          }
         </div>
       } @else {
         <div class="campo">
@@ -1010,22 +1078,6 @@
               <option [value]="d"></option>
             }
           </datalist>
-        </div>
-      }
-
-      @if (o.servicios.length > 0) {
-        <div class="campo">
-          <label for="servicioRepuesto">Para el servicio</label>
-          <app-selector-busqueda
-            idCampo="servicioRepuesto"
-            name="servicioRepuesto"
-            marcador="Ninguno en particular"
-            [opciones]="opcionesServicioRepuesto()"
-            [(ngModel)]="nuevoRepuesto.ordenServicioId"
-          />
-          <span class="campo-ayuda">
-            Los servicios que usan repuestos no se pueden completar sin uno registrado.
-          </span>
         </div>
       }
 
@@ -1214,7 +1266,7 @@
   }
 
   @if (editandoServicio(); as servicio) {
-    <app-modal titulo="Editar «{{ servicio.nombreServicio }}»" [ancho]="460" (cerrar)="editandoServicio.set(null)">
+    <app-modal titulo="Editar {{ servicio.nombreServicio }}" [ancho]="460" (cerrar)="editandoServicio.set(null)">
       <div class="campo">
         <label for="precioEdicion">Precio (Bs)</label>
         <input id="precioEdicion" name="precioEdicion" type="number" min="0" step="0.01" [(ngModel)]="edicion.precio" />
@@ -1234,7 +1286,7 @@
   }
 
   @if (editandoRepuesto(); as repuesto) {
-    <app-modal titulo="Editar «{{ repuesto.nombreRepuesto }}»" [ancho]="460" (cerrar)="editandoRepuesto.set(null)">
+    <app-modal titulo="Editar {{ repuesto.nombreRepuesto }}" [ancho]="460" (cerrar)="editandoRepuesto.set(null)">
       <div class="rejilla">
         <div class="campo mb-0">
           <label for="cantidadEdicion">Cantidad</label>
@@ -1299,7 +1351,7 @@
   @if (faltaRepuesto(); as servicio) {
     <app-modal titulo="Falta registrar el repuesto" [ancho]="480" (cerrar)="faltaRepuesto.set(null)">
       <p class="mensaje-aviso">
-        «{{ servicio.nombreServicio }}» usa repuestos. Para completarlo, primero registre en la
+        <strong>{{ servicio.nombreServicio }}</strong> usa repuestos. Para completarlo, primero registre en la
         orden el repuesto que se usó: del inventario, traído por el cliente o comprado afuera.
       </p>
 
@@ -1356,11 +1408,48 @@
     </app-modal>
   }
 
+  @if (excepcionCategoria(); as excepcion) {
+    <app-modal titulo="Repuesto de otra categoría" [ancho]="480" (cerrar)="cancelarExcepcionCategoria()">
+      <p class="mt-0">
+        <strong>{{ excepcion.servicio }}</strong> lleva <strong>{{ excepcion.lleva }}</strong>, y
+        <strong>{{ excepcion.repuesto }}</strong> no es de esa categoría.
+      </p>
+      <p class="texto-tenue texto-sm">
+        Puede registrarlo igual como excepción. El motivo queda en el historial de la orden y en
+        la auditoría.
+      </p>
+      <div class="campo mb-0">
+        <label for="motivoCategoria">Motivo <span class="obligatorio">*</span></label>
+        <textarea
+          id="motivoCategoria"
+          name="motivoCategoria"
+          rows="3"
+          maxlength="200"
+          placeholder="Ej. el cliente pidió también el cambio de aceite y se carga en este servicio"
+          [(ngModel)]="motivoCategoria"
+        ></textarea>
+      </div>
+      <div pie>
+        <button type="button" class="btn btn-secundario" (click)="cancelarExcepcionCategoria()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-primario"
+          [disabled]="procesando() || !motivoCategoria.trim()"
+          (click)="confirmarExcepcionCategoria()"
+        >
+          Registrar igual
+        </button>
+      </div>
+    </app-modal>
+  }
+
   @if (avisoRepuestoIncompatible(); as aviso) {
     <app-confirmacion
       titulo="Repuesto no indicado para este vehículo"
       [mensaje]="
-        '«' + aviso.repuesto.nombre + '» está indicado para ' +
+        '“' + aviso.repuesto.nombre + '” está indicado para ' +
         aviso.repuesto.resumenCompatibilidad + ', no para ' + o.descripcionVehiculo + '.'
       "
       advertencia="Revise que sea la pieza correcta antes de usarla. Si sabe que sirve, puede agregarla igual y conviene completar su compatibilidad en Repuestos."

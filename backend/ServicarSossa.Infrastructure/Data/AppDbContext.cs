@@ -30,6 +30,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<OrdenMecanico> OrdenMecanicos => Set<OrdenMecanico>();
     public DbSet<OrdenServicio> OrdenServicios => Set<OrdenServicio>();
     public DbSet<Proveedor> Proveedores => Set<Proveedor>();
+    public DbSet<CategoriaRepuesto> CategoriasRepuesto => Set<CategoriaRepuesto>();
+    public DbSet<ServicioCategoria> ServicioCategorias => Set<ServicioCategoria>();
     public DbSet<Repuesto> Repuestos => Set<Repuesto>();
     public DbSet<RepuestoCompatibilidad> RepuestoCompatibilidades => Set<RepuestoCompatibilidad>();
     public DbSet<Compra> Compras => Set<Compra>();
@@ -369,8 +371,35 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.UnidadMedidaSin).HasColumnName("unidad_medida_sin");
             e.Property(x => x.TipoAplicacion).HasColumnName("tipo_aplicacion").HasMaxLength(20)
                 .HasConversion<string>().IsRequired();
+            e.Property(x => x.CategoriaId).HasColumnName("categoria_id").HasMaxLength(20);
+            e.HasIndex(x => x.CategoriaId).HasDatabaseName("idx_repuestos_categoria");
             e.HasOne(x => x.Proveedor).WithMany(p => p.Repuestos)
                 .HasForeignKey(x => x.ProveedorId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Categoria).WithMany(c => c.Repuestos)
+                .HasForeignKey(x => x.CategoriaId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        b.Entity<CategoriaRepuesto>(e =>
+        {
+            e.ToTable("categorias_repuesto");
+            e.HasKey(x => x.CategoriaId);
+            e.Property(x => x.CategoriaId).HasColumnName("categoria_id").HasMaxLength(20);
+            e.Property(x => x.Nombre).HasColumnName("nombre").HasMaxLength(60).IsRequired();
+            e.Property(x => x.FechaRegistro).HasColumnName("fecha_registro").IsRequired();
+            e.HasIndex(x => x.Nombre).IsUnique();
+        });
+
+        b.Entity<ServicioCategoria>(e =>
+        {
+            e.ToTable("servicio_categorias");
+            e.HasKey(x => new { x.ServicioId, x.CategoriaId });
+            e.Property(x => x.ServicioId).HasColumnName("servicio_id").HasMaxLength(20);
+            e.Property(x => x.CategoriaId).HasColumnName("categoria_id").HasMaxLength(20);
+            e.HasIndex(x => x.CategoriaId).HasDatabaseName("idx_servicio_categorias_categoria");
+            e.HasOne(x => x.Servicio).WithMany(s => s.Categorias)
+                .HasForeignKey(x => x.ServicioId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Categoria).WithMany(c => c.Servicios)
+                .HasForeignKey(x => x.CategoriaId).OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<RepuestoCompatibilidad>(e =>

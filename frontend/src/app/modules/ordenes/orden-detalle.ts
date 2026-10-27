@@ -52,7 +52,12 @@ import { Migas } from '../../shared/components/migas';
 import { Modal } from '../../shared/components/modal';
 import { Paso, Pasos } from '../../shared/components/pasos';
 import { Placa } from '../../shared/components/placa';
-import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
+import {
+  MarcaOpcion,
+  OpcionSelector,
+  SelectorBusqueda,
+} from '../../shared/components/selector-busqueda';
+import { TextoResaltado } from '../../shared/components/texto-resaltado';
 import { SiTieneRol } from '../../shared/directives/si-tiene-rol';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 
@@ -64,11 +69,58 @@ interface Requisito {
 }
 
 /** Prefijo del detalle de cada repuesto en el selector, según su compatibilidad. */
-const ETIQUETA_NIVEL: Record<NivelCompatibilidad, string> = {
-  [NivelCompatibilidad.Compatible]: '✓ Compatible',
-  [NivelCompatibilidad.Universal]: 'Universal',
-  [NivelCompatibilidad.NoIndicado]: '⚠ No indicado para este vehículo',
+/**
+ * Si un repuesto del inventario corresponde al servicio para el que se
+ * registra, según las categorías que lleva el servicio en el catálogo.
+ * "libre": no hay nada que controlar (servicio sin categorías o repuesto sin
+ * categoría).
+ */
+type EncajeCategoria = 'corresponde' | 'otra' | 'libre';
+
+/**
+ * Cómo se ve cada tipo de registro en el Historial: color, ícono y una
+ * palabra. Se distingue de un vistazo qué se agregó, qué se quitó y, sobre
+ * todo, qué fue una excepción.
+ */
+const ESTILO_HISTORIAL: Record<
+  AccionAuditoria,
+  { etiqueta: string; tono: 'verde' | 'azul' | 'naranja' | 'roja' | 'gris'; icono: string }
+> = {
+  [AccionAuditoria.Crear]: { etiqueta: 'Agregó', tono: 'verde', icono: 'M12 5v14M5 12h14' },
+  [AccionAuditoria.Editar]: {
+    etiqueta: 'Editó',
+    tono: 'azul',
+    icono: 'M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z',
+  },
+  [AccionAuditoria.Eliminar]: {
+    etiqueta: 'Quitó',
+    tono: 'gris',
+    icono: 'M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6',
+  },
+  [AccionAuditoria.Anular]: { etiqueta: 'Anuló', tono: 'roja', icono: 'M18 6 6 18M6 6l12 12' },
+  [AccionAuditoria.Ajustar]: {
+    etiqueta: 'Ajustó',
+    tono: 'naranja',
+    icono: 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6',
+  },
+  [AccionAuditoria.CambiarEstado]: {
+    etiqueta: 'Cambio de estado',
+    tono: 'azul',
+    icono: 'M5 12h14M13 6l6 6-6 6',
+  },
+  [AccionAuditoria.Excepcion]: {
+    etiqueta: 'Excepción',
+    tono: 'roja',
+    icono: 'M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z',
+  },
 };
+
+/** Repuesto de otra categoría que el Administrador quiere registrar igual. */
+interface ExcepcionCategoria {
+  repuesto: string;
+  servicio: string;
+  lleva: string;
+}
 
 /**
  * Servicios típicos que no tienen sentido sin el repuesto que usan (cambio de
@@ -120,6 +172,7 @@ function repuestoSugeridoPara(nombreServicio: string): string | null {
   imports: [
     FormsModule,
     RouterLink,
+    TextoResaltado,
     DatePipe,
     Modal,
     Confirmacion,
@@ -293,6 +346,7 @@ export class OrdenDetalle implements ConfirmarSalida {
 
   /** Historial de la orden (Administrador): todo lo registrado sobre ella en Auditoría. */
   protected readonly historial = signal<Auditoria[]>([]);
+  protected readonly ESTILO_HISTORIAL = ESTILO_HISTORIAL;
 
   /** El backend rechaza el cierre si queda algún servicio sin completar. */
   protected readonly serviciosPendientes = computed(
@@ -495,27 +549,86 @@ export class OrdenDetalle implements ConfirmarSalida {
   /** Repuesto no indicado para este vehículo que espera confirmación para agregarse. */
   protected readonly avisoRepuestoIncompatible = signal<RepuestoParaVehiculo | null>(null);
 
-  protected readonly opcionesRepuesto = computed<OpcionSelector[]>(() => {
-    const clasificados = this.clasificacionRepuestos();
+  /**
+   * Servicio de la orden elegido en "Para el servicio" del panel de repuesto.
+   * Es un signal (y no solo el ngModel) para que la lista de repuestos se
+   * reordene en cuanto cambia.
+   */
+  protected readonly servicioRepuesto = signal('');
 
-    if (!clasificados) {
-      return this.repuestos().map((r) => ({
-        valor: r.repuestoId,
-        etiqueta: r.nombre,
-        detalle: `stock ${r.stockActual}`,
-        deshabilitada: r.stockActual === 0,
-        razonDeshabilitada: 'Sin stock disponible',
-      }));
-    }
+  protected readonly servicioDelRepuesto = computed(
+    () => this.orden()?.servicios.find((s) => s.ordenServicioId === this.servicioRepuesto()) ?? null,
+  );
+
+  /** "Bujías" o "Aceite de motor, Filtro de aceite". */
+  protected llevaDe(servicio: OrdenServicio): string {
+    return servicio.categorias.map((c) => c.nombre).join(', ');
+  }
+
+  private encaje(repuesto: Repuesto, servicio: OrdenServicio | null): EncajeCategoria {
+    if (!servicio || servicio.categorias.length === 0 || !repuesto.categoriaId) return 'libre';
+    return servicio.categorias.some((c) => c.categoriaId === repuesto.categoriaId)
+      ? 'corresponde'
+      : 'otra';
+  }
+
+  protected readonly opcionesRepuesto = computed<OpcionSelector[]>(() => {
+    const servicio = this.servicioDelRepuesto();
+    const esAdministrador = this.auth.esAdministrador();
 
     // Ya vienen ordenados: compatibles, universales y al final los no indicados.
-    return clasificados.map(({ repuesto: r, nivel }) => ({
-      valor: r.repuestoId,
-      etiqueta: r.nombre,
-      detalle: `${ETIQUETA_NIVEL[nivel]} · stock ${r.stockActual}`,
-      deshabilitada: r.stockActual === 0,
-      razonDeshabilitada: 'Sin stock disponible',
-    }));
+    const base =
+      this.clasificacionRepuestos()?.map(({ repuesto, nivel }) => ({
+        repuesto,
+        nivel: nivel as NivelCompatibilidad | null,
+      })) ??
+      this.repuestos().map((repuesto) => ({ repuesto, nivel: null as NivelCompatibilidad | null }));
+
+    // Con un servicio que lleva categorías, arriba van los que le corresponden
+    // y al final los de otra categoría. El orden anterior se respeta dentro de
+    // cada grupo (sort es estable).
+    const peso: Record<EncajeCategoria, number> = { corresponde: 0, libre: 1, otra: 2 };
+    const conEncaje = base.map((o) => ({ ...o, encaje: this.encaje(o.repuesto, servicio) }));
+    if (servicio && servicio.categorias.length > 0) conEncaje.sort((a, b) => peso[a.encaje] - peso[b.encaje]);
+
+    const controla = !!servicio && servicio.categorias.length > 0;
+
+    return conEncaje.map(({ repuesto: r, encaje, nivel }) => {
+      const otra = encaje === 'otra';
+      const marcas: MarcaOpcion[] = [];
+
+      // 1. Si sirve para el servicio elegido (solo si el servicio lleva categorías).
+      if (encaje === 'corresponde') marcas.push({ texto: '✓ Para este servicio', tono: 'verde' });
+      else if (otra) marcas.push({ texto: `✖ No corresponde: es ${r.nombreCategoria}`, tono: 'roja' });
+      else if (controla && !r.categoriaId) marcas.push({ texto: 'Sin categoría', tono: 'gris' });
+      // Sin servicio que controle, la categoría igual orienta: "Aceite de motor".
+      if (!controla && r.nombreCategoria) marcas.push({ texto: r.nombreCategoria, tono: 'azul' });
+
+      // 2. Si calza en el vehículo de la orden.
+      if (nivel === NivelCompatibilidad.Compatible) marcas.push({ texto: '✓ Compatible con el vehículo', tono: 'verde' });
+      else if (nivel === NivelCompatibilidad.NoIndicado) marcas.push({ texto: '⚠ No indicado para este vehículo', tono: 'naranja' });
+      else if (nivel === NivelCompatibilidad.Universal) marcas.push({ texto: 'Uso general', tono: 'gris' });
+
+      // 3. Cuánto queda.
+      if (r.stockActual === 0) marcas.push({ texto: 'Sin stock', tono: 'roja' });
+      else if (r.stockBajo) marcas.push({ texto: `Stock bajo: ${r.stockActual}`, tono: 'naranja' });
+      else marcas.push({ texto: `Stock: ${r.stockActual}`, tono: 'gris' });
+
+      return {
+        valor: r.repuestoId,
+        etiqueta: r.nombre,
+        miniatura: { url: r.fotoUrl ? urlArchivo(r.fotoUrl) : null },
+        marcas,
+        detalle: new BolivianosPipe().transform(r.precioVenta),
+        // El mecánico no puede registrar un repuesto de otra categoría; el
+        // Administrador sí, escribiendo el motivo (se le pide al agregar).
+        deshabilitada: r.stockActual === 0 || (otra && !esAdministrador),
+        razonDeshabilitada:
+          r.stockActual === 0
+            ? 'Sin stock disponible'
+            : `“${servicio?.nombreServicio}” lleva ${servicio ? this.llevaDe(servicio) : ''}. Solo el Administrador puede registrar otra categoría.`,
+      };
+    });
   });
 
   /**
@@ -1094,8 +1207,8 @@ export class OrdenDetalle implements ConfirmarSalida {
 
       if (enCurso) {
         this.notificacion.advertencia(
-          `Primero termine «${enCurso.nombreServicio}», que está en proceso. Recién después puede ` +
-            `${estado === EstadoServicioOrden.EnProceso ? 'iniciar' : 'completar'} «${servicio.nombreServicio}».`,
+          `Primero termine “${enCurso.nombreServicio}”, que está en proceso. Recién después puede ` +
+            `${estado === EstadoServicioOrden.EnProceso ? 'iniciar' : 'completar'} “${servicio.nombreServicio}”.`,
         );
         return;
       }
@@ -1149,7 +1262,7 @@ export class OrdenDetalle implements ConfirmarSalida {
     this.procesando.set(true);
 
     this.servicio.quitarServicio(this.id(), servicio.ordenServicioId).subscribe(
-      this.aplicarConDeshacer(`Se quitó «${servicio.nombreServicio}» de la orden.`, () => {
+      this.aplicarConDeshacer(`Se quitó “${servicio.nombreServicio}” de la orden.`, () => {
         this.procesando.set(true);
         this.servicio
           .agregarServicio(this.id(), {
@@ -1190,8 +1303,21 @@ export class OrdenDetalle implements ConfirmarSalida {
     this.nuevoRepuesto = this.repuestoVacio();
     this.nuevoRepuesto.ordenServicioId =
       servicio?.ordenServicioId ?? (pendientes.length === 1 ? pendientes[0].ordenServicioId : '');
+    this.servicioRepuesto.set(this.nuevoRepuesto.ordenServicioId);
+    this.motivoCategoria = '';
 
     this.panelRepuesto.set(true);
+  }
+
+  /** El repuesto elegido en el panel, para mostrar su ficha con foto. */
+  protected repuestoElegido(): Repuesto | null {
+    const id = this.nuevoRepuesto.repuestoId;
+    if (!id) return null;
+    return (
+      this.repuestos().find((r) => r.repuestoId === id) ??
+      this.clasificacionRepuestos()?.find((c) => c.repuesto.repuestoId === id)?.repuesto ??
+      null
+    );
   }
 
   protected onRepuestoSeleccionado(repuestoId: string): void {
@@ -1206,6 +1332,25 @@ export class OrdenDetalle implements ConfirmarSalida {
     this.nuevoRepuesto.descripcion = '';
     // El que trae el cliente no se cobra; los demás parten sin precio propuesto.
     this.nuevoRepuesto.precioUnitario = null;
+  }
+
+  /** Repuesto de otra categoría que espera el motivo del Administrador. */
+  protected readonly excepcionCategoria = signal<ExcepcionCategoria | null>(null);
+  /** Motivo de esa excepción; se manda con el repuesto y queda en auditoría. */
+  protected motivoCategoria = '';
+
+  protected confirmarExcepcionCategoria(): void {
+    if (!this.motivoCategoria.trim()) {
+      this.notificacion.advertencia('Escriba por qué se registra este repuesto para este servicio.');
+      return;
+    }
+    this.excepcionCategoria.set(null);
+    this.agregarRepuesto();
+  }
+
+  protected cancelarExcepcionCategoria(): void {
+    this.excepcionCategoria.set(null);
+    this.motivoCategoria = '';
   }
 
   /**
@@ -1236,6 +1381,31 @@ export class OrdenDetalle implements ConfirmarSalida {
       return;
     }
 
+    // Un repuesto de otra categoría que la del servicio (aceite para "Cambio
+    // de bujías"): el mecánico no puede; el Administrador, con motivo.
+    const servicio = this.orden()?.servicios.find((s) => s.ordenServicioId === ordenServicioId) ?? null;
+    const elegido = this.repuestos().find((r) => r.repuestoId === repuestoId)
+      ?? this.clasificacionRepuestos()?.find((c) => c.repuesto.repuestoId === repuestoId)?.repuesto;
+    const deOtraCategoria =
+      origen === OrigenRepuesto.Inventario && !!elegido && this.encaje(elegido, servicio) === 'otra';
+
+    if (deOtraCategoria && servicio && elegido) {
+      if (!this.auth.esAdministrador()) {
+        this.notificacion.advertencia(
+          `“${servicio.nombreServicio}” lleva ${this.llevaDe(servicio)}: “${elegido.nombre}” no corresponde. Elija el repuesto correcto o regístrelo para otro servicio.`,
+        );
+        return;
+      }
+      if (!this.motivoCategoria.trim()) {
+        this.excepcionCategoria.set({
+          repuesto: elegido.nombre,
+          servicio: servicio.nombreServicio,
+          lleva: this.llevaDe(servicio),
+        });
+        return;
+      }
+    }
+
     // No se bloquea: los datos de compatibilidad pueden estar incompletos o el
     // mecánico saber que sirve. Solo se pide confirmar antes de agregarlo.
     if (origen === OrigenRepuesto.Inventario && !confirmadoIncompatible) {
@@ -1260,10 +1430,13 @@ export class OrdenDetalle implements ConfirmarSalida {
         // El que trae el cliente va sin cargo; la compra externa a su costo.
         precioUnitario: origen === OrigenRepuesto.ClienteTrae ? 0 : precioUnitario,
         ordenServicioId: ordenServicioId || null,
+        motivoCategoria: deOtraCategoria ? this.motivoCategoria.trim() : null,
       })
       .subscribe(this.aplicar(this.mensajeRepuestoAgregado(ordenServicioId)));
 
     this.nuevoRepuesto = this.repuestoVacio();
+    this.servicioRepuesto.set('');
+    this.motivoCategoria = '';
   }
 
   /** Si el repuesto destraba un servicio, el aviso dice que ya se puede completar. */
@@ -1271,7 +1444,7 @@ export class OrdenDetalle implements ConfirmarSalida {
     const servicio = this.orden()?.servicios.find((s) => s.ordenServicioId === ordenServicioId);
 
     return servicio?.requiereRepuesto && servicio.estado !== EstadoServicioOrden.Completado
-      ? `Repuesto registrado para «${servicio.nombreServicio}». Ya se puede completar el servicio.`
+      ? `Repuesto registrado para “${servicio.nombreServicio}”. Ya se puede completar el servicio.`
       : 'Repuesto agregado a la orden.';
   }
 
@@ -1279,7 +1452,7 @@ export class OrdenDetalle implements ConfirmarSalida {
     this.procesando.set(true);
 
     this.servicio.quitarRepuesto(this.id(), consumo.ordenRepuestoId).subscribe(
-      this.aplicarConDeshacer(`Se quitó «${consumo.nombreRepuesto}» de la orden.`, () => {
+      this.aplicarConDeshacer(`Se quitó “${consumo.nombreRepuesto}” de la orden.`, () => {
         this.procesando.set(true);
         this.servicio
           .agregarRepuesto(this.id(), {
@@ -1309,7 +1482,8 @@ export class OrdenDetalle implements ConfirmarSalida {
       this.panelCorregir() ||
       this.editandoServicio() !== null ||
       this.editandoRepuesto() !== null ||
-      this.faltaRepuesto() !== null
+      this.faltaRepuesto() !== null ||
+      this.excepcionCategoria() !== null
     );
   }
 

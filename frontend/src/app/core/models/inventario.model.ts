@@ -20,6 +20,24 @@ export interface ProveedorRequest {
   direccion?: string | null;
 }
 
+// ------------------------------------------------- Categorías de repuesto
+
+/** Tipo de repuesto: Aceite de motor, Bujías, Batería… */
+export interface CategoriaRepuesto {
+  categoriaId: string;
+  nombre: string;
+  /** Cuántos repuestos la tienen: quedan sin categoría si se borra. */
+  cantidadRepuestos: number;
+  /** Cuántos servicios del catálogo la llevan. */
+  cantidadServicios: number;
+}
+
+/** Referencia corta a una categoría dentro de otros datos. */
+export interface CategoriaResumen {
+  categoriaId: string;
+  nombre: string;
+}
+
 // --------------------------------------------------------------- Repuestos
 
 export interface Repuesto {
@@ -43,8 +61,11 @@ export interface Repuesto {
   valorInventario: number;
   tipoAplicacion: TipoAplicacionRepuesto;
   compatibilidades: CompatibilidadRepuesto[];
-  /** "Universal" o "Toyota Corolla 2015–2020 +1". */
+  /** "Uso general" o "Toyota Corolla 2015–2020 +1". */
   resumenCompatibilidad: string;
+  /** Null si todavía no tiene categoría. */
+  categoriaId?: string | null;
+  nombreCategoria?: string | null;
 }
 
 /**
@@ -71,6 +92,7 @@ export interface RepuestoRequest {
   proveedorId?: string | null;
   tipoAplicacion: TipoAplicacionRepuesto;
   compatibilidades: CompatibilidadRepuesto[];
+  categoriaId?: string | null;
 }
 
 /** Un repuesto evaluado contra el vehículo de una orden. */

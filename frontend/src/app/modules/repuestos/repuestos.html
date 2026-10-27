@@ -3,18 +3,22 @@
     <h1>Repuestos</h1>
     <p class="texto-tenue texto-sm mb-0">Inventario del taller</p>
   </div>
-  <button
-    *appSiRol="['Administrador']"
-    type="button"
-    class="btn btn-primario btn-nuevo"
-    appAtajo="n"
-    title="Atajo: tecla N"
-    (click)="abrirNuevo()"
-  >
-    <span class="btn-nuevo-mas" aria-hidden="true">+</span>
-    Nuevo repuesto
-    <kbd class="btn-nuevo-atajo" aria-hidden="true">N</kbd>
-  </button>
+  <div *appSiRol="['Administrador']" class="fila envuelve" style="gap: 8px">
+    <button type="button" class="btn btn-secundario" (click)="gestionCategorias.set(true)">
+      Categorías
+    </button>
+    <button
+      type="button"
+      class="btn btn-primario btn-nuevo"
+      appAtajo="n"
+      title="Atajo: tecla N"
+      (click)="abrirNuevo()"
+    >
+      <span class="btn-nuevo-mas" aria-hidden="true">+</span>
+      Nuevo repuesto
+      <kbd class="btn-nuevo-atajo" aria-hidden="true">N</kbd>
+    </button>
+  </div>
 </div>
 
 <div class="tarjeta">
@@ -49,6 +53,16 @@
         />
       </div>
 
+      <div class="filtro-vehiculo">
+        <app-selector-busqueda
+          idCampo="filtroCategoria"
+          marcador="Todas las categorías"
+          [opciones]="opcionesFiltroCategoria()"
+          [ngModel]="categoriaFiltro()"
+          (ngModelChange)="filtrarPorCategoria($event)"
+        />
+      </div>
+
       @if (proveedorFiltro()) {
         <span class="chip-filtro-proveedor">
           Proveedor: {{ nombreProveedorFiltro() }}
@@ -68,7 +82,7 @@
   @if (cargando() || repuestos().length === 0) {
     <app-estado-tabla
       [cargando]="cargando()"
-      [hayFiltro]="buscar().length > 0 || soloStockBajo() || proveedorFiltro().length > 0 || vehiculoFiltro().length > 0"
+      [hayFiltro]="buscar().length > 0 || soloStockBajo() || proveedorFiltro().length > 0 || vehiculoFiltro().length > 0 || categoriaFiltro().length > 0"
       titulo="Sin repuestos en inventario"
       descripcion="Registre los repuestos que maneja el taller."
     />
@@ -107,7 +121,14 @@
           </div>
 
           <div class="repuesto-cuerpo">
-            <span class="codigo">{{ repuesto.repuestoId }}</span>
+            <span class="codigo">
+              {{ repuesto.repuestoId }} ·
+              @if (repuesto.nombreCategoria) {
+                {{ repuesto.nombreCategoria }}
+              } @else {
+                <span class="sin-categoria" title="Sin categoría: en la orden no se controla para qué servicio se usa">sin categoría</span>
+              }
+            </span>
             <h3 class="repuesto-nombre">{{ repuesto.nombre }}</h3>
             <span class="texto-tenue texto-sm">{{ repuesto.nombreProveedor || 'Sin proveedor' }}</span>
             <span
@@ -117,7 +138,7 @@
                 ? 'Compatible con: ' + repuesto.resumenCompatibilidad
                 : 'Sirve en cualquier vehículo'"
             >
-              {{ repuesto.resumenCompatibilidad || 'Universal' }}
+              {{ repuesto.resumenCompatibilidad || 'Uso general' }}
             </span>
             <span class="repuesto-precio">{{ repuesto.precioVenta | bs }}</span>
           </div>
@@ -173,6 +194,35 @@
         </datalist>
         @if (error('nombre'); as mensaje) {
           <span class="campo-error">{{ mensaje }}</span>
+        }
+      </div>
+
+      <div class="campo">
+        <label for="categoriaId">Categoría</label>
+        <app-selector-busqueda
+          idCampo="categoriaId"
+          formControlName="categoriaId"
+          marcador="Elija o escriba una categoría…"
+          permitirNuevo="categoría nueva"
+          [opciones]="opcionesCategoria()"
+          (seleccion)="onCategoriaElegida($event)"
+        />
+        @if (sugerenciaCategoria(); as sugerida) {
+          <span class="campo-ayuda">
+            Por el nombre parece <strong>{{ sugerida.nombre }}</strong>.
+            <button type="button" class="btn-enlace" (click)="usarSugerenciaCategoria(sugerida)">
+              Usar esta categoría
+            </button>
+          </span>
+        } @else if (!formulario.controls.categoriaId.value) {
+          <span class="campo-ayuda aviso-sin-categoria">
+            Sin categoría, en la orden no se podrá controlar para qué servicio se usa
+            (por ejemplo, que no se cargue un aceite en un cambio de bujías).
+          </span>
+        } @else {
+          <span class="campo-ayuda">
+            En la orden solo se podrá usar en los servicios que llevan esta categoría.
+          </span>
         }
       </div>
 
@@ -274,7 +324,7 @@
         />
       </div>
 
-      <!-- Compatibilidad por vehículo: Universal o Específico de ciertos autos. -->
+      <!-- Compatibilidad por vehículo: de uso general o solo para ciertos vehículos. -->
       <div class="campo">
         <label>Aplicación <span class="obligatorio">*</span></label>
         <div class="selector-aplicacion" role="radiogroup" aria-label="Aplicación del repuesto">
@@ -285,7 +335,7 @@
             [class.activo]="tipoAplicacion() === TipoAplicacion.Universal"
             (click)="elegirTipoAplicacion(TipoAplicacion.Universal)"
           >
-            <strong>Universal</strong>
+            <strong>Uso general</strong>
             <span>Sirve en cualquier vehículo: aceite, líquido de frenos, fusibles, refrigerante.</span>
           </button>
           <button
@@ -295,7 +345,7 @@
             [class.activo]="tipoAplicacion() === TipoAplicacion.Especifico"
             (click)="elegirTipoAplicacion(TipoAplicacion.Especifico)"
           >
-            <strong>Específico de modelo</strong>
+            <strong>Para ciertos vehículos</strong>
             <span>Solo calza en ciertos autos: filtros, pastillas, discos, bujías, amortiguadores.</span>
           </button>
         </div>
@@ -362,7 +412,7 @@
               </div>
               @if (avisosCatalogo()[i]; as aviso) {
                 <div class="aviso-catalogo">
-                  «{{ aviso.escrito }}» no está en el catálogo. ¿Quiso decir
+                  <strong>{{ aviso.escrito }}</strong> no está en el catálogo. ¿Quiso decir
                   <button type="button" class="btn-enlace" (click)="aplicarSugerencia(i, aviso)">
                     {{ aviso.sugerido }}</button>?
                 </div>
@@ -397,15 +447,11 @@
             </span>
           }
 
-          <label class="btn btn-secundario" style="margin: 0">
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              style="display: none"
-              (change)="onFotoFormularioSeleccionada($event)"
-            />
-            {{ previsualizacionFoto() ? 'Cambiar' : 'Elegir foto' }}
-          </label>
+          <app-elegir-foto
+            [etiqueta]="previsualizacionFoto() ? 'Cambiar' : 'Elegir archivo'"
+            [mostrarAyuda]="false"
+            (archivo)="onFotoFormularioSeleccionada($event)"
+          />
 
           @if (previsualizacionFoto()) {
             <button type="button" class="btn-enlace texto-rojo" (click)="quitarFotoFormulario()">
@@ -414,7 +460,8 @@
           }
         </div>
         <span class="texto-tenue texto-sm">
-          Sirve para reconocer el producto de un vistazo, por ejemplo al vender en mostrador.
+          JPG, PNG o WEBP, hasta 8 MB. Sirve para reconocer el producto de un vistazo, por ejemplo
+          al vender en mostrador.
         </span>
       </div>
     </form>
@@ -594,17 +641,12 @@
       <div class="foto-producto foto-vacia">Sin foto</div>
     }
 
-    <div class="fila mt-1" style="gap: 8px">
-      <label class="btn btn-secundario" style="margin: 0">
-        <input
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          style="display: none"
-          [disabled]="subiendoFoto()"
-          (change)="onFotoSeleccionada($event)"
-        />
-        {{ subiendoFoto() ? 'Subiendo…' : repuesto.fotoUrl ? 'Reemplazar' : 'Subir foto' }}
-      </label>
+    <div class="fila mt-1" style="gap: 8px; align-items: flex-start">
+      <app-elegir-foto
+        [etiqueta]="repuesto.fotoUrl ? 'Reemplazar' : 'Subir foto'"
+        [ocupado]="subiendoFoto()"
+        (archivo)="onFotoSeleccionada($event)"
+      />
 
       @if (repuesto.fotoUrl) {
         <button
@@ -622,4 +664,12 @@
       <button type="button" class="btn btn-secundario" (click)="fotoDe.set(null)">Cerrar</button>
     </div>
   </app-modal>
+}
+
+@if (gestionCategorias()) {
+  <app-gestion-categorias
+    [categorias]="categorias()"
+    (cambio)="alCambiarCategorias()"
+    (cerrar)="gestionCategorias.set(false)"
+  />
 }

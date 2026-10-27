@@ -171,7 +171,7 @@
               Quedará un saldo pendiente de <strong>{{ saldoQueQueda() | bs }}</strong>.
             </span>
           } @else if ((nuevo.monto ?? 0) > 0) {
-            <span class="campo-error">Ese monto cubre todo el saldo: elija «Pago total».</span>
+            <span class="campo-error">Ese monto cubre todo el saldo: elija <strong>Pago total</strong>.</span>
           } @else {
             <span class="campo-ayuda">Escriba cuánto paga ahora; el resto queda como saldo.</span>
           }
