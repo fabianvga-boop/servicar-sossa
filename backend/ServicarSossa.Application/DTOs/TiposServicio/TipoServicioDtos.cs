@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using ServicarSossa.Application.DTOs.CategoriasRepuesto;
 using ServicarSossa.Domain.Enums;
 
 namespace ServicarSossa.Application.DTOs.TiposServicio;
@@ -18,6 +19,12 @@ public class TipoServicioRequestDto
 
     /// <summary>El servicio consume un repuesto: en la orden no se completa sin registrarlo.</summary>
     public bool RequiereRepuesto { get; set; }
+
+    /// <summary>
+    /// Tipos de repuesto que lleva (CAT-000). Solo cuenta si
+    /// <see cref="RequiereRepuesto"/>; vacío = acepta cualquier repuesto.
+    /// </summary>
+    public List<string> CategoriaIds { get; set; } = [];
 }
 
 /// <summary>USU013 — edición de un tipo de servicio.</summary>
@@ -35,6 +42,12 @@ public class TipoServicioUpdateDto
 
     /// <summary>El servicio consume un repuesto: en la orden no se completa sin registrarlo.</summary>
     public bool RequiereRepuesto { get; set; }
+
+    /// <summary>
+    /// Tipos de repuesto que lleva (CAT-000). Solo cuenta si
+    /// <see cref="RequiereRepuesto"/>; vacío = acepta cualquier repuesto.
+    /// </summary>
+    public List<string> CategoriaIds { get; set; } = [];
 }
 
 /// <summary>Habilita o deshabilita el servicio en el catálogo (baja lógica).</summary>
@@ -52,5 +65,6 @@ public class TipoServicioResponseDto
     public string? Descripcion { get; set; }
     public decimal PrecioBase { get; set; }
     public bool RequiereRepuesto { get; set; }
+    public List<CategoriaResumenDto> Categorias { get; set; } = [];
     public EstadoServicio Estado { get; set; }
 }

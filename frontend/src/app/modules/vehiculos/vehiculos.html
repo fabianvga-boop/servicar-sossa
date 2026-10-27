@@ -391,23 +391,21 @@
   <app-modal titulo="Fotos de {{ vehiculo.placa }}" [ancho]="620" (cerrar)="cerrarGaleria()">
     <p class="texto-tenue texto-sm mb-0">
       Opcional: fotos para dejar constancia del estado del vehículo (golpes, rayones, nivel de
-      combustible…) al momento de ingresar.
+      combustible…) al momento de ingresar. Desde el celular se pueden tomar en el momento.
     </p>
+
+    <div *appSiRol="['Administrador']" class="mt-1">
+      <app-elegir-foto
+        etiqueta="Elegir archivo"
+        [ocupado]="subiendoFoto()"
+        (archivo)="onArchivoSeleccionado($event)"
+      />
+    </div>
 
     @if (cargandoFotos()) {
       <app-esqueleto [filas]="1" [columnas]="3" />
     } @else {
       <div class="galeria-fotos">
-        <label *appSiRol="['Administrador']" class="galeria-subir">
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            [disabled]="subiendoFoto()"
-            (change)="onArchivoSeleccionado($event)"
-          />
-          {{ subiendoFoto() ? 'Subiendo…' : '+ Agregar foto' }}
-        </label>
-
         @for (foto of fotos(); track foto.fotoId) {
           <div class="galeria-item">
             <img [src]="urlArchivo(foto.url)" alt="Foto del vehículo {{ vehiculo.placa }}" />
@@ -424,7 +422,7 @@
           </div>
         }
 
-        @if (fotos().length === 0 && !auth.esAdministrador()) {
+        @if (fotos().length === 0) {
           <p class="texto-tenue texto-sm">Este vehículo todavía no tiene fotos.</p>
         }
       </div>

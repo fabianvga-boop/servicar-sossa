@@ -29,4 +29,11 @@ public class TipoServicio
 
     // Navegación
     public ICollection<OrdenServicio> OrdenServicios { get; set; } = [];
+
+    /// <summary>
+    /// Tipos de repuesto que lleva el servicio. En la orden no se le registra un
+    /// repuesto del inventario de otra categoría (salvo excepción del Administrador).
+    /// Vacío = acepta cualquier repuesto.
+    /// </summary>
+    public ICollection<ServicioCategoria> Categorias { get; set; } = [];
 }

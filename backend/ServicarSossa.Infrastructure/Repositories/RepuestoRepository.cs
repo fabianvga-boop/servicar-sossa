@@ -14,6 +14,7 @@ public class RepuestoRepository(AppDbContext context)
     public async Task<Repuesto?> GetByIdConProveedorAsync(
         string repuestoId, CancellationToken ct = default)
         => await Set.Include(r => r.Proveedor)
+                    .Include(r => r.Categoria)
                     .Include(r => r.Compatibilidades)
                     .AsNoTracking()
                     .FirstOrDefaultAsync(r => r.RepuestoId == repuestoId, ct);
@@ -25,11 +26,17 @@ public class RepuestoRepository(AppDbContext context)
     public async Task<(IEnumerable<Repuesto> Items, int Total)> BuscarAsync(
         string? buscar, string? proveedorId, bool soloStockBajo,
         int pagina, int tamanoPagina, CancellationToken ct = default,
-        Vehiculo? vehiculo = null)
+        Vehiculo? vehiculo = null, string? categoriaId = null)
     {
         var query = Set.Include(r => r.Proveedor)
+                       .Include(r => r.Categoria)
                        .Include(r => r.Compatibilidades)
                        .AsNoTracking();
+
+        if (categoriaId == IRepuestoRepository.SinCategoria)
+            query = query.Where(r => r.CategoriaId == null);
+        else if (!string.IsNullOrWhiteSpace(categoriaId))
+            query = query.Where(r => r.CategoriaId == categoriaId);
 
         if (!string.IsNullOrWhiteSpace(proveedorId))
             query = query.Where(r => r.ProveedorId == proveedorId);

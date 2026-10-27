@@ -1,3 +1,4 @@
+import { CategoriaResumen } from './inventario.model';
 import {
   EstadoDiag,
   EstadoOrden,
@@ -16,6 +17,8 @@ export interface TipoServicio {
   precioBase: number;
   /** Consume un repuesto: en la orden no se completa sin registrarlo. */
   requiereRepuesto: boolean;
+  /** Tipos de repuesto que lleva. Vacío = acepta cualquier repuesto. */
+  categorias: CategoriaResumen[];
   estado: EstadoServicio;
 }
 
@@ -24,6 +27,7 @@ export interface TipoServicioRequest {
   descripcion?: string | null;
   precioBase: number;
   requiereRepuesto: boolean;
+  categoriaIds: string[];
 }
 
 // -------------------------------------------------------------- Diagnósticos
@@ -159,6 +163,11 @@ export interface OrdenServicio {
   precio: number;
   /** Para completarse necesita al menos un repuesto registrado para él. */
   requiereRepuesto: boolean;
+  /**
+   * Tipos de repuesto que lleva (del catálogo). Un repuesto del inventario de
+   * otra categoría solo lo registra el Administrador, con motivo.
+   */
+  categorias: CategoriaResumen[];
   estado: EstadoServicioOrden;
 }
 
@@ -212,4 +221,6 @@ export interface OrdenRepuestoRequest {
   precioUnitario?: number | null;
   /** Servicio de la orden para el que se usó (opcional). */
   ordenServicioId?: string | null;
+  /** Excepción del Administrador: repuesto de otra categoría que la del servicio. */
+  motivoCategoria?: string | null;
 }

@@ -19,10 +19,17 @@ public interface IRepuestoRepository : IRepository<Repuesto>
     /// Si se indica, deja solo los repuestos que sirven a ese vehículo: los
     /// universales y los específicos compatibles con su marca, modelo y año.
     /// </param>
+    /// <param name="categoriaId">
+    /// Deja solo los de esa categoría; <see cref="SinCategoria"/> deja los que
+    /// todavía no tienen ninguna.
+    /// </param>
     Task<(IEnumerable<Repuesto> Items, int Total)> BuscarAsync(
         string? buscar, string? proveedorId, bool soloStockBajo,
         int pagina, int tamanoPagina, CancellationToken ct = default,
-        Vehiculo? vehiculo = null);
+        Vehiculo? vehiculo = null, string? categoriaId = null);
+
+    /// <summary>Valor del filtro de categoría para los repuestos sin categoría.</summary>
+    const string SinCategoria = "sin-categoria";
 
     /// <summary>true si el repuesto aparece en alguna compra u orden de trabajo.</summary>
     Task<bool> TieneMovimientosAsync(string repuestoId, CancellationToken ct = default);

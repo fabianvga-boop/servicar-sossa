@@ -47,7 +47,7 @@ public class ClientesController(IClienteService service) : ApiControllerBase
     /// <summary>
     /// Activa o desactiva el cliente (baja lógica). Sin historia de usuario
     /// numerada propia en la Épica 2 — funcionalidad añadida más allá del
-    /// backlog original de USU006–USU008 (ver «Desarrollo realizado»).
+    /// backlog original de USU006–USU008 (ver “Desarrollo realizado”).
     /// </summary>
     [HttpPatch("{id}/estado")]
     [ProducesResponseType(typeof(ClienteResponseDto), StatusCodes.Status200OK)]

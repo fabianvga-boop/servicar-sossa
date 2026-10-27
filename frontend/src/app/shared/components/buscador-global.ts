@@ -4,6 +4,7 @@ import { forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 
 import { Cliente, Vehiculo } from '../../core/models/personas.model';
+import { TipoAplicacionRepuesto } from '../../core/models/enums';
 import { Repuesto } from '../../core/models/inventario.model';
 import { Orden } from '../../core/models/taller.model';
 import { AuthService } from '../../core/services/auth.service';
@@ -68,7 +69,7 @@ interface Resultado {
           } @else if (resultados().length === 0) {
             <div class="mensaje">
               @if (consulta().trim()) {
-                Sin coincidencias para «{{ consulta() }}».
+                Sin coincidencias para <strong>{{ consulta() }}</strong>.
               } @else {
                 Escriba para buscar en todo el sistema.
               }
@@ -319,7 +320,7 @@ export class BuscadorGlobal {
         grupo: 'Repuestos',
         icono: 'repuestos',
         etiqueta: repuesto.nombre,
-        detalle: repuesto.resumenCompatibilidad && repuesto.resumenCompatibilidad !== 'Universal'
+        detalle: repuesto.tipoAplicacion === TipoAplicacionRepuesto.Especifico && repuesto.resumenCompatibilidad
           ? `${repuesto.resumenCompatibilidad} · stock ${repuesto.stockActual}`
           : `stock ${repuesto.stockActual}`,
         ruta: '/repuestos',

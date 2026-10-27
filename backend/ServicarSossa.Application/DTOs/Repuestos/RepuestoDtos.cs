@@ -34,6 +34,10 @@ public class RepuestoRequestDto
 
     /// <summary>Vehículos en los que calza. Obligatorio si es Específico; se ignora si es Universal.</summary>
     public List<CompatibilidadRepuestoDto> Compatibilidades { get; set; } = [];
+
+    /// <summary>Tipo de repuesto (opcional): Aceite de motor, Bujías…</summary>
+    [RegularExpression(@"^CAT-\d{3,}$", ErrorMessage = "La categoría debe tener el formato CAT-000.")]
+    public string? CategoriaId { get; set; }
 }
 
 /// <summary>
@@ -66,6 +70,10 @@ public class RepuestoUpdateDto
 
     /// <summary>Vehículos en los que calza. Obligatorio si es Específico; se ignora si es Universal.</summary>
     public List<CompatibilidadRepuestoDto> Compatibilidades { get; set; } = [];
+
+    /// <summary>Tipo de repuesto (opcional): Aceite de motor, Bujías…</summary>
+    [RegularExpression(@"^CAT-\d{3,}$", ErrorMessage = "La categoría debe tener el formato CAT-000.")]
+    public string? CategoriaId { get; set; }
 }
 
 /// <summary>
@@ -114,7 +122,11 @@ public class RepuestoResponseDto
     public TipoAplicacionRepuesto TipoAplicacion { get; set; }
     public List<CompatibilidadRepuestoDto> Compatibilidades { get; set; } = [];
 
-    /// <summary>Resumen para listados: "Universal" o "Toyota Corolla 2015–2020 +1".</summary>
+    /// <summary>Null si el repuesto todavía no tiene categoría.</summary>
+    public string? CategoriaId { get; set; }
+    public string? NombreCategoria { get; set; }
+
+    /// <summary>Resumen para listados: "Uso general" o "Toyota Corolla 2015–2020 +1".</summary>
     public string ResumenCompatibilidad { get; set; } = string.Empty;
 }
 

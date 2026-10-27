@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 
 import { AuthService } from './auth.service';
 import { NotificacionService } from './notificacion.service';
@@ -32,6 +32,15 @@ export class InactividadService {
 
   private temporizadorAviso: ReturnType<typeof setTimeout> | null = null;
   private temporizadorLogout: ReturnType<typeof setTimeout> | null = null;
+  private intervaloCuenta: ReturnType<typeof setInterval> | null = null;
+
+  /**
+   * El último minuto se avisa con una ventana con cuenta regresiva (ver
+   * AvisoInactividad), no con un aviso chico que se cierra solo: así nadie
+   * pierde lo que tenía escrito por no haberlo visto a tiempo.
+   */
+  readonly avisoVisible = signal(false);
+  readonly segundosRestantes = signal(0);
   private iniciado = false;
 
   private readonly alHaberActividad = (): void => this.reiniciarTemporizadores();
@@ -59,6 +68,11 @@ export class InactividadService {
     this.limpiarTemporizadores();
   }
 
+  /** "Seguir trabajando": cuenta como actividad y vuelve a empezar los 15 minutos. */
+  continuar(): void {
+    this.reiniciarTemporizadores();
+  }
+
   private reiniciarTemporizadores(): void {
     this.limpiarTemporizadores();
     this.temporizadorAviso = setTimeout(() => this.avisar(), MS_AVISO);
@@ -66,8 +80,11 @@ export class InactividadService {
   }
 
   private avisar(): void {
-    this.notificacion.advertencia(
-      `Su sesión se cerrará en ${MINUTOS_AVISO} minuto por inactividad. Mueva el mouse o toque una tecla para continuar.`,
+    this.segundosRestantes.set(MINUTOS_AVISO * 60);
+    this.avisoVisible.set(true);
+    this.intervaloCuenta = setInterval(
+      () => this.segundosRestantes.update((s) => Math.max(0, s - 1)),
+      1000,
     );
   }
 
@@ -80,5 +97,8 @@ export class InactividadService {
   private limpiarTemporizadores(): void {
     if (this.temporizadorAviso) clearTimeout(this.temporizadorAviso);
     if (this.temporizadorLogout) clearTimeout(this.temporizadorLogout);
+    if (this.intervaloCuenta) clearInterval(this.intervaloCuenta);
+    this.intervaloCuenta = null;
+    this.avisoVisible.set(false);
   }
 }

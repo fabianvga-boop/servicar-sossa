@@ -74,8 +74,13 @@
                     class="insignia insignia-azul mt-1"
                     title="En la orden no se completa sin registrar el repuesto usado"
                   >
-                    Usa repuestos
+                    Lleva repuestos
                   </span>
+                  @if (nombresCategorias(servicio); as nombres) {
+                    <div class="texto-tenue texto-sm mt-1">{{ nombres }}</div>
+                  } @else {
+                    <div class="texto-tenue texto-sm mt-1">Cualquier repuesto</div>
+                  }
                 }
               </td>
               <td>
@@ -194,16 +199,94 @@
         </span>
       </div>
 
-      <div class="campo mb-0">
-        <label class="casilla">
-          <input type="checkbox" style="width: auto" formControlName="requiereRepuesto" />
-          Este servicio usa repuestos (aceite, filtro, batería, pastillas…)
-        </label>
-        <span class="campo-ayuda">
-          En la orden de trabajo no se podrá completar sin registrar el repuesto usado: del
-          inventario, traído por el cliente o comprado afuera.
-        </span>
+      <div class="campo" [class.mb-0]="!formulario.controls.requiereRepuesto.value">
+        <label>¿Este servicio lleva repuestos? <span class="obligatorio">*</span></label>
+        <div class="selector-aplicacion" role="radiogroup" aria-label="Si el servicio lleva repuestos">
+          <button
+            type="button"
+            role="radio"
+            [attr.aria-checked]="!formulario.controls.requiereRepuesto.value"
+            [class.activo]="!formulario.controls.requiereRepuesto.value"
+            (click)="elegirRequiereRepuesto(false)"
+          >
+            <strong>Solo mano de obra</strong>
+            <span>Alineación, balanceo, revisión, diagnóstico, limpieza.</span>
+          </button>
+          <button
+            type="button"
+            role="radio"
+            [attr.aria-checked]="formulario.controls.requiereRepuesto.value"
+            [class.activo]="formulario.controls.requiereRepuesto.value"
+            (click)="elegirRequiereRepuesto(true)"
+          >
+            <strong>Lleva repuestos</strong>
+            <span>
+              Cambio de aceite, de batería, de pastillas… En la orden no se completa sin
+              registrar el repuesto usado.
+            </span>
+          </button>
+        </div>
       </div>
+
+      @if (formulario.controls.requiereRepuesto.value) {
+        <div class="campo mb-0">
+          <label for="categoriaServicio">¿Qué repuestos lleva?</label>
+
+          @if (categoriasElegidas().length > 0) {
+            <div class="chips-categorias mb-1">
+              @for (categoria of categoriasElegidas(); track categoria.categoriaId) {
+                <span class="chip-categoria">
+                  {{ categoria.nombre }}
+                  <button
+                    type="button"
+                    [attr.aria-label]="'Quitar ' + categoria.nombre"
+                    (click)="quitarCategoria(categoria.categoriaId)"
+                  >
+                    ×
+                  </button>
+                </span>
+              }
+            </div>
+          }
+
+          @for (clave of [reinicioSelector()]; track clave) {
+            <app-selector-busqueda
+              idCampo="categoriaServicio"
+              name="categoriaServicio"
+              marcador="Agregar una categoría: Aceite de motor, Bujías…"
+              permitirNuevo="categoría nueva"
+              [opciones]="opcionesCategoria()"
+              [ngModel]="''"
+              [ngModelOptions]="{ standalone: true }"
+              (seleccion)="agregarCategoria($event)"
+            />
+          }
+
+          @if (sugeridas(); as sugeridas) {
+            @if (sugeridas.length > 0) {
+              <div class="chips-sugeridos">
+                <span class="texto-tenue texto-sm">Por el nombre:</span>
+                @for (categoria of sugeridas; track categoria.categoriaId) {
+                  <button type="button" class="chip-sugerido" (click)="sumarCategoria(categoria)">
+                    + {{ categoria.nombre }}
+                  </button>
+                }
+              </div>
+            }
+          }
+
+          <span class="campo-ayuda">
+            @if (categoriasElegidas().length > 0) {
+              En la orden, a este servicio solo se le podrán registrar repuestos del inventario
+              de estas categorías. Uno de otra categoría lo registra solo el Administrador,
+              escribiendo el motivo.
+            } @else {
+              Sin categorías, el servicio acepta cualquier repuesto. Elíjalas para que en la
+              orden no se registre, por ejemplo, un aceite en un cambio de bujías.
+            }
+          </span>
+        </div>
+      }
     </form>
 
     <div pie>

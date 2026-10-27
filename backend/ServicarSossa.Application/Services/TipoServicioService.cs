@@ -1,4 +1,5 @@
 using ServicarSossa.Application.Common;
+using ServicarSossa.Application.DTOs.CategoriasRepuesto;
 using ServicarSossa.Application.DTOs.Comunes;
 using ServicarSossa.Application.DTOs.TiposServicio;
 using ServicarSossa.Application.Interfaces;
@@ -10,6 +11,7 @@ namespace ServicarSossa.Application.Services;
 /// <summary>USU013 — gestión del catálogo de tipos de servicio.</summary>
 public class TipoServicioService(
     ITipoServicioRepository servicios,
+    ICategoriaRepuestoRepository categorias,
     IGeneradorId generadorId,
     IAuditor auditor) : ITipoServicioService
 {
@@ -30,7 +32,7 @@ public class TipoServicioService(
     public async Task<Result<TipoServicioResponseDto>> GetByIdAsync(
         string id, CancellationToken ct = default)
     {
-        var servicio = await servicios.GetByIdAsync(id, ct);
+        var servicio = await servicios.GetConCategoriasAsync(id, ct);
 
         return servicio is null
             ? Result<TipoServicioResponseDto>.NoEncontrado($"No existe el servicio {id}.")
@@ -48,6 +50,9 @@ public class TipoServicioService(
             return Result<TipoServicioResponseDto>.Conflicto(
                 $"Ya existe un servicio llamado '{nombre}'.");
 
+        var (errorCategorias, elegidas) = await ElegirCategoriasAsync(dto.RequiereRepuesto, dto.CategoriaIds, ct);
+        if (errorCategorias is not null) return Result<TipoServicioResponseDto>.Fail(errorCategorias);
+
         var servicio = new TipoServicio
         {
             ServicioId = await generadorId.SiguienteAsync<TipoServicio>("SER", ct),
@@ -55,24 +60,28 @@ public class TipoServicioService(
             Descripcion = string.IsNullOrWhiteSpace(dto.Descripcion) ? null : dto.Descripcion.Trim(),
             PrecioBase = dto.PrecioBase,
             RequiereRepuesto = dto.RequiereRepuesto,
-            Estado = EstadoServicio.Activo
+            Estado = EstadoServicio.Activo,
+            // Solo el código: las categorías se leyeron sin seguimiento y EF las
+            // intentaría insertar de nuevo si se enlazara la entidad.
+            Categorias = [.. elegidas.Select(c => new ServicioCategoria { CategoriaId = c.CategoriaId })]
         };
 
         await servicios.AddAsync(servicio, ct);
 
         await auditor.RegistrarAsync(
             usuarioId, AccionAuditoria.Crear, "TipoServicio", servicio.ServicioId,
-            $"Registró el servicio '{nombre}' en el catálogo.", ct);
+            $"Registró el servicio '{nombre}' en el catálogo{DescribirCategorias(elegidas)}.", ct);
 
         await servicios.SaveChangesAsync(ct);
 
-        return Result<TipoServicioResponseDto>.Ok(Mapear(servicio), "Servicio registrado correctamente.");
+        var creado = await servicios.GetConCategoriasAsync(servicio.ServicioId, ct);
+        return Result<TipoServicioResponseDto>.Ok(Mapear(creado!), "Servicio registrado correctamente.");
     }
 
     public async Task<Result<TipoServicioResponseDto>> UpdateAsync(
         string id, TipoServicioUpdateDto dto, string usuarioId, CancellationToken ct = default)
     {
-        var servicio = await servicios.FirstOrDefaultAsync(s => s.ServicioId == id, ct);
+        var servicio = await servicios.GetConCategoriasAsync(id, ct);
 
         if (servicio is null)
             return Result<TipoServicioResponseDto>.NoEncontrado($"No existe el servicio {id}.");
@@ -84,6 +93,9 @@ public class TipoServicioService(
             return Result<TipoServicioResponseDto>.Conflicto(
                 $"Ya existe otro servicio llamado '{nombre}'.");
 
+        var (errorCategorias, elegidas) = await ElegirCategoriasAsync(dto.RequiereRepuesto, dto.CategoriaIds, ct);
+        if (errorCategorias is not null) return Result<TipoServicioResponseDto>.Fail(errorCategorias);
+
         servicio.Nombre = nombre;
         servicio.Descripcion = string.IsNullOrWhiteSpace(dto.Descripcion) ? null : dto.Descripcion.Trim();
         servicio.PrecioBase = dto.PrecioBase;
@@ -91,13 +103,22 @@ public class TipoServicioService(
         // las ya cargadas conservan la marca con la que se agregaron.
         servicio.RequiereRepuesto = dto.RequiereRepuesto;
 
+        // Las categorías sí valen enseguida, también en las órdenes en curso: se
+        // leen del catálogo al registrar cada repuesto.
+        var nuevas = elegidas.Select(c => c.CategoriaId).ToHashSet();
+        foreach (var enlace in servicio.Categorias.Where(c => !nuevas.Contains(c.CategoriaId)).ToList())
+            servicio.Categorias.Remove(enlace);
+        foreach (var categoria in elegidas.Where(c => servicio.Categorias.All(e => e.CategoriaId != c.CategoriaId)))
+            servicio.Categorias.Add(new ServicioCategoria { ServicioId = id, CategoriaId = categoria.CategoriaId });
+
         await auditor.RegistrarAsync(
             usuarioId, AccionAuditoria.Editar, "TipoServicio", id,
-            $"Editó el servicio '{nombre}' del catálogo.", ct);
+            $"Editó el servicio '{nombre}' del catálogo{DescribirCategorias(elegidas)}.", ct);
 
         await servicios.SaveChangesAsync(ct);
 
-        return Result<TipoServicioResponseDto>.Ok(Mapear(servicio), "Servicio actualizado correctamente.");
+        var actualizado = await servicios.GetConCategoriasAsync(id, ct);
+        return Result<TipoServicioResponseDto>.Ok(Mapear(actualizado!), "Servicio actualizado correctamente.");
     }
 
     public async Task<Result<TipoServicioResponseDto>> CambiarEstadoAsync(
@@ -123,6 +144,28 @@ public class TipoServicioService(
             Mapear(servicio), $"Servicio marcado como {dto.Estado}.");
     }
 
+    /// <summary>
+    /// Valida las categorías elegidas. Un servicio que no lleva repuestos no
+    /// guarda categorías: no habría nada que controlar.
+    /// </summary>
+    private async Task<(string? Error, List<CategoriaRepuesto> Elegidas)> ElegirCategoriasAsync(
+        bool requiereRepuesto, List<string>? categoriaIds, CancellationToken ct)
+    {
+        if (!requiereRepuesto || categoriaIds is null || categoriaIds.Count == 0) return (null, []);
+
+        var ids = categoriaIds.Where(c => !string.IsNullOrWhiteSpace(c)).Distinct().ToList();
+        var encontradas = (await categorias.FindAsync(c => ids.Contains(c.CategoriaId), ct)).ToList();
+
+        return encontradas.Count == ids.Count
+            ? (null, encontradas)
+            : ("Alguna de las categorías elegidas ya no existe (puede que la hayan borrado). Vuelva a elegirlas.", []);
+    }
+
+    private static string DescribirCategorias(List<CategoriaRepuesto> categorias)
+        => categorias.Count == 0
+            ? string.Empty
+            : $" (lleva: {string.Join(", ", categorias.Select(c => c.Nombre).Order())})";
+
     private static TipoServicioResponseDto Mapear(TipoServicio s) => new()
     {
         ServicioId = s.ServicioId,
@@ -130,6 +173,10 @@ public class TipoServicioService(
         Descripcion = s.Descripcion,
         PrecioBase = s.PrecioBase,
         RequiereRepuesto = s.RequiereRepuesto,
+        Categorias = [.. s.Categorias
+            .Where(c => c.Categoria is not null)
+            .OrderBy(c => c.Categoria.Nombre)
+            .Select(c => new CategoriaResumenDto { CategoriaId = c.CategoriaId, Nombre = c.Categoria.Nombre })],
         Estado = s.Estado
     };
 }

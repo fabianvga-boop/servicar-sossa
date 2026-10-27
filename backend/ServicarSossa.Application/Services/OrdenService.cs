@@ -1,4 +1,5 @@
 using ServicarSossa.Application.Common;
+using ServicarSossa.Application.DTOs.CategoriasRepuesto;
 using ServicarSossa.Application.DTOs.Ordenes;
 using ServicarSossa.Application.Interfaces;
 using ServicarSossa.Domain.Entities;
@@ -256,11 +257,11 @@ public class OrdenService(
         await auditor.RegistrarAsync(
             usuarioId,
             dto.Estado == EstadoOrden.Cancelada ? AccionAuditoria.Anular : AccionAuditoria.CambiarEstado,
-            "Orden", id, $"Marcó la orden {id} como {dto.Estado}.", ct);
+            "Orden", id, $"Marcó la orden {id} como {Etiqueta(dto.Estado)}.", ct);
 
         await ordenes.SaveChangesAsync(ct);
 
-        return await RecargarAsync(id, $"Orden marcada como {dto.Estado}.", ct);
+        return await RecargarAsync(id, $"Orden marcada como {Etiqueta(dto.Estado)}.", ct);
     }
 
     /// <summary>
@@ -676,7 +677,7 @@ public class OrdenService(
         var responsable = asignados.FirstOrDefault(a => a.MecanicoId == mecanicoId)?.Mecanico;
         await auditor.RegistrarAsync(
             usuarioId, AccionAuditoria.Crear, "Orden", ordenId,
-            $"Agregó el servicio «{nombreServicio}» " +
+            $"Agregó el servicio “{nombreServicio}” " +
             $"(Bs {servicio.Precio:N2}) a la orden {ordenId}, a cargo de {NombreDe(responsable)}.", ct);
 
         await ordenes.SaveChangesAsync(ct);
@@ -713,9 +714,9 @@ public class OrdenService(
 
             if (enCurso is not null)
                 return Result<OrdenDetalleResponseDto>.Conflicto(
-                    $"Primero termine «{NombreDe(enCurso)}», que está en proceso. " +
+                    $"Primero termine “{NombreDe(enCurso)}”, que está en proceso. " +
                     $"Recién después puede {(dto.Estado == EstadoServicioOrden.EnProceso ? "iniciar" : "completar")} " +
-                    $"«{NombreDe(servicio)}»: un mecánico trabaja un servicio a la vez.");
+                    $"“{NombreDe(servicio)}”: un mecánico trabaja un servicio a la vez.");
         }
 
         // Sin el repuesto registrado, completar el servicio deja la orden
@@ -728,7 +729,7 @@ public class OrdenService(
 
             if (string.IsNullOrEmpty(motivo))
                 return Result<OrdenDetalleResponseDto>.Conflicto(
-                    $"«{NombreDe(servicio)}» usa repuestos: registre en la orden el repuesto que se usó " +
+                    $"“{NombreDe(servicio)}” usa repuestos: registre en la orden el repuesto que se usó " +
                     "(del inventario, traído por el cliente o comprado afuera) antes de completarlo.");
 
             if (!esAdministrador)
@@ -737,18 +738,18 @@ public class OrdenService(
 
             await auditor.RegistrarAsync(
                 usuarioId, AccionAuditoria.Excepcion, "Orden", ordenId,
-                $"Completó «{NombreDe(servicio)}» ({ordenServicioId}) sin registrar repuesto. " +
+                $"Completó “{NombreDe(servicio)}” ({ordenServicioId}) sin registrar repuesto. " +
                 $"Motivo: {motivo}", ct);
         }
 
         await auditor.RegistrarAsync(
             usuarioId, AccionAuditoria.CambiarEstado, "Orden", ordenId,
-            $"Marcó «{NombreDe(servicio)}» como {Etiqueta(dto.Estado)} en la orden {ordenId}.", ct);
+            $"Marcó “{NombreDe(servicio)}” como {Etiqueta(dto.Estado)} en la orden {ordenId}.", ct);
 
         servicio.Estado = dto.Estado;
         await ordenes.SaveChangesAsync(ct);
 
-        return await RecargarAsync(ordenId, $"Servicio marcado como {dto.Estado}.", ct);
+        return await RecargarAsync(ordenId, $"Servicio marcado como {Etiqueta(dto.Estado)}.", ct);
     }
 
     public async Task<Result<OrdenDetalleResponseDto>> EditarServicioAsync(
@@ -771,8 +772,8 @@ public class OrdenService(
         await auditor.RegistrarAsync(
             usuarioId, AccionAuditoria.Editar, "Orden", ordenId,
             antes == dto.Precio
-                ? $"Editó el detalle de «{NombreDe(servicio)}» en la orden {ordenId}."
-                : $"Cambió el precio de «{NombreDe(servicio)}» de Bs {antes:N2} a Bs {dto.Precio:N2} en la orden {ordenId}.",
+                ? $"Editó el detalle de “{NombreDe(servicio)}” en la orden {ordenId}."
+                : $"Cambió el precio de “{NombreDe(servicio)}” de Bs {antes:N2} a Bs {dto.Precio:N2} en la orden {ordenId}.",
             ct);
 
         await ordenes.SaveChangesAsync(ct);
@@ -798,7 +799,7 @@ public class OrdenService(
 
         await auditor.RegistrarAsync(
             usuarioId, AccionAuditoria.Eliminar, "Orden", ordenId,
-            $"Quitó el servicio «{NombreDe(servicio)}» (Bs {servicio.Precio:N2}) de la orden {ordenId}.", ct);
+            $"Quitó el servicio “{NombreDe(servicio)}” (Bs {servicio.Precio:N2}) de la orden {ordenId}.", ct);
 
         await ordenes.SaveChangesAsync(ct);
 
@@ -850,6 +851,10 @@ public class OrdenService(
                     $"Stock insuficiente de '{repuesto.Nombre}': " +
                     $"disponibles {repuesto.StockActual}, solicitados {dto.Cantidad}.");
 
+            var errorCategoria = await ValidarCategoriaRepuestoAsync(
+                ordenId, servicio, repuesto, dto.MotivoCategoria, usuarioId, esAdministrador, ct);
+            if (errorCategoria is not null) return errorCategoria;
+
             linea.RepuestoId = repuesto.RepuestoId;
             // Congela el precio de venta vigente al momento del consumo. Solo el
             // Administrador puede cobrar otro precio que el del inventario.
@@ -873,8 +878,8 @@ public class OrdenService(
 
         await auditor.RegistrarAsync(
             usuarioId, AccionAuditoria.Crear, "Orden", ordenId,
-            $"Agregó {linea.Cantidad} × «{nombreRepuesto}» ({Etiqueta(linea.Origen)}) a la orden {ordenId}" +
-            (servicio is null ? "." : $" para «{NombreDe(servicio)}»."), ct);
+            $"Agregó {linea.Cantidad} × “{nombreRepuesto}” ({Etiqueta(linea.Origen)}) a la orden {ordenId}" +
+            (servicio is null ? "." : $" para “{NombreDe(servicio)}”."), ct);
 
         await ordenes.SaveChangesAsync(ct);
 
@@ -926,7 +931,7 @@ public class OrdenService(
 
         await auditor.RegistrarAsync(
             usuarioId, AccionAuditoria.Editar, "Orden", ordenId,
-            $"Corrigió «{nombre}» en la orden {ordenId}: {string.Join(", ", cambios)}.", ct);
+            $"Corrigió “{nombre}” en la orden {ordenId}: {string.Join(", ", cambios)}.", ct);
 
         await ordenes.SaveChangesAsync(ct);
 
@@ -958,7 +963,7 @@ public class OrdenService(
 
             if (servicio is { RequiereRepuesto: true, Estado: EstadoServicioOrden.Completado } && esElUnico)
                 return Result<OrdenDetalleResponseDto>.Conflicto(
-                    $"Es el único repuesto registrado de «{NombreDe(servicio)}», que ya está completado. " +
+                    $"Es el único repuesto registrado de “{NombreDe(servicio)}”, que ya está completado. " +
                     "Agregue primero el repuesto correcto y después quite este.");
         }
 
@@ -971,7 +976,7 @@ public class OrdenService(
 
         await auditor.RegistrarAsync(
             usuarioId, AccionAuditoria.Eliminar, "Orden", ordenId,
-            $"Quitó {consumo.Cantidad} × «{nombre}» de la orden {ordenId}.", ct);
+            $"Quitó {consumo.Cantidad} × “{nombre}” de la orden {ordenId}.", ct);
 
         await ordenes.SaveChangesAsync(ct);
 
@@ -979,6 +984,45 @@ public class OrdenService(
     }
 
     // ==================================================================== APOYO
+
+    /// <summary>
+    /// Un servicio con categorías (Cambio de bujías → Bujías) no admite un
+    /// repuesto del inventario de otra categoría: el mecánico no puede, y el
+    /// Administrador solo con motivo, que queda en auditoría. No se controla si
+    /// el servicio no tiene categorías o el repuesto todavía no tiene una.
+    /// Devuelve null si se puede registrar.
+    /// </summary>
+    private async Task<Result<OrdenDetalleResponseDto>?> ValidarCategoriaRepuestoAsync(
+        string ordenId, OrdenServicio? servicio, Repuesto repuesto, string? motivoCategoria,
+        string usuarioId, bool esAdministrador, CancellationToken ct)
+    {
+        var categorias = servicio?.Servicio?.Categorias.Select(c => c.Categoria).ToList() ?? [];
+
+        if (servicio is null || categorias.Count == 0 || repuesto.CategoriaId is null
+            || categorias.Any(c => c.CategoriaId == repuesto.CategoriaId))
+            return null;
+
+        var lleva = string.Join(", ", categorias.Select(c => c.Nombre).Order());
+
+        if (!esAdministrador)
+            return Result<OrdenDetalleResponseDto>.Conflicto(
+                $"“{NombreDe(servicio)}” lleva repuestos de la categoría {lleva}. " +
+                $"“{repuesto.Nombre}” no corresponde: elija el repuesto correcto o regístrelo para otro servicio. " +
+                "Si de verdad hace falta, solo el Administrador puede registrarlo, con el motivo.");
+
+        var motivo = motivoCategoria?.Trim();
+        if (string.IsNullOrEmpty(motivo))
+            return Result<OrdenDetalleResponseDto>.Conflicto(
+                $"“{repuesto.Nombre}” no es de la categoría que lleva “{NombreDe(servicio)}” ({lleva}). " +
+                "Para registrarlo igual, escriba el motivo.");
+
+        await auditor.RegistrarAsync(
+            usuarioId, AccionAuditoria.Excepcion, "Orden", ordenId,
+            $"Registró “{repuesto.Nombre}” para “{NombreDe(servicio)}” (lleva: {lleva}) en la orden {ordenId}. " +
+            $"Motivo: {motivo}", ct);
+
+        return null;
+    }
 
     /// <summary>
     /// El Administrador trabaja cualquier orden; el mecánico, solo las que tiene
@@ -996,6 +1040,12 @@ public class OrdenService(
                 "Solo el mecánico asignado a esta orden o el Administrador pueden registrar cambios en ella.")
             : null;
     }
+
+    private static string Etiqueta(EstadoOrden estado) => estado switch
+    {
+        EstadoOrden.EnProceso => "En proceso",
+        _ => estado.ToString()
+    };
 
     private static string Etiqueta(EstadoServicioOrden estado) => estado switch
     {
@@ -1098,6 +1148,11 @@ public class OrdenService(
             Descripcion = s.Descripcion,
             Precio = s.Precio,
             RequiereRepuesto = s.RequiereRepuesto,
+            Categorias = s.Servicio is null
+                ? []
+                : [.. s.Servicio.Categorias
+                    .OrderBy(c => c.Categoria.Nombre)
+                    .Select(c => new CategoriaResumenDto { CategoriaId = c.CategoriaId, Nombre = c.Categoria.Nombre })],
             Estado = s.Estado
         })];
 

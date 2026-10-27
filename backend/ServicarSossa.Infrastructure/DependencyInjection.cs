@@ -44,6 +44,7 @@ public static class DependencyInjection
         services.AddScoped<IOrdenRepository, OrdenRepository>();
         services.AddScoped<IProveedorRepository, ProveedorRepository>();
         services.AddScoped<IRepuestoRepository, RepuestoRepository>();
+        services.AddScoped<ICategoriaRepuestoRepository, CategoriaRepuestoRepository>();
         services.AddScoped<ICompraRepository, CompraRepository>();
         services.AddScoped<IComisionRepository, ComisionRepository>();
         services.AddScoped<IComisionConfigRepository, ComisionConfigRepository>();
@@ -84,6 +85,7 @@ public static class DependencyInjection
         services.AddScoped<IOrdenService, OrdenService>();               // Sprint 4
         services.AddScoped<IProveedorService, ProveedorService>();       // Sprint 5
         services.AddScoped<IRepuestoService, RepuestoService>();         // Sprint 5
+        services.AddScoped<ICategoriaRepuestoService, CategoriaRepuestoService>();
         services.AddScoped<ICompraService, CompraService>();             // Sprint 5
         services.AddScoped<IComisionService, ComisionService>();         // Sprint 6
         services.AddScoped<IProformaService, ProformaService>();         // Sprint 7 — cobro del taller

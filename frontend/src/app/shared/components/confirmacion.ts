@@ -1,6 +1,7 @@
 import { Component, input, output } from '@angular/core';
 
 import { Modal } from './modal';
+import { TextoResaltado } from './texto-resaltado';
 
 /**
  * Confirmación para acciones que no se pueden deshacer (cerrar una orden,
@@ -9,7 +10,7 @@ import { Modal } from './modal';
  */
 @Component({
   selector: 'app-confirmacion',
-  imports: [Modal],
+  imports: [Modal, TextoResaltado],
   template: `
     <app-modal
       [titulo]="titulo()"
@@ -17,10 +18,10 @@ import { Modal } from './modal';
       [peligroso]="peligroso()"
       (cerrar)="cancelar.emit()"
     >
-      <p class="mensaje">{{ mensaje() }}</p>
+      <p class="mensaje"><app-texto-resaltado [texto]="mensaje()" /></p>
 
       @if (advertencia()) {
-        <p class="advertencia" [class.grave]="peligroso()">{{ advertencia() }}</p>
+        <p class="advertencia" [class.grave]="peligroso()"><app-texto-resaltado [texto]="advertencia()" /></p>
       }
 
       <div pie>

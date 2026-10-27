@@ -14,7 +14,7 @@ public class TipoServicioRepository(AppDbContext context)
     public async Task<(IEnumerable<TipoServicio> Items, int Total)> BuscarAsync(
         string? buscar, bool soloActivos, int pagina, int tamanoPagina, CancellationToken ct = default)
     {
-        var query = Set.AsNoTracking();
+        var query = Set.Include(s => s.Categorias).ThenInclude(c => c.Categoria).AsNoTracking();
 
         if (soloActivos)
             query = query.Where(s => s.Estado == EstadoServicio.Activo);
@@ -24,4 +24,8 @@ public class TipoServicioRepository(AppDbContext context)
 
         return await query.OrderBy(s => s.Nombre).ToPagedListAsync(pagina, tamanoPagina, ct);
     }
+
+    public async Task<TipoServicio?> GetConCategoriasAsync(string servicioId, CancellationToken ct = default)
+        => await Set.Include(s => s.Categorias).ThenInclude(c => c.Categoria)
+                    .FirstOrDefaultAsync(s => s.ServicioId == servicioId, ct);
 }

@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { EstadoVenta, TipoAjusteStock } from '../models/enums';
 import { PaginaResultado } from '../models/paginacion.model';
 import {
+  CategoriaRepuesto,
   Compra,
   CompraDetalle,
   CompraRequest,
@@ -46,6 +47,28 @@ export class ProveedoresService extends ApiBase {
   }
 }
 
+/** Categorías de repuesto: las consultan todos, las mantiene el Administrador. */
+@Injectable({ providedIn: 'root' })
+export class CategoriasRepuestoService extends ApiBase {
+  protected readonly recurso = 'categorias-repuesto';
+
+  getAll(): Observable<CategoriaRepuesto[]> {
+    return this.http.get<CategoriaRepuesto[]>(this.base);
+  }
+
+  crear(nombre: string): Observable<CategoriaRepuesto> {
+    return this.http.post<CategoriaRepuesto>(this.base, { nombre });
+  }
+
+  actualizar(id: string, nombre: string): Observable<CategoriaRepuesto> {
+    return this.http.put<CategoriaRepuesto>(this.url(id), { nombre });
+  }
+
+  eliminar(id: string): Observable<{ mensaje: string }> {
+    return this.http.delete<{ mensaje: string }>(this.url(id));
+  }
+}
+
 /** USU026, USU027, USU030 — inventario de repuestos. */
 @Injectable({ providedIn: 'root' })
 export class RepuestosService extends ApiBase {
@@ -58,6 +81,8 @@ export class RepuestosService extends ApiBase {
     soloStockBajo?: boolean;
     /** Solo los repuestos que sirven a ese vehículo (universales y compatibles). */
     vehiculoId?: string;
+    /** Una categoría, o SIN_CATEGORIA para los que todavía no tienen. */
+    categoriaId?: string;
     pagina?: number;
     tamanoPagina?: number;
   } = {}): Observable<PaginaResultado<Repuesto>> {

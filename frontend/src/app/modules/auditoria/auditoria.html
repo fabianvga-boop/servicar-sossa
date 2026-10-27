@@ -82,7 +82,7 @@
                   {{ ETIQUETAS.accionAuditoria[fila.accion] }} {{ fila.entidad }}
                 </span>
               </td>
-              <td class="texto-sm">{{ fila.descripcion }}</td>
+              <td class="texto-sm"><app-texto-resaltado [texto]="fila.descripcion" /></td>
             </tr>
           }
         </tbody>

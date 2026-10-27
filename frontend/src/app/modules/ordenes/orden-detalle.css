@@ -399,10 +399,10 @@
   color: var(--ink-soft);
 }
 
+/* Lo ya cumplido se distingue por el tilde verde, no apagando el texto:
+   tachado y en gris claro se leía como algo borrado o deshabilitado. */
 .requisitos li.cumplido {
-  color: var(--gris-500);
-  text-decoration: line-through;
-  text-decoration-color: var(--gris-200);
+  color: var(--ink-soft);
 }
 
 .requisitos .marca {
@@ -512,25 +512,90 @@
   overflow-y: auto;
 }
 
+/* Línea de tiempo: un ícono de color por registro, unidos por una línea. */
 .historial li {
-  padding: 8px 0 8px 10px;
-  border-left: 2px solid var(--gris-200);
+  --tono: var(--ink-soft);
+  --tono-acento: var(--gris-300);
+  --tono-fondo: var(--gris-100);
+
+  position: relative;
+  display: flex;
+  gap: 11px;
+  padding: 6px 4px 12px 0;
 }
 
-.historial li + li {
-  margin-top: 2px;
+.historial li::before {
+  content: '';
+  position: absolute;
+  left: 14px;
+  top: 36px;
+  bottom: -2px;
+  width: 2px;
+  background: var(--gris-200);
 }
 
-.historial li.excepcion {
-  border-left-color: var(--brand);
+.historial li:last-child::before { display: none; }
+
+.historial li.tono-verde { --tono: var(--verde-700); --tono-acento: var(--verde-600); --tono-fondo: var(--verde-100); }
+.historial li.tono-azul { --tono: var(--azul-700); --tono-acento: var(--azul-600); --tono-fondo: var(--azul-100); }
+.historial li.tono-naranja { --tono: var(--naranja-700); --tono-acento: var(--naranja-600); --tono-fondo: var(--naranja-100); }
+.historial li.tono-roja { --tono: var(--brand-dk); --tono-acento: var(--brand); --tono-fondo: var(--brand-soft); }
+
+.historial-icono {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border: 1.5px solid var(--tono-acento);
+  border-radius: 50%;
+  background: var(--tono-fondo);
+}
+
+.historial-icono svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: var(--tono);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.historial-cuerpo {
+  flex: 1;
+  min-width: 0;
+  padding-top: 2px;
+}
+
+/* La excepción se ve como un aviso dentro de la línea de tiempo. */
+.historial li.excepcion .historial-cuerpo {
+  padding: 6px 9px;
+  border-radius: var(--radio-sm);
+  background: var(--brand-soft);
 }
 
 .historial-meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 4px 8px;
+  margin-bottom: 2px;
   font-size: 12px;
   color: var(--gris-500);
+}
+
+.historial-accion {
+  font-weight: 700;
+  color: var(--tono);
+}
+
+.historial-texto {
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--ink);
 }
 
 /* Qué pasa al reabrir una orden para corregirla. */
@@ -550,3 +615,34 @@
   color: var(--brand-dk);
   font-weight: 600;
 }
+
+/* Ficha del repuesto elegido en "Agregar repuesto": foto y datos clave. */
+.repuesto-elegido {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio-sm);
+  background: var(--gris-50);
+}
+
+.repuesto-elegido img,
+.repuesto-elegido .sin-foto {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio-sm);
+  object-fit: cover;
+  background: var(--blanco);
+}
+
+.repuesto-elegido .sin-foto {
+  display: grid;
+  place-items: center;
+  color: var(--gris-400);
+}
+
+.repuesto-elegido .sin-foto svg { width: 28px; height: 28px; }

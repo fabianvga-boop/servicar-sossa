@@ -5,6 +5,7 @@ import { ActivatedRoute } from '@angular/router';
 
 import { TipoAjusteStock, TipoAplicacionRepuesto } from '../../core/models/enums';
 import {
+  CategoriaRepuesto,
   CompatibilidadRepuesto,
   ProcedenciaRepuesto,
   Proveedor,
@@ -14,12 +15,18 @@ import { PlantillaVehiculo, Vehiculo } from '../../core/models/personas.model';
 import { urlArchivo } from '../../core/services/api-base';
 import { AuthService } from '../../core/services/auth.service';
 import { ContadoresService } from '../../core/services/contadores.service';
-import { ProveedoresService, RepuestosService } from '../../core/services/inventario.service';
+import {
+  CategoriasRepuestoService,
+  ProveedoresService,
+  RepuestosService,
+} from '../../core/services/inventario.service';
 import { NotificacionService } from '../../core/services/notificacion.service';
 import { PlantillasVehiculoService } from '../../core/services/plantillas-vehiculo.service';
 import { PreferenciasService } from '../../core/services/preferencias.service';
 import { VehiculosService } from '../../core/services/vehiculos.service';
+import { ElegirFoto } from '../../shared/components/elegir-foto';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
+import { GestionCategorias } from '../../shared/components/gestion-categorias';
 import { Modal } from '../../shared/components/modal';
 import { Paginador } from '../../shared/components/paginador';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
@@ -27,6 +34,7 @@ import { Atajo } from '../../shared/directives/atajo';
 import { EnfocarError } from '../../shared/directives/enfocar-error';
 import { SiTieneRol } from '../../shared/directives/si-tiene-rol';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
+import { SIN_CATEGORIA, sugerirCategoriaRepuesto } from '../../shared/categorias-repuesto';
 import {
   marcasSugeridas,
   modelosSugeridos,
@@ -61,7 +69,9 @@ const SIN_OPCIONES: OpcionSelector[] = [];
     FormsModule,
     DatePipe,
     Modal,
+    ElegirFoto,
     EstadoTabla,
+    GestionCategorias,
     Paginador,
     SelectorBusqueda,
     Atajo,
@@ -75,6 +85,7 @@ const SIN_OPCIONES: OpcionSelector[] = [];
 export class Repuestos {
   private readonly servicio = inject(RepuestosService);
   private readonly proveedoresService = inject(ProveedoresService);
+  private readonly categoriasService = inject(CategoriasRepuestoService);
   private readonly vehiculosService = inject(VehiculosService);
   private readonly plantillasService = inject(PlantillasVehiculoService);
   private readonly fb = inject(FormBuilder);
@@ -92,6 +103,25 @@ export class Repuestos {
   /** Llega por URL desde la ficha de un proveedor (?proveedorId=…), sin selector propio. */
   protected readonly proveedorFiltro = signal('');
   protected readonly guardando = signal(false);
+
+  // --- Categoría del repuesto ------------------------------------------------
+  protected readonly categorias = signal<CategoriaRepuesto[]>([]);
+  /** Filtro de la lista: una categoría, SIN_CATEGORIA o vacío (todas). */
+  protected readonly categoriaFiltro = signal('');
+  protected readonly gestionCategorias = signal(false);
+
+  protected readonly opcionesCategoria = computed<OpcionSelector[]>(() =>
+    this.categorias().map((c) => ({
+      valor: c.categoriaId,
+      etiqueta: c.nombre,
+      detalle: `${c.cantidadRepuestos} repuesto(s)`,
+    })),
+  );
+
+  protected readonly opcionesFiltroCategoria = computed<OpcionSelector[]>(() => [
+    { valor: SIN_CATEGORIA, etiqueta: 'Sin categoría', detalle: 'para completarla' },
+    ...this.categorias().map((c) => ({ valor: c.categoriaId, etiqueta: c.nombre })),
+  ]);
 
   protected readonly pagina = signal(1);
   protected readonly tamanoPagina = signal(20);
@@ -222,6 +252,7 @@ export class Repuestos {
     precioCompra: [0, [Validators.required, Validators.min(0)]],
     precioVenta: [0, [Validators.required, Validators.min(0)]],
     proveedorId: [''],
+    categoriaId: [''],
   });
 
   protected readonly opcionesProveedor = computed<OpcionSelector[]>(() =>
@@ -255,8 +286,10 @@ export class Repuestos {
     this.proveedorFiltro.set(parametros.get('proveedorId') ?? '');
 
     this.vehiculoFiltro.set(parametros.get('vehiculoId') ?? '');
+    this.categoriaFiltro.set(parametros.get('categoriaId') ?? '');
 
     this.cargar();
+    this.cargarCategorias();
 
     this.vehiculosService
       .getAll(undefined, undefined, 1, 500)
@@ -280,6 +313,7 @@ export class Repuestos {
         soloStockBajo: this.soloStockBajo() || undefined,
         proveedorId: this.proveedorFiltro() || undefined,
         vehiculoId: this.vehiculoFiltro() || undefined,
+        categoriaId: this.categoriaFiltro() || undefined,
         pagina: this.pagina(),
         tamanoPagina: this.tamanoPagina(),
       })
@@ -312,6 +346,53 @@ export class Repuestos {
     this.vehiculoFiltro.set(vehiculoId ?? '');
     this.pagina.set(1);
     this.cargar();
+  }
+
+  protected filtrarPorCategoria(categoriaId: string | null): void {
+    this.categoriaFiltro.set(categoriaId ?? '');
+    this.pagina.set(1);
+    this.cargar();
+  }
+
+  protected cargarCategorias(): void {
+    this.categoriasService.getAll().subscribe((lista) => this.categorias.set(lista));
+  }
+
+  /** Tras agregar, renombrar o borrar una categoría: la lista y las tarjetas cambian. */
+  protected alCambiarCategorias(): void {
+    this.cargarCategorias();
+    this.cargar();
+  }
+
+  // --- Categoría en el formulario --------------------------------------------
+
+  /**
+   * Lo elegido en el selector de categoría. Si es un nombre nuevo escrito a
+   * mano (“+ Escobillas”), primero se crea la categoría y después se elige.
+   */
+  protected onCategoriaElegida(valor: string): void {
+    if (!valor || this.categorias().some((c) => c.categoriaId === valor)) return;
+
+    this.categoriasService.crear(valor.trim()).subscribe({
+      next: (creada) => {
+        this.categorias.update((lista) =>
+          [...lista, creada].sort((a, b) => a.nombre.localeCompare(b.nombre)),
+        );
+        this.formulario.controls.categoriaId.setValue(creada.categoriaId);
+        this.notificacion.exito(`Categoría “${creada.nombre}” creada.`);
+      },
+      error: () => this.formulario.controls.categoriaId.setValue(''),
+    });
+  }
+
+  /** Categoría que corresponde al nombre escrito, mientras no se haya elegido una. */
+  protected sugerenciaCategoria(): CategoriaRepuesto | null {
+    const { nombre, categoriaId } = this.formulario.getRawValue();
+    return categoriaId ? null : sugerirCategoriaRepuesto(nombre, this.categorias());
+  }
+
+  protected usarSugerenciaCategoria(categoria: CategoriaRepuesto): void {
+    this.formulario.controls.categoriaId.setValue(categoria.categoriaId);
   }
 
   // --- Edición de la compatibilidad ------------------------------------------
@@ -377,7 +458,7 @@ export class Repuestos {
     );
 
     if (filas.length === 0) {
-      this.errorCompat.set('Agregue al menos un vehículo compatible, o marque el repuesto como Universal.');
+      this.errorCompat.set('Agregue al menos un vehículo compatible, o marque el repuesto como de uso general.');
       return null;
     }
 
@@ -393,7 +474,7 @@ export class Repuestos {
         }
       }
       if (f.anioDesde !== null && f.anioHasta !== null && f.anioDesde > f.anioHasta) {
-        this.errorCompat.set(`En ${f.marca} ${f.modelo}: el año «desde» es mayor que «hasta».`);
+        this.errorCompat.set(`En ${f.marca} ${f.modelo}: el año “desde” es mayor que “hasta”.`);
         return null;
       }
     }
@@ -455,6 +536,7 @@ export class Repuestos {
       precioCompra: 0,
       precioVenta: 0,
       proveedorId: '',
+      categoriaId: '',
     });
     this.formulario.controls.stockActual.enable();
     this.archivoFoto.set(null);
@@ -486,6 +568,7 @@ export class Repuestos {
       precioCompra: repuesto.precioCompra,
       precioVenta: repuesto.precioVenta,
       proveedorId: repuesto.proveedorId ?? '',
+      categoriaId: repuesto.categoriaId ?? '',
     });
 
     // El stock no se edita aquí: se mueve por compras y órdenes, o por ajuste.
@@ -536,17 +619,8 @@ export class Repuestos {
   }
 
   /** Foto elegida al crear/editar el repuesto, antes de tener un ID asignado. */
-  protected onFotoFormularioSeleccionada(evento: Event): void {
-    const input = evento.target as HTMLInputElement;
-    const archivo = input.files?.[0];
-    if (!archivo) return;
-
-    if (archivo.size > 8 * 1024 * 1024) {
-      this.notificacion.advertencia('La foto no puede superar los 8 MB.');
-      input.value = '';
-      return;
-    }
-
+  /** La foto llega ya validada y achicada por app-elegir-foto. */
+  protected onFotoFormularioSeleccionada(archivo: File): void {
     this.archivoFoto.set(archivo);
     this.previsualizacionFoto.set(URL.createObjectURL(archivo));
   }
@@ -578,12 +652,14 @@ export class Repuestos {
           precioCompra: datos.precioCompra,
           precioVenta: datos.precioVenta,
           proveedorId: datos.proveedorId || null,
+          categoriaId: datos.categoriaId || null,
           tipoAplicacion,
           compatibilidades,
         })
       : this.servicio.crear({
           ...datos,
           proveedorId: datos.proveedorId || null,
+          categoriaId: datos.categoriaId || null,
           tipoAplicacion,
           compatibilidades,
         });
@@ -703,17 +779,9 @@ export class Repuestos {
     this.fotoDe.set(repuesto);
   }
 
-  protected onFotoSeleccionada(evento: Event): void {
-    const input = evento.target as HTMLInputElement;
-    const archivo = input.files?.[0];
+  protected onFotoSeleccionada(archivo: File): void {
     const repuesto = this.fotoDe();
-    if (!archivo || !repuesto) return;
-
-    if (archivo.size > 8 * 1024 * 1024) {
-      this.notificacion.advertencia('La foto no puede superar los 8 MB.');
-      input.value = '';
-      return;
-    }
+    if (!repuesto) return;
 
     this.subiendoFoto.set(true);
 
@@ -721,13 +789,9 @@ export class Repuestos {
       next: (actualizado) => {
         this.fotoDe.set(actualizado);
         this.subiendoFoto.set(false);
-        input.value = '';
         this.cargar();
       },
-      error: () => {
-        this.subiendoFoto.set(false);
-        input.value = '';
-      },
+      error: () => this.subiendoFoto.set(false),
     });
   }
 

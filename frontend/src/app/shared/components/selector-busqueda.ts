@@ -3,11 +3,28 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
 import { coincidePorPalabras, normalizarTexto } from '../busqueda';
 
+/** Etiqueta de color de una opción: lo que tiene que verse de un vistazo. */
+export interface MarcaOpcion {
+  texto: string;
+  tono: 'verde' | 'naranja' | 'roja' | 'azul' | 'gris';
+}
+
 export interface OpcionSelector {
   valor: string;
   etiqueta: string;
   /** Línea secundaria: precio, stock, placa… lo que ayude a elegir. */
   detalle?: string;
+  /**
+   * Avisos que tienen que verse de un vistazo ("Para este servicio",
+   * "Compatible", "Stock bajo"): van como etiquetas de color en una segunda
+   * línea bajo el nombre, no perdidos en el detalle.
+   */
+  marcas?: MarcaOpcion[];
+  /**
+   * Foto para reconocer la opción de un vistazo (un repuesto). Con url null
+   * se muestran las iniciales de la etiqueta en su lugar.
+   */
+  miniatura?: { url: string | null };
   deshabilitada?: boolean;
   /** Motivo por el que no se puede elegir, como ayuda contextual. */
   razonDeshabilitada?: string;
@@ -61,9 +78,9 @@ export interface OpcionSelector {
       }
 
       @if (abierto()) {
-        <ul class="lista" role="listbox">
+        <ul class="lista" role="listbox" [class.en-linea]="listaEnLinea()">
           @if (filtradas().length === 0) {
-            <li class="sin-resultados">Sin coincidencias para «{{ busqueda() }}»</li>
+            <li class="sin-resultados">Sin coincidencias para <strong>{{ busqueda() }}</strong></li>
           } @else {
             @for (opcion of filtradas(); track opcion.valor; let i = $index) {
               <li
@@ -71,14 +88,39 @@ export interface OpcionSelector {
                 [attr.aria-selected]="opcion.valor === valorActual()"
                 [class.resaltada]="i === indiceResaltado()"
                 [class.no-disponible]="opcion.deshabilitada"
+                [class.con-marcas]="!!opcion.marcas?.length"
+                [class.con-miniatura]="!!opcion.miniatura"
                 [title]="opcion.razonDeshabilitada ?? ''"
                 (mousedown)="$event.preventDefault()"
                 (click)="elegir(opcion)"
                 (mouseenter)="indiceResaltado.set(i)"
               >
-                <span class="etiqueta">{{ opcion.etiqueta }}</span>
-                @if (opcion.detalle) {
-                  <span class="detalle">{{ opcion.detalle }}</span>
+                @if (opcion.miniatura; as miniatura) {
+                  @if (miniatura.url) {
+                    <img class="miniatura" [src]="miniatura.url" alt="" loading="lazy" />
+                  } @else {
+                    <span class="miniatura miniatura-vacia" aria-hidden="true">{{ iniciales(opcion.etiqueta) }}</span>
+                  }
+                }
+                @if (opcion.marcas?.length) {
+                  <span class="contenido">
+                  <span class="fila-principal">
+                    <span class="etiqueta">{{ opcion.etiqueta }}</span>
+                    @if (opcion.detalle) {
+                      <span class="detalle">{{ opcion.detalle }}</span>
+                    }
+                  </span>
+                  <span class="marcas">
+                    @for (marca of opcion.marcas; track marca.texto) {
+                      <span class="marca insignia insignia-{{ marca.tono }}">{{ marca.texto }}</span>
+                    }
+                  </span>
+                  </span>
+                } @else {
+                  <span class="etiqueta">{{ opcion.etiqueta }}</span>
+                  @if (opcion.detalle) {
+                    <span class="detalle">{{ opcion.detalle }}</span>
+                  }
                 }
               </li>
             }
@@ -127,7 +169,7 @@ export interface OpcionSelector {
 
     .lista li {
       display: flex;
-      align-items: baseline;
+      align-items: center;
       justify-content: space-between;
       gap: 10px;
       padding: 7px 10px;
@@ -138,16 +180,83 @@ export interface OpcionSelector {
 
     .lista li.resaltada { background: var(--gris-100); }
 
+    /* Con etiquetas: nombre y detalle arriba, etiquetas abajo. */
+    .lista li.con-marcas {
+      align-items: center;
+      gap: 11px;
+      padding: 9px 10px;
+    }
+
+    .contenido {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .miniatura {
+      width: 46px;
+      height: 46px;
+      flex-shrink: 0;
+      border: 1px solid var(--gris-200);
+      border-radius: var(--radio-sm);
+      object-fit: cover;
+      background: var(--blanco);
+    }
+
+    .miniatura-vacia {
+      display: grid;
+      place-items: center;
+      background: var(--gris-100);
+      color: var(--gris-500);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .lista.en-linea {
+      position: static;
+      margin-top: 4px;
+      box-shadow: none;
+    }
+
+    /* Filas con foto son más altas: la lista crece para mostrar varias. */
+    .lista:has(li.con-miniatura) { max-height: min(360px, 50vh); }
+
+    .lista li.con-miniatura:not(.con-marcas) { justify-content: flex-start; }
+    .lista li.con-miniatura:not(.con-marcas) .detalle { margin-left: auto; }
+
+    .lista li.con-marcas + li.con-marcas { border-top: 1px solid var(--gris-100); }
+
+    .fila-principal {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .marcas {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    /* No disponible: se nota, pero sin borrar el texto (su motivo va en la
+       marca o en el title). */
     .lista li.no-disponible {
-      opacity: 0.5;
+      opacity: 0.7;
       cursor: not-allowed;
     }
 
-    .etiqueta { font-weight: 500; }
+    .lista li.no-disponible .etiqueta { text-decoration: line-through; }
+
+    .etiqueta { font-weight: 500; color: var(--ink); }
+
+    .marca { padding: 2px 9px; font-size: 11.5px; }
 
     .detalle {
-      font-size: 11.5px;
-      color: var(--gris-500);
+      font-size: 12.5px;
+      color: var(--ink-soft);
       white-space: nowrap;
       flex-shrink: 0;
     }
@@ -161,6 +270,13 @@ export interface OpcionSelector {
   `,
 })
 export class SelectorBusqueda implements ControlValueAccessor {
+  /** Dos letras del nombre para la miniatura de una opción sin foto. */
+  protected iniciales(etiqueta: string): string {
+    // Sin "de", "la", "y": "Filtro de prueba" → "FP", no "FD".
+    const palabras = etiqueta.trim().split(/\s+/).filter((p) => p.length > 2);
+    return (palabras.length > 1 ? palabras[0][0] + palabras[1][0] : etiqueta.slice(0, 2)).toUpperCase();
+  }
+
   readonly opciones = input<OpcionSelector[]>([]);
   readonly marcador = input('Escriba para buscar…');
   readonly idCampo = input('');
@@ -173,6 +289,12 @@ export class SelectorBusqueda implements ControlValueAccessor {
    * algo parecido a uno existente. En ese caso el valor es el propio texto.
    */
   readonly permitirNuevo = input('');
+
+  /**
+   * La lista se abre dentro del flujo (empuja lo de abajo) en vez de flotar.
+   * Dentro de una ventana corta evita que el borde la recorte.
+   */
+  readonly listaEnLinea = input(false);
 
   /**
    * Valor recién elegido (cadena vacía al limpiar).

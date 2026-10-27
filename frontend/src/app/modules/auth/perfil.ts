@@ -4,14 +4,12 @@ import { AbstractControl, FormBuilder, ReactiveFormsModule, Validators } from '@
 import { urlArchivo } from '../../core/services/api-base';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificacionService } from '../../core/services/notificacion.service';
-
-/** Límite del backend; se valida aquí también para avisar antes de subir. */
-const TAMANIO_MAXIMO_BYTES = 8 * 1024 * 1024;
+import { ElegirFoto } from '../../shared/components/elegir-foto';
 
 /** USU003 — el usuario autenticado cambia su propia contraseña. */
 @Component({
   selector: 'app-perfil',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, ElegirFoto],
   template: `
     <h1 class="mb-2">Mi perfil</h1>
 
@@ -27,17 +25,13 @@ const TAMANIO_MAXIMO_BYTES = 8 * 1024 * 1024;
             }
 
             <div class="foto-acciones">
-              <!-- El input real queda oculto: el botón es la etiqueta -->
-              <input
-                id="foto"
-                type="file"
-                class="foto-input"
-                accept="image/jpeg,image/png,image/webp"
-                (change)="seleccionarFoto($event)"
+              <app-elegir-foto
+                [etiqueta]="auth.fotoUrl() ? 'Cambiar foto' : 'Subir foto'"
+                [ocupado]="subiendoFoto()"
+                [chico]="true"
+                [mostrarAyuda]="false"
+                (archivo)="subirFoto($event)"
               />
-              <label for="foto" class="btn btn-secundario btn-sm">
-                {{ subiendoFoto() ? 'Subiendo…' : auth.fotoUrl() ? 'Cambiar foto' : 'Subir foto' }}
-              </label>
 
               @if (auth.fotoUrl()) {
                 <button
@@ -177,21 +171,6 @@ const TAMANIO_MAXIMO_BYTES = 8 * 1024 * 1024;
       gap: 8px;
     }
 
-    /* Oculto pero accesible: la etiqueta hace de botón y el teclado lo alcanza */
-    .foto-input {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      opacity: 0;
-      pointer-events: none;
-    }
-
-    .foto-input:focus-visible + label {
-      outline: 2px solid var(--brand);
-      outline-offset: 1px;
-    }
-
-    .foto-acciones label { cursor: pointer; }
     .foto-acciones p { flex-basis: 100%; }
   `,
 })
@@ -226,19 +205,8 @@ export class Perfil {
       .join('');
   }
 
-  protected seleccionarFoto(evento: Event): void {
-    const input = evento.target as HTMLInputElement;
-    const archivo = input.files?.[0];
-    if (!archivo) return;
-
-    // Se limpia siempre: si no, elegir el mismo archivo dos veces no dispara change.
-    input.value = '';
-
-    if (archivo.size > TAMANIO_MAXIMO_BYTES) {
-      this.notificacion.advertencia('La foto no puede superar los 8 MB.');
-      return;
-    }
-
+  /** La foto llega ya validada y achicada por app-elegir-foto. */
+  protected subirFoto(archivo: File): void {
     this.subiendoFoto.set(true);
 
     this.auth.subirFoto(archivo).subscribe({

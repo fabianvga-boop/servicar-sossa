@@ -1,15 +1,19 @@
-import { Component, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Component, computed, inject, signal } from '@angular/core';
+import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { EstadoServicio } from '../../core/models/enums';
+import { CategoriaRepuesto, CategoriaResumen } from '../../core/models/inventario.model';
 import { TipoServicio as TipoServicioModel } from '../../core/models/taller.model';
+import { CategoriasRepuestoService } from '../../core/services/inventario.service';
 import { NotificacionService } from '../../core/services/notificacion.service';
 import { TiposServicioService } from '../../core/services/taller.service';
+import { sugerirCategoriasServicio } from '../../shared/categorias-repuesto';
 import { Confirmacion } from '../../shared/components/confirmacion';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { InsigniaEstado } from '../../shared/components/insignia-estado';
 import { Modal } from '../../shared/components/modal';
 import { Paginador } from '../../shared/components/paginador';
+import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
 import { Atajo } from '../../shared/directives/atajo';
 import { EnfocarError } from '../../shared/directives/enfocar-error';
 import { SiTieneRol } from '../../shared/directives/si-tiene-rol';
@@ -48,11 +52,13 @@ const SERVICIOS_COMUNES = [
   selector: 'app-tipos-servicio',
   imports: [
     ReactiveFormsModule,
+    FormsModule,
     Modal,
     Confirmacion,
     EstadoTabla,
     InsigniaEstado,
     Paginador,
+    SelectorBusqueda,
     Atajo,
     EnfocarError,
     SiTieneRol,
@@ -65,6 +71,7 @@ export class TiposServicio {
   private readonly servicio = inject(TiposServicioService);
   private readonly fb = inject(FormBuilder);
   private readonly notificacion = inject(NotificacionService);
+  private readonly categoriasService = inject(CategoriasRepuestoService);
 
   protected readonly servicios = signal<TipoServicioModel[]>([]);
   protected readonly serviciosComunes = SERVICIOS_COMUNES;
@@ -84,6 +91,24 @@ export class TiposServicio {
 
   protected readonly EstadoServicio = EstadoServicio;
 
+  // --- Repuestos que lleva el servicio ---------------------------------------
+  protected readonly categorias = signal<CategoriaRepuesto[]>([]);
+  /** Categorías elegidas en el formulario: en la orden solo se aceptan esas. */
+  protected readonly categoriasElegidas = signal<CategoriaResumen[]>([]);
+  /** Cambia en cada alta: recrea el selector para dejarlo vacío otra vez. */
+  protected readonly reinicioSelector = signal(0);
+
+  protected readonly opcionesCategoria = computed<OpcionSelector[]>(() => {
+    const elegidas = new Set(this.categoriasElegidas().map((c) => c.categoriaId));
+    return this.categorias()
+      .filter((c) => !elegidas.has(c.categoriaId))
+      .map((c) => ({
+        valor: c.categoriaId,
+        etiqueta: c.nombre,
+        detalle: `${c.cantidadRepuestos} repuesto(s) en inventario`,
+      }));
+  });
+
   protected readonly formulario = this.fb.nonNullable.group({
     nombre: ['', [Validators.required, Validators.maxLength(100)]],
     descripcion: ['', Validators.maxLength(255)],
@@ -93,6 +118,7 @@ export class TiposServicio {
 
   constructor() {
     this.cargar();
+    this.categoriasService.getAll().subscribe((lista) => this.categorias.set(lista));
   }
 
   protected cargar(): void {
@@ -162,6 +188,7 @@ export class TiposServicio {
   protected abrirNuevo(): void {
     this.editando.set(null);
     this.formulario.reset({ nombre: '', descripcion: '', precioBase: 0, requiereRepuesto: false });
+    this.categoriasElegidas.set([]);
     this.formularioAbierto.set(true);
   }
 
@@ -173,7 +200,61 @@ export class TiposServicio {
       precioBase: servicio.precioBase,
       requiereRepuesto: servicio.requiereRepuesto,
     });
+    this.categoriasElegidas.set([...(servicio.categorias ?? [])]);
     this.formularioAbierto.set(true);
+  }
+
+  protected elegirRequiereRepuesto(lleva: boolean): void {
+    this.formulario.controls.requiereRepuesto.setValue(lleva);
+    this.formulario.controls.requiereRepuesto.markAsDirty();
+  }
+
+  /** Categorías que sugiere el nombre del servicio y todavía no están elegidas. */
+  protected sugeridas(): CategoriaRepuesto[] {
+    const elegidas = new Set(this.categoriasElegidas().map((c) => c.categoriaId));
+    return sugerirCategoriasServicio(this.formulario.controls.nombre.value, this.categorias()).filter(
+      (c) => !elegidas.has(c.categoriaId),
+    );
+  }
+
+  /**
+   * Agrega la categoría elegida. Si es un nombre nuevo escrito a mano
+   * (“+ Escobillas”), primero se crea y después se agrega.
+   */
+  protected agregarCategoria(valor: string | null): void {
+    if (!valor) return;
+    this.reinicioSelector.update((n) => n + 1);
+
+    const existente = this.categorias().find((c) => c.categoriaId === valor);
+    if (existente) {
+      this.sumarCategoria(existente);
+      return;
+    }
+
+    this.categoriasService.crear(valor.trim()).subscribe((creada) => {
+      this.categorias.update((lista) =>
+        [...lista, creada].sort((a, b) => a.nombre.localeCompare(b.nombre)),
+      );
+      this.sumarCategoria(creada);
+      this.notificacion.exito(`Categoría “${creada.nombre}” creada.`);
+    });
+  }
+
+  protected sumarCategoria(categoria: CategoriaResumen): void {
+    this.categoriasElegidas.update((lista) =>
+      lista.some((c) => c.categoriaId === categoria.categoriaId)
+        ? lista
+        : [...lista, { categoriaId: categoria.categoriaId, nombre: categoria.nombre }],
+    );
+  }
+
+  protected quitarCategoria(categoriaId: string): void {
+    this.categoriasElegidas.update((lista) => lista.filter((c) => c.categoriaId !== categoriaId));
+  }
+
+  /** "Bujías" o "Aceite de motor, Filtro de aceite": para la tabla. */
+  protected nombresCategorias(servicio: TipoServicioModel): string {
+    return (servicio.categorias ?? []).map((c) => c.nombre).join(', ');
   }
 
   protected cerrarFormulario(): void {
@@ -188,7 +269,14 @@ export class TiposServicio {
     }
 
     this.guardando.set(true);
-    const datos = this.formulario.getRawValue();
+    const valores = this.formulario.getRawValue();
+    const datos = {
+      ...valores,
+      // Solo mano de obra: no hay repuesto que controlar.
+      categoriaIds: valores.requiereRepuesto
+        ? this.categoriasElegidas().map((c) => c.categoriaId)
+        : [],
+    };
     const enEdicion = this.editando();
 
     const peticion = enEdicion

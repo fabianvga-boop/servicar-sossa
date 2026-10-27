@@ -15,6 +15,8 @@ import { urlArchivo } from '../core/services/api-base';
 import { AuthService } from '../core/services/auth.service';
 import { ContadoresService } from '../core/services/contadores.service';
 import { InactividadService } from '../core/services/inactividad.service';
+import { AvisoInactividad } from './aviso-inactividad';
+import { AyudaAtajos } from './ayuda-atajos';
 import { BuscadorGlobal } from '../shared/components/buscador-global';
 import { IconoMenu, NombreIconoMenu } from '../shared/components/icono-menu';
 
@@ -39,9 +41,20 @@ interface GrupoMenu {
 /** Shell de la aplicación: barra lateral, encabezado y área de contenido. */
 @Component({
   selector: 'app-layout',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, BuscadorGlobal, IconoMenu],
+  imports: [
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    BuscadorGlobal,
+    IconoMenu,
+    AvisoInactividad,
+    AyudaAtajos,
+  ],
   templateUrl: './layout.html',
   styleUrl: './layout.css',
+  host: {
+    '(document:keydown)': 'alTeclear($event)',
+  },
 })
 export class Layout {
   protected readonly auth = inject(AuthService);
@@ -55,6 +68,23 @@ export class Layout {
   /** En móvil la barra lateral se oculta y se despliega con el botón. */
   protected readonly menuAbierto = signal(false);
   protected readonly menuUsuarioAbierto = signal(false);
+
+  /** Ventana con todos los atajos de teclado (tecla “?” o botón de la barra). */
+  protected readonly ayudaAtajos = signal(false);
+
+  protected alTeclear(evento: KeyboardEvent): void {
+    if (evento.key !== '?' || evento.ctrlKey || evento.metaKey || evento.altKey) return;
+
+    // Escribiendo en un campo, el "?" es texto; con un diálogo abierto, no se apila otro.
+    const destino = evento.target as HTMLElement | null;
+    const escribiendo =
+      !!destino &&
+      (destino.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(destino.tagName));
+    if (escribiendo || document.querySelector('[aria-modal="true"]')) return;
+
+    evento.preventDefault();
+    this.ayudaAtajos.set(true);
+  }
 
   /**
    * Nombre de la sección activa, para el encabezado. Se lee de `data.title`

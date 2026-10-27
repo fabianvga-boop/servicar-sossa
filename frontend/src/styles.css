@@ -37,13 +37,13 @@
 
   /* Neutros claros. El extremo oscuro de la escala son --ink/--ink-soft; no
      se repite acá para que cada color tenga un solo nombre.
-       500/400 → texto atenuado. Los dos cumplen 4,5:1 (WCAG AA) sobre blanco
-                 y sobre el gris del fondo: antes 400 daba 2,6:1 y había
-                 textos de ayuda que una persona mayor no alcanzaba a leer.
+       500/400 → texto atenuado. 500 da 7,6:1 y 400 6,5:1 sobre blanco (más
+                 que el 4,5:1 de WCAG AA): con la letra chica de ayudas y
+                 detalles, el mínimo legal se veía "escondido" en pantalla.
        200     → bordes
        100/50  → rellenos y superficies secundarias */
-  --gris-500: #596272;
-  --gris-400: #646d7b;
+  --gris-500: #4b5463;
+  --gris-400: #555e6d;
   --gris-300: #c3cad3;
   --gris-200: #e5eaef;
   --gris-100: #eef3f9;
@@ -510,7 +510,7 @@ input[type='radio'] {
 }
 
 .campo-ayuda {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--gris-500);
 }
 
@@ -643,6 +643,82 @@ textarea.invalido:focus {
   border-color: var(--brand);
   color: var(--brand-dk);
 }
+
+/* Elegir una de dos o tres opciones con tarjetas grandes, cada una con su
+   explicación (aplicación del repuesto, si un servicio lleva repuestos…):
+   no se pasa por alto como una casilla chica. */
+.selector-aplicacion {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.selector-aplicacion button {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio-sm);
+  background: var(--blanco);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s, background-color 0.12s;
+}
+
+.selector-aplicacion button:hover { border-color: var(--gris-400); }
+
+.selector-aplicacion button span {
+  font-size: 12px;
+  color: var(--gris-500);
+}
+
+.selector-aplicacion button.activo {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+@media (max-width: 480px) {
+  .selector-aplicacion { grid-template-columns: 1fr; }
+}
+
+/* Categorías elegidas como chips que se quitan con ×. */
+.chips-categorias {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip-categoria {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px 4px 11px;
+  border: 1px solid var(--azul-600);
+  border-radius: 20px;
+  background: var(--azul-100);
+  color: #14417f;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.chip-categoria button {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chip-categoria button:hover { background: rgba(20, 65, 127, 0.12); }
 
 /* ------------------------------------------------- Diagnóstico asistido */
 
@@ -1410,6 +1486,21 @@ table.tabla th.num {
   color: var(--brand-dk);
   font-weight: 600;
   box-shadow: var(--sombra-sm);
+}
+
+/* Aviso de borrador recuperable: lo escrito antes de un cierre de sesión. */
+.aviso-borrador {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 10px 13px;
+  border-left: 3px solid var(--azul-600);
+  border-radius: 0 var(--radio-sm) var(--radio-sm) 0;
+  background: var(--azul-100);
+  color: var(--azul-700);
+  font-size: 13.5px;
 }
 
 /* ---------------------------------------------------------------- Totales */

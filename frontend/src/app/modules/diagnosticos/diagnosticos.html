@@ -16,6 +16,19 @@
   </button>
 </div>
 
+@if (borradorEnPantalla(); as borrador) {
+  <div class="aviso-borrador mb-2">
+    <span>
+      Tiene un diagnóstico sin guardar del {{ borrador.fecha | date: 'dd/MM HH:mm' }}:
+      <strong>{{ borrador.datos.descripcionFalla.slice(0, 60) }}{{ borrador.datos.descripcionFalla.length > 60 ? '…' : '' }}</strong>
+    </span>
+    <span class="fila" style="gap: 6px">
+      <button type="button" class="btn btn-primario btn-sm" (click)="continuarBorrador()">Continuar</button>
+      <button type="button" class="btn-enlace" (click)="descartarBorrador()">Descartar</button>
+    </span>
+  </div>
+}
+
 <div class="tarjeta">
   <div class="tarjeta-encabezado">
     <div class="filtros-diagnosticos">
@@ -194,6 +207,18 @@
     [ancho]="620"
     (cerrar)="cerrarFormulario()"
   >
+    @if (borradorPendiente(); as borrador) {
+      <div class="aviso-borrador mb-2">
+        <span>
+          Quedó un borrador sin guardar del {{ borrador.fecha | date: 'dd/MM HH:mm' }}. ¿Lo recupera?
+        </span>
+        <span class="fila" style="gap: 6px">
+          <button type="button" class="btn btn-primario btn-sm" (click)="recuperarBorrador()">Recuperar</button>
+          <button type="button" class="btn-enlace" (click)="descartarBorrador()">Descartar</button>
+        </span>
+      </div>
+    }
+
     <form [formGroup]="formulario" id="form-diagnostico" (ngSubmit)="guardar()">
       <div class="campo">
         <label for="vehiculoId">Vehículo <span class="obligatorio">*</span></label>
@@ -240,7 +265,7 @@
                 <path d="M9.5 2A5.5 5.5 0 0 0 4 7.5c0 2 1 3.5 2.5 4.7V15a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-2.8C13.9 11 15 9.5 15 7.5A5.5 5.5 0 0 0 9.5 2Z" />
                 <path d="M7.5 19h4M8 22h3" />
               </svg>
-              Diagnóstico asistido — basado en {{ s.basadoEnCasos }} caso(s) similar(es)
+              Diagnóstico asistido: lo que se hizo en {{ s.basadoEnCasos }} {{ s.basadoEnCasos === 1 ? 'caso parecido' : 'casos parecidos' }}
             </div>
 
             @if (s.servicios.length > 0) {
@@ -248,7 +273,7 @@
                 <span class="panel-sugerencia-etq">Servicios probables</span>
                 <div class="chips-sugerencia">
                   @for (sv of s.servicios; track sv.nombre) {
-                    <span class="chip-badge">{{ sv.nombre }} <strong>· {{ sv.porcentaje }}%</strong></span>
+                    <span class="chip-badge">{{ sv.nombre }} <strong>· {{ sv.frecuencia }} de {{ s.basadoEnCasos }}</strong></span>
                   }
                 </div>
               </div>
@@ -259,7 +284,7 @@
                 <span class="panel-sugerencia-etq">Repuestos probables</span>
                 <div class="chips-sugerencia">
                   @for (rp of s.repuestos; track rp.nombre) {
-                    <span class="chip-badge">{{ rp.nombre }} <strong>· {{ rp.porcentaje }}%</strong></span>
+                    <span class="chip-badge">{{ rp.nombre }} <strong>· {{ rp.frecuencia }} de {{ s.basadoEnCasos }}</strong></span>
                   }
                 </div>
               </div>
