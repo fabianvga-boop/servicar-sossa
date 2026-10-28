@@ -1,4 +1,14 @@
-import { Component, computed, forwardRef, input, output, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  computed,
+  effect,
+  forwardRef,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
 import { coincidePorPalabras, normalizarTexto } from '../busqueda';
@@ -50,6 +60,7 @@ export interface OpcionSelector {
   template: `
     <div class="selector" [class.deshabilitado]="deshabilitado()">
       <input
+        #campo
         type="text"
         role="combobox"
         autocomplete="off"
@@ -78,7 +89,14 @@ export interface OpcionSelector {
       }
 
       @if (abierto()) {
-        <ul class="lista" role="listbox" [class.en-linea]="listaEnLinea()">
+        <ul
+          #lista
+          class="lista"
+          role="listbox"
+          [attr.popover]="flotante() ? 'manual' : null"
+          [class.en-linea]="listaEnLinea()"
+          [class.flotante]="flotante()"
+        >
           @if (filtradas().length === 0) {
             <li class="sin-resultados">Sin coincidencias para <strong>{{ busqueda() }}</strong></li>
           } @else {
@@ -124,6 +142,21 @@ export interface OpcionSelector {
                 }
               </li>
             }
+          }
+          @if (accionCrear()) {
+            <li
+              class="accion-crear"
+              [class.resaltada]="filtradas().length === 0"
+              (mousedown)="$event.preventDefault()"
+              (click)="pedirCrear()"
+            >
+              <span class="accion-crear-mas" aria-hidden="true">+</span>
+              @if (busqueda()?.trim(); as texto) {
+                <span>Crear {{ accionCrear() }}: <strong>{{ texto }}</strong></span>
+              } @else {
+                <span>Crear {{ accionCrear() }}</span>
+              }
+            </li>
           }
         </ul>
       }
@@ -214,6 +247,44 @@ export interface OpcionSelector {
       font-weight: 700;
     }
 
+    /*
+     * Flotante: la lista sube a la capa superior del navegador (popover), así
+     * no la recorta ni le pone barra de desplazamiento la tabla o la ventana
+     * que contiene al campo. Su lugar en pantalla se calcula desde el campo.
+     */
+    .lista.flotante {
+      position: fixed;
+      inset: auto;
+      margin: 0;
+      color: inherit;
+    }
+
+    /* Fija al pie: con la lista completa se ve sin tener que bajar hasta el final. */
+    .accion-crear {
+      position: sticky;
+      bottom: -4px;
+      background: var(--blanco);
+      justify-content: flex-start !important;
+      gap: 8px !important;
+      margin-top: 4px;
+      border-top: 1px solid var(--gris-200);
+      border-radius: 0 0 var(--radio-sm) var(--radio-sm) !important;
+      color: var(--brand-dk);
+      font-weight: 500;
+    }
+
+    .accion-crear-mas {
+      display: grid;
+      place-items: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--brand-soft);
+      font-size: 15px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
     .lista.en-linea {
       position: static;
       margin-top: 4px;
@@ -297,6 +368,24 @@ export class SelectorBusqueda implements ControlValueAccessor {
   readonly listaEnLinea = input(false);
 
   /**
+   * La lista flota por encima de todo (capa superior del navegador). Para un
+   * campo dentro de una tabla con desplazamiento, donde una lista común queda
+   * recortada y obliga a buscarla con la barra.
+   */
+  readonly flotante = input(false);
+
+  /**
+   * Qué se puede crear desde la lista ("repuesto nuevo"). Si se indica, al
+   * final de la lista aparece "Crear …" con lo escrito, y se avisa por
+   * `crear`: quien usa el selector abre su propio formulario.
+   */
+  readonly accionCrear = input('');
+  readonly crear = output<string>();
+
+  private readonly campo = viewChild<ElementRef<HTMLInputElement>>('campo');
+  private readonly lista = viewChild<ElementRef<HTMLUListElement>>('lista');
+
+  /**
    * Valor recién elegido (cadena vacía al limpiar).
    *
    * `ngModelChange` solo existe con formularios de plantilla; este output
@@ -315,6 +404,48 @@ export class SelectorBusqueda implements ControlValueAccessor {
    * y entonces el campo muestra la etiqueta de lo ya seleccionado.
    */
   protected readonly busqueda = signal<string | null>(null);
+
+  constructor() {
+    // Lista flotante: se muestra en la capa superior y sigue al campo si la
+    // página o la ventana se desplazan mientras está abierta.
+    effect((alLimpiar) => {
+      const lista = this.lista()?.nativeElement;
+      if (!lista || !this.flotante()) return;
+
+      lista.showPopover?.();
+      const ubicar = () => this.ubicarLista(lista);
+      ubicar();
+      window.addEventListener('scroll', ubicar, true);
+      window.addEventListener('resize', ubicar);
+      alLimpiar(() => {
+        window.removeEventListener('scroll', ubicar, true);
+        window.removeEventListener('resize', ubicar);
+      });
+    });
+  }
+
+  /** Debajo del campo; si abajo no hay lugar, encima. Nunca más angosta que 320 px. */
+  private ubicarLista(lista: HTMLElement): void {
+    const campo = this.campo()?.nativeElement;
+    if (!campo) return;
+
+    const r = campo.getBoundingClientRect();
+    const ancho = Math.min(Math.max(r.width, 320), window.innerWidth - 16);
+    const izquierda = Math.min(r.left, window.innerWidth - ancho - 8);
+    const abajo = window.innerHeight - r.bottom;
+
+    lista.style.left = `${Math.max(8, izquierda)}px`;
+    lista.style.width = `${ancho}px`;
+    if (abajo < 260 && r.top > abajo) {
+      lista.style.top = 'auto';
+      lista.style.bottom = `${window.innerHeight - r.top + 3}px`;
+      lista.style.maxHeight = `${Math.min(360, r.top - 16)}px`;
+    } else {
+      lista.style.bottom = 'auto';
+      lista.style.top = `${r.bottom + 3}px`;
+      lista.style.maxHeight = `${Math.min(360, abajo - 16)}px`;
+    }
+  }
 
   private alCambiar: (valor: string) => void = () => {};
   private alTocar: () => void = () => {};
@@ -422,6 +553,7 @@ export class SelectorBusqueda implements ControlValueAccessor {
         evento.preventDefault();
         const opcion = this.filtradas()[this.indiceResaltado()];
         if (opcion) this.elegir(opcion);
+        else if (this.accionCrear()) this.pedirCrear();
         break;
       }
 
@@ -443,6 +575,14 @@ export class SelectorBusqueda implements ControlValueAccessor {
     this.abierto.set(false);
     this.alCambiar(opcion.valor);
     this.seleccion.emit(opcion.valor);
+  }
+
+  /** "Crear …": cierra la lista y entrega lo escrito para usarlo de nombre. */
+  protected pedirCrear(): void {
+    const texto = this.busqueda()?.trim() ?? '';
+    this.abierto.set(false);
+    this.busqueda.set(null);
+    this.crear.emit(texto);
   }
 
   /** Opción cuya etiqueta es exactamente el texto, sin mirar mayúsculas ni tildes. */

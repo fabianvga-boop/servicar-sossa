@@ -240,6 +240,11 @@
           <input id="stockActual" type="number" min="0" formControlName="stockActual" />
           @if (editando()) {
             <span class="texto-tenue texto-sm">Use "Ajustar stock" para modificarlo.</span>
+          } @else {
+            <span class="campo-ayuda">
+              Solo lo que <strong>ya tenía en el taller</strong>. Si lo acaba de comprar, deje 0 y
+              regístrelo en Compras: así queda de dónde vino y cuánto costó.
+            </span>
           }
         </div>
 
@@ -367,6 +372,7 @@
                 <app-selector-busqueda
                   marcador="Elegir marca"
                   permitirNuevo="marca nueva"
+                  [flotante]="true"
                   [idCampo]="'compat-marca-' + i"
                   [opciones]="opcionesMarca()"
                   [ngModel]="fila.marca"
@@ -376,6 +382,7 @@
                 <app-selector-busqueda
                   marcador="Todos los modelos"
                   permitirNuevo="modelo nuevo"
+                  [flotante]="true"
                   [idCampo]="'compat-modelo-' + i"
                   [opciones]="opcionesModelo(fila.marca)"
                   [ngModel]="fila.modelo"

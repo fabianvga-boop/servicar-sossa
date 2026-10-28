@@ -3,12 +3,14 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import {
+  CategoriaRepuesto,
   Compra,
   CompraDetalle,
   Proveedor,
   Repuesto,
 } from '../../core/models/inventario.model';
 import {
+  CategoriasRepuestoService,
   ComprasService,
   ProveedoresService,
   RepuestosService,
@@ -23,6 +25,7 @@ import { Atajo } from '../../shared/directives/atajo';
 import { EnfocarError } from '../../shared/directives/enfocar-error';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 import { coincidePorPalabras } from '../../shared/busqueda';
+import { sugerirCategoriaRepuesto } from '../../shared/categorias-repuesto';
 
 /** USU029 — registro de compras a proveedores. */
 @Component({
@@ -45,6 +48,7 @@ export class Compras {
   private readonly servicio = inject(ComprasService);
   private readonly proveedoresService = inject(ProveedoresService);
   private readonly repuestosService = inject(RepuestosService);
+  private readonly categoriasService = inject(CategoriasRepuestoService);
   private readonly fb = inject(FormBuilder);
   private readonly notificacion = inject(NotificacionService);
   private readonly contadores = inject(ContadoresService);
@@ -78,6 +82,33 @@ export class Compras {
   /** El formulario abierto es de una compra ocasional (sin proveedor). */
   protected readonly ocasional = signal(false);
   protected readonly detalle = signal<CompraDetalle | null>(null);
+
+  // --- Repuesto nuevo desde la compra -----------------------------------------
+  // Lo que se compra por primera vez no está en el inventario. Se pide solo el
+  // nombre y la categoría (ya sugerida); los precios van en la fila, como en
+  // cualquier compra. El repuesto se crea recién al registrar la compra, con el
+  // stock que entra en ella: si se cancela, no queda nada a medias.
+
+  protected readonly categorias = signal<CategoriaRepuesto[]>([]);
+  /** Fila de la compra que espera el repuesto nuevo; null = formulario cerrado. */
+  protected readonly filaRepuestoNuevo = signal<number | null>(null);
+  /**
+   * Repuestos nuevos de esta compra, por su clave provisoria (NUEVO-1…), que es
+   * el valor que toma la fila hasta que se registra la compra.
+   */
+  protected readonly repuestosNuevos = signal<
+    ReadonlyMap<string, { nombre: string; categoriaId: string }>
+  >(new Map());
+  private contadorNuevos = 0;
+
+  protected readonly formRepuestoNuevo = this.fb.nonNullable.group({
+    nombre: ['', [Validators.required, Validators.maxLength(150)]],
+    categoriaId: [''],
+  });
+
+  protected readonly opcionesCategoria = computed<OpcionSelector[]>(() =>
+    this.categorias().map((c) => ({ valor: c.categoriaId, etiqueta: c.nombre })),
+  );
 
   /** Espejo de las líneas, para calcular el total en vivo sin suscribirse al form. */
   protected readonly lineas = signal<{ cantidad: number; precioUnitario: number }[]>([]);
@@ -134,13 +165,18 @@ export class Compras {
   );
 
   /** Aquí sí conviene ver el stock actual: se está decidiendo cuánto reponer. */
-  protected readonly opcionesRepuesto = computed<OpcionSelector[]>(() =>
-    this.repuestos().map((r) => ({
+  protected readonly opcionesRepuesto = computed<OpcionSelector[]>(() => [
+    ...this.repuestos().map((r) => ({
       valor: r.repuestoId,
       etiqueta: r.nombre,
       detalle: `stock ${r.stockActual}`,
     })),
-  );
+    ...[...this.repuestosNuevos()].map(([clave, nuevo]) => ({
+      valor: clave,
+      etiqueta: nuevo.nombre,
+      detalle: 'nuevo',
+    })),
+  ]);
 
   constructor() {
     this.cargar();
@@ -150,6 +186,7 @@ export class Compras {
     this.repuestosService
       .getAll({ tamanoPagina: 500 })
       .subscribe((resultado) => this.repuestos.set(resultado.items));
+    this.categoriasService.getAll().subscribe((lista) => this.categorias.set(lista));
   }
 
   protected get detalles(): FormArray {
@@ -295,6 +332,7 @@ export class Compras {
 
     this.detalles.clear();
     this.agregarLinea();
+    this.repuestosNuevos.set(new Map());
     this.formularioAbierto.set(true);
   }
 
@@ -313,6 +351,14 @@ export class Compras {
    * que es lo habitual; el usuario puede corregirlo si el proveedor cambió.
    */
   protected onRepuestoSeleccionado(indice: number, repuestoId: string): void {
+    // Al quitar el repuesto (la X) se van también sus precios: quedaban los del
+    // anterior y era fácil registrar otro repuesto con un precio que no era suyo.
+    if (!repuestoId) {
+      this.detalles.at(indice).patchValue({ precioUnitario: 0, precioVenta: null });
+      this.sincronizarTotales();
+      return;
+    }
+
     const repuesto = this.repuestos().find((r) => r.repuestoId === repuestoId);
     if (!repuesto) return;
 
@@ -321,6 +367,96 @@ export class Compras {
       precioVenta: repuesto.precioVenta,
     });
     this.sincronizarTotales();
+  }
+
+  /** Repuesto elegido en una fila ('' si todavía no tiene). */
+  protected repuestoDeFila(indice: number): string {
+    return this.detalles.at(indice)?.get('repuestoId')?.value ?? '';
+  }
+
+  protected esRepuestoNuevo(indice: number): boolean {
+    return this.repuestosNuevos().has(this.repuestoDeFila(indice));
+  }
+
+  /** Categoría del repuesto nuevo de una fila, para mostrarla bajo su nombre. */
+  protected categoriaDeNuevo(indice: number): string {
+    const nuevo = this.repuestosNuevos().get(this.repuestoDeFila(indice));
+    return this.categorias().find((c) => c.categoriaId === nuevo?.categoriaId)?.nombre ?? '';
+  }
+
+  /** Fila con repuesto nuevo y sin precio de venta: lo único que no puede quedar vacío. */
+  protected faltaPrecioVentaNuevo(indice: number): boolean {
+    return this.esRepuestoNuevo(indice) && this.detalles.at(indice).get('precioVenta')?.value == null;
+  }
+
+  /**
+   * Abre el formulario corto con lo que ya se escribió en el buscador y la
+   * categoría sugerida por el nombre: muchas veces basta con confirmar.
+   * Si la fila ya tiene un repuesto nuevo, se abre para corregirlo.
+   */
+  protected abrirRepuestoNuevo(indice: number, nombre = ''): void {
+    const actual = this.repuestosNuevos().get(this.repuestoDeFila(indice));
+    const categoriaId = actual?.categoriaId
+      ?? sugerirCategoriaRepuesto(nombre, this.categorias())?.categoriaId
+      ?? '';
+    this.formRepuestoNuevo.reset({ nombre: actual?.nombre ?? nombre, categoriaId });
+    this.filaRepuestoNuevo.set(indice);
+  }
+
+  /** Categoría que corresponde al nombre escrito, mientras no se haya elegido una. */
+  protected sugerenciaCategoria(): CategoriaRepuesto | null {
+    const { nombre, categoriaId } = this.formRepuestoNuevo.getRawValue();
+    return categoriaId ? null : sugerirCategoriaRepuesto(nombre, this.categorias());
+  }
+
+  protected usarSugerenciaCategoria(categoria: CategoriaRepuesto): void {
+    this.formRepuestoNuevo.controls.categoriaId.setValue(categoria.categoriaId);
+  }
+
+  protected invalidoNuevo(): boolean {
+    const campo = this.formRepuestoNuevo.controls.nombre;
+    return campo.invalid && campo.touched;
+  }
+
+  /**
+   * Deja el repuesto nuevo elegido en su fila. Todavía no se guarda: se crea
+   * al registrar la compra, con stock mínimo 1 y de uso general (la foto, la
+   * descripción y los vehículos compatibles se completan después en Repuestos).
+   */
+  protected crearRepuestoNuevo(): void {
+    const indice = this.filaRepuestoNuevo();
+    if (indice === null) return;
+
+    const nombre = this.formRepuestoNuevo.controls.nombre.value.trim();
+    if (!nombre) {
+      this.formRepuestoNuevo.markAllAsTouched();
+      this.notificacion.advertencia('Para crear el repuesto falta: el nombre.');
+      return;
+    }
+
+    // Si ya existe, se elige ese: dos repuestos con el mismo nombre confunden el stock.
+    const buscado = nombre.toLowerCase();
+    const existente = this.repuestos().find((r) => r.nombre.trim().toLowerCase() === buscado);
+    if (existente) {
+      this.detalles.at(indice).patchValue({ repuestoId: existente.repuestoId });
+      this.onRepuestoSeleccionado(indice, existente.repuestoId);
+      this.filaRepuestoNuevo.set(null);
+      this.notificacion.advertencia(`Ya existe un repuesto llamado “${existente.nombre}”: quedó elegido en la fila.`);
+      return;
+    }
+
+    const claveActual = this.repuestoDeFila(indice);
+    const clave = this.repuestosNuevos().has(claveActual) ? claveActual : `NUEVO-${++this.contadorNuevos}`;
+    const categoriaId = this.formRepuestoNuevo.controls.categoriaId.value;
+
+    this.repuestosNuevos.update((nuevos) => new Map(nuevos).set(clave, { nombre, categoriaId }));
+    // Un repuesto nuevo no tiene precios: no hereda los de lo que hubiera en la fila.
+    if (clave !== claveActual) {
+      this.detalles.at(indice).patchValue({ precioUnitario: 0, precioVenta: null });
+    }
+    this.detalles.at(indice).patchValue({ repuestoId: clave });
+    this.sincronizarTotales();
+    this.filaRepuestoNuevo.set(null);
   }
 
   /** Se llama en cada cambio de cantidad o precio para refrescar el total. */
@@ -348,6 +484,7 @@ export class Compras {
         else if (linea.get('cantidad')?.invalid) faltan.push(`la cantidad${fila} (1 o más)`);
         else if (linea.get('precioUnitario')?.invalid) faltan.push(`el precio de compra${fila}`);
         else if (linea.get('precioVenta')?.invalid) faltan.push(`un precio de venta válido${fila}`);
+        else if (this.faltaPrecioVentaNuevo(i)) faltan.push(`el precio de venta${fila} (es un repuesto nuevo)`);
       });
     }
 
@@ -360,8 +497,18 @@ export class Compras {
     return `Para registrar la compra falta: ${lista}.`;
   }
 
+  /**
+   * Enter en una casilla no registra la compra: quien elige un repuesto con
+   * Enter y vuelve a presionarlo la registraba sin querer. Se registra solo con
+   * el botón, que es una decisión que no se puede deshacer.
+   */
+  protected evitarEnvioConEnter(evento: Event): void {
+    if ((evento.target as HTMLElement).tagName === 'INPUT') evento.preventDefault();
+  }
+
   protected guardar(): void {
-    if (this.formulario.invalid || this.detalles.length === 0) {
+    const faltaPrecioNuevo = this.detalles.controls.some((_, i) => this.faltaPrecioVentaNuevo(i));
+    if (this.formulario.invalid || this.detalles.length === 0 || faltaPrecioNuevo) {
       this.formulario.markAllAsTouched();
       this.notificacion.advertencia(this.queFalta());
       return;
@@ -376,12 +523,16 @@ export class Compras {
       ocasional,
       proveedorId: ocasional ? null : datos.proveedorId,
       referencia: datos.referencia.trim() || null,
-      detalles: datos.detalles.map((d) => ({
-        repuestoId: d.repuestoId,
-        cantidad: d.cantidad,
-        precioUnitario: d.precioUnitario,
-        precioVenta: d.precioVenta,
-      })),
+      detalles: datos.detalles.map((d) => {
+        const nuevo = this.repuestosNuevos().get(d.repuestoId);
+        return {
+          repuestoId: nuevo ? null : d.repuestoId,
+          repuestoNuevo: nuevo ? { nombre: nuevo.nombre, categoriaId: nuevo.categoriaId || null } : null,
+          cantidad: d.cantidad,
+          precioUnitario: d.precioUnitario,
+          precioVenta: d.precioVenta,
+        };
+      }),
     }).subscribe({
       next: () => {
         this.notificacion.exito(
