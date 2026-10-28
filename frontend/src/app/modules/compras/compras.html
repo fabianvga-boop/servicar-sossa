@@ -249,7 +249,6 @@
                     formControlName="repuestoId"
                     marcador="Escriba el repuesto…"
                     accionCrear="repuesto nuevo"
-                    [flotante]="true"
                     [opciones]="opcionesRepuesto()"
                     (seleccion)="onRepuestoSeleccionado(i, $event)"
                     (crear)="abrirRepuestoNuevo(i, $event)"
@@ -344,7 +343,7 @@
 }
 
 @if (filaRepuestoNuevo() !== null) {
-  <app-modal titulo="Repuesto nuevo" [ancho]="480" (cerrar)="filaRepuestoNuevo.set(null)">
+  <app-modal titulo="Repuesto nuevo" [ancho]="560" (cerrar)="filaRepuestoNuevo.set(null)">
     <form [formGroup]="formRepuestoNuevo" id="form-repuesto-nuevo" (ngSubmit)="crearRepuestoNuevo()">
       <p class="campo-ayuda mt-0 mb-2">
         Se crea al registrar la compra, con la cantidad y los precios que ponga en la fila.
@@ -369,7 +368,6 @@
           idCampo="nuevoCategoria"
           formControlName="categoriaId"
           marcador="Elija una categoría…"
-          [flotante]="true"
           [opciones]="opcionesCategoria()"
         />
         @if (sugerenciaCategoria(); as sugerida) {

@@ -358,7 +358,7 @@
 }
 
 @if (panelConfig()) {
-  <app-modal titulo="Porcentaje de comisión" [ancho]="460" (cerrar)="panelConfig.set(false)">
+  <app-modal titulo="Porcentaje de comisión" [ancho]="560" (cerrar)="panelConfig.set(false)">
     <div class="campo">
       <label for="mecanicoConfig">Mecánico</label>
       <app-selector-busqueda
@@ -419,7 +419,7 @@
 }
 
 @if (porPagarLote()) {
-  <app-modal titulo="Liquidar comisiones" [ancho]="460" (cerrar)="porPagarLote.set(false)">
+  <app-modal titulo="Liquidar comisiones" [ancho]="560" (cerrar)="porPagarLote.set(false)">
     <p class="texto-sm">
       Se liquidarán <strong>{{ seleccionadas().size }}</strong> comisión(es).
       La liquidación es todo o nada, y el pago no se puede revertir.

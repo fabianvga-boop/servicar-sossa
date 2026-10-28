@@ -14,7 +14,7 @@ import { TextoResaltado } from './texto-resaltado';
   template: `
     <app-modal
       [titulo]="titulo()"
-      [ancho]="440"
+      [ancho]="520"
       [peligroso]="peligroso()"
       (cerrar)="cancelar.emit()"
     >

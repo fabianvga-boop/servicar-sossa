@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import { Component, afterNextRender, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
@@ -62,7 +63,7 @@ const COLUMNAS: Columna[] = [
  */
 @Component({
   selector: 'app-ordenes-lista',
-  imports: [RouterLink, EstadoTabla, InsigniaEstado, Modal, Placa, SiTieneRol, BolivianosPipe],
+  imports: [RouterLink, DatePipe, EstadoTabla, InsigniaEstado, Modal, Placa, SiTieneRol, BolivianosPipe],
   templateUrl: './ordenes-lista.html',
   styleUrl: './ordenes-lista.css',
 })
@@ -148,13 +149,17 @@ export class OrdenesLista {
     });
   });
 
-  /** Cada columna con sus tarjetas, más recientes primero. */
+  /**
+   * Cada columna con sus tarjetas, más recientes primero. Las cerradas (y las
+   * canceladas) por la fecha en que se cerraron: la última cerrada arriba, que
+   * es la que hay que cobrar.
+   */
   protected readonly tablero = computed(() =>
     this.columnas.map((columna) => ({
       ...columna,
       ordenes: this.filtradas()
         .filter((o) => o.estado === columna.estado)
-        .sort((a, b) => b.fechaCreacion.localeCompare(a.fechaCreacion)),
+        .sort(masRecienteMovida),
     })),
   );
 
@@ -167,7 +172,7 @@ export class OrdenesLista {
   protected readonly canceladas = computed(() =>
     this.filtradas()
       .filter((o) => o.estado === EstadoOrden.Cancelada)
-      .sort((a, b) => b.fechaCreacion.localeCompare(a.fechaCreacion)),
+      .sort(masRecienteMovida),
   );
 
   // --- Indicadores -----------------------------------------------------------
@@ -295,4 +300,9 @@ export class OrdenesLista {
   protected sePuedeFacturar(orden: Orden): boolean {
     return orden.estado === EstadoOrden.Finalizada || orden.estado === EstadoOrden.Cerrada;
   }
+}
+
+/** La fecha que cuenta para ordenar: la de cierre si la tiene, si no la de creación. */
+export function masRecienteMovida(a: Orden, b: Orden): number {
+  return (b.fechaCierre ?? b.fechaCreacion).localeCompare(a.fechaCierre ?? a.fechaCreacion);
 }

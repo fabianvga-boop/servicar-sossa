@@ -191,6 +191,7 @@
 @if (formularioAbierto()) {
   <app-modal
     [titulo]="editando() ? 'Editar cliente' : 'Nuevo cliente'"
+    [ancho]="720"
     (cerrar)="cerrarFormulario()"
   >
     <form [formGroup]="formulario" id="form-cliente" (ngSubmit)="guardar()">

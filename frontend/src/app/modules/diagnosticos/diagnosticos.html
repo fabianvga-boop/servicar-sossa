@@ -204,7 +204,7 @@
 @if (formularioAbierto()) {
   <app-modal
     [titulo]="editando() ? 'Editar diagnóstico' : 'Nuevo diagnóstico'"
-    [ancho]="620"
+    [ancho]="720"
     (cerrar)="cerrarFormulario()"
   >
     @if (borradorPendiente(); as borrador) {
@@ -408,7 +408,7 @@
 }
 
 @if (respondiendo(); as diagnostico) {
-  <app-modal titulo="Respuesta del cliente" [ancho]="520" (cerrar)="respondiendo.set(null)">
+  <app-modal titulo="Respuesta del cliente" [ancho]="560" (cerrar)="respondiendo.set(null)">
     <p class="texto-sm">
       Presupuesto de <strong>{{ diagnostico.montoEstimado | bs }}</strong> para
       <strong>{{ diagnostico.placaVehiculo }}</strong> ({{ diagnostico.nombreCliente }}).

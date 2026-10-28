@@ -161,7 +161,7 @@
 @if (formularioAbierto()) {
   <app-modal
     [titulo]="editando() ? 'Editar vehículo' : 'Nuevo vehículo'"
-    [ancho]="620"
+    [ancho]="720"
     (cerrar)="cerrarFormulario()"
   >
     <form [formGroup]="formulario" id="form-vehiculo" (ngSubmit)="guardar()">
@@ -320,7 +320,7 @@
 @if (historialDe(); as vehiculo) {
   <app-modal
     titulo="Historial de {{ vehiculo.placa }}"
-    [ancho]="640"
+    [ancho]="720"
     (cerrar)="cerrarHistorial()"
   >
     @if (cargandoHistorial()) {
@@ -388,7 +388,7 @@
 }
 
 @if (galeriaDe(); as vehiculo) {
-  <app-modal titulo="Fotos de {{ vehiculo.placa }}" [ancho]="620" (cerrar)="cerrarGaleria()">
+  <app-modal titulo="Fotos de {{ vehiculo.placa }}" [ancho]="720" (cerrar)="cerrarGaleria()">
     <p class="texto-tenue texto-sm mb-0">
       Opcional: fotos para dejar constancia del estado del vehículo (golpes, rayones, nivel de
       combustible…) al momento de ingresar. Desde el celular se pueden tomar en el momento.
@@ -435,7 +435,7 @@
 }
 
 @if (diagramaDe(); as vehiculo) {
-  <app-modal titulo="Diagrama de {{ vehiculo.placa }}" [ancho]="480" (cerrar)="cerrarDiagrama()">
+  <app-modal titulo="Diagrama de {{ vehiculo.placa }}" [ancho]="560" (cerrar)="cerrarDiagrama()">
     <p class="texto-tenue texto-sm mb-2">
       Haga clic en una zona para marcar su estado (Ok, Atención o En reparación). Queda como
       historial: cada marca es un evento nuevo, no se pierde lo anterior.

@@ -288,7 +288,7 @@
 }
 
 @if (panelCobro()) {
-  <app-modal titulo="Cobrar venta" [ancho]="480" (cerrar)="panelCobro.set(false)">
+  <app-modal titulo="Cobrar venta" [ancho]="560" (cerrar)="panelCobro.set(false)">
     <div class="total-caja mb-2">
       <span>{{ articulos() }} artículo(s)</span>
       <span class="total-monto">{{ total() | bs }}</span>
@@ -350,7 +350,7 @@
 }
 
 @if (detalleDe(); as venta) {
-  <app-modal titulo="Venta {{ venta.ventaId }}" [ancho]="560" (cerrar)="detalleDe.set(null)">
+  <app-modal titulo="Venta {{ venta.ventaId }}" [ancho]="640" (cerrar)="detalleDe.set(null)">
     <dl class="datos mb-2">
       <dt>Fecha</dt>
       <dd>{{ venta.fechaVenta | date: 'dd/MM/yyyy HH:mm' }}</dd>

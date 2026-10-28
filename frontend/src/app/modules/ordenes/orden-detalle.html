@@ -755,7 +755,7 @@
   @if (panelMecanico()) {
     <app-modal
       [titulo]="asignarEsExcepcion() ? 'Sumar otro mecánico (excepción)' : 'Asignar mecánico'"
-      [ancho]="460"
+      [ancho]="560"
       (cerrar)="panelMecanico.set(false)"
     >
       @if (asignarEsExcepcion()) {
@@ -824,7 +824,7 @@
   }
 
   @if (panelServicio()) {
-    <app-modal titulo="Agregar servicio" [ancho]="560" (cerrar)="panelServicio.set(false)">
+    <app-modal titulo="Agregar servicio" [ancho]="640" (cerrar)="panelServicio.set(false)">
       @if (o.mecanicos.length === 0) {
         <p class="texto-tenue mb-0">
           Primero asigne al menos un mecánico a la orden: el servicio debe tener un responsable.
@@ -972,7 +972,7 @@
   }
 
   @if (panelRepuesto()) {
-    <app-modal titulo="Agregar repuesto" [ancho]="560" (cerrar)="panelRepuesto.set(false)">
+    <app-modal titulo="Agregar repuesto" [ancho]="640" (cerrar)="panelRepuesto.set(false)">
       <div class="campo">
         <label>Origen del repuesto</label>
         <div class="segmentos">
@@ -1145,7 +1145,7 @@
   }
 
   @if (galeriaAbierta()) {
-    <app-modal titulo="Fotos de {{ o.placaVehiculo }}" [ancho]="620" (cerrar)="galeriaAbierta.set(false)">
+    <app-modal titulo="Fotos de {{ o.placaVehiculo }}" [ancho]="720" (cerrar)="galeriaAbierta.set(false)">
       <div class="galeria-fotos-orden">
         @for (foto of fotosVehiculo(); track foto.fotoId) {
           <img [src]="urlArchivo(foto.url)" alt="Foto del vehículo {{ o.placaVehiculo }}" />
@@ -1161,7 +1161,7 @@
   }
 
   @if (diagramaAbierto()) {
-    <app-modal titulo="Diagrama de {{ o.placaVehiculo }}" [ancho]="480" (cerrar)="cerrarDiagrama()">
+    <app-modal titulo="Diagrama de {{ o.placaVehiculo }}" [ancho]="560" (cerrar)="cerrarDiagrama()">
       <p class="texto-tenue texto-sm mb-2">
         Marque el estado de una zona haciendo clic sobre ella. Queda como historial de esta orden
         y de las anteriores.
@@ -1213,7 +1213,7 @@
   }
 
   @if (panelCorregir()) {
-    <app-modal titulo="Corregir orden {{ o.ordenId }}" [ancho]="500" (cerrar)="panelCorregir.set(false)">
+    <app-modal titulo="Corregir orden {{ o.ordenId }}" [ancho]="560" (cerrar)="panelCorregir.set(false)">
       <p class="mensaje-aviso">
         La orden vuelve a <strong>En proceso</strong> para corregir servicios o repuestos. Después
         hay que finalizarla y cerrarla de nuevo.
@@ -1266,7 +1266,7 @@
   }
 
   @if (editandoServicio(); as servicio) {
-    <app-modal titulo="Editar {{ servicio.nombreServicio }}" [ancho]="460" (cerrar)="editandoServicio.set(null)">
+    <app-modal titulo="Editar {{ servicio.nombreServicio }}" [ancho]="560" (cerrar)="editandoServicio.set(null)">
       <div class="campo">
         <label for="precioEdicion">Precio (Bs)</label>
         <input id="precioEdicion" name="precioEdicion" type="number" min="0" step="0.01" [(ngModel)]="edicion.precio" />
@@ -1286,7 +1286,7 @@
   }
 
   @if (editandoRepuesto(); as repuesto) {
-    <app-modal titulo="Editar {{ repuesto.nombreRepuesto }}" [ancho]="460" (cerrar)="editandoRepuesto.set(null)">
+    <app-modal titulo="Editar {{ repuesto.nombreRepuesto }}" [ancho]="560" (cerrar)="editandoRepuesto.set(null)">
       <div class="rejilla">
         <div class="campo mb-0">
           <label for="cantidadEdicion">Cantidad</label>
@@ -1349,7 +1349,7 @@
   }
 
   @if (faltaRepuesto(); as servicio) {
-    <app-modal titulo="Falta registrar el repuesto" [ancho]="480" (cerrar)="faltaRepuesto.set(null)">
+    <app-modal titulo="Falta registrar el repuesto" [ancho]="560" (cerrar)="faltaRepuesto.set(null)">
       <p class="mensaje-aviso">
         <strong>{{ servicio.nombreServicio }}</strong> usa repuestos. Para completarlo, primero registre en la
         orden el repuesto que se usó: del inventario, traído por el cliente o comprado afuera.
@@ -1409,7 +1409,7 @@
   }
 
   @if (excepcionCategoria(); as excepcion) {
-    <app-modal titulo="Repuesto de otra categoría" [ancho]="480" (cerrar)="cancelarExcepcionCategoria()">
+    <app-modal titulo="Repuesto de otra categoría" [ancho]="560" (cerrar)="cancelarExcepcionCategoria()">
       <p class="mt-0">
         <strong>{{ excepcion.servicio }}</strong> lleva <strong>{{ excepcion.lleva }}</strong>, y
         <strong>{{ excepcion.repuesto }}</strong> no es de esa categoría.

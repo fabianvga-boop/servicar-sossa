@@ -71,6 +71,7 @@ export interface OpcionSelector {
         [disabled]="deshabilitado()"
         [class.invalido]="invalido()"
         (focus)="alEnfocar()"
+        (mouseup)="alSoltarClic($event)"
         (input)="alEscribir($any($event.target).value)"
         (blur)="alSalir()"
         (keydown)="alTeclear($event)"
@@ -88,14 +89,33 @@ export interface OpcionSelector {
         </button>
       }
 
+      <!-- La flecha avisa que hay una lista para elegir; la lista no se abre
+           sola al entrar al campo: se abre con la flecha, al escribir o con ↓. -->
+      @if (!deshabilitado()) {
+        <button
+          type="button"
+          class="desplegar"
+          tabindex="-1"
+          [class.abierta]="abierto()"
+          [attr.aria-label]="abierto() ? 'Cerrar la lista' : 'Ver todas las opciones'"
+          [title]="abierto() ? 'Cerrar la lista' : 'Ver todas las opciones'"
+          (mousedown)="$event.preventDefault()"
+          (click)="alternarLista()"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </button>
+      }
+
       @if (abierto()) {
         <ul
           #lista
           class="lista"
           role="listbox"
-          [attr.popover]="flotante() ? 'manual' : null"
+          [attr.popover]="esFlotante() ? 'manual' : null"
           [class.en-linea]="listaEnLinea()"
-          [class.flotante]="flotante()"
+          [class.flotante]="esFlotante()"
         >
           @if (filtradas().length === 0) {
             <li class="sin-resultados">Sin coincidencias para <strong>{{ busqueda() }}</strong></li>
@@ -165,10 +185,40 @@ export interface OpcionSelector {
   styles: `
     .selector { position: relative; }
 
+    /* Lugar para la X y la flecha a la derecha, sin que tapen el texto. */
+    .selector input { padding-right: 64px; }
+
+    .desplegar {
+      position: absolute;
+      top: 50%;
+      right: 6px;
+      transform: translateY(-50%);
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border: none;
+      border-radius: var(--radio-sm);
+      background: none;
+      color: var(--ink-soft);
+      cursor: pointer;
+    }
+
+    .desplegar:hover { background: var(--gris-100); color: var(--ink); }
+
+    .desplegar svg {
+      width: 18px;
+      height: 18px;
+      transition: transform 0.15s;
+    }
+
+    .desplegar.abierta svg { transform: rotate(180deg); }
+
     .limpiar {
       position: absolute;
       top: 50%;
-      right: 8px;
+      right: 36px;
       transform: translateY(-50%);
       background: none;
       border: none;
@@ -212,6 +262,10 @@ export interface OpcionSelector {
     }
 
     .lista li.resaltada { background: var(--gris-100); }
+
+    /* Lo que ya está elegido se reconoce en la lista. */
+    .lista li[aria-selected='true'] .etiqueta { color: var(--brand-dk); }
+    .lista li[aria-selected='true'] .etiqueta::before { content: '✓ '; }
 
     /* Con etiquetas: nombre y detalle arriba, etiquetas abajo. */
     .lista li.con-marcas {
@@ -368,11 +422,14 @@ export class SelectorBusqueda implements ControlValueAccessor {
   readonly listaEnLinea = input(false);
 
   /**
-   * La lista flota por encima de todo (capa superior del navegador). Para un
-   * campo dentro de una tabla con desplazamiento, donde una lista común queda
-   * recortada y obliga a buscarla con la barra.
+   * La lista flota por encima de todo (capa superior del navegador), en todo
+   * el sistema: dentro de una ventana o de una tabla con desplazamiento, una
+   * lista común quedaba recortada y había que buscarla con la barra.
    */
-  readonly flotante = input(false);
+  readonly flotante = input(true);
+
+  /** Una lista en línea (dentro del flujo) nunca flota. */
+  protected readonly esFlotante = computed(() => this.flotante() && !this.listaEnLinea());
 
   /**
    * Qué se puede crear desde la lista ("repuesto nuevo"). Si se indica, al
@@ -410,7 +467,7 @@ export class SelectorBusqueda implements ControlValueAccessor {
     // página o la ventana se desplazan mientras está abierta.
     effect((alLimpiar) => {
       const lista = this.lista()?.nativeElement;
-      if (!lista || !this.flotante()) return;
+      if (!lista || !this.esFlotante()) return;
 
       lista.showPopover?.();
       const ubicar = () => this.ubicarLista(lista);
@@ -503,15 +560,62 @@ export class SelectorBusqueda implements ControlValueAccessor {
 
   // --- Interacción ---------------------------------------------------------
 
+  /** Se pidió seleccionar el texto al soltar el clic que enfocó el campo. */
+  private seleccionarAlSoltar = false;
+
+  /**
+   * Al entrar al campo no se borra lo elegido ni se abre la lista: antes el
+   * nombre desaparecía y parecía que se había perdido la selección. El texto
+   * queda seleccionado, así lo que se escriba lo reemplaza para buscar otro.
+   */
   protected alEnfocar(): void {
-    // Cadena vacía, no null: así la lista se abre completa pero el campo queda
-    // en blanco y el usuario puede teclear encima sin borrar lo anterior.
-    this.busqueda.set('');
-    this.indiceResaltado.set(0);
+    this.campo()?.nativeElement.select();
+    this.seleccionarAlSoltar = true;
+  }
+
+  /**
+   * Un clic sobre lo ya elegido lo selecciona entero (también si el campo ya
+   * estaba activo), así lo que se escriba lo reemplaza. Mientras se busca, el
+   * clic se comporta normal para poder corregir lo escrito.
+   */
+  protected alSoltarClic(evento: MouseEvent): void {
+    const campo = this.campo()?.nativeElement;
+    if (!campo) return;
+    const arrastro = campo.selectionStart !== campo.selectionEnd && !this.seleccionarAlSoltar;
+    this.seleccionarAlSoltar = false;
+    if (this.busqueda() !== null || arrastro) return;
+    evento.preventDefault();
+    campo.select();
+  }
+
+  /** La flecha: muestra todas las opciones, con lo elegido resaltado. */
+  protected alternarLista(): void {
+    if (this.abierto()) {
+      this.abierto.set(false);
+      this.busqueda.set(null);
+      return;
+    }
+    this.campo()?.nativeElement.focus();
+    this.seleccionarAlSoltar = false;
+    this.abrirCompleta();
+  }
+
+  private abrirCompleta(): void {
+    this.busqueda.set(null);
+    const elegida = this.opciones().findIndex((o) => o.valor === this.valorActual());
+    this.indiceResaltado.set(Math.max(0, elegida));
     this.abierto.set(true);
   }
 
   protected alEscribir(texto: string): void {
+    // Si se escribió a continuación del nombre elegido (el texto no estaba
+    // seleccionado), se busca solo lo nuevo: "Juana Bravo" + "lote" busca "lote".
+    const etiqueta = this.etiquetaSeleccionada();
+    if (this.busqueda() === null && etiqueta && texto.length > etiqueta.length && texto.startsWith(etiqueta)) {
+      texto = texto.slice(etiqueta.length);
+      const campo = this.campo()?.nativeElement;
+      if (campo) campo.value = texto;
+    }
     this.busqueda.set(texto);
     this.indiceResaltado.set(0);
     this.abierto.set(true);
@@ -538,7 +642,11 @@ export class SelectorBusqueda implements ControlValueAccessor {
     switch (evento.key) {
       case 'ArrowDown':
         evento.preventDefault();
-        this.abierto.set(true);
+        // Cerrada, la flecha abajo la abre completa (como la flecha del campo).
+        if (!this.abierto()) {
+          this.abrirCompleta();
+          break;
+        }
         if (total > 0) this.indiceResaltado.update((i) => (i + 1) % total);
         break;
 
