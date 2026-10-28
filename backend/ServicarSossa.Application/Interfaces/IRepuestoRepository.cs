@@ -31,6 +31,9 @@ public interface IRepuestoRepository : IRepository<Repuesto>
     /// <summary>Valor del filtro de categoría para los repuestos sin categoría.</summary>
     const string SinCategoria = "sin-categoria";
 
+    /// <summary>Kárdex del repuesto, del más antiguo al más reciente, con quién hizo cada movimiento.</summary>
+    Task<List<MovimientoInventario>> GetMovimientosAsync(string repuestoId, CancellationToken ct = default);
+
     /// <summary>true si el repuesto aparece en alguna compra u orden de trabajo.</summary>
     Task<bool> TieneMovimientosAsync(string repuestoId, CancellationToken ct = default);
 

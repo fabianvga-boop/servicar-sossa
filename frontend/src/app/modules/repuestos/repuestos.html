@@ -494,7 +494,7 @@
     </p>
 
     <div class="campo">
-      <label for="ajuste">Stock real (conteo físico)</label>
+      <label for="ajuste">Stock real</label>
       <input
         id="ajuste"
         type="number"
@@ -527,12 +527,19 @@
         [value]="motivoAjuste()"
         (input)="motivoAjuste.set($any($event.target).value)"
       />
-      <span class="campo-ayuda">Queda registrado en la auditoría del repuesto, junto al antes y después.</span>
+      <span class="campo-ayuda">Queda en el kárdex del repuesto y en la auditoría, junto al antes y después.</span>
     </div>
 
+    @if (ajusteInvalido()) {
+      <p class="campo-error mb-2">
+        Una merma o rotura solo puede bajar el stock. Para subirlo elija «Conteo físico» o
+        «Corrección»; si lo compró, regístrelo como compra.
+      </p>
+    }
+
     <p class="texto-tenue texto-sm mb-0">
-      Use esta opción solo para corregir diferencias por conteo físico, merma o rotura.
-      Las compras y el cierre de órdenes mueven el stock automáticamente.
+      Para diferencias de conteo, merma o rotura, o para corregir un error. Si el repuesto
+      se compró, regístrelo en Compras (también como compra ocasional): así queda con su precio.
     </p>
 
     <div pie>
@@ -542,7 +549,7 @@
       <button
         type="button"
         class="btn btn-primario"
-        [disabled]="guardando()"
+        [disabled]="guardando() || ajusteInvalido()"
         (click)="confirmarAjuste()"
       >
         {{ guardando() ? 'Guardando…' : 'Ajustar' }}
@@ -553,8 +560,8 @@
 
 @if (procedenciaDe(); as repuesto) {
   <app-modal
-    titulo="Movimientos de {{ repuesto.nombre }}"
-    [ancho]="560"
+    titulo="Procedencia de {{ repuesto.nombre }}"
+    [ancho]="760"
     (cerrar)="cerrarProcedencia()"
   >
     @if (cargandoProcedencia()) {
@@ -565,7 +572,6 @@
         <strong>{{ repuesto.nombreProveedor || 'Sin proveedor asignado' }}</strong>
       </p>
 
-      <!-- Distingue el stock respaldado por compras del inicial/ajustes sin proveedor -->
       <div class="procedencia-resumen mb-2">
         <div class="procedencia-caja">
           <span class="procedencia-valor">{{ p.stockActual }}</span>
@@ -573,53 +579,63 @@
         </div>
         <div class="procedencia-caja procedencia-con-proveedor">
           <span class="procedencia-valor">{{ p.totalComprado }}</span>
-          <span class="procedencia-etq">Ingresado por compras (con proveedor)</span>
+          <span class="procedencia-etq">Ingresado por compras</span>
         </div>
       </div>
 
-      @if (p.cantidadCompras === 0) {
-        <p class="texto-tenue texto-sm mb-0">
-          Este repuesto no tiene compras registradas: su stock proviene del registro inicial o de
-          ajustes, sin un proveedor asociado. Al registrar una compra se le asignará el proveedor.
-        </p>
+      @if (p.movimientos.length === 0) {
+        <p class="texto-tenue texto-sm mb-0">Este repuesto todavía no tiene movimientos de stock.</p>
       } @else {
-        <h3 class="mb-1">Historial de compras</h3>
-        <div class="tabla-contenedor">
+        <h3 class="mb-1">Kárdex</h3>
+        <div class="tabla-contenedor kardex">
           <table class="tabla">
             <thead>
               <tr>
                 <th>Fecha</th>
-                <th>Proveedor</th>
-                <th class="num">Cantidad</th>
-                <th class="num">Precio unit.</th>
+                <th>Movimiento</th>
+                <th>Detalle</th>
+                <th class="num">Entra</th>
+                <th class="num">Sale</th>
+                <th class="num">Saldo</th>
               </tr>
             </thead>
             <tbody>
-              @for (c of p.compras; track c.compraId) {
+              @for (m of p.movimientos; track m.movimientoId) {
+                @let estilo = ESTILO_MOVIMIENTO[m.tipo];
                 <tr>
-                  <td>{{ c.fecha | date: 'dd/MM/yyyy' }}</td>
-                  <td>{{ c.nombreProveedor }}</td>
-                  <td class="num">{{ c.cantidad }}</td>
-                  <td class="num">{{ c.precioUnitario | bs }}</td>
+                  <td class="texto-sm">{{ m.fecha | date: 'dd/MM/yyyy HH:mm' }}</td>
+                  <td>
+                    <span class="insignia insignia-{{ estilo.tono }}">{{ estilo.texto }}</span>
+                    @if (m.referencia) {
+                      <div class="codigo texto-sm mt-1">{{ m.referencia }}</div>
+                    }
+                  </td>
+                  <td class="texto-sm">
+                    {{ m.detalle }}
+                    @if (m.precioUnitario != null && m.tipo === TipoMovimiento.Compra) {
+                      <span class="texto-tenue">· {{ m.precioUnitario | bs }} c/u</span>
+                    }
+                    @if (m.usuario) {
+                      <div class="texto-tenue">{{ m.usuario }}</div>
+                    }
+                  </td>
+                  <td class="num entra">{{ m.cantidad > 0 ? '+' + m.cantidad : '' }}</td>
+                  <td class="num sale">{{ m.cantidad < 0 ? m.cantidad : '' }}</td>
+                  <td class="num texto-fuerte">{{ m.saldo }}</td>
                 </tr>
               }
             </tbody>
           </table>
         </div>
-      }
 
-      @if (p.ajustes.length > 0) {
-        <h3 class="mb-1 mt-2">Ajustes de stock</h3>
-        <ul class="lista-ajustes">
-          @for (a of p.ajustes; track a.fecha + a.descripcion) {
-            <li>
-              <span class="ajuste-desc">{{ a.descripcion }}</span>
-              <span class="ajuste-meta">
-                {{ a.fecha | date: 'dd/MM/yyyy HH:mm' }} · {{ a.usuario }}
-              </span>
-            </li>
-          }
-        </ul>
+        @if (p.cuadra) {
+          <p class="kardex-cuadra mb-0">✓ El saldo del kárdex coincide con el stock actual.</p>
+        } @else {
+          <p class="kardex-no-cuadra mb-0">
+            ⚠ El último saldo del kárdex no coincide con el stock actual ({{ p.stockActual }}).
+            Revise los movimientos o haga un ajuste por conteo físico.
+          </p>
+        }
       }
     }
 

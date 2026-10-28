@@ -35,6 +35,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Repuesto> Repuestos => Set<Repuesto>();
     public DbSet<RepuestoCompatibilidad> RepuestoCompatibilidades => Set<RepuestoCompatibilidad>();
     public DbSet<Compra> Compras => Set<Compra>();
+    public DbSet<MovimientoInventario> MovimientosInventario => Set<MovimientoInventario>();
     public DbSet<CompraDetalle> CompraDetalles => Set<CompraDetalle>();
     public DbSet<OrdenRepuesto> OrdenRepuestos => Set<OrdenRepuesto>();
     public DbSet<ComisionConfig> ComisionesConfig => Set<ComisionConfig>();
@@ -417,17 +418,42 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .HasForeignKey(x => x.RepuestoId).OnDelete(DeleteBehavior.Cascade);
         });
 
+        b.Entity<MovimientoInventario>(e =>
+        {
+            e.ToTable("movimientos_inventario");
+            e.HasKey(x => x.MovimientoId);
+            e.Property(x => x.MovimientoId).HasColumnName("movimiento_id").HasMaxLength(20);
+            e.Property(x => x.RepuestoId).HasColumnName("repuesto_id").HasMaxLength(20).IsRequired();
+            e.Property(x => x.Fecha).HasColumnName("fecha").IsRequired();
+            e.Property(x => x.Tipo).HasColumnName("tipo").HasMaxLength(20)
+                .HasConversion<string>().IsRequired();
+            e.Property(x => x.Cantidad).HasColumnName("cantidad");
+            e.Property(x => x.Saldo).HasColumnName("saldo");
+            e.Property(x => x.Referencia).HasColumnName("referencia").HasMaxLength(20);
+            e.Property(x => x.Detalle).HasColumnName("detalle").HasMaxLength(200);
+            e.Property(x => x.PrecioUnitario).HasColumnName("precio_unitario").HasPrecision(10, 2);
+            e.Property(x => x.UsuarioId).HasColumnName("usuario_id").HasMaxLength(20);
+            e.HasIndex(x => new { x.RepuestoId, x.Fecha }).HasDatabaseName("idx_movimientos_repuesto");
+            e.HasOne(x => x.Repuesto).WithMany()
+                .HasForeignKey(x => x.RepuestoId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Usuario).WithMany()
+                .HasForeignKey(x => x.UsuarioId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
+        });
+
         b.Entity<Compra>(e =>
         {
             e.ToTable("compras");
             e.HasKey(x => x.CompraId);
             e.Property(x => x.CompraId).HasColumnName("compra_id").HasMaxLength(20);
-            e.Property(x => x.ProveedorId).HasColumnName("proveedor_id").HasMaxLength(20).IsRequired();
+            // proveedor_id es opcional: sin él es una compra ocasional.
+            e.Property(x => x.ProveedorId).HasColumnName("proveedor_id").HasMaxLength(20);
+            e.Property(x => x.Referencia).HasColumnName("referencia").HasMaxLength(150);
+            e.Ignore(x => x.EsOcasional);
             e.Property(x => x.UsuarioId).HasColumnName("usuario_id").HasMaxLength(20).IsRequired();
             e.Property(x => x.Fecha).HasColumnName("fecha").IsRequired();
             e.Property(x => x.Total).HasColumnName("total").HasPrecision(12, 2);
             e.HasOne(x => x.Proveedor).WithMany(p => p.Compras)
-                .HasForeignKey(x => x.ProveedorId).OnDelete(DeleteBehavior.Restrict);
+                .HasForeignKey(x => x.ProveedorId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.Usuario).WithMany(u => u.Compras)
                 .HasForeignKey(x => x.UsuarioId).OnDelete(DeleteBehavior.Restrict);
         });

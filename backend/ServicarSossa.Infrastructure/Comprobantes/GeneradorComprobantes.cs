@@ -19,19 +19,23 @@ public class GeneradorComprobantes : IGeneradorComprobantes
     /// <summary>Formato boliviano para montos, igual que en los reportes.</summary>
     private static readonly CultureInfo Cultura = CultureInfo.GetCultureInfo("es-BO");
 
-    // Paleta alineada con la del frontend (styles.css), para que el documento
+    // Texto en los tonos del frontend (styles.css), para que el documento
     // impreso y la pantalla se reconozcan como el mismo sistema.
     private const string Tinta = "#14171C";
     private const string TintaSuave = "#3A414E";
     private const string Gris = "#6B7280";
-    private const string GrisClaro = "#DDE1E6";
-    private const string GrisFondo = "#F7F8F9";
-    private const string Marca = "#E10600";
-    private const string MarcaOscura = "#B00500";
-    private const string Verde = "#1F6B39";
-    private const string VerdeFondo = "#E3F5E9";
-    private const string Naranja = "#8A6300";
-    private const string NaranjaFondo = "#FBEFD2";
+    private const string MarcaOscura = "#B00500";   // sello ANULADA
+    private const string Verde = "#1F6B39";         // pagado / aprobado
+
+    // Documentos para imprimir: fondo blanco y el color solo en líneas y
+    // títulos, para gastar poca tinta.
+    private const string Rojo = "#C00000";           // títulos y total a pagar
+    private const string RojoTrazo = "#D10A0A";      // ondas y líneas de la tabla
+    private const string RojoCabecera = "#A00000";   // texto del encabezado de tabla
+    private const string GrisTrazo = "#B9BEC6";      // segunda línea de las ondas
+    private const string GrisFila = "#C9CDD3";       // separación entre filas
+    private const string AmarilloBorde = "#E0A800";  // marco del saldo / pendiente
+    private const string AmarilloTexto = "#7A5700";  // su texto (legible impreso)
 
     private readonly TallerOptions _taller;
 
@@ -51,569 +55,521 @@ public class GeneradorComprobantes : IGeneradorComprobantes
     }
 
     public ArchivoComprobanteDto Generar(ComprobanteDto c)
+        => new()
+        {
+            Contenido = CrearProforma(c).GeneratePdf(),
+            NombreArchivo = $"{c.Numero}.pdf",
+            TipoContenido = "application/pdf"
+        };
+
+    /// <summary>
+    /// El documento de la proforma sin generar: el PDF sale de acá, y también
+    /// una vista previa en imagen si hiciera falta.
+    /// </summary>
+    public IDocument CrearProforma(ComprobanteDto c)
     {
-        var documento = Document.Create(container =>
+        return Document.Create(container =>
         {
             container.Page(page =>
             {
-                page.Size(PageSizes.A4);
-                page.Margin(1.4f, Unit.Centimetre);
-                page.DefaultTextStyle(t => t.FontSize(9).FontFamily(Fonts.Calibri).FontColor(Tinta));
+                ConfigurarHoja(page);
 
-                page.Header().Element(e => Encabezado(e, c));
-                page.Content().PaddingTop(14).Element(e => Cuerpo(e, c));
-                page.Footer().Element(e => Pie(e, c));
+                var anulada = c.Estado.Equals("Anulada", StringComparison.OrdinalIgnoreCase);
+
+                page.Header().Element(e => Encabezado(e, "PROFORMA", c.Numero, anulada ? "ANULADA" : null));
+                page.Content().PaddingTop(16).Element(e => Cuerpo(e, c));
+                page.Footer().Element(e => Pie(e, $"{_taller.Nombre} — {c.Numero} / {c.OrdenId}"));
 
                 // Una proforma anulada no puede pasar por válida al imprimirla:
                 // además de la etiqueta de la cabecera, el sello cruza la hoja.
-                if (c.Estado.Equals("Anulada", StringComparison.OrdinalIgnoreCase))
+                if (anulada)
                     page.Foreground().AlignCenter().AlignMiddle().Rotate(-30)
                         .Text("ANULADA").FontSize(96).Bold().LetterSpacing(0.08f)
                         .FontColor(Colors.Red.Lighten3);
             });
         });
+    }
 
-        return new ArchivoComprobanteDto
-        {
-            Contenido = documento.GeneratePdf(),
-            NombreArchivo = $"{c.Numero}.pdf",
-            TipoContenido = "application/pdf"
-        };
+    /// <summary>A4 con márgenes que dejan libres las ondas, que van de fondo en toda la hoja.</summary>
+    private static void ConfigurarHoja(PageDescriptor page)
+    {
+        page.Size(PageSizes.A4);
+        page.MarginTop(28);
+        page.MarginHorizontal(42);
+        page.MarginBottom(22);
+        page.DefaultTextStyle(t => t.FontSize(9).FontFamily(Fonts.Calibri).FontColor(Tinta));
+
+        // El fondo ocupa la hoja entera (sin márgenes): las ondas llegan a los bordes.
+        page.Background().Svg(Ondas);
     }
 
     // ==================================================== PRESUPUESTO DIAGNÓSTICO
+    // Mismo formato que la proforma (ondas, logo, datos enfrentados, tabla),
+    // con el diagnóstico y el importe estimado en vez del detalle de servicios
+    // y repuestos.
 
     public ArchivoComprobanteDto GenerarPresupuestoDiagnostico(PresupuestoDiagnosticoDto p)
-    {
-        var documento = Document.Create(container =>
+        => new()
         {
-            container.Page(page =>
-            {
-                page.Size(PageSizes.A4);
-                page.Margin(1.4f, Unit.Centimetre);
-                page.DefaultTextStyle(t => t.FontSize(9).FontFamily(Fonts.Calibri).FontColor(Tinta));
-
-                page.Header().Element(e => EncabezadoPresupuesto(e, p));
-                page.Content().PaddingTop(14).Element(e => CuerpoPresupuesto(e, p));
-                page.Footer().Element(e => PiePresupuesto(e, p));
-            });
-        });
-
-        return new ArchivoComprobanteDto
-        {
-            Contenido = documento.GeneratePdf(),
+            Contenido = CrearPresupuesto(p).GeneratePdf(),
             NombreArchivo = $"{p.Numero}-presupuesto.pdf",
             TipoContenido = "application/pdf"
         };
-    }
 
-    private void EncabezadoPresupuesto(IContainer container, PresupuestoDiagnosticoDto p)
+    /// <summary>El documento del presupuesto preliminar sin generar (PDF o vista previa).</summary>
+    public IDocument CrearPresupuesto(PresupuestoDiagnosticoDto p)
     {
-        container.Column(col =>
+        return Document.Create(container =>
         {
-            col.Item().Row(row =>
+            container.Page(page =>
             {
-                row.RelativeItem().Column(izq =>
-                {
-                    if (_logo is not null)
-                        izq.Item().Height(46).AlignLeft().Image(_logo).FitHeight();
-                    else
-                        izq.Item().Text(_taller.Nombre).FontSize(17).Bold();
+                ConfigurarHoja(page);
 
-                    izq.Item().PaddingTop(6).Text(
-                            $"{_taller.Rubro} · {_taller.Direccion}, {_taller.Ciudad}")
-                        .FontSize(8).FontColor(Gris);
-
-                    izq.Item().Text($"Tel. {_taller.Telefono} · NIT {_taller.Nit}")
-                        .FontSize(8).FontColor(Gris);
-                });
-
-                row.ConstantItem(190).Column(der =>
-                {
-                    der.Item().AlignRight().Text("PRESUPUESTO PRELIMINAR")
-                        .FontSize(11).Bold().LetterSpacing(0.1f).FontColor(Marca);
-
-                    der.Item().AlignRight().PaddingTop(2).Text(p.Numero).FontSize(19).Bold();
-
-                    der.Item().AlignRight()
-                        .Text($"Diagnóstico del {p.Fecha:dd/MM/yyyy}")
-                        .FontSize(8).FontColor(Gris);
-
-                    // El estado de la decisión del cliente se sella arriba a la derecha.
-                    if (p.RespuestaCliente.Equals("Aprobado", StringComparison.OrdinalIgnoreCase))
-                        der.Item().AlignRight().PaddingTop(4)
-                            .Background(VerdeFondo).PaddingVertical(2).PaddingHorizontal(6)
-                            .Text("APROBADO POR EL CLIENTE").FontSize(8).Bold().FontColor(Verde);
-                    else if (p.RespuestaCliente.Equals("Rechazado", StringComparison.OrdinalIgnoreCase))
-                        der.Item().AlignRight().PaddingTop(4)
-                            .Background(MarcaOscura).PaddingVertical(2).PaddingHorizontal(6)
-                            .Text("RECHAZADO").FontSize(9).Bold().FontColor(Colors.White);
-                });
+                page.Header().Element(e => Encabezado(e, "PRESUPUESTO", $"Preliminar · {p.Numero}"));
+                page.Content().PaddingTop(16).Element(e => CuerpoPresupuesto(e, p));
+                page.Footer().Element(e => Pie(e, $"{_taller.Nombre} — Presupuesto preliminar {p.Numero}"));
             });
-
-            col.Item().PaddingTop(10).LineHorizontal(2).LineColor(Tinta);
         });
     }
 
-    private static void CuerpoPresupuesto(IContainer container, PresupuestoDiagnosticoDto p)
+    private void CuerpoPresupuesto(IContainer container, PresupuestoDiagnosticoDto p)
     {
         container.Column(col =>
         {
-            // Partes: cliente y vehículo.
-            col.Item().Border(1).BorderColor(GrisClaro).Row(row =>
+            col.Item().Element(e => Partes(e, p.NombreCliente, p.CiNit, p.TelefonoCliente, null));
+
+            col.Item().PaddingTop(18).Row(row =>
             {
-                row.RelativeItem().Padding(10).Column(izq =>
+                row.RelativeItem().Text($"Fecha: {p.Fecha:dd/MM/yyyy}").FontSize(11).Bold();
+
+                row.RelativeItem(2).AlignRight().AlignBottom().Text(t =>
                 {
-                    izq.Item().Text("CLIENTE").FontSize(7.5f).Bold()
-                        .LetterSpacing(0.1f).FontColor(Gris);
-
-                    izq.Item().PaddingTop(5).Element(e => Dato(e, "Nombre", p.NombreCliente));
-                    izq.Item().Element(e => Dato(e, "CI / NIT", p.CiNit));
-
-                    if (!string.IsNullOrWhiteSpace(p.TelefonoCliente))
-                        izq.Item().Element(e => Dato(e, "Teléfono", p.TelefonoCliente));
-                });
-
-                row.ConstantItem(1).Background(GrisClaro);
-
-                row.RelativeItem().Padding(10).Column(der =>
-                {
-                    der.Item().Text("VEHÍCULO").FontSize(7.5f).Bold()
-                        .LetterSpacing(0.1f).FontColor(Gris);
-
-                    der.Item().PaddingTop(5).Element(e => Dato(e, "Placa", p.Placa));
-                    der.Item().Element(e => Dato(e, "Marca / Modelo", p.DescripcionVehiculo));
+                    t.DefaultTextStyle(s => s.FontSize(9).FontColor(TintaSuave));
+                    t.Span("Vehículo: ");
+                    t.Span($"{p.Placa} · {p.DescripcionVehiculo}").FontColor(Tinta).SemiBold();
 
                     if (!string.IsNullOrWhiteSpace(p.NombreMecanico))
-                        der.Item().Element(e => Dato(e, "Diagnosticó", p.NombreMecanico));
+                    {
+                        t.Span("   Diagnosticó: ");
+                        t.Span(p.NombreMecanico).FontColor(Tinta).SemiBold();
+                    }
                 });
             });
 
-            // Diagnóstico del vehículo.
-            col.Item().PaddingTop(16).Element(e => TituloSeccion(e, "DIAGNÓSTICO DEL VEHÍCULO"));
+            col.Item().PaddingTop(10).Element(e => TablaDiagnostico(e, p));
+            col.Item().PaddingTop(12).Element(e => CierrePresupuesto(e, p));
+            col.Item().PaddingTop(46).Element(e => FirmasPresupuesto(e, p));
+        });
+    }
 
-            col.Item().PaddingTop(6).Text("Falla reportada").FontSize(8).Bold().FontColor(TintaSuave);
-            col.Item().PaddingTop(2).Text(p.DescripcionFalla).FontSize(9).LineHeight(1.4f);
-
-            if (!string.IsNullOrWhiteSpace(p.ObservacionesTecnicas))
+    /// <summary>Lo diagnosticado a la izquierda y el importe estimado a la derecha.</summary>
+    private static void TablaDiagnostico(IContainer container, PresupuestoDiagnosticoDto p)
+    {
+        container.Table(tabla =>
+        {
+            tabla.ColumnsDefinition(def =>
             {
-                col.Item().PaddingTop(8).Text("Observaciones técnicas")
-                    .FontSize(8).Bold().FontColor(TintaSuave);
-                col.Item().PaddingTop(2).Text(p.ObservacionesTecnicas)
-                    .FontSize(9).LineHeight(1.4f).FontColor(TintaSuave);
-            }
+                def.RelativeColumn(5);
+                def.ConstantColumn(130);
+            });
 
-            // Monto estimado, destacado.
-            col.Item().PaddingTop(18).Background(GrisFondo).Border(1).BorderColor(GrisClaro)
-                .Padding(14).Row(fila =>
+            tabla.Header(header =>
+            {
+                header.Cell().Element(e => CeldaCabecera(e, separar: true)).Text("Diagnóstico del vehículo");
+                header.Cell().Element(e => CeldaCabecera(e, separar: false)).Text("Importe estimado");
+            });
+
+            tabla.Cell().Element(Fila).Column(celda =>
+            {
+                celda.Item().Text("FALLA REPORTADA").FontSize(7.5f).Bold().LetterSpacing(0.06f).FontColor(Gris);
+                celda.Item().PaddingTop(2).Text(p.DescripcionFalla).FontSize(10).LineHeight(1.35f);
+
+                if (!string.IsNullOrWhiteSpace(p.ObservacionesTecnicas))
                 {
-                    fila.RelativeItem().Column(izq =>
-                    {
-                        izq.Item().Text("MONTO ESTIMADO DE LA REPARACIÓN")
-                            .FontSize(8).Bold().LetterSpacing(0.08f).FontColor(TintaSuave);
-                        izq.Item().PaddingTop(3).Text("Presupuesto aproximado, sujeto a confirmación.")
-                            .FontSize(7.5f).FontColor(Gris);
-                    });
+                    celda.Item().PaddingTop(8).Text("OBSERVACIONES TÉCNICAS")
+                        .FontSize(7.5f).Bold().LetterSpacing(0.06f).FontColor(Gris);
+                    celda.Item().PaddingTop(2).Text(p.ObservacionesTecnicas)
+                        .FontSize(9.5f).LineHeight(1.35f).FontColor(TintaSuave);
+                }
+            });
 
-                    fila.ConstantItem(150).AlignRight().AlignMiddle()
-                        .Text(Monto(p.MontoEstimado)).FontSize(20).Bold().FontColor(MarcaOscura);
-                });
+            tabla.Cell().Element(Fila).AlignCenter().Text(Monto(p.MontoEstimado)).FontSize(11).Bold();
+        });
+    }
 
-            // Aviso: el monto es aproximado.
-            col.Item().PaddingTop(12).Element(e => TituloSeccion(e, "IMPORTANTE"));
-            col.Item().PaddingTop(4).Text(
-                    "Este monto es una estimación previa a la reparación. Durante el trabajo " +
-                    "pueden detectarse fallas o tareas adicionales que modifiquen el presupuesto; " +
-                    "en ese caso se le comunicará antes de continuar. El detalle definitivo de " +
-                    "servicios y repuestos se refleja en la orden de trabajo y en la factura.")
-                .FontSize(7.5f).FontColor(Gris).LineHeight(1.4f);
+    /// <summary>Aviso de que es una estimación a la izquierda; total y decisión del cliente a la derecha.</summary>
+    private static void CierrePresupuesto(IContainer container, PresupuestoDiagnosticoDto p)
+    {
+        container.Row(row =>
+        {
+            row.RelativeItem().PaddingRight(24).Text(t =>
+            {
+                t.DefaultTextStyle(s => s.FontSize(9).LineHeight(1.35f));
+                t.Span("Importante: ").SemiBold();
+                t.Span("este monto es una estimación previa a la reparación. Durante el trabajo pueden " +
+                       "detectarse fallas o tareas adicionales que lo modifiquen; en ese caso se le " +
+                       "consultará antes de continuar. El detalle definitivo de servicios y repuestos " +
+                       "figura en la proforma.").FontColor(TintaSuave);
+            });
 
-            // Estado de la decisión del cliente.
-            if (p.RespuestaCliente.Equals("Aprobado", StringComparison.OrdinalIgnoreCase))
-                col.Item().PaddingTop(10).Text(
-                        $"Presupuesto aprobado por el cliente el {p.FechaRespuestaCliente:dd/MM/yyyy}.")
-                    .FontSize(8).Bold().FontColor(Verde);
-            else if (p.RespuestaCliente.Equals("Rechazado", StringComparison.OrdinalIgnoreCase))
-                col.Item().PaddingTop(10).Text(
-                        $"Presupuesto rechazado por el cliente el {p.FechaRespuestaCliente:dd/MM/yyyy}.")
-                    .FontSize(8).Bold().FontColor(MarcaOscura);
+            row.ConstantItem(240).Column(der =>
+            {
+                der.Item().Element(e => LineaTotalDestacada(e, "Total estimado", p.MontoEstimado));
+
+                // La decisión del cliente, en un marco sin relleno: amarillo
+                // mientras está pendiente, verde aprobada, rojo rechazada.
+                var (texto, marco, tinta) = p.RespuestaCliente switch
+                {
+                    var r when r.Equals("Aprobado", StringComparison.OrdinalIgnoreCase)
+                        => ($"APROBADO POR EL CLIENTE · {p.FechaRespuestaCliente:dd/MM/yyyy}", Verde, Verde),
+                    var r when r.Equals("Rechazado", StringComparison.OrdinalIgnoreCase)
+                        => ($"RECHAZADO POR EL CLIENTE · {p.FechaRespuestaCliente:dd/MM/yyyy}", Rojo, Rojo),
+                    _ => ("Pendiente de aprobación del cliente", AmarilloBorde, AmarilloTexto),
+                };
+
+                der.Item().PaddingTop(8).Border(1.2f).BorderColor(marco).PaddingVertical(5).PaddingHorizontal(9)
+                    .AlignCenter().Text(texto).FontSize(9.5f).Bold().FontColor(tinta);
+            });
+        });
+    }
+
+    /// <summary>
+    /// Mientras el cliente no decidió, lleva su firma de conformidad además de
+    /// la del taller; ya aprobado o rechazado, solo la del taller.
+    /// </summary>
+    private void FirmasPresupuesto(IContainer container, PresupuestoDiagnosticoDto p)
+    {
+        var pendiente = !p.RespuestaCliente.Equals("Aprobado", StringComparison.OrdinalIgnoreCase)
+            && !p.RespuestaCliente.Equals("Rechazado", StringComparison.OrdinalIgnoreCase);
+
+        container.Row(row =>
+        {
+            if (pendiente)
+                row.ConstantItem(210).Element(e => LineaFirma(e, "Firma del cliente", "Conforme · Fecha: ____/____/______"));
+
+            row.RelativeItem();
+            row.ConstantItem(210).Element(e => LineaFirma(e, "Firma y sello", _taller.Nombre));
+        });
+    }
+
+    // ================================================================= PROFORMA
+    // Diseño para imprimir: hoja blanca con ondas de dos trazos finos (rojo y
+    // gris) arriba y abajo, logo arriba a la derecha, datos del cliente y del
+    // taller enfrentados, una tabla de conceptos y los totales a la derecha.
+
+    /// <summary>
+    /// Las ondas de arriba y de abajo sobre una hoja A4 (595 × 842 pt): solo
+    /// líneas, sin relleno. Van de fondo, así que se repiten en cada hoja.
+    /// </summary>
+    private const string Ondas = $"""
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 595 842" width="595" height="842">
+          <path d="M0 104C30 96 70 88 120 86C190 83 260 94 330 110C420 130 500 138 595 122" fill="none" stroke="{RojoTrazo}" stroke-width="2.6"/>
+          <path d="M0 114C30 107 70 100 120 99C190 97 260 107 330 122C420 141 500 148 595 134" fill="none" stroke="{GrisTrazo}" stroke-width="1"/>
+          <path d="M0 740C30 746 70 754 120 758C200 764 280 756 360 742C440 728 520 726 595 744" fill="none" stroke="{RojoTrazo}" stroke-width="2.6"/>
+          <path d="M0 730C30 735 70 742 120 746C200 752 280 745 360 732C440 719 520 717 595 734" fill="none" stroke="{GrisTrazo}" stroke-width="1"/>
+        </svg>
+        """;
+
+    /// <summary>Sobre la onda: tipo y número de documento a la izquierda, logo a la derecha.</summary>
+    private void Encabezado(IContainer container, string titulo, string subtitulo, string? sello = null)
+    {
+        container.Height(112).Row(row =>
+        {
+            row.RelativeItem().PaddingTop(6).Column(izq =>
+            {
+                izq.Item().Text(titulo).FontSize(22).Bold().LetterSpacing(0.12f)
+                    .FontColor(Rojo);
+                izq.Item().Text(subtitulo).FontSize(12).SemiBold().LetterSpacing(0.05f)
+                    .FontColor(TintaSuave);
+
+                if (sello is not null)
+                    izq.Item().PaddingTop(4).AlignLeft().Background(MarcaOscura)
+                        .PaddingVertical(2).PaddingHorizontal(7)
+                        .Text(sello).FontSize(9).Bold().FontColor(Colors.White);
+            });
+
+            if (_logo is not null)
+                row.ConstantItem(185).AlignRight().Height(64).Image(_logo).FitArea();
             else
-                col.Item().PaddingTop(14).Row(row =>
-                {
-                    row.RelativeItem().Column(c =>
-                    {
-                        c.Item().Height(28);
-                        c.Item().LineHorizontal(0.8f).LineColor(Gris);
-                        c.Item().PaddingTop(3).Text("Firma del cliente (conforme)")
-                            .FontSize(7.5f).FontColor(Gris);
-                    });
-                    row.ConstantItem(30);
-                    row.RelativeItem().Column(c =>
-                    {
-                        c.Item().Height(28);
-                        c.Item().LineHorizontal(0.8f).LineColor(Gris);
-                        c.Item().PaddingTop(3).Text("Fecha").FontSize(7.5f).FontColor(Gris);
-                    });
-                });
+                row.ConstantItem(185).AlignRight().Text(_taller.Nombre)
+                    .FontSize(17).Bold().FontColor(Tinta);
         });
     }
-
-    private void PiePresupuesto(IContainer container, PresupuestoDiagnosticoDto p)
-    {
-        container.PaddingTop(8).BorderTop(1).BorderColor(GrisClaro).PaddingTop(6).Row(row =>
-        {
-            row.RelativeItem()
-                .Text($"{_taller.Nombre} — Presupuesto preliminar {p.Numero}")
-                .FontSize(7).FontColor(Gris);
-
-            row.ConstantItem(110).AlignRight().Text(t =>
-            {
-                t.DefaultTextStyle(s => s.FontSize(7).FontColor(Gris));
-                t.Span("Página ");
-                t.CurrentPageNumber();
-                t.Span(" de ");
-                t.TotalPages();
-            });
-        });
-    }
-
-    // ================================================================ ENCABEZADO
-
-    private void Encabezado(IContainer container, ComprobanteDto c)
-    {
-        container.Column(col =>
-        {
-            col.Item().Row(row =>
-            {
-                row.RelativeItem().Column(izq =>
-                {
-                    if (_logo is not null)
-                        izq.Item().Height(46).AlignLeft().Image(_logo).FitHeight();
-                    else
-                        izq.Item().Text(_taller.Nombre).FontSize(17).Bold();
-
-                    izq.Item().PaddingTop(6).Text(
-                            $"{_taller.Rubro} · {_taller.Direccion}, {_taller.Ciudad}")
-                        .FontSize(8).FontColor(Gris);
-
-                    izq.Item().Text($"Tel. {_taller.Telefono} · NIT {_taller.Nit}")
-                        .FontSize(8).FontColor(Gris);
-                });
-
-                row.ConstantItem(190).Column(der =>
-                {
-                    der.Item().AlignRight()
-                        .Text("PROFORMA")
-                        .FontSize(11).Bold().LetterSpacing(0.12f).FontColor(Marca);
-
-                    der.Item().AlignRight().PaddingTop(2)
-                        .Text(c.Numero).FontSize(19).Bold();
-
-                    der.Item().AlignRight()
-                        .Text($"Emitida el {c.FechaEmision:dd/MM/yyyy}")
-                        .FontSize(8).FontColor(Gris);
-
-                    der.Item().AlignRight().PaddingTop(4)
-                        .Text($"Orden de trabajo: {c.OrdenId}")
-                        .FontSize(8).FontColor(Gris);
-
-                    // La anulación tiene que saltar a la vista: un comprobante
-                    // anulado circulando como válido es un problema contable.
-                    if (c.Estado.Equals("Anulada", StringComparison.OrdinalIgnoreCase))
-                        der.Item().AlignRight().PaddingTop(4)
-                            .Background(MarcaOscura).PaddingVertical(2).PaddingHorizontal(6)
-                            .Text("ANULADA").FontSize(9).Bold().FontColor(Colors.White);
-                });
-            });
-
-            col.Item().PaddingTop(10).LineHorizontal(2).LineColor(Tinta);
-        });
-    }
-
-    // ===================================================================== CUERPO
 
     private void Cuerpo(IContainer container, ComprobanteDto c)
     {
         container.Column(col =>
         {
-            col.Item().Element(e => Partes(e, c));
-
-            col.Item().PaddingTop(16).Element(e => TablaServicios(e, c));
-            col.Item().PaddingTop(12).Element(e => TablaRepuestos(e, c));
-
-            col.Item().PaddingTop(16).Element(e => Cierre(e, c));
+            col.Item().Element(e => Partes(e, c.NombreCliente, c.CiNit, c.TelefonoCliente, c.NitRazonSocial));
+            col.Item().PaddingTop(18).Element(e => DatosOrden(e, c));
+            col.Item().PaddingTop(10).Element(e => TablaConceptos(e, c));
+            col.Item().PaddingTop(12).Element(e => Cierre(e, c));
+            col.Item().PaddingTop(46).Element(Firma);
         });
     }
 
-    /// <summary>Bloques de cliente y vehículo, uno al lado del otro.</summary>
-    private static void Partes(IContainer container, ComprobanteDto c)
+    /// <summary>Datos del cliente a la izquierda y del taller a la derecha, como en una carta.</summary>
+    private void Partes(
+        IContainer container, string nombre, string ciNit, string? telefono, string? aNombreDe)
     {
-        container.Border(1).BorderColor(GrisClaro).Row(row =>
+        container.Row(row =>
         {
-            row.RelativeItem().Padding(10).Column(izq =>
+            row.RelativeItem().Column(izq =>
             {
-                izq.Item().Text("FACTURAR A").FontSize(7.5f).Bold()
-                    .LetterSpacing(0.1f).FontColor(Gris);
+                izq.Item().PaddingBottom(4).Text("DATOS DEL CLIENTE").FontSize(10.5f).Bold();
+                izq.Item().Element(e => Linea(e, "Nombre", nombre));
+                izq.Item().Element(e => Linea(e, "CI / NIT", ciNit));
 
-                izq.Item().PaddingTop(5).Element(e => Dato(e, "Cliente", c.NombreCliente));
-                izq.Item().Element(e => Dato(e, "CI / NIT", c.CiNit));
-
-                if (!string.IsNullOrWhiteSpace(c.TelefonoCliente))
-                    izq.Item().Element(e => Dato(e, "Teléfono", c.TelefonoCliente));
+                if (!string.IsNullOrWhiteSpace(telefono))
+                    izq.Item().Element(e => Linea(e, "Teléfono", telefono));
 
                 // Dato aparte, no sustituto del CI: es el nombre con el que el
                 // cliente pidió la factura, y puede diferir del titular.
-                if (!string.IsNullOrWhiteSpace(c.NitRazonSocial))
-                    izq.Item().Element(e => Dato(e, "Facturar a nombre de", c.NitRazonSocial));
+                if (!string.IsNullOrWhiteSpace(aNombreDe))
+                    izq.Item().Element(e => Linea(e, "A nombre de", aNombreDe));
             });
 
-            row.ConstantItem(1).Background(GrisClaro);
+            row.ConstantItem(20);
 
-            row.RelativeItem().Padding(10).Column(der =>
+            row.RelativeItem().Column(der =>
             {
-                der.Item().Text("VEHÍCULO ATENDIDO").FontSize(7.5f).Bold()
-                    .LetterSpacing(0.1f).FontColor(Gris);
+                der.Item().AlignRight().PaddingBottom(4).Text("DATOS DEL TALLER").FontSize(10.5f).Bold();
+                der.Item().AlignRight().Element(e => Linea(e, "Nombre", _taller.Nombre));
+                der.Item().AlignRight().Element(e => Linea(e, "Dirección", $"{_taller.Direccion}, {_taller.Ciudad}"));
+                der.Item().AlignRight().Element(e => Linea(e, "Teléfono", _taller.Telefono));
+                der.Item().AlignRight().Element(e => Linea(e, "NIT", _taller.Nit));
+            });
+        });
+    }
 
-                der.Item().PaddingTop(5).Element(e => Dato(e, "Placa", c.Placa));
-                der.Item().Element(e => Dato(e, "Marca / Modelo", c.DescripcionVehiculo));
+    private static void Linea(IContainer container, string etiqueta, string valor)
+    {
+        container.PaddingVertical(1).Text(t =>
+        {
+            t.DefaultTextStyle(s => s.FontSize(9).LetterSpacing(0.03f).FontColor(TintaSuave));
+            t.Span($"{etiqueta}: ");
+            t.Span(valor).FontColor(Tinta);
+        });
+    }
 
+    /// <summary>Fecha, vehículo y orden de trabajo, justo encima de la tabla.</summary>
+    private static void DatosOrden(IContainer container, ComprobanteDto c)
+    {
+        container.Row(row =>
+        {
+            row.RelativeItem().Text(t =>
+            {
+                t.Span("Fecha: ").FontSize(11).Bold();
+                t.Span($"{c.FechaEmision:dd/MM/yyyy}").FontSize(11).Bold();
+            });
+
+            row.RelativeItem(2).AlignRight().AlignBottom().Text(t =>
+            {
+                t.DefaultTextStyle(s => s.FontSize(9).FontColor(TintaSuave));
+                t.Span("Vehículo: ");
+                t.Span($"{c.Placa} · {c.DescripcionVehiculo}").FontColor(Tinta).SemiBold();
                 if (c.Kilometraje is > 0)
-                    der.Item().Element(e => Dato(
-                        e, "Kilometraje", $"{c.Kilometraje.Value.ToString("N0", Cultura)} km"));
+                    t.Span($" · {c.Kilometraje.Value.ToString("N0", Cultura)} km").FontColor(Tinta);
+                t.Span("   Orden: ");
+                t.Span(c.OrdenId).FontColor(Tinta).SemiBold();
             });
         });
     }
 
-    private static void Dato(IContainer container, string etiqueta, string valor)
+    /// <summary>
+    /// Servicios y repuestos en una sola tabla: Concepto, Cantidad, Precio e
+    /// Importe (cantidad × precio de cada fila; la suma de todo es el total).
+    /// </summary>
+    private static void TablaConceptos(IContainer container, ComprobanteDto c)
     {
-        container.PaddingVertical(1.5f).Row(row =>
+        container.Table(tabla =>
         {
-            row.RelativeItem().Text(etiqueta).FontSize(8.5f).FontColor(Gris);
-            row.ConstantItem(150).AlignRight().Text(valor).FontSize(8.5f).SemiBold();
-        });
-    }
-
-    // ==================================================================== TABLAS
-
-    private static void TablaServicios(IContainer container, ComprobanteDto c)
-    {
-        container.Column(col =>
-        {
-            col.Item().Element(e => TituloSeccion(e, "SERVICIOS EJECUTADOS"));
-
-            if (c.Servicios.Count == 0)
+            tabla.ColumnsDefinition(def =>
             {
-                col.Item().PaddingVertical(8)
-                    .Text("La orden no registra servicios.").FontSize(8.5f).FontColor(Gris);
+                def.RelativeColumn(5);    // concepto
+                def.ConstantColumn(70);   // cantidad
+                def.ConstantColumn(85);   // precio
+                def.ConstantColumn(85);   // importe
+            });
+
+            tabla.Header(header =>
+            {
+                header.Cell().Element(e => CeldaCabecera(e, separar: true)).Text("Concepto");
+                header.Cell().Element(e => CeldaCabecera(e, separar: true)).Text("Cantidad");
+                header.Cell().Element(e => CeldaCabecera(e, separar: true)).Text("Precio");
+                header.Cell().Element(e => CeldaCabecera(e, separar: false)).Text("Importe");
+            });
+
+            if (c.Servicios.Count == 0 && c.Repuestos.Count == 0)
+            {
+                tabla.Cell().ColumnSpan(4).Element(Fila)
+                    .Text("La orden no registra servicios ni repuestos.").FontColor(Gris);
                 return;
             }
 
-            col.Item().Table(tabla =>
+            foreach (var s in c.Servicios)
             {
-                tabla.ColumnsDefinition(def =>
+                tabla.Cell().Element(Fila).Column(celda =>
                 {
-                    def.RelativeColumn(5);   // servicio + detalle
-                    def.RelativeColumn(3);   // mecánico
-                    def.ConstantColumn(80);  // precio
+                    celda.Item().Text(s.Nombre).FontSize(10);
+                    var detalle = string.IsNullOrWhiteSpace(s.Descripcion)
+                        ? $"Servicio · {s.NombreMecanico}"
+                        : $"Servicio · {s.NombreMecanico} · {s.Descripcion}";
+                    celda.Item().Text(detalle).FontSize(7.5f).FontColor(Gris);
                 });
-
-                tabla.Header(header =>
-                {
-                    header.Cell().Element(EstiloEncabezado).Text("Servicio");
-                    header.Cell().Element(EstiloEncabezado).Text("Mecánico");
-                    header.Cell().Element(EstiloEncabezado).AlignRight().Text("Precio");
-                });
-
-                foreach (var s in c.Servicios)
-                {
-                    tabla.Cell().Element(EstiloCelda).Column(celda =>
-                    {
-                        celda.Item().Text(s.Nombre).FontSize(8.5f);
-
-                        if (!string.IsNullOrWhiteSpace(s.Descripcion))
-                            celda.Item().Text(s.Descripcion).FontSize(7.5f).FontColor(Gris);
-                    });
-
-                    tabla.Cell().Element(EstiloCelda)
-                        .Text(s.NombreMecanico).FontSize(8.5f);
-
-                    tabla.Cell().Element(EstiloCelda).AlignRight()
-                        .Text(Monto(s.Precio)).FontSize(8.5f);
-                }
-            });
-        });
-    }
-
-    private static void TablaRepuestos(IContainer container, ComprobanteDto c)
-    {
-        container.Column(col =>
-        {
-            col.Item().Element(e => TituloSeccion(e, "REPUESTOS UTILIZADOS"));
-
-            if (c.Repuestos.Count == 0)
-            {
-                col.Item().PaddingVertical(8)
-                    .Text("La orden no consumió repuestos.")
-                    .FontSize(8.5f).FontColor(Gris);
-                return;
+                tabla.Cell().Element(Fila).AlignCenter().Text("1");
+                tabla.Cell().Element(Fila).AlignCenter().Text(Monto(s.Precio));
+                tabla.Cell().Element(Fila).AlignCenter().Text(Monto(s.Precio));
             }
 
-            col.Item().Table(tabla =>
+            foreach (var r in c.Repuestos)
             {
-                tabla.ColumnsDefinition(def =>
+                tabla.Cell().Element(Fila).Column(celda =>
                 {
-                    def.RelativeColumn(5);   // repuesto
-                    def.ConstantColumn(55);  // cantidad
-                    def.ConstantColumn(80);  // precio unitario
-                    def.ConstantColumn(80);  // subtotal
+                    celda.Item().Text(r.Nombre).FontSize(10);
+                    // El que trae el cliente se lista pero va sin cargo.
+                    celda.Item().Text(r.SinCargo ? "Repuesto · lo trajo el cliente" : "Repuesto")
+                        .FontSize(7.5f).FontColor(Gris);
                 });
+                tabla.Cell().Element(Fila).AlignCenter().Text(r.Cantidad.ToString(Cultura));
 
-                tabla.Header(header =>
+                if (r.SinCargo)
                 {
-                    header.Cell().Element(EstiloEncabezado).Text("Repuesto");
-                    header.Cell().Element(EstiloEncabezado).AlignRight().Text("Cant.");
-                    header.Cell().Element(EstiloEncabezado).AlignRight().Text("P. Unit.");
-                    header.Cell().Element(EstiloEncabezado).AlignRight().Text("Subtotal");
-                });
-
-                foreach (var r in c.Repuestos)
-                {
-                    tabla.Cell().Element(EstiloCelda).Text(t =>
-                    {
-                        t.Span(r.Nombre).FontSize(8.5f);
-                        // El que trae el cliente se lista pero se marca sin cargo.
-                        if (r.SinCargo)
-                            t.Span("  (lo trae el cliente)").FontSize(7.5f).FontColor(Gris);
-                    });
-
-                    tabla.Cell().Element(EstiloCelda).AlignRight()
-                        .Text(r.Cantidad.ToString(Cultura)).FontSize(8.5f);
-
-                    if (r.SinCargo)
-                    {
-                        tabla.Cell().Element(EstiloCelda).AlignRight()
-                            .Text("Sin cargo").FontSize(8.5f).FontColor(Gris);
-                        tabla.Cell().Element(EstiloCelda).AlignRight()
-                            .Text("—").FontSize(8.5f).FontColor(Gris);
-                    }
-                    else
-                    {
-                        tabla.Cell().Element(EstiloCelda).AlignRight()
-                            .Text(Monto(r.PrecioUnitario)).FontSize(8.5f);
-                        tabla.Cell().Element(EstiloCelda).AlignRight()
-                            .Text(Monto(r.Subtotal)).FontSize(8.5f);
-                    }
+                    tabla.Cell().Element(Fila).AlignCenter().Text("Sin cargo").FontColor(Gris);
+                    tabla.Cell().Element(Fila).AlignCenter().Text("—").FontColor(Gris);
                 }
-            });
+                else
+                {
+                    tabla.Cell().Element(Fila).AlignCenter().Text(Monto(r.PrecioUnitario));
+                    tabla.Cell().Element(Fila).AlignCenter().Text(Monto(r.Subtotal));
+                }
+            }
         });
     }
 
-    private static void TituloSeccion(IContainer container, string texto)
-    {
-        container.PaddingBottom(4).BorderBottom(1.5f).BorderColor(Tinta)
-            .PaddingBottom(4)
-            .Text(texto).FontSize(8).Bold().LetterSpacing(0.09f).FontColor(TintaSuave);
-    }
+    /// <summary>
+    /// Encabezado de tabla sin relleno: título en rojo con una línea roja debajo,
+    /// cada columna separada de la siguiente por un pequeño espacio.
+    /// </summary>
+    private static IContainer CeldaCabecera(IContainer celda, bool separar)
+        => celda.PaddingRight(separar ? 3 : 0)
+            .BorderBottom(2).BorderColor(RojoTrazo).PaddingVertical(7).AlignCenter()
+            .DefaultTextStyle(t => t.FontSize(10).Bold().FontColor(RojoCabecera).LetterSpacing(0.03f));
 
-    private static IContainer EstiloEncabezado(IContainer container)
-        => container.Background(GrisFondo).BorderBottom(1).BorderColor(GrisClaro)
-            .PaddingVertical(5).PaddingHorizontal(6)
-            .DefaultTextStyle(t => t.FontSize(7.5f).Bold().FontColor(Gris).LetterSpacing(0.05f));
+    /// <summary>Fila de la tabla: separada de la siguiente por una línea gris fina.</summary>
+    private static IContainer Fila(IContainer container)
+        => container.BorderBottom(0.8f).BorderColor(GrisFila)
+            .PaddingVertical(7).PaddingHorizontal(4).AlignMiddle()
+            .DefaultTextStyle(t => t.FontSize(10));
 
-    private static IContainer EstiloCelda(IContainer container)
-        => container.BorderBottom(1).BorderColor(GrisFondo)
-            .PaddingVertical(5).PaddingHorizontal(6);
-
-    // ==================================================================== CIERRE
-
+    /// <summary>Notas a la izquierda; subtotales, total y lo pagado a la derecha.</summary>
     private void Cierre(IContainer container, ComprobanteDto c)
     {
         container.Row(row =>
         {
-            // Izquierda: condiciones del documento.
-            row.RelativeItem().PaddingRight(20).Column(izq =>
+            row.RelativeItem().PaddingRight(24).Column(izq =>
             {
                 if (!string.IsNullOrWhiteSpace(_taller.TextoGarantia))
+                    izq.Item().PaddingBottom(6).Text(t =>
+                    {
+                        t.DefaultTextStyle(s => s.FontSize(9).LineHeight(1.35f));
+                        t.Span("Garantía: ").SemiBold();
+                        t.Span(_taller.TextoGarantia).FontColor(TintaSuave);
+                    });
+
+                izq.Item().Text(t =>
                 {
-                    izq.Item().Text("Garantía").FontSize(8).Bold().FontColor(TintaSuave);
-
-                    izq.Item().PaddingTop(2).Text(_taller.TextoGarantia)
-                        .FontSize(7.5f).FontColor(Gris).LineHeight(1.4f);
-                }
-
-                izq.Item().PaddingTop(8).Text(
-                        $"Documento generado por el sistema {_taller.Nombre} a partir de la " +
-                        $"orden {c.OrdenId}.")
-                    .FontSize(7).FontColor(Gris).LineHeight(1.4f);
+                    t.DefaultTextStyle(s => s.FontSize(9).LineHeight(1.35f));
+                    t.Span("Nota: ").SemiBold();
+                    t.Span("documento de cobro del taller, sin valor fiscal.").FontColor(TintaSuave);
+                });
             });
 
-            // Derecha: totales.
-            row.ConstantItem(215).Column(der =>
+            row.ConstantItem(240).Column(der =>
             {
                 der.Item().Element(e => LineaTotal(e, "Subtotal servicios", c.SubtotalServicios));
                 der.Item().Element(e => LineaTotal(e, "Subtotal repuestos", c.SubtotalRepuestos));
 
-                der.Item().PaddingTop(6).BorderTop(2).BorderColor(Tinta).PaddingTop(6)
-                    .Row(fila =>
-                    {
-                        fila.RelativeItem().Text("TOTAL").FontSize(11).Bold();
-                        fila.ConstantItem(110).AlignRight()
-                            .Text(Monto(c.Total)).FontSize(14).Bold();
-                    });
+                der.Item().Element(e => LineaTotalDestacada(e, "Total a pagar", c.Total));
 
+                // El estado del cobro en un marco sin relleno: amarillo con
+                // saldo pendiente, verde cuando ya está pagado.
                 var saldado = c.SaldoPendiente <= 0;
+                var marco = saldado ? Verde : AmarilloBorde;
+                var tinta = saldado ? Verde : AmarilloTexto;
 
-                der.Item().PaddingTop(8)
-                    .Background(saldado ? VerdeFondo : NaranjaFondo)
-                    .PaddingVertical(6).PaddingHorizontal(9)
+                der.Item().PaddingTop(8).Border(1.2f).BorderColor(marco)
+                    .PaddingVertical(5).PaddingHorizontal(9)
                     .Row(fila =>
                     {
                         fila.RelativeItem()
                             .Text(saldado ? "PAGADO" : "Saldo pendiente")
-                            .FontSize(8.5f).Bold()
-                            .FontColor(saldado ? Verde : Naranja);
+                            .FontSize(9.5f).Bold().FontColor(tinta);
 
-                        fila.ConstantItem(90).AlignRight()
+                        fila.ConstantItem(95).AlignRight()
                             .Text(Monto(saldado ? c.Total : c.SaldoPendiente))
-                            .FontSize(8.5f).Bold()
-                            .FontColor(saldado ? Verde : Naranja);
+                            .FontSize(9.5f).Bold().FontColor(tinta);
                     });
 
                 if (!saldado && c.TotalPagado > 0)
                     der.Item().PaddingTop(3).AlignRight()
                         .Text($"Pagado a la fecha: {Monto(c.TotalPagado)}")
-                        .FontSize(7.5f).FontColor(Gris);
+                        .FontSize(8).FontColor(Gris);
             });
         });
     }
 
-    private static void LineaTotal(
-        IContainer container, string etiqueta, decimal valor, string? color = null)
+    /// <summary>El total del documento: en rojo y con una línea roja encima, para que se vea primero.</summary>
+    private static void LineaTotalDestacada(IContainer container, string etiqueta, decimal valor)
     {
-        container.PaddingVertical(2).Row(row =>
+        container.PaddingTop(4).BorderTop(1.2f).BorderColor(RojoTrazo).PaddingTop(5).Row(fila =>
         {
-            row.RelativeItem().Text(etiqueta).FontSize(8.5f).FontColor(TintaSuave);
-
-            var celda = row.ConstantItem(110).AlignRight()
-                .Text(Monto(valor)).FontSize(8.5f);
-
-            if (color is not null) celda.FontColor(color);
+            fila.RelativeItem().AlignRight().PaddingRight(14).Text(etiqueta).FontSize(13).Bold().FontColor(Rojo);
+            fila.ConstantItem(95).AlignRight().Text(Monto(valor)).FontSize(13).Bold().FontColor(Rojo);
         });
     }
 
-    // ======================================================================= PIE
-
-    private void Pie(IContainer container, ComprobanteDto c)
+    private static void LineaTotal(IContainer container, string etiqueta, decimal valor)
     {
-        container.PaddingTop(8).BorderTop(1).BorderColor(GrisClaro).PaddingTop(6).Row(row =>
+        container.PaddingVertical(2.5f).Row(row =>
+        {
+            row.RelativeItem().AlignRight().PaddingRight(14).Text(etiqueta).FontSize(10).FontColor(TintaSuave);
+            row.ConstantItem(95).AlignRight().Text(Monto(valor)).FontSize(10);
+        });
+    }
+
+    /// <summary>Línea de firma del taller, abajo a la derecha.</summary>
+    private void Firma(IContainer container)
+    {
+        container.Row(row =>
+        {
+            row.RelativeItem();
+            row.ConstantItem(210).Element(e => LineaFirma(e, "Firma y sello", _taller.Nombre));
+        });
+    }
+
+    private static void LineaFirma(IContainer container, string titulo, string detalle)
+    {
+        container.Column(col =>
+        {
+            col.Item().LineHorizontal(0.8f).LineColor(Tinta);
+            col.Item().PaddingTop(4).AlignCenter().Text(titulo).FontSize(10.5f).Bold();
+            col.Item().AlignCenter().Text(detalle).FontSize(8.5f).FontColor(Gris);
+        });
+    }
+
+    /// <summary>Bajo la onda de abajo: referencia del documento y página.</summary>
+    private static void Pie(IContainer container, string referencia)
+    {
+        container.Height(96).AlignBottom().Row(row =>
         {
             row.RelativeItem()
-                .Text($"{_taller.Nombre} — {c.Numero} / {c.OrdenId}")
-                .FontSize(7).FontColor(Gris);
+                .Text(referencia)
+                .FontSize(8).FontColor(Gris);
 
             row.ConstantItem(110).AlignRight().Text(t =>
             {
-                t.DefaultTextStyle(s => s.FontSize(7).FontColor(Gris));
+                t.DefaultTextStyle(s => s.FontSize(8).FontColor(Gris));
                 t.Span("Página ");
                 t.CurrentPageNumber();
                 t.Span(" de ");

@@ -152,6 +152,28 @@ public class ProcedenciaRepuestoDto
 
     /// <summary>Ajustes manuales de stock (desde la auditoría), más recientes primero.</summary>
     public List<AjusteRepuestoDto> Ajustes { get; set; } = [];
+
+    /// <summary>Kárdex: todos los movimientos de stock, del más antiguo al más reciente.</summary>
+    public List<MovimientoKardexDto> Movimientos { get; set; } = [];
+
+    /// <summary>true si el último saldo del kárdex coincide con el stock actual.</summary>
+    public bool Cuadra { get; set; }
+}
+
+/// <summary>Un movimiento del kárdex: cuánto entró o salió, por qué y con qué saldo quedó.</summary>
+public class MovimientoKardexDto
+{
+    public string MovimientoId { get; set; } = string.Empty;
+    public DateTime Fecha { get; set; }
+    public TipoMovimientoInventario Tipo { get; set; }
+
+    /// <summary>Positivo si entró, negativo si salió.</summary>
+    public int Cantidad { get; set; }
+    public int Saldo { get; set; }
+    public string? Referencia { get; set; }
+    public string? Detalle { get; set; }
+    public decimal? PrecioUnitario { get; set; }
+    public string? Usuario { get; set; }
 }
 
 /// <summary>Un ajuste manual de stock registrado en la auditoría.</summary>
@@ -168,7 +190,11 @@ public class CompraRepuestoLineaDto
 {
     public string CompraId { get; set; } = string.Empty;
     public DateTime Fecha { get; set; }
-    public string ProveedorId { get; set; } = string.Empty;
+
+    /// <summary>Null en una compra ocasional.</summary>
+    public string? ProveedorId { get; set; }
+
+    /// <summary>Nombre del proveedor, o "Compra ocasional (referencia)".</summary>
     public string NombreProveedor { get; set; } = string.Empty;
     public int Cantidad { get; set; }
     public decimal PrecioUnitario { get; set; }

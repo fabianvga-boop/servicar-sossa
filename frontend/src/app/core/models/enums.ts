@@ -112,6 +112,18 @@ export enum TipoAjusteStock {
   Otro = 3,
 }
 
+/** Movimiento del kárdex de un repuesto (mismo orden que el enum del backend). */
+export enum TipoMovimientoInventario {
+  SaldoInicial = 0,
+  StockInicial = 1,
+  Compra = 2,
+  SalidaOrden = 3,
+  DevolucionOrden = 4,
+  Venta = 5,
+  AnulacionVenta = 6,
+  Ajuste = 7,
+}
+
 /** Estado de una zona marcada sobre el diagrama vectorial del vehículo. */
 export enum EstadoZonaVehiculo {
   Ok = 0,

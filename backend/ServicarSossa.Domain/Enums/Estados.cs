@@ -71,6 +71,15 @@ public enum AccionAuditoria { Crear, Editar, Eliminar, Anular, Ajustar, CambiarE
 public enum TipoAjusteStock { ConteoFisico, MermaRotura, Correccion, Otro }
 
 /// <summary>
+/// Tipo de movimiento del kárdex. SaldoInicial: lo que había antes de que
+/// existiera el kárdex; StockInicial: lo cargado al crear el repuesto (sin compra).
+/// </summary>
+public enum TipoMovimientoInventario
+{
+    SaldoInicial, StockInicial, Compra, SalidaOrden, DevolucionOrden, Venta, AnulacionVenta, Ajuste
+}
+
+/// <summary>
 /// Para qué vehículos sirve un repuesto. Universal: insumos que van en
 /// cualquier auto (aceite, líquido de frenos, fusibles). Específico: piezas que
 /// solo calzan en ciertos vehículos (filtros, pastillas, discos, bujías); sus

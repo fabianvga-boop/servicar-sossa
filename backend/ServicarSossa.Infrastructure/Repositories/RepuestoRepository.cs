@@ -62,6 +62,15 @@ public class RepuestoRepository(AppDbContext context)
         return await query.OrderBy(r => r.Nombre).ToPagedListAsync(pagina, tamanoPagina, ct);
     }
 
+    public async Task<List<MovimientoInventario>> GetMovimientosAsync(
+        string repuestoId, CancellationToken ct = default)
+        => await Context.MovimientosInventario
+            .Include(m => m.Usuario)
+            .AsNoTracking()
+            .Where(m => m.RepuestoId == repuestoId)
+            .OrderBy(m => m.Fecha).ThenBy(m => m.MovimientoId)
+            .ToListAsync(ct);
+
     public async Task<bool> TieneMovimientosAsync(
         string repuestoId, CancellationToken ct = default)
         => await Context.CompraDetalles.AnyAsync(d => d.RepuestoId == repuestoId, ct)
