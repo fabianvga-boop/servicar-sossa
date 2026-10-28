@@ -3,7 +3,11 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 
-import { TipoAjusteStock, TipoAplicacionRepuesto } from '../../core/models/enums';
+import {
+  TipoAjusteStock,
+  TipoAplicacionRepuesto,
+  TipoMovimientoInventario,
+} from '../../core/models/enums';
 import {
   CategoriaRepuesto,
   CompatibilidadRepuesto,
@@ -148,6 +152,28 @@ export class Repuestos {
   protected readonly subiendoFoto = signal(false);
   protected readonly urlArchivo = urlArchivo;
 
+  /** Cómo se ve cada tipo de movimiento del kárdex. */
+  protected readonly ESTILO_MOVIMIENTO: Record<TipoMovimientoInventario, { texto: string; tono: string }> = {
+    [TipoMovimientoInventario.SaldoInicial]: { texto: 'Saldo anterior', tono: 'gris' },
+    [TipoMovimientoInventario.StockInicial]: { texto: 'Stock inicial', tono: 'gris' },
+    [TipoMovimientoInventario.Compra]: { texto: 'Compra', tono: 'verde' },
+    [TipoMovimientoInventario.SalidaOrden]: { texto: 'Orden', tono: 'azul' },
+    [TipoMovimientoInventario.DevolucionOrden]: { texto: 'Devolución', tono: 'azul' },
+    [TipoMovimientoInventario.Venta]: { texto: 'Venta', tono: 'azul' },
+    [TipoMovimientoInventario.AnulacionVenta]: { texto: 'Venta anulada', tono: 'gris' },
+    [TipoMovimientoInventario.Ajuste]: { texto: 'Ajuste', tono: 'naranja' },
+  };
+
+  /** Merma o rotura es pérdida: no puede subir el stock (la API también lo rechaza). */
+  protected readonly ajusteInvalido = computed(() => {
+    const repuesto = this.ajustando();
+    return (
+      !!repuesto &&
+      this.tipoAjuste() === TipoAjusteStock.MermaRotura &&
+      this.nuevoStock() > repuesto.stockActual
+    );
+  });
+
   // Procedencia del stock (historial de compras del repuesto).
   protected readonly procedenciaDe = signal<Repuesto | null>(null);
   protected readonly procedencia = signal<ProcedenciaRepuesto | null>(null);
@@ -182,6 +208,7 @@ export class Repuestos {
 
   // --- Compatibilidad por vehículo ---------------------------------------------
   protected readonly TipoAplicacion = TipoAplicacionRepuesto;
+  protected readonly TipoMovimiento = TipoMovimientoInventario;
   protected readonly tipoAplicacion = signal<TipoAplicacionRepuesto>(TipoAplicacionRepuesto.Universal);
   protected readonly filasCompat = signal<FilaCompatibilidad[]>([]);
   protected readonly errorCompat = signal('');

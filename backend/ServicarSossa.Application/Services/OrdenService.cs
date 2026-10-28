@@ -27,7 +27,8 @@ public class OrdenService(
     IRepository<Factura> facturas,
     IGeneradorId generadorId,
     IUnitOfWork unitOfWork,
-    IAuditor auditor) : IOrdenService
+    IAuditor auditor,
+    IKardex kardex) : IOrdenService
 {
     /// <summary>
     /// Transiciones permitidas. Cerrada y Cancelada son terminales: una orden
@@ -315,6 +316,10 @@ public class OrdenService(
             {
                 var repuesto = await repuestos.GetByIdAsync(consumo.RepuestoId!, token);
                 repuesto!.StockActual -= consumo.Cantidad;
+
+                await kardex.RegistrarAsync(
+                    repuesto, TipoMovimientoInventario.SalidaOrden, -consumo.Cantidad, usuarioId,
+                    ordenId, $"Usado en la orden {ordenId}", consumo.PrecioUnitario, token);
             }
 
             // 2. Comisión por mecánico sobre los servicios que ejecutó.
@@ -440,6 +445,11 @@ public class OrdenService(
                     if (repuesto is null) continue;
                     repuesto.StockActual += consumo.Cantidad;
                     devueltas += consumo.Cantidad;
+
+                    await kardex.RegistrarAsync(
+                        repuesto, TipoMovimientoInventario.DevolucionOrden, consumo.Cantidad, usuarioId,
+                        ordenId, $"Devuelto al reabrir la orden {ordenId} para corregirla",
+                        consumo.PrecioUnitario, token);
                 }
                 if (devueltas > 0) hechos.Add($"devolvió {devueltas} unidad(es) de repuesto al stock");
 

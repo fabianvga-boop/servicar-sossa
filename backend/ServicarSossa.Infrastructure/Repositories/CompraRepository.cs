@@ -28,7 +28,9 @@ public class CompraRepository(AppDbContext context)
             .Include(c => c.Detalles)
             .AsNoTracking();
 
-        if (!string.IsNullOrWhiteSpace(proveedorId))
+        if (proveedorId == ICompraRepository.Ocasionales)
+            query = query.Where(c => c.ProveedorId == null);
+        else if (!string.IsNullOrWhiteSpace(proveedorId))
             query = query.Where(c => c.ProveedorId == proveedorId);
 
         // `Fecha` es timestamptz: Npgsql exige Kind=Utc, y el binding de la query

@@ -5,17 +5,27 @@
       Ingreso de repuestos al inventario — registrar una compra incrementa el stock
     </p>
   </div>
-  <button
-    type="button"
-    class="btn btn-primario btn-nuevo"
-    appAtajo="n"
-    title="Atajo: tecla N"
-    (click)="abrirNuevo()"
-  >
-    <span class="btn-nuevo-mas" aria-hidden="true">+</span>
-    Nueva compra
-    <kbd class="btn-nuevo-atajo" aria-hidden="true">N</kbd>
-  </button>
+  <div class="fila envuelve" style="gap: 8px">
+    <button
+      type="button"
+      class="btn btn-secundario"
+      title="Compra a alguien de quien no tiene o no quiere guardar los datos"
+      (click)="abrirOcasional()"
+    >
+      Compra ocasional
+    </button>
+    <button
+      type="button"
+      class="btn btn-primario btn-nuevo"
+      appAtajo="n"
+      title="Atajo: tecla N"
+      (click)="abrirNuevo()"
+    >
+      <span class="btn-nuevo-mas" aria-hidden="true">+</span>
+      Nueva compra
+      <kbd class="btn-nuevo-atajo" aria-hidden="true">N</kbd>
+    </button>
+  </div>
 </div>
 
 <!-- ------------------------------------------- KPIs de abastecimiento -->
@@ -54,6 +64,7 @@
         (change)="onFiltrarProveedor($any($event.target).value)"
       >
         <option value="">Todos los proveedores</option>
+        <option value="ocasional">Compras ocasionales</option>
         @for (proveedor of proveedores(); track proveedor.proveedorId) {
           <option [value]="proveedor.proveedorId">{{ proveedor.nombre }}</option>
         }
@@ -119,7 +130,16 @@
             <tr>
               <td class="codigo">{{ compra.compraId }}</td>
               <td class="texto-sm">{{ compra.fecha | date: 'dd/MM/yyyy HH:mm' }}</td>
-              <td class="texto-fuerte">{{ compra.nombreProveedor }}</td>
+              <td>
+                @if (compra.ocasional) {
+                  <span class="insignia insignia-naranja">Ocasional</span>
+                  @if (compra.referencia) {
+                    <div class="texto-tenue texto-sm mt-1">{{ compra.referencia }}</div>
+                  }
+                } @else {
+                  <span class="texto-fuerte">{{ compra.nombreProveedor }}</span>
+                }
+              </td>
               <td class="texto-sm">{{ compra.nombreUsuario }}</td>
               <td class="num">
                 <span
@@ -163,22 +183,49 @@
 </div>
 
 @if (formularioAbierto()) {
-  <app-modal titulo="Nueva compra" [ancho]="760" (cerrar)="formularioAbierto.set(false)">
+  <app-modal
+    [titulo]="ocasional() ? 'Compra ocasional' : 'Nueva compra'"
+    [ancho]="860"
+    (cerrar)="formularioAbierto.set(false)"
+  >
     <form [formGroup]="formulario" id="form-compra" (ngSubmit)="guardar()">
-      <div class="campo">
-        <label for="proveedorId">Proveedor <span class="obligatorio">*</span></label>
-        <app-selector-busqueda
-          idCampo="proveedorId"
-          formControlName="proveedorId"
-          marcador="Escriba el nombre del proveedor…"
-          [opciones]="opcionesProveedor()"
-        />
-      </div>
+      @if (ocasional()) {
+        <div class="aviso-ocasional mb-2">
+          Compra a alguien de quien no tiene o no quiere guardar los datos. Se registra igual
+          que una compra: el stock entra con su precio y queda en la procedencia del repuesto
+          como <strong>Compra ocasional</strong>.
+        </div>
+
+        <div class="campo">
+          <label for="referencia">¿A quién o dónde se compró? <span class="texto-tenue">(opcional)</span></label>
+          <input
+            id="referencia"
+            formControlName="referencia"
+            maxlength="150"
+            autocomplete="off"
+            placeholder="Ej. Feria 16 de Julio, mecánico de otro taller, no recuerdo"
+          />
+        </div>
+      } @else {
+        <div class="campo">
+          <label for="proveedorId">Proveedor <span class="obligatorio">*</span></label>
+          <app-selector-busqueda
+            idCampo="proveedorId"
+            formControlName="proveedorId"
+            marcador="Escriba el nombre del proveedor…"
+            [opciones]="opcionesProveedor()"
+          />
+          <span class="campo-ayuda">
+            ¿No tiene sus datos?
+            <button type="button" class="btn-enlace" (click)="pasarAOcasional()">Registrarla como compra ocasional</button>
+          </span>
+        </div>
+      }
 
       <div class="fila-entre mb-1 mt-2">
         <h3>Detalle de la compra</h3>
         <button type="button" class="btn btn-secundario btn-sm" (click)="agregarLinea()">
-          + Agregar línea
+          + Agregar repuesto
         </button>
       </div>
 
@@ -187,8 +234,9 @@
           <thead>
             <tr>
               <th style="min-width: 220px">Repuesto</th>
-              <th style="width: 110px">Cantidad</th>
-              <th style="width: 140px">Precio unit.</th>
+              <th style="width: 100px">Cantidad</th>
+              <th style="width: 130px">Precio compra</th>
+              <th style="width: 130px" title="Opcional: si lo cambia, el repuesto queda con este precio de venta">Precio venta</th>
               <th class="num" style="width: 120px">Subtotal</th>
               <th style="width: 40px"></th>
             </tr>
@@ -221,6 +269,15 @@
                     (input)="sincronizarTotales()"
                   />
                 </td>
+                <td>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    formControlName="precioVenta"
+                    [attr.aria-label]="'Precio de venta de la fila ' + (i + 1)"
+                  />
+                </td>
                 <td class="num">
                   {{ (lineas()[i]?.cantidad || 0) * (lineas()[i]?.precioUnitario || 0) | bs }}
                 </td>
@@ -230,7 +287,7 @@
                       type="button"
                       class="btn-enlace texto-rojo boton-quitar-linea"
                       (click)="quitarLinea(i)"
-                      aria-label="Quitar línea"
+                      aria-label="Quitar repuesto"
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M18 6 6 18" /><path d="m6 6 12 12" />
@@ -250,8 +307,9 @@
       </div>
 
       <p class="texto-tenue texto-sm mt-2 mb-0">
-        Al guardar, el stock de cada repuesto se incrementa automáticamente y su precio
-        unitario se actualiza al de esta compra. Las compras no se pueden editar después.
+        Al guardar, el stock de cada repuesto se incrementa automáticamente y su precio de
+        compra se actualiza al de esta compra. Si cambió el precio de venta, el repuesto queda
+        con el nuevo. Las compras no se pueden editar después.
       </p>
     </form>
 
@@ -260,7 +318,7 @@
         Cancelar
       </button>
       <button type="submit" form="form-compra" class="btn btn-primario" [disabled]="guardando()">
-        {{ guardando() ? 'Registrando…' : 'Registrar compra' }}
+        {{ guardando() ? 'Registrando…' : ocasional() ? 'Registrar compra ocasional' : 'Registrar compra' }}
       </button>
     </div>
   </app-modal>
@@ -270,7 +328,17 @@
   <app-modal titulo="Compra {{ compra.compraId }}" [ancho]="680" (cerrar)="detalle.set(null)">
     <dl class="datos mb-2">
       <dt>Proveedor</dt>
-      <dd>{{ compra.nombreProveedor }}</dd>
+      <dd>
+        @if (compra.ocasional) {
+          <span class="insignia insignia-naranja">Compra ocasional</span>
+        } @else {
+          {{ compra.nombreProveedor }}
+        }
+      </dd>
+      @if (compra.referencia) {
+        <dt>Referencia</dt>
+        <dd>{{ compra.referencia }}</dd>
+      }
       <dt>Fecha</dt>
       <dd>{{ compra.fecha | date: 'dd/MM/yyyy HH:mm' }}</dd>
       <dt>Registrada por</dt>

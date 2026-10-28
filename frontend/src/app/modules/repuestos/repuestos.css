@@ -80,19 +80,29 @@
    con lo que sí se puede vender o usar en una orden ahora mismo. */
 .tarjeta-repuesto.agotada { opacity: 0.75; }
 
+/* La caja tiene siempre la misma proporción, sea cual sea la foto: una
+   imagen alta (una botella de aceite) no puede estirar su tarjeta. */
 .repuesto-foto-caja {
   position: relative;
   aspect-ratio: 4 / 3;
-  background: var(--gris-50);
+  overflow: hidden;
+  background: var(--blanco);
   border-bottom: 1px solid var(--gris-100);
 }
 
+/* La foto se ubica dentro de la caja y se ve entera (contain): sin recortar
+   la pieza ni deformarla, centrada y con un pequeño margen. */
 .repuesto-foto {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  padding: 10px;
+  object-fit: contain;
   display: block;
 }
+
+.repuesto-foto-vacia { padding: 0; background: var(--gris-50); }
 
 .repuesto-foto-vacia {
   display: flex;
@@ -333,3 +343,24 @@
 }
 
 .aviso-sin-categoria { color: var(--naranja-700); }
+
+/* Kárdex: lo que entra en verde, lo que sale en rojo, el saldo en negrita. */
+.kardex { max-height: 50vh; overflow-y: auto; }
+.kardex .entra { color: var(--verde-700); font-weight: 700; }
+.kardex .sale { color: var(--brand-dk); font-weight: 700; }
+
+.kardex-cuadra {
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--verde-700);
+}
+
+.kardex-no-cuadra {
+  margin-top: 10px;
+  padding: 8px 11px;
+  border-radius: var(--radio-sm);
+  background: var(--naranja-100);
+  font-size: 13px;
+  color: var(--naranja-700);
+}

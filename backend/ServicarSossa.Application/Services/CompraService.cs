@@ -14,7 +14,8 @@ public class CompraService(
     IRepuestoRepository repuestos,
     IGeneradorId generadorId,
     IUnitOfWork unitOfWork,
-    IAuditor auditor) : ICompraService
+    IAuditor auditor,
+    IKardex kardex) : ICompraService
 {
     public async Task<Result<ResultadoPaginadoDto<CompraResponseDto>>> GetAllAsync(
         string? proveedorId, DateTime? desde, DateTime? hasta,
@@ -24,7 +25,7 @@ public class CompraService(
             return Result<ResultadoPaginadoDto<CompraResponseDto>>.Fail(
                 "La fecha inicial no puede ser posterior a la final.");
 
-        if (!string.IsNullOrWhiteSpace(proveedorId)
+        if (!string.IsNullOrWhiteSpace(proveedorId) && proveedorId != ICompraRepository.Ocasionales
             && !await proveedores.ExistsAsync(p => p.ProveedorId == proveedorId, ct))
             return Result<ResultadoPaginadoDto<CompraResponseDto>>.NoEncontrado(
                 $"No existe el proveedor {proveedorId}.");
@@ -57,9 +58,20 @@ public class CompraService(
     public async Task<Result<CompraDetalleResponseDto>> CreateAsync(
         CompraRequestDto dto, string usuarioId, CancellationToken ct = default)
     {
-        if (!await proveedores.ExistsAsync(p => p.ProveedorId == dto.ProveedorId, ct))
+        var proveedor = dto.Ocasional
+            ? null
+            : await proveedores.FirstOrDefaultAsync(p => p.ProveedorId == dto.ProveedorId, ct);
+
+        if (!dto.Ocasional && proveedor is null)
             return Result<CompraDetalleResponseDto>.Fail(
                 $"El proveedor {dto.ProveedorId} no existe.");
+
+        var referencia = string.IsNullOrWhiteSpace(dto.Referencia) ? null : dto.Referencia.Trim();
+
+        // Cómo se nombra el origen en el kárdex de cada repuesto.
+        var origen = proveedor?.Nombre
+            ?? (referencia is null ? "Compra ocasional" : $"Compra ocasional ({referencia})");
+        var cambiosDePrecio = new List<string>();
 
         // Un mismo repuesto repetido en dos líneas haría ambiguo el detalle.
         var duplicados = dto.Detalles
@@ -86,7 +98,8 @@ public class CompraService(
             var compra = new Compra
             {
                 CompraId = await generadorId.SiguienteAsync<Compra>("CMP", token),
-                ProveedorId = dto.ProveedorId,
+                ProveedorId = dto.Ocasional ? null : dto.ProveedorId,
+                Referencia = referencia,
                 UsuarioId = usuarioId,
                 Fecha = DateTime.UtcNow,
                 Total = dto.Detalles.Sum(d => d.Cantidad * d.PrecioUnitario)
@@ -114,15 +127,26 @@ public class CompraService(
                 var repuesto = await repuestos.GetByIdAsync(linea.RepuestoId, token);
                 repuesto!.StockActual += linea.Cantidad;
 
+                await kardex.RegistrarAsync(
+                    repuesto, TipoMovimientoInventario.Compra, linea.Cantidad, usuarioId,
+                    compra.CompraId, origen, linea.PrecioUnitario, token);
+
                 // El último precio pagado pasa a ser el costo de referencia del repuesto.
-                // El precio de venta no se toca: lo fija el taller, no el proveedor.
                 repuesto.PrecioCompra = linea.PrecioUnitario;
+
+                // El precio de venta lo fija el taller: solo cambia si en la compra
+                // se indicó uno distinto (suele decidirse al comprar).
+                if (linea.PrecioVenta is { } venta && venta != repuesto.PrecioVenta)
+                {
+                    cambiosDePrecio.Add($"{repuesto.Nombre}: Bs {repuesto.PrecioVenta:N2} → Bs {venta:N2}");
+                    repuesto.PrecioVenta = venta;
+                }
 
                 // Si el repuesto todavía no tiene proveedor habitual, la primera
                 // compra lo adopta como tal. No se pisa uno ya definido: una compra
-                // ocasional a otro proveedor no debe cambiar al habitual (eso se
-                // hace a mano desde la ficha del repuesto).
-                if (string.IsNullOrWhiteSpace(repuesto.ProveedorId))
+                // puntual a otro proveedor no debe cambiar al habitual (eso se
+                // hace a mano desde la ficha del repuesto). La ocasional no tiene.
+                if (!dto.Ocasional && string.IsNullOrWhiteSpace(repuesto.ProveedorId))
                     repuesto.ProveedorId = dto.ProveedorId;
             }
 
@@ -130,7 +154,14 @@ public class CompraService(
 
             await auditor.RegistrarAsync(
                 usuarioId, AccionAuditoria.Crear, "Compra", compra.CompraId,
-                $"Registró la compra {compra.CompraId} por Bs {compra.Total:N2}.", token);
+                (dto.Ocasional
+                    ? $"Registró la compra ocasional {compra.CompraId}" +
+                      (referencia is null ? string.Empty : $" (“{referencia}”)")
+                    : $"Registró la compra {compra.CompraId}") +
+                $" por Bs {compra.Total:N2}." +
+                (cambiosDePrecio.Count == 0
+                    ? string.Empty
+                    : $" Precio de venta: {string.Join("; ", cambiosDePrecio)}."), token);
             await compras.SaveChangesAsync(token);
 
             return compra.CompraId;
@@ -141,11 +172,16 @@ public class CompraService(
             MapearDetalle(creada!), "Compra registrada y stock actualizado correctamente.");
     }
 
+    /// <summary>Nombre a mostrar del proveedor; las ocasionales no tienen.</summary>
+    public static string NombreDeOrigen(Compra c) => c.Proveedor?.Nombre ?? "Compra ocasional";
+
     private static CompraResponseDto MapearResumen(Compra c) => new()
     {
         CompraId = c.CompraId,
         ProveedorId = c.ProveedorId,
-        NombreProveedor = c.Proveedor?.Nombre ?? string.Empty,
+        NombreProveedor = NombreDeOrigen(c),
+        Ocasional = c.EsOcasional,
+        Referencia = c.Referencia,
         UsuarioId = c.UsuarioId,
         NombreUsuario = c.Usuario is null
             ? string.Empty
@@ -159,7 +195,9 @@ public class CompraService(
     {
         CompraId = c.CompraId,
         ProveedorId = c.ProveedorId,
-        NombreProveedor = c.Proveedor?.Nombre ?? string.Empty,
+        NombreProveedor = NombreDeOrigen(c),
+        Ocasional = c.EsOcasional,
+        Referencia = c.Referencia,
         UsuarioId = c.UsuarioId,
         NombreUsuario = c.Usuario is null
             ? string.Empty

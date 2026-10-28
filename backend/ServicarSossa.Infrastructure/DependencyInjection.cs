@@ -69,6 +69,7 @@ public static class DependencyInjection
         // --- Servicios de infraestructura -------------------------------------
         services.AddScoped<IGeneradorId, GeneradorId>();
         services.AddScoped<IAuditor, Auditor>();
+        services.AddScoped<IKardex, Kardex>();
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IExportadorReportes, ExportadorReportes>();
         services.AddScoped<IGeneradorComprobantes, GeneradorComprobantes>();

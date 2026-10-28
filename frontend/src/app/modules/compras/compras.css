@@ -97,3 +97,14 @@
   border-color: var(--brand);
   color: var(--blanco);
 }
+
+/* Explicación de la compra ocasional, arriba del formulario. */
+.aviso-ocasional {
+  padding: 10px 13px;
+  border-left: 3px solid var(--naranja-600);
+  border-radius: 0 var(--radio-sm) var(--radio-sm) 0;
+  background: var(--naranja-100);
+  color: #5c3d00;
+  font-size: 13.5px;
+  line-height: 1.45;
+}

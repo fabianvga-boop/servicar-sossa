@@ -16,4 +16,7 @@ public interface ICompraRepository : IRepository<Compra>
     /// <summary>Líneas de compra de un repuesto (con su compra y proveedor), más recientes primero.</summary>
     Task<IEnumerable<CompraDetalle>> HistorialPorRepuestoAsync(
         string repuestoId, CancellationToken ct = default);
+
+    /// <summary>Valor del filtro de proveedor para las compras ocasionales (sin proveedor).</summary>
+    const string Ocasionales = "ocasional";
 }

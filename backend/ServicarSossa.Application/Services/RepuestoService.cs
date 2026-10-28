@@ -17,7 +17,8 @@ public class RepuestoService(
     IAuditoriaRepository auditoria,
     IAlmacenArchivos archivos,
     IGeneradorId generadorId,
-    IAuditor auditor) : IRepuestoService
+    IAuditor auditor,
+    IKardex kardex) : IRepuestoService
 {
     /// <summary>Etiqueta legible del motivo de un ajuste, para la auditoría.</summary>
     private static string EtiquetaTipoAjuste(TipoAjusteStock tipo) => tipo switch
@@ -105,9 +106,16 @@ public class RepuestoService(
         await AgregarCompatibilidadesAsync(repuesto, compatibilidades, ct);
         await repuestos.AddAsync(repuesto, ct);
 
+        // Lo cargado al crear el repuesto entra al kárdex como stock inicial:
+        // es mercadería que ya estaba en el taller, sin una compra que la respalde.
+        await kardex.RegistrarAsync(
+            repuesto, TipoMovimientoInventario.StockInicial, repuesto.StockActual, usuarioId,
+            detalle: "Stock inicial al registrar el repuesto (sin compra)", ct: ct);
+
         await auditor.RegistrarAsync(
             usuarioId, AccionAuditoria.Crear, "Repuesto", repuesto.RepuestoId,
-            $"Registró el repuesto '{repuesto.Nombre}' ({Resumen(repuesto)}).", ct);
+            $"Registró el repuesto '{repuesto.Nombre}' ({Resumen(repuesto)})" +
+            (repuesto.StockActual > 0 ? $" con stock inicial {repuesto.StockActual}." : "."), ct);
 
         await repuestos.SaveChangesAsync(ct);
 
@@ -172,6 +180,13 @@ public class RepuestoService(
             return Result<RepuestoResponseDto>.Fail(
                 $"El stock de '{repuesto.Nombre}' ya es {dto.StockActual}.");
 
+        // Una merma o rotura es pérdida: solo puede bajar el stock. Para subirlo
+        // está el conteo físico o la corrección (y, si se compró, la compra).
+        if (dto.Tipo == TipoAjusteStock.MermaRotura && dto.StockActual > anterior)
+            return Result<RepuestoResponseDto>.Fail(
+                "Una merma o rotura solo puede bajar el stock. Para subirlo use \"Conteo físico\" " +
+                "o \"Corrección\"; si lo compró, regístrelo como compra.");
+
         repuesto.StockActual = dto.StockActual;
 
         // El motivo queda escrito en la bitácora: un aumento/baja de stock no
@@ -182,6 +197,13 @@ public class RepuestoService(
             usuarioId, AccionAuditoria.Ajustar, "Repuesto", id,
             $"Ajustó el stock de '{repuesto.Nombre}' de {anterior} a {dto.StockActual} " +
             $"({signo}{dto.StockActual - anterior}) — {EtiquetaTipoAjuste(dto.Tipo)}: {motivo}", ct);
+
+        var diferencia = dto.StockActual - anterior;
+        await kardex.RegistrarAsync(
+            repuesto, TipoMovimientoInventario.Ajuste, diferencia, usuarioId,
+            detalle: $"{EtiquetaTipoAjuste(dto.Tipo)}: {motivo}" +
+                     (diferencia > 0 ? " · sin respaldo de compra" : string.Empty),
+            ct: ct);
 
         await repuestos.SaveChangesAsync(ct);
 
@@ -283,7 +305,10 @@ public class RepuestoService(
             CompraId = d.CompraId,
             Fecha = d.Compra.Fecha,
             ProveedorId = d.Compra.ProveedorId,
-            NombreProveedor = d.Compra.Proveedor?.Nombre ?? string.Empty,
+            NombreProveedor = d.Compra.Proveedor?.Nombre
+                ?? (d.Compra.Referencia is { } referencia
+                    ? $"Compra ocasional ({referencia})"
+                    : "Compra ocasional"),
             Cantidad = d.Cantidad,
             PrecioUnitario = d.PrecioUnitario
         }).ToList();
@@ -301,10 +326,28 @@ public class RepuestoService(
                 : $"{a.Usuario.Nombre} {a.Usuario.Apellido}".Trim()
         }).ToList();
 
+        var movimientos = (await repuestos.GetMovimientosAsync(id, ct)).Select(m => new MovimientoKardexDto
+        {
+            MovimientoId = m.MovimientoId,
+            Fecha = m.Fecha,
+            Tipo = m.Tipo,
+            Cantidad = m.Cantidad,
+            Saldo = m.Saldo,
+            Referencia = m.Referencia,
+            Detalle = m.Detalle,
+            PrecioUnitario = m.PrecioUnitario,
+            Usuario = m.Usuario is null ? null : $"{m.Usuario.Nombre} {m.Usuario.Apellido}".Trim()
+        }).ToList();
+
         return Result<ProcedenciaRepuestoDto>.Ok(new ProcedenciaRepuestoDto
         {
             RepuestoId = repuesto.RepuestoId,
             StockActual = repuesto.StockActual,
+            Movimientos = movimientos,
+            // El kárdex está completo si su último saldo es el stock de hoy.
+            Cuadra = movimientos.Count == 0
+                ? repuesto.StockActual == 0
+                : movimientos[^1].Saldo == repuesto.StockActual,
             TotalComprado = lineas.Sum(l => l.Cantidad),
             CantidadCompras = lineas.Count,
             Compras = lineas,

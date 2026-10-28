@@ -1,4 +1,10 @@
-import { EstadoVenta, MetodoPago, NivelCompatibilidad, TipoAplicacionRepuesto } from './enums';
+import {
+  EstadoVenta,
+  MetodoPago,
+  NivelCompatibilidad,
+  TipoAplicacionRepuesto,
+  TipoMovimientoInventario,
+} from './enums';
 
 // ------------------------------------------------------------- Proveedores
 
@@ -113,8 +119,14 @@ export interface AjustarStock {
 
 export interface Compra {
   compraId: string;
-  proveedorId: string;
+  /** Null en una compra ocasional. */
+  proveedorId?: string | null;
+  /** Nombre del proveedor, o "Compra ocasional". */
   nombreProveedor: string;
+  /** Compra a alguien de quien no se tienen (o no conviene guardar) los datos. */
+  ocasional: boolean;
+  /** A quién o dónde se compró, sobre todo en las ocasionales. */
+  referencia?: string | null;
   usuarioId: string;
   nombreUsuario: string;
   fecha: string;
@@ -136,7 +148,10 @@ export interface CompraLinea {
 }
 
 export interface CompraRequest {
-  proveedorId: string;
+  ocasional: boolean;
+  /** Obligatorio salvo en la compra ocasional, que no lo lleva. */
+  proveedorId?: string | null;
+  referencia?: string | null;
   detalles: CompraLineaRequest[];
 }
 
@@ -144,6 +159,8 @@ export interface CompraLineaRequest {
   repuestoId: string;
   cantidad: number;
   precioUnitario: number;
+  /** Si viene y es distinto, el repuesto queda con este precio de venta. */
+  precioVenta?: number | null;
 }
 
 /**
@@ -160,6 +177,23 @@ export interface ProcedenciaRepuesto {
   compras: CompraRepuestoLinea[];
   /** Ajustes manuales de stock (desde la auditoría), más recientes primero. */
   ajustes: AjusteRepuesto[];
+  /** Kárdex: todos los movimientos, del más antiguo al más reciente. */
+  movimientos: MovimientoKardex[];
+  /** El último saldo del kárdex coincide con el stock actual. */
+  cuadra: boolean;
+}
+
+export interface MovimientoKardex {
+  movimientoId: string;
+  fecha: string;
+  tipo: TipoMovimientoInventario;
+  /** Positivo si entró, negativo si salió. */
+  cantidad: number;
+  saldo: number;
+  referencia?: string | null;
+  detalle?: string | null;
+  precioUnitario?: number | null;
+  usuario?: string | null;
 }
 
 export interface AjusteRepuesto {
@@ -171,7 +205,8 @@ export interface AjusteRepuesto {
 export interface CompraRepuestoLinea {
   compraId: string;
   fecha: string;
-  proveedorId: string;
+  /** Null en una compra ocasional. */
+  proveedorId?: string | null;
   nombreProveedor: string;
   cantidad: number;
   precioUnitario: number;

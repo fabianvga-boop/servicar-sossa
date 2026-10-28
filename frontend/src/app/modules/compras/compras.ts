@@ -75,6 +75,8 @@ export class Compras {
   protected readonly rangoActivo = signal<string | null>(null);
 
   protected readonly formularioAbierto = signal(false);
+  /** El formulario abierto es de una compra ocasional (sin proveedor). */
+  protected readonly ocasional = signal(false);
   protected readonly detalle = signal<CompraDetalle | null>(null);
 
   /** Espejo de las líneas, para calcular el total en vivo sin suscribirse al form. */
@@ -87,7 +89,9 @@ export class Compras {
   /** Filtro de texto local, por palabras: código de compra y nombre del proveedor. */
   protected readonly comprasFiltradas = computed(() => {
     const filtro = this.buscarTexto();
-    return this.compras().filter((c) => coincidePorPalabras(filtro, c.compraId, c.nombreProveedor));
+    return this.compras().filter((c) =>
+      coincidePorPalabras(filtro, c.compraId, c.nombreProveedor, c.referencia ?? ''),
+    );
   });
 
   // --- KPIs de abastecimiento ------------------------------------------------
@@ -102,8 +106,9 @@ export class Compras {
     this.comprasDelMes().reduce((suma, c) => suma + c.cantidadLineas, 0),
   );
 
+  // Las ocasionales no tienen proveedor: no cuentan como proveedor activo.
   protected readonly kpiProveedoresActivos = computed(
-    () => new Set(this.comprasDelMes().map((c) => c.proveedorId)).size,
+    () => new Set(this.comprasDelMes().filter((c) => c.proveedorId).map((c) => c.proveedorId)).size,
   );
 
   private comprasDelMes(): Compra[] {
@@ -116,6 +121,7 @@ export class Compras {
 
   protected readonly formulario = this.fb.nonNullable.group({
     proveedorId: ['', Validators.required],
+    referencia: ['', Validators.maxLength(150)],
     detalles: this.fb.array<ReturnType<Compras['nuevaLinea']>>([]),
   });
 
@@ -252,11 +258,41 @@ export class Compras {
       repuestoId: ['', Validators.required],
       cantidad: [1, [Validators.required, Validators.min(1)]],
       precioUnitario: [0, [Validators.required, Validators.min(0)]],
+      /** Precio de venta del repuesto: viene con el actual y se puede cambiar acá. */
+      precioVenta: [null as number | null, Validators.min(0)],
     });
   }
 
   protected abrirNuevo(): void {
-    this.formulario.reset({ proveedorId: '' });
+    this.abrirFormulario(false);
+  }
+
+  /**
+   * Compra a alguien de quien no se tienen o no conviene guardar los datos (un
+   * vendedor de la feria, alguien cuyo nombre no se recuerda). Igual es una
+   * compra: hay precio y cantidad, y el stock entra con ese respaldo.
+   */
+  protected abrirOcasional(): void {
+    this.abrirFormulario(true);
+  }
+
+  /** Desde la compra común: pasa a ocasional sin perder los repuestos ya cargados. */
+  protected pasarAOcasional(): void {
+    this.ocasional.set(true);
+    const proveedor = this.formulario.controls.proveedorId;
+    proveedor.setValidators([]);
+    proveedor.setValue('');
+    proveedor.updateValueAndValidity();
+  }
+
+  private abrirFormulario(ocasional: boolean): void {
+    this.ocasional.set(ocasional);
+
+    const proveedor = this.formulario.controls.proveedorId;
+    proveedor.setValidators(ocasional ? [] : [Validators.required]);
+    this.formulario.reset({ proveedorId: '', referencia: '' });
+    proveedor.updateValueAndValidity();
+
     this.detalles.clear();
     this.agregarLinea();
     this.formularioAbierto.set(true);
@@ -280,7 +316,10 @@ export class Compras {
     const repuesto = this.repuestos().find((r) => r.repuestoId === repuestoId);
     if (!repuesto) return;
 
-    this.detalles.at(indice).patchValue({ precioUnitario: repuesto.precioCompra });
+    this.detalles.at(indice).patchValue({
+      precioUnitario: repuesto.precioCompra,
+      precioVenta: repuesto.precioVenta,
+    });
     this.sincronizarTotales();
   }
 
@@ -294,18 +333,60 @@ export class Compras {
     );
   }
 
+  /** Lo que impide registrar la compra, dicho en concreto (no "complete el formulario"). */
+  private queFalta(): string {
+    const faltan: string[] = [];
+
+    if (!this.ocasional() && !this.formulario.controls.proveedorId.value) faltan.push('el proveedor');
+
+    if (this.detalles.length === 0) {
+      faltan.push('al menos un repuesto (botón “+ Agregar repuesto”)');
+    } else {
+      this.detalles.controls.forEach((linea, i) => {
+        const fila = this.detalles.length > 1 ? ` de la fila ${i + 1}` : '';
+        if (linea.get('repuestoId')?.invalid) faltan.push(`el repuesto${fila}`);
+        else if (linea.get('cantidad')?.invalid) faltan.push(`la cantidad${fila} (1 o más)`);
+        else if (linea.get('precioUnitario')?.invalid) faltan.push(`el precio de compra${fila}`);
+        else if (linea.get('precioVenta')?.invalid) faltan.push(`un precio de venta válido${fila}`);
+      });
+    }
+
+    if (faltan.length === 0) return 'Revise los datos de la compra.';
+
+    // "el proveedor, el repuesto y la cantidad"
+    const lista = faltan.length === 1
+      ? faltan[0]
+      : `${faltan.slice(0, -1).join(', ')} y ${faltan[faltan.length - 1]}`;
+    return `Para registrar la compra falta: ${lista}.`;
+  }
+
   protected guardar(): void {
     if (this.formulario.invalid || this.detalles.length === 0) {
       this.formulario.markAllAsTouched();
-      this.notificacion.advertencia('Complete el proveedor y al menos una línea de detalle.');
+      this.notificacion.advertencia(this.queFalta());
       return;
     }
 
     this.guardando.set(true);
 
-    this.servicio.crear(this.formulario.getRawValue() as never).subscribe({
+    const datos = this.formulario.getRawValue();
+    const ocasional = this.ocasional();
+
+    this.servicio.crear({
+      ocasional,
+      proveedorId: ocasional ? null : datos.proveedorId,
+      referencia: datos.referencia.trim() || null,
+      detalles: datos.detalles.map((d) => ({
+        repuestoId: d.repuestoId,
+        cantidad: d.cantidad,
+        precioUnitario: d.precioUnitario,
+        precioVenta: d.precioVenta,
+      })),
+    }).subscribe({
       next: () => {
-        this.notificacion.exito('Compra registrada y stock actualizado.');
+        this.notificacion.exito(
+          ocasional ? 'Compra ocasional registrada y stock actualizado.' : 'Compra registrada y stock actualizado.',
+        );
         this.guardando.set(false);
         this.formularioAbierto.set(false);
         this.cargar();

@@ -21,7 +21,8 @@ public class VentaService(
     IAlmacenArchivos archivos,
     IGeneradorId generadorId,
     IUnitOfWork unitOfWork,
-    IAuditor auditor) : IVentaService
+    IAuditor auditor,
+    IKardex kardex) : IVentaService
 {
     private const string SubcarpetaFotos = "repuestos";
 
@@ -134,6 +135,10 @@ public class VentaService(
                 // Regla del punto de venta: el stock baja al vender, en el acto.
                 repuesto.StockActual -= cantidad;
 
+                await kardex.RegistrarAsync(
+                    repuesto, TipoMovimientoInventario.Venta, -cantidad, usuarioId,
+                    ventaId, "Venta en mostrador", precio, token);
+
                 await ventas.SaveChangesAsync(token);
             }
 
@@ -171,7 +176,12 @@ public class VentaService(
             foreach (var detalle in venta.Detalles)
             {
                 var repuesto = await repuestos.GetByIdAsync(detalle.RepuestoId, token);
-                if (repuesto is not null) repuesto.StockActual += detalle.Cantidad;
+                if (repuesto is null) continue;
+                repuesto.StockActual += detalle.Cantidad;
+
+                await kardex.RegistrarAsync(
+                    repuesto, TipoMovimientoInventario.AnulacionVenta, detalle.Cantidad, usuarioId,
+                    id, $"Anulación de la venta {id}", detalle.PrecioUnitario, token);
             }
 
             venta.Estado = EstadoVenta.Anulada;
