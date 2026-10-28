@@ -156,7 +156,10 @@ export interface CompraRequest {
 }
 
 export interface CompraLineaRequest {
-  repuestoId: string;
+  /** Repuesto del inventario; null si la línea trae uno nuevo. */
+  repuestoId: string | null;
+  /** Repuesto que se compra por primera vez: se crea junto con la compra. */
+  repuestoNuevo?: { nombre: string; categoriaId: string | null } | null;
   cantidad: number;
   precioUnitario: number;
   /** Si viene y es distinto, el repuesto queda con este precio de venta. */

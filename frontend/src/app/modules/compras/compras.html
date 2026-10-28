@@ -188,7 +188,7 @@
     [ancho]="860"
     (cerrar)="formularioAbierto.set(false)"
   >
-    <form [formGroup]="formulario" id="form-compra" (ngSubmit)="guardar()">
+    <form [formGroup]="formulario" id="form-compra" (ngSubmit)="guardar()" (keydown.enter)="evitarEnvioConEnter($event)">
       @if (ocasional()) {
         <div class="aviso-ocasional mb-2">
           Compra a alguien de quien no tiene o no quiere guardar los datos. Se registra igual
@@ -230,7 +230,7 @@
       </div>
 
       <div class="tabla-contenedor">
-        <table class="tabla">
+        <table class="tabla tabla-detalle-compra">
           <thead>
             <tr>
               <th style="min-width: 220px">Repuesto</th>
@@ -248,9 +248,28 @@
                   <app-selector-busqueda
                     formControlName="repuestoId"
                     marcador="Escriba el repuesto…"
+                    accionCrear="repuesto nuevo"
+                    [flotante]="true"
                     [opciones]="opcionesRepuesto()"
                     (seleccion)="onRepuestoSeleccionado(i, $event)"
+                    (crear)="abrirRepuestoNuevo(i, $event)"
                   />
+                  @if (esRepuestoNuevo(i)) {
+                    <span class="repuesto-nuevo-marca">
+                      <span class="insignia insignia-verde">Nuevo</span>
+                      {{ categoriaDeNuevo(i) || 'Sin categoría' }}
+                      <button type="button" class="btn-enlace" (click)="abrirRepuestoNuevo(i)">Cambiar</button>
+                    </span>
+                  } @else if (!repuestoDeFila(i)) {
+                    <button
+                      type="button"
+                      class="btn-enlace enlace-repuesto-nuevo"
+                      title="Para un repuesto que todavía no está en el inventario"
+                      (click)="abrirRepuestoNuevo(i)"
+                    >
+                      + Repuesto nuevo
+                    </button>
+                  }
                 </td>
                 <td>
                   <input
@@ -319,6 +338,61 @@
       </button>
       <button type="submit" form="form-compra" class="btn btn-primario" [disabled]="guardando()">
         {{ guardando() ? 'Registrando…' : ocasional() ? 'Registrar compra ocasional' : 'Registrar compra' }}
+      </button>
+    </div>
+  </app-modal>
+}
+
+@if (filaRepuestoNuevo() !== null) {
+  <app-modal titulo="Repuesto nuevo" [ancho]="480" (cerrar)="filaRepuestoNuevo.set(null)">
+    <form [formGroup]="formRepuestoNuevo" id="form-repuesto-nuevo" (ngSubmit)="crearRepuestoNuevo()">
+      <p class="campo-ayuda mt-0 mb-2">
+        Se crea al registrar la compra, con la cantidad y los precios que ponga en la fila.
+        La foto y los demás datos se completan después en Repuestos, si hace falta.
+      </p>
+
+      <div class="campo">
+        <label for="nuevoNombre">Nombre <span class="obligatorio">*</span></label>
+        <input
+          id="nuevoNombre"
+          formControlName="nombre"
+          maxlength="150"
+          autocomplete="off"
+          placeholder="Ej. Motor de arranque 12V"
+          [class.invalido]="invalidoNuevo()"
+        />
+      </div>
+
+      <div class="campo">
+        <label for="nuevoCategoria">Categoría</label>
+        <app-selector-busqueda
+          idCampo="nuevoCategoria"
+          formControlName="categoriaId"
+          marcador="Elija una categoría…"
+          [flotante]="true"
+          [opciones]="opcionesCategoria()"
+        />
+        @if (sugerenciaCategoria(); as sugerida) {
+          <span class="campo-ayuda">
+            Por el nombre parece <strong>{{ sugerida.nombre }}</strong>.
+            <button type="button" class="btn-enlace" (click)="usarSugerenciaCategoria(sugerida)">
+              Usar esta categoría
+            </button>
+          </span>
+        } @else if (!formRepuestoNuevo.controls.categoriaId.value) {
+          <span class="campo-ayuda">
+            Opcional. Sin categoría, en la orden no se controla para qué servicio se usa.
+          </span>
+        }
+      </div>
+    </form>
+
+    <div pie>
+      <button type="button" class="btn btn-secundario" (click)="filaRepuestoNuevo.set(null)">
+        Cancelar
+      </button>
+      <button type="submit" form="form-repuesto-nuevo" class="btn btn-primario">
+        Usar en la compra
       </button>
     </div>
   </app-modal>

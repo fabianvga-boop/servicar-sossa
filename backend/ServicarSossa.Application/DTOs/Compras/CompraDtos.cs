@@ -37,12 +37,22 @@ public class CompraRequestDto : IValidatableObject
     }
 }
 
-/// <summary>Línea de detalle de la compra.</summary>
-public class CompraDetalleRequestDto
+/// <summary>
+/// Línea de detalle de la compra. Lleva un repuesto del inventario
+/// (<see cref="RepuestoId"/>) o uno que se compra por primera vez
+/// (<see cref="RepuestoNuevo"/>), que se crea junto con la compra.
+/// </summary>
+public class CompraDetalleRequestDto : IValidatableObject
 {
-    [Required(ErrorMessage = "El repuesto es obligatorio.")]
     [RegularExpression(@"^REP-\d{3,}$", ErrorMessage = "El repuesto debe tener el formato REP-000.")]
-    public string RepuestoId { get; set; } = string.Empty;
+    public string? RepuestoId { get; set; }
+
+    /// <summary>
+    /// Repuesto que todavía no está en el inventario. Se crea al registrar la
+    /// compra, con el stock que entra en ella: así su kárdex arranca con la
+    /// compra y no con un stock inicial sin respaldo.
+    /// </summary>
+    public RepuestoNuevoCompraDto? RepuestoNuevo { get; set; }
 
     [Range(1, int.MaxValue, ErrorMessage = "La cantidad debe ser mayor a cero.")]
     public int Cantidad { get; set; }
@@ -57,6 +67,40 @@ public class CompraDetalleRequestDto
     /// </summary>
     [Range(0, 99999999.99, ErrorMessage = "El precio de venta no puede ser negativo.")]
     public decimal? PrecioVenta { get; set; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        var existente = !string.IsNullOrWhiteSpace(RepuestoId);
+
+        if (!existente && RepuestoNuevo is null)
+            yield return new ValidationResult(
+                "Cada línea de la compra debe indicar el repuesto.", [nameof(RepuestoId)]);
+
+        if (existente && RepuestoNuevo is not null)
+            yield return new ValidationResult(
+                "Una línea lleva un repuesto del inventario o uno nuevo, no los dos.", [nameof(RepuestoId)]);
+
+        // Un repuesto nuevo no tiene precio de venta anterior que conservar.
+        if (RepuestoNuevo is not null && PrecioVenta is null)
+            yield return new ValidationResult(
+                $"Indique a cuánto se venderá el repuesto nuevo '{RepuestoNuevo.Nombre}'.",
+                [nameof(PrecioVenta)]);
+    }
+}
+
+/// <summary>
+/// Lo mínimo para dar de alta un repuesto desde la compra. El resto toma un
+/// valor por defecto (stock mínimo 1, uso general) y se ajusta después en
+/// Repuestos: la foto, la descripción y los vehículos compatibles.
+/// </summary>
+public class RepuestoNuevoCompraDto
+{
+    [Required(ErrorMessage = "El nombre del repuesto nuevo es obligatorio.")]
+    [MaxLength(150, ErrorMessage = "El nombre del repuesto no puede superar los 150 caracteres.")]
+    public string Nombre { get; set; } = string.Empty;
+
+    [RegularExpression(@"^CAT-\d{3,}$", ErrorMessage = "La categoría debe tener el formato CAT-000.")]
+    public string? CategoriaId { get; set; }
 }
 
 /// <summary>Fila de la lista de compras.</summary>

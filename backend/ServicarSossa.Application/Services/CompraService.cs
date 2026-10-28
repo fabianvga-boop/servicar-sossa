@@ -12,6 +12,7 @@ public class CompraService(
     ICompraRepository compras,
     IProveedorRepository proveedores,
     IRepuestoRepository repuestos,
+    ICategoriaRepuestoRepository categorias,
     IGeneradorId generadorId,
     IUnitOfWork unitOfWork,
     IAuditor auditor,
@@ -73,11 +74,12 @@ public class CompraService(
             ?? (referencia is null ? "Compra ocasional" : $"Compra ocasional ({referencia})");
         var cambiosDePrecio = new List<string>();
 
-        // Un mismo repuesto repetido en dos líneas haría ambiguo el detalle.
+        // Un mismo repuesto repetido en dos líneas haría ambiguo el detalle; un
+        // repuesto nuevo se reconoce por su nombre.
         var duplicados = dto.Detalles
-            .GroupBy(d => d.RepuestoId)
+            .GroupBy(d => d.RepuestoNuevo is { } n ? n.Nombre.Trim().ToLowerInvariant() : d.RepuestoId)
             .Where(g => g.Count() > 1)
-            .Select(g => g.Key)
+            .Select(g => g.First().RepuestoNuevo?.Nombre.Trim() ?? g.First().RepuestoId)
             .ToList();
 
         if (duplicados.Count > 0)
@@ -85,13 +87,29 @@ public class CompraService(
                 $"El repuesto {string.Join(", ", duplicados)} aparece más de una vez. " +
                 "Consolide las cantidades en una sola línea.");
 
-        // Validación previa: que todos los repuestos existan antes de tocar nada.
+        // Validación previa: que todos los repuestos existan (y que los nuevos no
+        // existan todavía) antes de tocar nada.
         foreach (var linea in dto.Detalles)
         {
-            if (!await repuestos.ExistsAsync(r => r.RepuestoId == linea.RepuestoId, ct))
+            if (linea.RepuestoNuevo is { } nuevo)
+            {
+                var nombre = nuevo.Nombre.Trim();
+                var existente = await repuestos.FirstOrDefaultAsync(r => r.Nombre.ToLower() == nombre.ToLower(), ct);
+                if (existente is not null)
+                    return Result<CompraDetalleResponseDto>.Conflicto(
+                        $"Ya existe el repuesto '{existente.Nombre}' ({existente.RepuestoId}). Elíjalo de la lista en vez de crearlo.");
+
+                if (!string.IsNullOrWhiteSpace(nuevo.CategoriaId)
+                    && !await categorias.ExistsAsync(c => c.CategoriaId == nuevo.CategoriaId, ct))
+                    return Result<CompraDetalleResponseDto>.Fail(
+                        $"La categoría {nuevo.CategoriaId} no existe (puede que la hayan borrado). Elija otra.");
+            }
+            else if (!await repuestos.ExistsAsync(r => r.RepuestoId == linea.RepuestoId, ct))
                 return Result<CompraDetalleResponseDto>.Fail(
                     $"El repuesto {linea.RepuestoId} no existe.");
         }
+
+        var repuestosNuevos = new List<string>();
 
         var compraId = await unitOfWork.EjecutarEnTransaccionAsync(async token =>
         {
@@ -110,11 +128,41 @@ public class CompraService(
 
             foreach (var linea in dto.Detalles)
             {
+                // El repuesto nuevo nace acá con stock 0: el stock lo pone la
+                // compra, unas líneas más abajo, y queda en su kárdex como tal.
+                Repuesto repuesto;
+                if (linea.RepuestoNuevo is { } nuevo)
+                {
+                    repuesto = new Repuesto
+                    {
+                        RepuestoId = await generadorId.SiguienteAsync<Repuesto>("REP", token),
+                        Nombre = nuevo.Nombre.Trim(),
+                        StockActual = 0,
+                        StockMinimo = 1,
+                        PrecioCompra = linea.PrecioUnitario,
+                        PrecioVenta = linea.PrecioVenta!.Value,
+                        CategoriaId = string.IsNullOrWhiteSpace(nuevo.CategoriaId) ? null : nuevo.CategoriaId,
+                        TipoAplicacion = TipoAplicacionRepuesto.Universal
+                    };
+                    await repuestos.AddAsync(repuesto, token);
+                    await repuestos.SaveChangesAsync(token);
+
+                    repuestosNuevos.Add(repuesto.Nombre);
+                    await auditor.RegistrarAsync(
+                        usuarioId, AccionAuditoria.Crear, "Repuesto", repuesto.RepuestoId,
+                        $"Registró el repuesto '{repuesto.Nombre}' (Uso general) desde la compra {compra.CompraId}.",
+                        token);
+                }
+                else
+                {
+                    repuesto = (await repuestos.GetByIdAsync(linea.RepuestoId!, token))!;
+                }
+
                 await compras.AgregarDetalleAsync(new CompraDetalle
                 {
                     DetalleId = await generadorId.SiguienteAsync<CompraDetalle>("DET", token),
                     CompraId = compra.CompraId,
-                    RepuestoId = linea.RepuestoId,
+                    RepuestoId = repuesto.RepuestoId,
                     Cantidad = linea.Cantidad,
                     PrecioUnitario = linea.PrecioUnitario
                 }, token);
@@ -124,8 +172,7 @@ public class CompraService(
                 await compras.SaveChangesAsync(token);
 
                 // Regla 2: la compra ingresa mercadería al inventario.
-                var repuesto = await repuestos.GetByIdAsync(linea.RepuestoId, token);
-                repuesto!.StockActual += linea.Cantidad;
+                repuesto.StockActual += linea.Cantidad;
 
                 await kardex.RegistrarAsync(
                     repuesto, TipoMovimientoInventario.Compra, linea.Cantidad, usuarioId,
@@ -159,6 +206,9 @@ public class CompraService(
                       (referencia is null ? string.Empty : $" (“{referencia}”)")
                     : $"Registró la compra {compra.CompraId}") +
                 $" por Bs {compra.Total:N2}." +
+                (repuestosNuevos.Count == 0
+                    ? string.Empty
+                    : $" Repuestos nuevos: {string.Join(", ", repuestosNuevos)}.") +
                 (cambiosDePrecio.Count == 0
                     ? string.Empty
                     : $" Precio de venta: {string.Join("; ", cambiosDePrecio)}."), token);

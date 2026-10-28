@@ -108,3 +108,31 @@
   font-size: 13.5px;
   line-height: 1.45;
 }
+
+/* --- Repuesto nuevo desde la compra --------------------------------------- */
+.enlace-repuesto-nuevo {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.repuesto-nuevo-marca {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+
+/* Las casillas de cada fila quedan a la misma altura aunque el repuesto
+   lleve debajo su etiqueta o el enlace de repuesto nuevo. */
+table.tabla.tabla-detalle-compra td { vertical-align: top; }
+
+/* El subtotal y el botón de quitar, centrados con la altura de las casillas. */
+table.tabla.tabla-detalle-compra td.num { padding-top: 25px; }
+table.tabla.tabla-detalle-compra td:last-child { padding-top: 22px; }
+
+.repuesto-nuevo-marca .btn-enlace { font-size: 12.5px; }
