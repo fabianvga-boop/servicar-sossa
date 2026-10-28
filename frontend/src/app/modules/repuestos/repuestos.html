@@ -175,6 +175,7 @@
 @if (formularioAbierto()) {
   <app-modal
     [titulo]="editando() ? 'Editar repuesto' : 'Nuevo repuesto'"
+    [ancho]="720"
     (cerrar)="cerrarFormulario()"
   >
     <form [formGroup]="formulario" id="form-repuesto" (ngSubmit)="guardar()">
@@ -372,7 +373,6 @@
                 <app-selector-busqueda
                   marcador="Elegir marca"
                   permitirNuevo="marca nueva"
-                  [flotante]="true"
                   [idCampo]="'compat-marca-' + i"
                   [opciones]="opcionesMarca()"
                   [ngModel]="fila.marca"
@@ -382,7 +382,6 @@
                 <app-selector-busqueda
                   marcador="Todos los modelos"
                   permitirNuevo="modelo nuevo"
-                  [flotante]="true"
                   [idCampo]="'compat-modelo-' + i"
                   [opciones]="opcionesModelo(fila.marca)"
                   [ngModel]="fila.modelo"
@@ -494,7 +493,7 @@
 }
 
 @if (ajustando(); as repuesto) {
-  <app-modal titulo="Ajustar stock" [ancho]="440" (cerrar)="ajustando.set(null)">
+  <app-modal titulo="Ajustar stock" [ancho]="520" (cerrar)="ajustando.set(null)">
     <p class="mb-2">
       <span class="texto-fuerte">{{ repuesto.nombre }}</span><br />
       <span class="texto-tenue texto-sm">Stock registrado: {{ repuesto.stockActual }} unidades</span>
@@ -653,7 +652,7 @@
 }
 
 @if (fotoDe(); as repuesto) {
-  <app-modal titulo="Foto de {{ repuesto.nombre }}" [ancho]="480" (cerrar)="fotoDe.set(null)">
+  <app-modal titulo="Foto de {{ repuesto.nombre }}" [ancho]="560" (cerrar)="fotoDe.set(null)">
     <p class="texto-tenue texto-sm">
       Opcional: una foto del producto para reconocerlo de un vistazo al venderlo en mostrador.
     </p>

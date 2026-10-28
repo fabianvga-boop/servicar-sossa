@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, LOCALE_ID, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
@@ -15,7 +15,8 @@ import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { InsigniaEstado } from '../../shared/components/insignia-estado';
 import { Modal } from '../../shared/components/modal';
 import { Paginador } from '../../shared/components/paginador';
-import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
+import { MarcaOpcion, OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
+import { masRecienteMovida } from '../ordenes/ordenes-lista';
 import { Atajo } from '../../shared/directives/atajo';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 
@@ -70,13 +71,33 @@ export class Proformas {
 
   protected readonly EstadoProforma = EstadoProforma;
 
-  protected readonly opcionesOrden = computed<OpcionSelector[]>(() =>
-    this.ordenes().map((o) => ({
-      valor: o.ordenId,
-      etiqueta: `${o.ordenId} — ${o.placaVehiculo}`,
-      detalle: `${o.nombreCliente} · Bs ${o.total.toFixed(2)}`,
-    })),
-  );
+  private readonly fecha = new DatePipe(inject(LOCALE_ID));
+
+  /**
+   * La última orden cerrada primero, que es la que se acaba de terminar y hay
+   * que cobrar. Cada una dice cuándo se cerró; la más reciente lleva la marca.
+   */
+  protected readonly opcionesOrden = computed<OpcionSelector[]>(() => {
+    const ordenadas = [...this.ordenes()].sort(masRecienteMovida);
+    const ultimaCerrada = ordenadas.find((o) => o.estado === EstadoOrden.Cerrada)?.ordenId;
+
+    return ordenadas.map((o) => {
+      const marcas: MarcaOpcion[] = [];
+      if (o.ordenId === ultimaCerrada) marcas.push({ texto: 'Última cerrada', tono: 'verde' });
+      if (o.estado === EstadoOrden.Cerrada && o.fechaCierre) {
+        marcas.push({ texto: `Cerrada el ${this.fecha.transform(o.fechaCierre, 'dd/MM/yyyy HH:mm')}`, tono: 'gris' });
+      } else if (o.estado === EstadoOrden.Finalizada) {
+        marcas.push({ texto: 'Finalizada, sin cerrar', tono: 'naranja' });
+      }
+
+      return {
+        valor: o.ordenId,
+        etiqueta: `${o.ordenId} — ${o.placaVehiculo}`,
+        detalle: `${o.nombreCliente} · Bs ${o.total.toFixed(2)}`,
+        marcas,
+      };
+    });
+  });
 
   constructor() {
     this.cargar();

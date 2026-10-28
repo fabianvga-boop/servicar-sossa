@@ -22,7 +22,7 @@ interface GrupoAtajos {
   imports: [Modal],
   template: `
     @if (abierta()) {
-      <app-modal titulo="Atajos de teclado" [ancho]="560" (cerrar)="cerrar.emit()">
+      <app-modal titulo="Atajos de teclado" [ancho]="640" (cerrar)="cerrar.emit()">
         @for (grupo of grupos; track grupo.titulo) {
           <h3 class="grupo">{{ grupo.titulo }}</h3>
           <table class="atajos">

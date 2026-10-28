@@ -158,6 +158,10 @@
 
                   <div class="tarjeta-cliente">{{ orden.nombreCliente }}</div>
 
+                  @if (orden.estado === EstadoOrden.Cerrada && orden.fechaCierre) {
+                    <div class="texto-tenue texto-sm">Cerrada el {{ orden.fechaCierre | date: 'dd/MM/yyyy HH:mm' }}</div>
+                  }
+
                   @if (tieneMecanicos(orden) || diasRetraso(orden) > 0) {
                     <div class="tarjeta-fila">
                       @if (tieneMecanicos(orden)) {
@@ -230,7 +234,7 @@
 @if (modalCanceladasAbierto()) {
   <app-modal
     titulo="Órdenes canceladas"
-    [ancho]="640"
+    [ancho]="720"
     (cerrar)="modalCanceladasAbierto.set(false)"
   >
     <p class="texto-tenue texto-sm mb-2">

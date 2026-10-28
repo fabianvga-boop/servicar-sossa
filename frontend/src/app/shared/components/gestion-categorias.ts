@@ -18,7 +18,7 @@ import { Modal } from './modal';
   selector: 'app-gestion-categorias',
   imports: [FormsModule, Modal, Confirmacion],
   template: `
-    <app-modal titulo="Categorías de repuesto" [ancho]="560" (cerrar)="cerrar.emit()">
+    <app-modal titulo="Categorías de repuesto" [ancho]="640" (cerrar)="cerrar.emit()">
       <p class="texto-tenue texto-sm mt-0">
         Cada repuesto pertenece a una categoría, y cada servicio del catálogo indica qué
         categorías lleva. Así, en la orden, a <strong>Cambio de bujías</strong> no se le registra un aceite.

@@ -201,7 +201,7 @@ let modalesAbiertos = 0;
 })
 export class Modal {
   readonly titulo = input.required<string>();
-  readonly ancho = input(560);
+  readonly ancho = input(640);
 
   /** Marca el diálogo como acción irreversible: agrega el ícono de alerta. */
   readonly peligroso = input(false);
