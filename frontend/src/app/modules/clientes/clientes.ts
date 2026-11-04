@@ -34,9 +34,11 @@ import { DiagnosticosService } from '../../core/services/taller.service';
 import { VehiculosService } from '../../core/services/vehiculos.service';
 import { Confirmacion } from '../../shared/components/confirmacion';
 import { Esqueleto } from '../../shared/components/esqueleto';
+import { Paginador } from '../../shared/components/paginador';
 import { Placa } from '../../shared/components/placa';
 import { Atajo } from '../../shared/directives/atajo';
 import { EnfocarError } from '../../shared/directives/enfocar-error';
+import { PaginacionLocal, TODOS_LOS_REGISTROS } from '../../shared/paginacion-local';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 import { unicosOrdenados } from '../../shared/sugerencias-texto';
 import {
@@ -51,9 +53,6 @@ const CLAVE_BUSCAR = 'clientes.buscar';
 
 /** Placas que se muestran en la fila antes de resumir el resto en un "+N". */
 const MAX_PLACAS = 2;
-
-/** Filas que se muestran de entrada; el resto, a pedido. */
-const FILAS_POR_TANDA = 40;
 
 const MESES = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -99,6 +98,7 @@ interface FilaCliente {
     NgTemplateOutlet,
     Confirmacion,
     Esqueleto,
+    Paginador,
     Placa,
     Atajo,
     EnfocarError,
@@ -141,7 +141,6 @@ export class Clientes {
   // --- Lista ------------------------------------------------------------------------
   protected readonly buscar = signal('');
   protected readonly filtro = signal<Filtro>('todos');
-  protected readonly limite = signal(FILAS_POR_TANDA);
   protected readonly elegidoId = signal<string | null>(null);
 
   /** En el celular se ve una cosa a la vez: la lista o la ficha. */
@@ -296,7 +295,11 @@ export class Clientes {
     });
   });
 
-  protected readonly visibles = computed(() => this.filtradas().slice(0, this.limite()));
+  protected readonly paginacion = new PaginacionLocal(
+    () => this.filtradas(),
+    () => [this.buscar(), this.filtro()],
+  );
+  protected readonly visibles = this.paginacion.items;
 
   /** El cliente de la ficha: el que se tocó o, si no, el primero de la lista. */
   protected readonly elegido = computed<FilaCliente | null>(() => {
@@ -350,7 +353,7 @@ export class Clientes {
     }
 
     this.vehiculosService
-      .getAll(undefined, undefined, 1, 500)
+      .getAll(undefined, undefined, 1, TODOS_LOS_REGISTROS)
       .pipe(catchError(() => of(null)))
       .subscribe((resultado) => this.vehiculos.set(resultado?.items ?? []));
     this.ordenesService
@@ -358,11 +361,11 @@ export class Clientes {
       .pipe(catchError(() => of([] as Orden[])))
       .subscribe((lista) => this.ordenes.set(lista));
     this.proformasService
-      .getAll({ estado: EstadoProforma.Emitida, tamanoPagina: 500 })
+      .getAll({ estado: EstadoProforma.Emitida, tamanoPagina: TODOS_LOS_REGISTROS })
       .pipe(catchError(() => of(null)))
       .subscribe((resultado) => this.proformas.set(resultado?.items ?? []));
     this.diagnosticosService
-      .getAll({ tamanoPagina: 500 })
+      .getAll({ tamanoPagina: TODOS_LOS_REGISTROS })
       .pipe(catchError(() => of(null)))
       .subscribe((resultado) => this.diagnosticos.set(resultado?.items ?? []));
 
@@ -381,7 +384,7 @@ export class Clientes {
   protected cargar(): void {
     this.cargando.set(true);
 
-    this.servicio.getAll(undefined, 1, 500).subscribe({
+    this.servicio.getAll(undefined, 1, TODOS_LOS_REGISTROS).subscribe({
       next: (resultado) => {
         this.clientes.set(resultado.items);
         this.cargando.set(false);
@@ -421,16 +424,10 @@ export class Clientes {
   protected onBuscar(valor: string): void {
     this.buscar.set(valor);
     this.preferencias.guardar(CLAVE_BUSCAR, valor);
-    this.limite.set(FILAS_POR_TANDA);
   }
 
   protected elegirFiltro(filtro: Filtro): void {
     this.filtro.set(filtro);
-    this.limite.set(FILAS_POR_TANDA);
-  }
-
-  protected mostrarMas(): void {
-    this.limite.update((n) => n + FILAS_POR_TANDA);
   }
 
   protected elegir(cliente: Cliente): void {
@@ -724,7 +721,7 @@ export class Clientes {
 
   private recargarVehiculos(): void {
     this.vehiculosService
-      .getAll(undefined, undefined, 1, 500)
+      .getAll(undefined, undefined, 1, TODOS_LOS_REGISTROS)
       .pipe(catchError(() => of(null)))
       .subscribe((resultado) => {
         if (resultado) this.vehiculos.set(resultado.items);

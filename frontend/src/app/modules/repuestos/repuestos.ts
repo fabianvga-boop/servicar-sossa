@@ -33,6 +33,8 @@ import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { GestionCategorias } from '../../shared/components/gestion-categorias';
 import { Modal } from '../../shared/components/modal';
 import { Cajon } from '../../shared/components/cajon';
+import { Paginador } from '../../shared/components/paginador';
+import { PaginacionLocal, TODOS_LOS_REGISTROS } from '../../shared/paginacion-local';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
 import { Atajo } from '../../shared/directives/atajo';
 import { EnfocarError } from '../../shared/directives/enfocar-error';
@@ -80,6 +82,7 @@ const SIN_OPCIONES: OpcionSelector[] = [];
     EstadoTabla,
     GestionCategorias,
     Cajon,
+    Paginador,
     SelectorBusqueda,
     Atajo,
     EnfocarError,
@@ -130,8 +133,6 @@ export class Repuestos {
     ...this.categorias().map((c) => ({ valor: c.categoriaId, etiqueta: c.nombre })),
   ]);
 
-  protected readonly pagina = signal(1);
-  protected readonly tamanoPagina = signal(20);
   protected readonly totalRegistros = signal(0);
   protected readonly totalPaginas = signal(0);
 
@@ -328,14 +329,14 @@ export class Repuestos {
     this.cargarCategorias();
 
     this.vehiculosService
-      .getAll(undefined, undefined, 1, 500)
+      .getAll(undefined, undefined, 1, TODOS_LOS_REGISTROS)
       .subscribe((resultado) => this.vehiculos.set(resultado.items));
 
     if (this.auth.esAdministrador()) {
       this.plantillasService.getAll().subscribe((lista) => this.plantillas.set(lista));
 
       this.proveedoresService
-        .getAll(undefined, 1, 500)
+        .getAll(undefined, 1, TODOS_LOS_REGISTROS)
         .subscribe((resultado) => this.proveedores.set(resultado.items));
     }
   }
@@ -367,8 +368,13 @@ export class Repuestos {
     };
   });
 
-  protected readonly visibles = computed(() =>
+  protected readonly filtrados = computed(() =>
     this.repuestos().filter((r) => this.pasaVista(r, this.vista())),
+  );
+
+  protected readonly paginacion = new PaginacionLocal(
+    () => this.filtrados(),
+    () => [this.vista(), this.buscar(), this.proveedorFiltro(), this.vehiculoFiltro(), this.categoriaFiltro()],
   );
 
   protected elegirVista(vista: VistaRepuestos): void {
@@ -406,7 +412,7 @@ export class Repuestos {
         vehiculoId: this.vehiculoFiltro() || undefined,
         categoriaId: this.categoriaFiltro() || undefined,
         pagina: 1,
-        tamanoPagina: 500,
+        tamanoPagina: TODOS_LOS_REGISTROS,
       })
       .subscribe({
         next: (resultado) => {
@@ -426,26 +432,22 @@ export class Repuestos {
   protected onBuscar(valor: string): void {
     this.buscar.set(valor);
     this.preferencias.guardar(CLAVE_BUSCAR, valor);
-    this.pagina.set(1);
     this.cargar();
   }
 
   protected alternarStockBajo(): void {
     this.soloStockBajo.update((v) => !v);
     this.preferencias.guardar(CLAVE_STOCK_BAJO, this.soloStockBajo());
-    this.pagina.set(1);
     this.cargar();
   }
 
   protected filtrarPorVehiculo(vehiculoId: string | null): void {
     this.vehiculoFiltro.set(vehiculoId ?? '');
-    this.pagina.set(1);
     this.cargar();
   }
 
   protected filtrarPorCategoria(categoriaId: string | null): void {
     this.categoriaFiltro.set(categoriaId ?? '');
-    this.pagina.set(1);
     this.cargar();
   }
 
@@ -584,20 +586,9 @@ export class Repuestos {
 
   protected limpiarFiltroProveedor(): void {
     this.proveedorFiltro.set('');
-    this.pagina.set(1);
     this.cargar();
   }
 
-  protected cambiarPagina(pagina: number): void {
-    this.pagina.set(pagina);
-    this.cargar();
-  }
-
-  protected cambiarTamano(tamano: number): void {
-    this.tamanoPagina.set(tamano);
-    this.pagina.set(1);
-    this.cargar();
-  }
 
   protected invalido(control: string): boolean {
     const campo = this.formulario.get(control);

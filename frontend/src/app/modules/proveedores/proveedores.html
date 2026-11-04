@@ -73,6 +73,19 @@
       </div>
     }
   </div>
+
+  @if (totalPaginas() > 1) {
+    <div class="tarjeta paginador-proveedores">
+      <app-paginador
+        [pagina]="pagina()"
+        [totalPaginas]="totalPaginas()"
+        [totalRegistros]="totalRegistros()"
+        [tamanoPagina]="tamanoPagina()"
+        (cambiarPagina)="cambiarPagina($event)"
+        (cambiarTamano)="cambiarTamano($event)"
+      />
+    </div>
+  }
 }
 
 @if (formularioAbierto()) {

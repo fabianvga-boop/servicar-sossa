@@ -9,6 +9,8 @@ import { NotificacionService } from '../../core/services/notificacion.service';
 import { Confirmacion } from '../../shared/components/confirmacion';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { Cajon } from '../../shared/components/cajon';
+import { Paginador } from '../../shared/components/paginador';
+import { TODOS_LOS_REGISTROS } from '../../shared/paginacion-local';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 import { Atajo } from '../../shared/directives/atajo';
 import { EnfocarError } from '../../shared/directives/enfocar-error';
@@ -22,6 +24,7 @@ import { unicosOrdenados } from '../../shared/sugerencias-texto';
     RouterLink,
     DatePipe,
     Cajon,
+    Paginador,
     Confirmacion,
     EstadoTabla,
     BolivianosPipe,
@@ -88,12 +91,12 @@ export class Proveedores {
   constructor() {
     this.cargar();
     this.comprasService
-      .getAll({ tamanoPagina: 500 })
+      .getAll({ tamanoPagina: TODOS_LOS_REGISTROS })
       .subscribe({ next: (r) => this.compras.set(r.items), error: () => this.compras.set([]) });
 
     // Solo para el autocompletado de "Dirección": no reemplaza la tabla paginada.
     this.servicio
-      .getAll(undefined, 1, 500)
+      .getAll(undefined, 1, TODOS_LOS_REGISTROS)
       .subscribe((resultado) =>
         this.direccionesSugeridas.set(unicosOrdenados(resultado.items.map((p) => p.direccion))),
       );
@@ -103,7 +106,7 @@ export class Proveedores {
     this.cargando.set(true);
 
     this.servicio
-      .getAll(this.buscar() || undefined, 1, 500)
+      .getAll(this.buscar() || undefined, this.pagina(), this.tamanoPagina())
       .subscribe({
         next: (resultado) => {
           this.proveedores.set(resultado.items);

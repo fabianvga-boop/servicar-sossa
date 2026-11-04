@@ -11,6 +11,8 @@ import { TiposServicioService } from '../../core/services/taller.service';
 import { coincidePorPalabras } from '../../shared/busqueda';
 import { sugerirCategoriasServicio } from '../../shared/categorias-repuesto';
 import { Cajon } from '../../shared/components/cajon';
+import { Paginador } from '../../shared/components/paginador';
+import { PaginacionLocal, TODOS_LOS_REGISTROS } from '../../shared/paginacion-local';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
 import { Atajo } from '../../shared/directives/atajo';
@@ -63,6 +65,7 @@ type Vista = 'todos' | 'repuestos' | 'mano';
     ReactiveFormsModule,
     FormsModule,
     Cajon,
+    Paginador,
     EstadoTabla,
     SelectorBusqueda,
     Atajo,
@@ -143,6 +146,11 @@ export class TiposServicio {
     );
   });
 
+  protected readonly paginacion = new PaginacionLocal(
+    () => this.filtrados(),
+    () => [this.buscar(), this.vista()],
+  );
+
   protected readonly formulario = this.fb.nonNullable.group({
     nombre: ['', [Validators.required, Validators.maxLength(100)]],
     descripcion: ['', Validators.maxLength(255)],
@@ -159,7 +167,7 @@ export class TiposServicio {
     this.cargando.set(true);
 
     // Todos de una vez, también los dados de baja (soloActivos = false).
-    this.servicio.getAll(undefined, false, 1, 500).subscribe({
+    this.servicio.getAll(undefined, false, 1, TODOS_LOS_REGISTROS).subscribe({
       next: (resultado) => {
         this.servicios.set(resultado.items);
         this.cargando.set(false);

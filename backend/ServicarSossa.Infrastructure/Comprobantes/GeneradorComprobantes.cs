@@ -335,9 +335,18 @@ public class GeneradorComprobantes : IGeneradorComprobantes
             {
                 der.Item().AlignRight().PaddingBottom(4).Text("DATOS DEL TALLER").FontSize(10.5f).Bold();
                 der.Item().AlignRight().Element(e => Linea(e, "Nombre", _taller.Nombre));
-                der.Item().AlignRight().Element(e => Linea(e, "Dirección", $"{_taller.Direccion}, {_taller.Ciudad}"));
-                der.Item().AlignRight().Element(e => Linea(e, "Teléfono", _taller.Telefono));
-                der.Item().AlignRight().Element(e => Linea(e, "NIT", _taller.Nit));
+                // Un dato vacío en appsettings no se imprime (mejor sin línea que "NIT: ").
+                // Dirección y ciudad en líneas separadas: juntas no entran en la columna.
+                if (!string.IsNullOrWhiteSpace(_taller.Direccion))
+                    der.Item().AlignRight().Element(e => Linea(e, "Dirección", _taller.Direccion));
+                if (!string.IsNullOrWhiteSpace(_taller.Ciudad))
+                    der.Item().AlignRight().Element(e => Linea(e, "Ciudad", _taller.Ciudad));
+                if (!string.IsNullOrWhiteSpace(_taller.Telefono))
+                    der.Item().AlignRight().Element(e => Linea(e, "Celular", _taller.Telefono));
+                if (!string.IsNullOrWhiteSpace(_taller.Correo))
+                    der.Item().AlignRight().Element(e => Linea(e, "Correo", _taller.Correo));
+                if (!string.IsNullOrWhiteSpace(_taller.Nit))
+                    der.Item().AlignRight().Element(e => Linea(e, "NIT", _taller.Nit));
             });
         });
     }

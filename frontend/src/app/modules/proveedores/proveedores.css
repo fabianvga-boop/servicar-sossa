@@ -9,6 +9,10 @@
   gap: 16px;
 }
 
+/* El paginador lleva su propia línea de arriba: dentro de la tarjeta no hace falta. */
+.paginador-proveedores { margin-top: 16px; padding: 0; overflow: hidden; }
+.paginador-proveedores ::ng-deep .paginador { border-top: 0; }
+
 .tarjeta-proveedor {
   display: flex;
   flex-direction: column;
