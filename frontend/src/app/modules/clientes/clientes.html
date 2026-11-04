@@ -105,12 +105,18 @@
           </p>
         }
 
-        @if (filtradas().length > visibles().length) {
-          <button type="button" class="clientes-mas" (click)="mostrarMas()">
-            Mostrar más · quedan {{ filtradas().length - visibles().length }}
-          </button>
-        }
       </div>
+
+      @if (paginacion.totalPaginas() > 1) {
+        <app-paginador
+          [pagina]="paginacion.pagina()"
+          [totalPaginas]="paginacion.totalPaginas()"
+          [totalRegistros]="paginacion.totalRegistros()"
+          [tamanoPagina]="paginacion.tamanoPagina()"
+          (cambiarPagina)="paginacion.irA($event)"
+          (cambiarTamano)="paginacion.cambiarTamano($event)"
+        />
+      }
     }
   </section>
 

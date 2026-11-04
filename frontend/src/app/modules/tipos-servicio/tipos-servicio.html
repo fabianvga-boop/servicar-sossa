@@ -88,7 +88,7 @@
       <span></span>
     </div>
 
-    @for (servicio of filtrados(); track servicio.servicioId) {
+    @for (servicio of paginacion.items(); track servicio.servicioId) {
       <div
         class="fila-catalogo"
         [class.elegida]="formularioAbierto() && editando()?.servicioId === servicio.servicioId"
@@ -139,6 +139,17 @@
           }
         </span>
       </div>
+    }
+
+    @if (paginacion.totalPaginas() > 1) {
+      <app-paginador
+        [pagina]="paginacion.pagina()"
+        [totalPaginas]="paginacion.totalPaginas()"
+        [totalRegistros]="paginacion.totalRegistros()"
+        [tamanoPagina]="paginacion.tamanoPagina()"
+        (cambiarPagina)="paginacion.irA($event)"
+        (cambiarTamano)="paginacion.cambiarTamano($event)"
+      />
     }
   }
 </section>

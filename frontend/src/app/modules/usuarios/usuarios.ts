@@ -9,6 +9,7 @@ import { UsuariosService } from '../../core/services/usuarios.service';
 import { Confirmacion } from '../../shared/components/confirmacion';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { Cajon } from '../../shared/components/cajon';
+import { Paginador } from '../../shared/components/paginador';
 import { Atajo } from '../../shared/directives/atajo';
 import { EnfocarError } from '../../shared/directives/enfocar-error';
 
@@ -19,6 +20,7 @@ import { EnfocarError } from '../../shared/directives/enfocar-error';
     ReactiveFormsModule,
     DatePipe,
     Cajon,
+    Paginador,
     Confirmacion,
     EstadoTabla,
     Atajo,
@@ -68,7 +70,7 @@ export class Usuarios {
     this.cargando.set(true);
 
     this.servicio
-      .getAll(undefined, 1, 500)
+      .getAll(this.buscar() || undefined, this.pagina(), this.tamanoPagina())
       .subscribe({
         next: (resultado) => {
           this.usuarios.set(resultado.items);

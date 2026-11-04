@@ -49,7 +49,7 @@
     </button>
   </div>
 
-  <span class="resumen-repuestos">{{ visibles().length }} de {{ repuestos().length }} repuestos</span>
+  <span class="resumen-repuestos">{{ filtrados().length }} de {{ repuestos().length }} repuestos</span>
 </div>
 
 <div class="filtros-repuestos filtros-secundarios">
@@ -91,7 +91,7 @@
   @if (cargando() && repuestos().length === 0) {
     <div class="repuestos-esqueleto"><app-estado-tabla [cargando]="true" titulo="" descripcion="" /></div>
   } @else {
-    @for (repuesto of visibles(); track repuesto.repuestoId) {
+    @for (repuesto of paginacion.items(); track repuesto.repuestoId) {
       @let agotado = repuesto.stockActual <= 0;
       @let bajo = !agotado && repuesto.stockBajo;
       <div
@@ -153,6 +153,17 @@
         <span>Revise lo escrito o quite el filtro. Si es un repuesto que nunca compró, regístrelo.</span>
         <button type="button" class="btn btn-secundario" (click)="limpiarFiltros()">Quitar filtros</button>
       </div>
+    }
+
+    @if (paginacion.totalPaginas() > 1) {
+      <app-paginador
+        [pagina]="paginacion.pagina()"
+        [totalPaginas]="paginacion.totalPaginas()"
+        [totalRegistros]="paginacion.totalRegistros()"
+        [tamanoPagina]="paginacion.tamanoPagina()"
+        (cambiarPagina)="paginacion.irA($event)"
+        (cambiarTamano)="paginacion.cambiarTamano($event)"
+      />
     }
   }
 </section>

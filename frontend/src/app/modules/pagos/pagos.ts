@@ -10,6 +10,8 @@ import { NotificacionService } from '../../core/services/notificacion.service';
 import { Confirmacion } from '../../shared/components/confirmacion';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { Cajon } from '../../shared/components/cajon';
+import { Paginador } from '../../shared/components/paginador';
+import { PaginacionLocal, TODOS_LOS_REGISTROS } from '../../shared/paginacion-local';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
 import { Atajo } from '../../shared/directives/atajo';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
@@ -26,6 +28,7 @@ const MESES = [
     FormsModule,
     DatePipe,
     Cajon,
+    Paginador,
     Confirmacion,
     EstadoTabla,
     SelectorBusqueda,
@@ -76,6 +79,11 @@ export class Pagos {
   });
 
   protected readonly panelNuevo = signal(false);
+  protected readonly paginacion = new PaginacionLocal(
+    () => this.visibles(),
+    () => this.metodoVista(),
+  );
+
   protected readonly porRevertir = signal<Pago | null>(null);
 
   protected nuevo = this.pagoVacio();
@@ -124,7 +132,7 @@ export class Pagos {
 
     // Todos de una vez: el filtro por método y el resumen del mes son en pantalla.
     this.servicio
-      .getAll({ pagina: 1, tamanoPagina: 500 })
+      .getAll({ pagina: 1, tamanoPagina: TODOS_LOS_REGISTROS })
       .subscribe({
         next: (resultado) => {
           this.pagos.set(resultado.items);
@@ -136,7 +144,7 @@ export class Pagos {
 
   private cargarProformas(): void {
     this.proformasService
-      .getAll({ estado: EstadoProforma.Emitida, tamanoPagina: 500 })
+      .getAll({ estado: EstadoProforma.Emitida, tamanoPagina: TODOS_LOS_REGISTROS })
       .subscribe((resultado) => {
         this.proformas.set(resultado.items);
 

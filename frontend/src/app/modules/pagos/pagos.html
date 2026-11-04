@@ -39,7 +39,7 @@
   @if (cargando() && pagos().length === 0) {
     <app-estado-tabla [cargando]="true" titulo="" descripcion="" />
   } @else {
-    @for (pago of visibles(); track pago.pagoId) {
+    @for (pago of paginacion.items(); track pago.pagoId) {
       <div class="fila-lista fila-pago">
         <span class="monto-mono pago-codigo">{{ pago.pagoId }}</span>
         <span class="pago-tenue">{{ pago.fechaPago | date: 'dd/MM/yyyy HH:mm' }}</span>
@@ -62,6 +62,17 @@
       </div>
     } @empty {
       <p class="pagos-vacio">Todavía no hay pagos registrados. Se registran al cobrar una proforma.</p>
+    }
+
+    @if (paginacion.totalPaginas() > 1) {
+      <app-paginador
+        [pagina]="paginacion.pagina()"
+        [totalPaginas]="paginacion.totalPaginas()"
+        [totalRegistros]="paginacion.totalRegistros()"
+        [tamanoPagina]="paginacion.tamanoPagina()"
+        (cambiarPagina)="paginacion.irA($event)"
+        (cambiarTamano)="paginacion.cambiarTamano($event)"
+      />
     }
   }
 </section>

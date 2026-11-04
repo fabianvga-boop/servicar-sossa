@@ -14,6 +14,9 @@ public class TallerOptions
     public string Direccion { get; set; } = string.Empty;
     public string Ciudad { get; set; } = string.Empty;
     public string Telefono { get; set; } = string.Empty;
+    public string Correo { get; set; } = string.Empty;
+
+    /// <summary>Vacío mientras el taller no lo confirme: el comprobante omite la línea.</summary>
     public string Nit { get; set; } = string.Empty;
 
     /// <summary>

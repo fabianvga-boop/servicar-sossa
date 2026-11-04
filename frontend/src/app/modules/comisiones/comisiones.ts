@@ -16,6 +16,8 @@ import { NotificacionService } from '../../core/services/notificacion.service';
 import { OrdenesService } from '../../core/services/ordenes.service';
 import { UsuariosService } from '../../core/services/usuarios.service';
 import { Cajon } from '../../shared/components/cajon';
+import { Paginador } from '../../shared/components/paginador';
+import { PaginacionLocal, TODOS_LOS_REGISTROS } from '../../shared/paginacion-local';
 import { Confirmacion } from '../../shared/components/confirmacion';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
@@ -62,6 +64,7 @@ const nombreMes = (fecha: string) => new Date(fecha).toLocaleDateString('es-BO',
     RouterLink,
     DatePipe,
     Cajon,
+    Paginador,
     Confirmacion,
     EstadoTabla,
     SelectorBusqueda,
@@ -181,8 +184,11 @@ export class Comisiones {
       grupos.set(clave, grupo);
     }
 
-    return [...grupos.values()].sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 6);
+    return [...grupos.values()].sort((a, b) => b.fecha.localeCompare(a.fecha));
   });
+
+  /** De a 10, la más reciente arriba: las viejas siguen a mano para consultas. */
+  protected readonly paginacionLiquidaciones = new PaginacionLocal(() => this.liquidaciones(), undefined, 10);
 
   protected readonly opcionesMecanico = computed<OpcionSelector[]>(() =>
     this.mecanicos().map((m) => ({
@@ -204,7 +210,7 @@ export class Comisiones {
     // La lista de mecánicos solo sirve para configurar porcentajes.
     if (!this.esAdmin()) return;
 
-    this.usuariosService.getAll(undefined, 1, 500).subscribe((resultado) =>
+    this.usuariosService.getAll(undefined, 1, TODOS_LOS_REGISTROS).subscribe((resultado) =>
       // El administrador (dueño) también genera comisión cuando trabaja un
       // vehículo (con porcentaje 100), así que puede configurarse su porcentaje.
       this.mecanicos.set(
@@ -222,7 +228,7 @@ export class Comisiones {
 
     // Para el mecánico, la API devuelve solo lo suyo.
     this.servicio.getResumen().subscribe((lista) => this.resumen.set(lista));
-    this.servicio.getAll({ pagina: 1, tamanoPagina: 500 }).subscribe({
+    this.servicio.getAll({ pagina: 1, tamanoPagina: TODOS_LOS_REGISTROS }).subscribe({
       next: (resultado) => {
         this.comisiones.set(resultado.items);
         this.cargando.set(false);

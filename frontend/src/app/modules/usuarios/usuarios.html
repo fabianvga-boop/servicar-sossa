@@ -67,6 +67,17 @@
     } @empty {
       <p class="usuarios-vacio">Cree el primer usuario del sistema.</p>
     }
+
+    @if (totalPaginas() > 1) {
+      <app-paginador
+        [pagina]="pagina()"
+        [totalPaginas]="totalPaginas()"
+        [totalRegistros]="totalRegistros()"
+        [tamanoPagina]="tamanoPagina()"
+        (cambiarPagina)="cambiarPagina($event)"
+        (cambiarTamano)="cambiarTamano($event)"
+      />
+    }
   }
 </section>
 

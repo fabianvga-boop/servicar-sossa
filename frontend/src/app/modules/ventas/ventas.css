@@ -1,5 +1,6 @@
-/* Punto de venta: letra y botones grandes a propósito. Se atiende de pie, en
-   el mostrador, a veces con una pantalla táctil y con el cliente esperando. */
+/* Punto de venta: misma escala que el resto de los módulos (buscador de 40 px,
+   chips de 32 px, letra de 13-14 px). Los botones que se tocan seguido (+/−,
+   métodos de pago, Cobrar) quedan un poco más altos para usarlo con el dedo. */
 
 /* ------------------------------------------------------------- Encabezado */
 
@@ -11,11 +12,9 @@
   gap: 12px 16px;
 }
 
-.encabezado-pos h1 { font-size: 28px; }
-
 .encabezado-pos-sub {
   margin: 4px 0 0;
-  font-size: 15px;
+  font-size: 13px;
   color: var(--gris-500);
 }
 
@@ -26,16 +25,16 @@
    contenido), siempre a la vista al bajar por los productos. */
 .pos {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 420px;
+  grid-template-columns: minmax(0, 1fr) 380px;
   align-items: start;
 }
 
 .pos-productos {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
   min-width: 0;
-  padding-right: 28px;
+  padding-right: 24px;
 }
 
 .pos-venta {
@@ -55,10 +54,10 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 52px;
-  padding: 0 16px;
+  height: 40px;
+  padding: 0 12px;
   border: 1px solid var(--gris-300);
-  border-radius: 14px;
+  border-radius: var(--radio-sm);
   background: var(--blanco);
   color: var(--gris-400);
   transition: border-color 0.15s, box-shadow 0.15s;
@@ -76,7 +75,7 @@
   border: 0;
   background: transparent;
   box-shadow: none;
-  font-size: 17px;
+  font-size: 14px;
   color: var(--ink);
 }
 
@@ -93,13 +92,13 @@
 }
 
 .categoria-pos {
-  height: 40px;
-  padding: 0 16px;
+  height: 32px;
+  padding: 0 12px;
   border: 1px solid var(--gris-300);
   border-radius: 999px;
   background: var(--blanco);
   font: inherit;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--gris-500);
   cursor: pointer;
@@ -119,7 +118,7 @@
 
 .pos-vacio {
   margin: 8px 0 0;
-  font-size: 16px;
+  font-size: 14px;
   color: var(--gris-500);
 }
 
@@ -127,8 +126,8 @@
 
 .productos-pos {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
 }
 
 .producto-pos {
@@ -138,7 +137,7 @@
   padding: 0;
   overflow: hidden;
   border: 1px solid var(--gris-200);
-  border-radius: 16px;
+  border-radius: var(--radio);
   background: var(--blanco);
   font: inherit;
   color: inherit;
@@ -169,7 +168,7 @@
 .producto-pos-foto {
   display: block;
   width: 100%;
-  height: 112px;
+  height: 96px;
   object-fit: cover;
 }
 
@@ -177,7 +176,7 @@
 .producto-pos-foto.sin-foto {
   display: grid;
   place-items: center;
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 600;
 }
 
@@ -190,27 +189,27 @@
   position: absolute;
   top: 10px;
   right: 10px;
-  min-width: 30px;
-  height: 30px;
-  padding: 0 9px;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
   border-radius: 999px;
   background: var(--brand);
   color: var(--blanco);
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
-  line-height: 30px;
+  line-height: 24px;
   text-align: center;
 }
 
 .producto-pos-cuerpo {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 14px 16px 16px;
+  gap: 4px;
+  padding: 12px 14px 14px;
 }
 
 .producto-pos-nombre {
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 1.3;
   color: var(--ink);
@@ -218,14 +217,14 @@
 
 .producto-pos-precio {
   font-family: var(--fuente-mono);
-  font-size: 22px;
+  font-size: 16px;
   font-weight: 500;
   color: var(--ink);
   white-space: nowrap;
 }
 
 .producto-pos-stock {
-  font-size: 14px;
+  font-size: 12.5px;
   color: var(--gris-500);
 }
 
@@ -246,26 +245,26 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  padding: 26px 26px 14px;
+  padding: 20px 20px 12px;
 }
 
 .venta-cabecera h2 {
-  font-size: 21px;
+  font-size: 18px;
   font-weight: 600;
 }
 
 .venta-unidades {
-  font-size: 15px;
+  font-size: 13px;
   color: var(--gris-500);
 }
 
-.venta-unidades .btn-enlace { font-size: 15px; }
+.venta-unidades .btn-enlace { font-size: 13px; }
 
 .venta-lineas {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 26px;
+  padding: 0 20px;
 }
 
 .venta-linea {
@@ -273,19 +272,19 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px 14px;
-  padding: 16px 0;
+  padding: 12px 0;
   border-top: 1px solid var(--gris-100);
 }
 
 .venta-linea-nombre {
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--ink);
 }
 
 .venta-linea-subtotal {
   font-family: var(--fuente-mono);
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 500;
   text-align: right;
   white-space: nowrap;
@@ -298,13 +297,13 @@
 }
 
 .boton-cantidad {
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   border: 1px solid var(--gris-300);
   border-radius: var(--radio-sm);
   background: var(--blanco);
   font: inherit;
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 600;
   line-height: 1;
   color: var(--ink);
@@ -344,7 +343,7 @@
 
 .cantidad-linea {
   width: 44px;
-  font-size: 18px;
+  font-size: 15px;
   text-align: center;
 }
 
@@ -353,7 +352,7 @@
   align-items: center;
   justify-content: flex-end;
   gap: 2px;
-  font-size: 14px;
+  font-size: 12.5px;
   color: var(--gris-400);
 }
 
@@ -362,16 +361,16 @@
   width: 64px;
   field-sizing: content;
   min-width: 3ch;
-  font-size: 14px;
+  font-size: 12.5px;
   color: var(--gris-500);
   text-align: right;
 }
 
 .venta-vacia {
   margin: 0;
-  padding: 48px 8px;
+  padding: 36px 8px;
   text-align: center;
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.5;
   color: var(--gris-500);
 }
@@ -379,8 +378,8 @@
 .venta-pie {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 18px 26px 26px;
+  gap: 14px;
+  padding: 16px 20px 20px;
   border-top: 1px solid var(--gris-100);
 }
 
@@ -391,7 +390,7 @@
 }
 
 .venta-titulo-campo {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 500;
 }
 
@@ -402,12 +401,12 @@
 }
 
 .metodo-pago {
-  height: 48px;
+  height: 38px;
   border: 1px solid var(--gris-300);
-  border-radius: 12px;
+  border-radius: var(--radio-sm);
   background: var(--blanco);
   font: inherit;
-  font-size: 15px;
+  font-size: 13.5px;
   font-weight: 500;
   color: var(--gris-500);
   cursor: pointer;
@@ -417,7 +416,7 @@
 
 .metodo-pago.ancho {
   grid-column: 1 / -1;
-  height: 40px;
+  height: 38px;
 }
 
 .metodo-pago.activo {
@@ -428,7 +427,7 @@
 
 .venta-agregar-extras {
   align-self: flex-start;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .venta-extras {
@@ -446,24 +445,24 @@
   gap: 12px;
 }
 
-.venta-total strong { font-size: 18px; }
+.venta-total strong { font-size: 15px; }
 
 .venta-total-monto {
   font-family: var(--fuente-mono);
-  font-size: 34px;
+  font-size: 24px;
   font-weight: 500;
   letter-spacing: -0.02em;
   white-space: nowrap;
 }
 
 .boton-cobrar {
-  height: 58px;
+  height: 44px;
   border: 0;
-  border-radius: 14px;
+  border-radius: var(--radio-sm);
   background: var(--brand);
   color: var(--blanco);
   font: inherit;
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.15s, transform 0.12s;
@@ -490,7 +489,7 @@
 
 /* Pantallas medianas: la venta un poco más angosta */
 @media (max-width: 1280px) {
-  .pos { grid-template-columns: minmax(0, 1fr) 360px; }
+  .pos { grid-template-columns: minmax(0, 1fr) 340px; }
 }
 
 /* En el celular la venta va debajo de los productos, como una tarjeta */
@@ -515,7 +514,7 @@
     padding: 0 16px;
   }
 
-  .productos-pos { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  .productos-pos { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 
   /* Las categorías en una sola fila que se desliza con el dedo */
   .categorias-pos {

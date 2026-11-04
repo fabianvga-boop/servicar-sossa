@@ -69,10 +69,10 @@
     }
   </div>
 
-  <!-- ------------------------------------------------- Últimas liquidaciones -->
+  <!-- -------------------------------------------------------- Liquidaciones -->
   <section class="liquidaciones">
-    <h2>Últimas liquidaciones</h2>
-    @for (l of liquidaciones(); track l.clave) {
+    <h2>Liquidaciones</h2>
+    @for (l of paginacionLiquidaciones.items(); track l.clave) {
       <div class="fila-liquidacion">
         <span class="liquidacion-fecha">{{ l.fecha | date: 'dd/MM/yyyy' }}</span>
         <span>{{ l.mecanico }}</span>
@@ -81,6 +81,17 @@
       </div>
     } @empty {
       <p class="liquidaciones-vacio">Todavía no se liquidó ninguna comisión.</p>
+    }
+
+    @if (paginacionLiquidaciones.totalPaginas() > 1) {
+      <app-paginador
+        [pagina]="paginacionLiquidaciones.pagina()"
+        [totalPaginas]="paginacionLiquidaciones.totalPaginas()"
+        [totalRegistros]="paginacionLiquidaciones.totalRegistros()"
+        [tamanoPagina]="paginacionLiquidaciones.tamanoPagina()"
+        (cambiarPagina)="paginacionLiquidaciones.irA($event)"
+        (cambiarTamano)="paginacionLiquidaciones.cambiarTamano($event)"
+      />
     }
   </section>
 }

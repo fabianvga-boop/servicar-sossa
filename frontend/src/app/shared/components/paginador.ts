@@ -128,9 +128,24 @@ import { Component, computed, input, output } from '@angular/core';
       font-weight: 500;
     }
 
-    @media (max-width: 640px) {
-      .paginador { flex-direction: column; align-items: stretch; }
-      .paginador-controles { justify-content: space-between; }
+    .paginador-tamano { white-space: nowrap; }
+
+    /*
+     * Se adapta al ancho de su contenedor, no de la pantalla: en la columna de
+     * Clientes o en el celular no entra todo en una fila. Ahí se esconde el
+     * "Por página" (queda el tamaño elegido) y la navegación ocupa el ancho.
+     */
+    :host {
+      display: block;
+      container-type: inline-size;
+    }
+
+    @container (max-width: 560px) {
+      .paginador { flex-direction: column; align-items: stretch; gap: 8px; }
+      .paginador-info { text-align: center; }
+      .paginador-controles { justify-content: center; }
+      .paginador-tamano { display: none; }
+      .paginador-actual { min-width: 0; }
     }
   `,
 })
