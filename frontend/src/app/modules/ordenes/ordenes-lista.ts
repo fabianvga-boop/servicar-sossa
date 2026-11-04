@@ -1,56 +1,52 @@
-import { DatePipe } from '@angular/common';
 import { Component, afterNextRender, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
-import { EstadoOrden } from '../../core/models/enums';
+import { EstadoOrden, EstadoProforma } from '../../core/models/enums';
+import { Proforma } from '../../core/models/finanzas.model';
 import { Orden } from '../../core/models/taller.model';
-import { urlArchivo } from '../../core/services/api-base';
+import { AuthService } from '../../core/services/auth.service';
+import { ProformasService } from '../../core/services/finanzas.service';
 import { OrdenesService } from '../../core/services/ordenes.service';
 import { VehiculosService } from '../../core/services/vehiculos.service';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
-import { InsigniaEstado } from '../../shared/components/insignia-estado';
-import { Modal } from '../../shared/components/modal';
-import { Placa } from '../../shared/components/placa';
-import { SiTieneRol } from '../../shared/directives/si-tiene-rol';
-import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 import { coincidePorPalabras } from '../../shared/busqueda';
+import { Portada, TarjetaOrden } from './tarjeta-orden';
 
 /** Una columna del tablero: un estado real de la orden y sus tarjetas. */
 interface Columna {
   estado: EstadoOrden;
   etiqueta: string;
-  /** La columna de cierre agrupa el trabajo terminado; el resto no se apaga. */
-  atenuada?: boolean;
+  /** Color del punto junto al título, el mismo de la insignia del estado. */
+  tono: 'azul' | 'naranja' | 'verde';
 }
 
+/** El tablero de lo que sigue en el taller y tres listas aparte. */
+type Vista = 'activas' | 'cobrar' | 'cerradas' | 'canceladas';
+
 /**
- * Cuatro de los cinco valores reales de EstadoOrden tienen columna propia —
- * "Diagnóstico" no es un estado de la orden: el diagnóstico pasa ANTES de que
- * la orden exista (ver módulo Diagnósticos), así que esa etapa no tiene
- * tarjeta propia acá; "En proceso" cubre tanto el diagnóstico técnico como la
- * reparación en sí, que es la granularidad real que maneja el backend.
- * "Cerrada" queda separada de "Finalizada" porque cerrar dispara comisiones y
- * descuenta stock — es un hito real, no un matiz visual.
+ * El tablero muestra el trabajo que sigue en el taller, en las tres etapas
+ * que maneja el backend. "Diagnóstico" no es un estado de la orden: el
+ * diagnóstico pasa ANTES de que la orden exista (ver módulo Diagnósticos), y
+ * "En proceso" cubre tanto la revisión técnica como la reparación en sí.
  *
- * "Cancelada" queda AFUERA del tablero a propósito: es trabajo que no se hizo,
- * no algo que siga avanzando por las columnas, así que competir por el mismo
- * espacio que las órdenes activas solo agrega tarjetas muertas a la vista.
- * Vive en el botón "Canceladas" (ver `canceladas` más abajo).
+ * Las cerradas y las canceladas van en su propia pestaña: ya no avanzan, así
+ * que no compiten por espacio con lo activo. "Cerrada" sigue separada de
+ * "Finalizada" porque cerrar dispara comisiones y descuenta stock — es un
+ * hito real, no un matiz visual.
  */
 const COLUMNAS: Columna[] = [
-  { estado: EstadoOrden.Abierta, etiqueta: 'En espera' },
-  { estado: EstadoOrden.EnProceso, etiqueta: 'En proceso' },
-  { estado: EstadoOrden.Finalizada, etiqueta: 'Finalizada' },
-  { estado: EstadoOrden.Cerrada, etiqueta: 'Cerrada', atenuada: true },
+  { estado: EstadoOrden.Abierta, etiqueta: 'En espera', tono: 'azul' },
+  { estado: EstadoOrden.EnProceso, etiqueta: 'En proceso', tono: 'naranja' },
+  { estado: EstadoOrden.Finalizada, etiqueta: 'Finalizada', tono: 'verde' },
 ];
 
 /**
  * USU021 — tablero de órdenes de trabajo.
  *
  * No se crean aquí: toda orden nace de un diagnóstico (ver módulo
- * Diagnósticos, botón "Generar orden"), así ninguna queda sin un motivo de
+ * Diagnósticos, respuesta del cliente), así ninguna queda sin un motivo de
  * ingreso registrado y no se duplica trabajo sobre el mismo vehículo.
  *
  * Las tarjetas se pueden ABRIR (van al detalle) pero no se arrastran entre
@@ -63,23 +59,32 @@ const COLUMNAS: Columna[] = [
  */
 @Component({
   selector: 'app-ordenes-lista',
-  imports: [RouterLink, DatePipe, EstadoTabla, InsigniaEstado, Modal, Placa, SiTieneRol, BolivianosPipe],
+  imports: [RouterLink, EstadoTabla, TarjetaOrden],
   templateUrl: './ordenes-lista.html',
   styleUrl: './ordenes-lista.css',
 })
 export class OrdenesLista {
   private readonly servicio = inject(OrdenesService);
   private readonly vehiculosService = inject(VehiculosService);
+  private readonly proformasService = inject(ProformasService);
   private readonly ruta = inject(ActivatedRoute);
-  private readonly router = inject(Router);
+  protected readonly auth = inject(AuthService);
 
   protected readonly ordenes = signal<Orden[]>([]);
   protected readonly cargando = signal(true);
 
   /** Portada por vehículo (mismas fotos que gestiona el módulo Vehículos). */
-  protected readonly fotosPorVehiculo = signal<Map<string, string | null>>(new Map());
-  protected readonly urlArchivo = urlArchivo;
+  protected readonly portadas = signal<Map<string, Portada>>(new Map());
 
+  /**
+   * Proforma vigente de cada orden, para saber qué falta cobrar. Solo la pide
+   * el Administrador, que es quien cobra; hasta que llega no se ofrece cobrar
+   * nada, para no mostrar "Emitir proforma" en una orden que ya la tiene.
+   */
+  protected readonly proformas = signal<Map<string, Proforma>>(new Map());
+  protected readonly proformasCargadas = signal(false);
+
+  protected readonly vista = signal<Vista>('activas');
   protected readonly buscar = signal('');
   protected readonly desde = signal('');
   protected readonly hasta = signal('');
@@ -87,40 +92,7 @@ export class OrdenesLista {
   /** Llega por ?estado= desde un acceso directo del panel: resalta la columna. */
   protected readonly columnaDestacada = signal<EstadoOrden | null>(null);
 
-  protected readonly EstadoOrden = EstadoOrden;
   protected readonly columnas = COLUMNAS;
-
-  /** Cuántos avatares entran antes de resumir el resto en un "+N". */
-  private readonly MAX_AVATARES = 3;
-
-  /**
-   * Iniciales de un nombre completo: "Hector Vega" → "HV". Con un solo
-   * nombre usa sus dos primeras letras para no dejar un círculo con una
-   * sola letra perdida.
-   */
-  protected iniciales(nombre: string): string {
-    const partes = nombre.trim().split(/\s+/).filter(Boolean);
-    if (partes.length === 0) return '—';
-
-    return partes.length === 1
-      ? partes[0].slice(0, 2).toUpperCase()
-      : (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
-  }
-
-  protected mecanicosVisibles(orden: Orden): Orden['mecanicos'] {
-    // `?? []` cubre la ventana de un despliegue: el frontend puede quedar
-    // arriba antes que la API y recibir todavía respuestas sin `mecanicos`.
-    return (orden.mecanicos ?? []).slice(0, this.MAX_AVATARES);
-  }
-
-  protected mecanicosRestantes(orden: Orden): number {
-    return Math.max(0, (orden.mecanicos ?? []).length - this.MAX_AVATARES);
-  }
-
-  /** Si la API todavía no manda la lista, cae al conteo que sí manda. */
-  protected tieneMecanicos(orden: Orden): boolean {
-    return (orden.mecanicos ?? []).length > 0 || orden.cantidadMecanicos > 0;
-  }
 
   // --- Filtro (búsqueda + rango de fechas) ------------------------------------
 
@@ -149,11 +121,7 @@ export class OrdenesLista {
     });
   });
 
-  /**
-   * Cada columna con sus tarjetas, más recientes primero. Las cerradas (y las
-   * canceladas) por la fecha en que se cerraron: la última cerrada arriba, que
-   * es la que hay que cobrar.
-   */
+  /** Cada columna del tablero con sus tarjetas, las más recientes primero. */
   protected readonly tablero = computed(() =>
     this.columnas.map((columna) => ({
       ...columna,
@@ -163,11 +131,23 @@ export class OrdenesLista {
     })),
   );
 
-  protected readonly totalFiltrado = computed(() => this.filtradas().length);
+  protected readonly cantidadActivas = computed(() =>
+    this.tablero().reduce((suma, columna) => suma + columna.ordenes.length, 0),
+  );
 
-  // --- Canceladas (fuera del tablero) -----------------------------------------
+  /** Trabajo terminado que falta cobrar: sin proforma, o con saldo pendiente. */
+  protected readonly porCobrar = computed(() =>
+    this.filtradas()
+      .filter((o) => this.mostrarCobro(o) && !this.proformaDe(o)?.estaSaldada)
+      .sort(masRecienteMovida),
+  );
 
-  protected readonly modalCanceladasAbierto = signal(false);
+  /** Las cerradas (y las canceladas) por la fecha en que se cerraron: la última arriba. */
+  protected readonly cerradas = computed(() =>
+    this.filtradas()
+      .filter((o) => o.estado === EstadoOrden.Cerrada)
+      .sort(masRecienteMovida),
+  );
 
   protected readonly canceladas = computed(() =>
     this.filtradas()
@@ -175,53 +155,52 @@ export class OrdenesLista {
       .sort(masRecienteMovida),
   );
 
-  // --- Indicadores -----------------------------------------------------------
+  /** Las tarjetas de la pestaña elegida, cuando no es el tablero. */
+  protected readonly lista = computed(() => {
+    switch (this.vista()) {
+      case 'cobrar':
+        return this.porCobrar();
+      case 'cerradas':
+        return this.cerradas();
+      case 'canceladas':
+        return this.canceladas();
+      default:
+        return [];
+    }
+  });
 
-  /** Se calculan sobre lo filtrado: acompañan lo que el usuario está mirando. */
-  protected readonly activas = computed(
-    () =>
-      this.filtradas().filter(
-        (o) => o.estado === EstadoOrden.Abierta || o.estado === EstadoOrden.EnProceso,
-      ).length,
+  protected readonly mensajeVacio = computed(() => {
+    switch (this.vista()) {
+      case 'cobrar':
+        return 'No queda nada por cobrar: cada orden terminada tiene su proforma pagada.';
+      case 'cerradas':
+        return 'Todavía no hay órdenes cerradas.';
+      default:
+        return 'No hay órdenes canceladas.';
+    }
+  });
+
+  protected readonly hayFiltro = computed(
+    () => this.buscar().length > 0 || this.desde().length > 0 || this.hasta().length > 0,
   );
-
-  protected readonly listasParaEntregar = computed(
-    () => this.filtradas().filter((o) => o.estado === EstadoOrden.Finalizada).length,
-  );
-
-  protected readonly conRetraso = computed(
-    () => this.filtradas().filter((o) => this.diasRetraso(o) > 0).length,
-  );
-
-  // --- Retraso ---------------------------------------------------------------
-
-  /**
-   * Días vencidos sobre la fecha estimada de entrega. Solo cuenta mientras la
-   * orden sigue en el taller: una cerrada o cancelada ya no puede atrasarse.
-   */
-  protected diasRetraso(orden: Orden): number {
-    if (!orden.fechaEstimada) return 0;
-    if (orden.estado !== EstadoOrden.Abierta && orden.estado !== EstadoOrden.EnProceso) return 0;
-
-    const estimada = new Date(orden.fechaEstimada);
-    const hoy = new Date();
-    estimada.setHours(0, 0, 0, 0);
-    hoy.setHours(0, 0, 0, 0);
-
-    const dias = Math.floor((hoy.getTime() - estimada.getTime()) / 86_400_000);
-    return dias > 0 ? dias : 0;
-  }
 
   constructor() {
-    // El acceso directo del panel llega con ?estado=2 ("Órdenes por cerrar").
-    // El tablero ya muestra todos los estados a la vez, así que en vez de
-    // filtrar el resto fuera de vista, resalta y centra esa columna.
+    // El acceso directo del panel llega con ?estado=2 ("Órdenes por cerrar"):
+    // resalta y centra esa columna del tablero. Una cerrada o cancelada abre
+    // directamente su pestaña.
     const desdeUrl = this.ruta.snapshot.queryParamMap.get('estado');
     if (desdeUrl !== null) {
       const estado = Number(desdeUrl) as EstadoOrden;
-      this.columnaDestacada.set(estado);
-      afterNextRender(() => this.centrarColumna(estado));
-      setTimeout(() => this.columnaDestacada.set(null), 2500);
+
+      if (estado === EstadoOrden.Cerrada) {
+        this.vista.set('cerradas');
+      } else if (estado === EstadoOrden.Cancelada) {
+        this.vista.set('canceladas');
+      } else {
+        this.columnaDestacada.set(estado);
+        afterNextRender(() => this.centrarColumna(estado));
+        setTimeout(() => this.columnaDestacada.set(null), 2500);
+      }
     }
 
     this.cargar();
@@ -244,10 +223,27 @@ export class OrdenesLista {
       },
       error: () => this.cargando.set(false),
     });
+
+    if (this.auth.esAdministrador()) this.cargarProformas();
   }
 
   /**
-   * Trae la primera foto de cada vehículo distinto entre las órdenes cargadas
+   * Las proformas vigentes en una sola consulta (el tope de 500 sobra para un
+   * taller). Si falla, las tarjetas no ofrecen cobrar en vez de ofrecerlo de más.
+   */
+  private cargarProformas(): void {
+    this.proformasService
+      .getAll({ estado: EstadoProforma.Emitida, tamanoPagina: 500 })
+      .pipe(catchError(() => of(null)))
+      .subscribe((resultado) => {
+        if (!resultado) return;
+        this.proformas.set(new Map(resultado.items.map((p) => [p.ordenId, p])));
+        this.proformasCargadas.set(true);
+      });
+  }
+
+  /**
+   * Trae las fotos de cada vehículo distinto entre las órdenes cargadas
    * (varias órdenes suelen compartir el mismo vehículo, así que se pide una
    * sola vez por placa, no por orden). Es solo de vistazo para la tarjeta: si
    * un vehículo no tiene fotos o la carga falla, su tarjeta cae al ícono de
@@ -262,15 +258,34 @@ export class OrdenesLista {
         this.vehiculosService.getFotos(id).pipe(catchError(() => of([]))),
       ),
     ).subscribe((listas) => {
-      const mapa = new Map<string, string | null>();
-      vehiculoIds.forEach((id, i) => mapa.set(id, listas[i][0]?.url ?? null));
-      this.fotosPorVehiculo.set(mapa);
+      const mapa = new Map<string, Portada>();
+      vehiculoIds.forEach((id, i) => {
+        const fotos = listas[i];
+        if (fotos.length > 0) mapa.set(id, { url: fotos[0].url, cantidad: fotos.length });
+      });
+      this.portadas.set(mapa);
     });
   }
 
   /** Portada del vehículo de la orden, o null si no tiene fotos cargadas. */
-  protected fotoPortada(orden: Orden): string | null {
-    return this.fotosPorVehiculo().get(orden.vehiculoId) ?? null;
+  protected portada(orden: Orden): Portada | null {
+    return this.portadas().get(orden.vehiculoId) ?? null;
+  }
+
+  protected proformaDe(orden: Orden): Proforma | null {
+    return this.proformas().get(orden.ordenId) ?? null;
+  }
+
+  /**
+   * Se cobra el trabajo terminado (misma regla que Proformas) que tiene monto:
+   * una revisión técnica sin costo no deja nada que cobrar.
+   */
+  protected mostrarCobro(orden: Orden): boolean {
+    return (
+      this.proformasCargadas() &&
+      (orden.estado === EstadoOrden.Finalizada || orden.estado === EstadoOrden.Cerrada) &&
+      orden.total > 0
+    );
   }
 
   protected onBuscar(valor: string): void {
@@ -288,17 +303,6 @@ export class OrdenesLista {
   protected limpiarFechas(): void {
     this.desde.set('');
     this.hasta.set('');
-  }
-
-  // --- Tarjeta -----------------------------------------------------------------
-
-  protected abrirDetalle(orden: Orden): void {
-    this.router.navigate(['/ordenes', orden.ordenId]);
-  }
-
-  /** Solo tiene sentido cobrar trabajo terminado (misma regla que Proformas). */
-  protected sePuedeFacturar(orden: Orden): boolean {
-    return orden.estado === EstadoOrden.Finalizada || orden.estado === EstadoOrden.Cerrada;
   }
 }
 

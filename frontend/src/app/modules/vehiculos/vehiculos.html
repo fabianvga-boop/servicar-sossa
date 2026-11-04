@@ -99,33 +99,7 @@
               </td>
               <td>
                 <div class="acciones-iconos">
-                  <button type="button" class="btn-enlace" (click)="abrirHistorial(vehiculo)">
-                    Historial
-                  </button>
-                  <button
-                    type="button"
-                    class="btn-icono"
-                    title="Fotos"
-                    aria-label="Ver fotos del vehículo"
-                    (click)="abrirGaleria(vehiculo)"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z" />
-                      <circle cx="12" cy="13" r="3" />
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    class="btn-icono"
-                    title="Diagrama del vehículo"
-                    aria-label="Ver diagrama del vehículo"
-                    (click)="abrirDiagrama(vehiculo)"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <rect x="5" y="3" width="14" height="18" rx="3" />
-                      <path d="M9 8h6M9 12h6M9 16h3" />
-                    </svg>
-                  </button>
+                  <a class="btn-enlace" [routerLink]="['/vehiculos', vehiculo.vehiculoId]">Ver ficha</a>
                   <!-- *appSiRol quita el botón del DOM para quien no sea Administrador -->
                   <button
                     *appSiRol="['Administrador']"
@@ -159,9 +133,10 @@
 </div>
 
 @if (formularioAbierto()) {
-  <app-modal
+  <app-cajon
     [titulo]="editando() ? 'Editar vehículo' : 'Nuevo vehículo'"
-    [ancho]="720"
+    [etiqueta]="editando()?.vehiculoId ?? ''"
+    [ancho]="520"
     (cerrar)="cerrarFormulario()"
   >
     <form [formGroup]="formulario" id="form-vehiculo" (ngSubmit)="guardar()">
@@ -314,181 +289,5 @@
         {{ guardando() ? 'Guardando…' : 'Guardar' }}
       </button>
     </div>
-  </app-modal>
-}
-
-@if (historialDe(); as vehiculo) {
-  <app-modal
-    titulo="Historial de {{ vehiculo.placa }}"
-    [ancho]="720"
-    (cerrar)="cerrarHistorial()"
-  >
-    @if (cargandoHistorial()) {
-      <app-esqueleto [filas]="4" [columnas]="1" />
-    } @else if (historial(); as h) {
-      <div class="indicadores-historial mb-2">
-        <div class="indicador-mini">
-          <div class="indicador-mini-valor">{{ h.resumen.totalVisitas }}</div>
-          <div class="indicador-mini-etiqueta">Órdenes atendidas</div>
-        </div>
-        <div class="indicador-mini">
-          <div class="indicador-mini-valor">{{ h.resumen.gastoAcumulado | bs }}</div>
-          <div class="indicador-mini-etiqueta">Gasto acumulado</div>
-        </div>
-        <div class="indicador-mini">
-          <div class="indicador-mini-valor">
-            {{ h.resumen.ultimaVisita ? (h.resumen.ultimaVisita | date: 'dd/MM/yyyy') : '—' }}
-          </div>
-          <div class="indicador-mini-etiqueta">Última visita</div>
-        </div>
-      </div>
-
-      @if (h.serviciosFrecuentes.length > 0) {
-        <h3 class="mb-1">Servicios más frecuentes</h3>
-        <div class="chips mb-2">
-          @for (s of h.serviciosFrecuentes; track s.nombre) {
-            <span class="chip">
-              {{ s.nombre }} <strong>× {{ s.cantidad }}</strong>
-            </span>
-          }
-        </div>
-      }
-
-      <h3 class="mb-1">Línea de tiempo</h3>
-      @if (h.eventos.length === 0) {
-        <p class="texto-tenue texto-sm mb-0">
-          Este vehículo todavía no tiene diagnósticos ni órdenes registradas.
-        </p>
-      } @else {
-        <ul class="linea-tiempo">
-          @for (evento of h.eventos; track evento.tipo + evento.id) {
-            <li>
-              <span class="linea-tiempo-icono" aria-hidden="true">
-                {{ evento.tipo === 'Diagnostico' ? '🔧' : '🗂' }}
-              </span>
-              <span class="linea-tiempo-cuerpo">
-                <span class="texto-fuerte texto-sm">
-                  {{ evento.tipo === 'Diagnostico' ? 'Diagnóstico' : 'Orden' }} {{ evento.id }}
-                </span>
-                <span class="texto-tenue texto-sm"> — {{ evento.detalle }}</span>
-                <span class="linea-tiempo-meta">
-                  {{ evento.fecha | date: 'dd/MM/yyyy' }} · {{ evento.estado }}
-                </span>
-              </span>
-            </li>
-          }
-        </ul>
-      }
-    }
-
-    <div pie>
-      <button type="button" class="btn btn-secundario" (click)="cerrarHistorial()">Cerrar</button>
-    </div>
-  </app-modal>
-}
-
-@if (galeriaDe(); as vehiculo) {
-  <app-modal titulo="Fotos de {{ vehiculo.placa }}" [ancho]="720" (cerrar)="cerrarGaleria()">
-    <p class="texto-tenue texto-sm mb-0">
-      Opcional: fotos para dejar constancia del estado del vehículo (golpes, rayones, nivel de
-      combustible…) al momento de ingresar. Desde el celular se pueden tomar en el momento.
-    </p>
-
-    <div *appSiRol="['Administrador']" class="mt-1">
-      <app-elegir-foto
-        etiqueta="Elegir archivo"
-        [ocupado]="subiendoFoto()"
-        (archivo)="onArchivoSeleccionado($event)"
-      />
-    </div>
-
-    @if (cargandoFotos()) {
-      <app-esqueleto [filas]="1" [columnas]="3" />
-    } @else {
-      <div class="galeria-fotos">
-        @for (foto of fotos(); track foto.fotoId) {
-          <div class="galeria-item">
-            <img [src]="urlArchivo(foto.url)" alt="Foto del vehículo {{ vehiculo.placa }}" />
-            <button
-              *appSiRol="['Administrador']"
-              type="button"
-              class="galeria-item-quitar"
-              title="Eliminar foto"
-              [disabled]="eliminandoFoto() === foto.fotoId"
-              (click)="eliminarFoto(foto)"
-            >
-              ×
-            </button>
-          </div>
-        }
-
-        @if (fotos().length === 0) {
-          <p class="texto-tenue texto-sm">Este vehículo todavía no tiene fotos.</p>
-        }
-      </div>
-    }
-
-    <div pie>
-      <button type="button" class="btn btn-secundario" (click)="cerrarGaleria()">Cerrar</button>
-    </div>
-  </app-modal>
-}
-
-@if (diagramaDe(); as vehiculo) {
-  <app-modal titulo="Diagrama de {{ vehiculo.placa }}" [ancho]="560" (cerrar)="cerrarDiagrama()">
-    <p class="texto-tenue texto-sm mb-2">
-      Haga clic en una zona para marcar su estado (Ok, Atención o En reparación). Queda como
-      historial: cada marca es un evento nuevo, no se pierde lo anterior.
-    </p>
-
-    @if (cargandoZonas()) {
-      <app-esqueleto [filas]="3" [columnas]="1" />
-    } @else {
-      <app-diagrama-vehiculo
-        [tipoCarroceria]="vehiculo.tipoCarroceria"
-        [svgUrl]="vehiculo.diagramaSvgUrl"
-        [zonas]="zonasDiagrama()"
-        [zonaSeleccionada]="zonaEditando()"
-        (zonaClick)="onZonaClick($event)"
-      />
-
-      @if (zonaEditando(); as zona) {
-        <form
-          class="rejilla mt-2"
-          style="border-top: 1px solid var(--gris-100); padding-top: 12px"
-          [formGroup]="formularioZona"
-          (ngSubmit)="guardarZona()"
-        >
-          <div class="campo">
-            <label for="estadoZona">Estado</label>
-            <select id="estadoZona" formControlName="estado">
-              <option [ngValue]="EstadoZonaVehiculo.Ok">Ok</option>
-              <option [ngValue]="EstadoZonaVehiculo.Atencion">Atención</option>
-              <option [ngValue]="EstadoZonaVehiculo.EnReparacion">En reparación</option>
-            </select>
-          </div>
-          <div class="campo">
-            <label for="detalleZona">Detalle (opcional)</label>
-            <input
-              id="detalleZona"
-              formControlName="detalle"
-              placeholder="Ej: rayón leve, golpe, falta pieza…"
-            />
-          </div>
-          <div style="display: flex; gap: 8px; justify-content: flex-end">
-            <button type="button" class="btn btn-secundario" (click)="cancelarZona()">
-              Cancelar
-            </button>
-            <button type="submit" class="btn btn-primario" [disabled]="guardandoZona()">
-              {{ guardandoZona() ? 'Guardando…' : 'Guardar zona' }}
-            </button>
-          </div>
-        </form>
-      }
-    }
-
-    <div pie>
-      <button type="button" class="btn btn-secundario" (click)="cerrarDiagrama()">Cerrar</button>
-    </div>
-  </app-modal>
+  </app-cajon>
 }

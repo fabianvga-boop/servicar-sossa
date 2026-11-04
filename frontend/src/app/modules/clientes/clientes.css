@@ -1,52 +1,543 @@
-/* Texto atenuado exacto pedido para "Sin vehículos": más claro que el gris
-   estándar de `.texto-tenue`, para que se lea como un estado vacío, no como
-   un dato más de la fila. */
-.sin-vehiculos {
+/* Maestro */
+
+.clientes-maestro {
+  display: grid;
+  grid-template-columns: minmax(340px, 420px) minmax(0, 1fr);
+  align-items: start;
+  gap: 20px;
+}
+
+/* La lista queda a la vista mientras se recorre una ficha larga; si hay
+   muchos clientes, se desplaza por dentro. */
+.clientes-lista {
+  position: sticky;
+  top: calc(var(--alto-encabezado) + 16px);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - var(--alto-encabezado) - 40px);
+  overflow: hidden;
+  background: var(--blanco);
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio);
+}
+
+.clientes-lista-cabecera {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px;
+}
+
+.buscador-clientes {
+  flex: none;
+  max-width: none;
+}
+
+.clientes-filas {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.clientes-esqueleto { padding: 0 16px 16px; }
+
+.fila-cliente {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 0;
+  border-top: 1px solid var(--gris-100);
+  background: var(--blanco);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.fila-cliente:hover { background: var(--gris-50); }
+
+/* La elegida: barra roja a la izquierda, sin fondo rojizo */
+.fila-cliente.elegida {
+  background: var(--gris-50);
+  box-shadow: inset 3px 0 0 var(--brand);
+}
+
+.fila-cliente:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: -2px;
+}
+
+.avatar-cliente {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--gris-100);
+  color: var(--gris-500);
   font-size: 13px;
+  font-weight: 600;
+}
+
+.avatar-cliente.grande {
+  width: 56px;
+  height: 56px;
+  background: var(--ink);
+  color: var(--blanco);
+  font-size: 18px;
+}
+
+.fila-cliente-textos {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.fila-cliente-textos strong {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fila-cliente-datos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.fila-cliente-ci {
+  font-size: 12px;
+  color: var(--gris-500);
+}
+
+.placas-resto {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gris-500);
+}
+
+.etiqueta-cliente { font-weight: 500; }
+
+.clientes-vacio {
+  margin: 0;
+  padding: 16px;
+  border-top: 1px solid var(--gris-100);
+  font-size: 14px;
+  color: var(--gris-500);
+}
+
+.clientes-mas {
+  width: 100%;
+  height: 44px;
+  border: 0;
+  border-top: 1px solid var(--gris-100);
+  background: var(--blanco);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--brand);
+  cursor: pointer;
+}
+
+.clientes-mas:hover { background: var(--gris-50); }
+
+/* Ficha del cliente */
+
+.clientes-detalle { min-width: 0; }
+
+/* Solo en el celular, donde la ficha tapa la lista */
+.volver-lista { display: none; }
+
+.ficha-cliente {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 24px;
+}
+
+.ficha-cliente > * { flex-shrink: 0; }
+
+.ficha-cliente-cabecera {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.ficha-cliente-titulo {
+  flex: 1 1 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ficha-cliente-titulo h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.ficha-cliente-titulo > span {
+  font-size: 13px;
+  color: var(--gris-500);
+}
+
+.cliente-inactivo { font-weight: 600; }
+
+.ficha-cliente-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ficha-cliente-datos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--fondo-app);
+}
+
+.ficha-cliente-datos div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ficha-cliente-datos dt {
+  font-size: 12px;
   color: var(--gris-400);
 }
 
-/* ------------------------------------------------------- Fila de acciones
-   "+ Vehículo" queda como acción secundaria destacada (pill); Editar y
-   Desactivar/Activar se agrupan como íconos compactos en una sola fila. */
-.acciones-cliente {
+.ficha-cliente-datos dd {
+  margin: 0;
+  font-size: 14px;
+}
+
+.ficha-cliente-datos dd.debe {
+  font-weight: 600;
+  color: var(--brand-dk);
+}
+
+.ficha-cliente-datos dd.al-dia { color: var(--verde-700); }
+
+.dato-largo { overflow-wrap: anywhere; }
+
+.ficha-cliente-seccion {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ficha-cliente-seccion h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.ficha-cliente-seccion-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.ficha-cliente-seccion-cabecera a {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.ficha-cliente-vacio {
+  margin: 0;
+  font-size: 13px;
+  color: var(--gris-500);
+}
+
+/* Vehículos del cliente */
+
+.vehiculo-cliente {
+  display: grid;
+  grid-template-columns: 168px minmax(0, 1fr);
+  gap: 16px;
+  padding: 12px;
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio);
+}
+
+.vehiculo-cliente-imagen {
+  position: relative;
+  height: 112px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #e3e7ec;
+}
+
+.vehiculo-cliente-imagen svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.silueta-piso { fill: #d3d8df; }
+.silueta-cuerpo { fill: #b8c0cb; }
+.silueta-rueda { fill: #7e8794; }
+
+.vehiculo-cliente-placa {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  display: inline-flex;
+}
+
+.vehiculo-cliente-cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.vehiculo-cliente-titulo {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.vehiculo-cliente-titulo strong {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.vehiculo-cliente-titulo a {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.estado-vehiculo {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  white-space: normal;
+}
+
+.estado-vehiculo-punto {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--punto);
+}
+
+.vehiculo-cliente-fotos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.vehiculo-cliente-fotos-titulo {
+  margin-right: 4px;
+  font-size: 12px;
+  color: var(--gris-500);
+}
+
+.vehiculo-cliente-fotos img {
+  width: 44px;
+  height: 34px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: var(--gris-100);
+}
+
+.fotos-resto {
+  width: 44px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: var(--gris-100);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gris-500);
+}
+
+.vehiculo-cliente-fotos a {
+  margin-left: 4px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Últimas órdenes */
+
+.ordenes-cliente {
+  overflow: hidden;
+  border: 1px solid var(--gris-200);
+  border-radius: 12px;
+}
+
+.orden-cliente {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr) 120px 110px;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  font-size: 14px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.orden-cliente + .orden-cliente { border-top: 1px solid var(--gris-100); }
+
+.orden-cliente:hover {
+  background: var(--gris-50);
+  color: var(--ink);
+}
+
+.orden-cliente-codigo { font-size: 13px; }
+
+.orden-cliente-detalle {
+  overflow: hidden;
+  color: var(--gris-500);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orden-cliente-cuando {
+  font-size: 13px;
+  color: var(--gris-500);
+}
+
+.ficha-cliente-nada {
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.ficha-cliente-nada p {
+  margin: 0;
+  color: var(--gris-500);
+}
+
+/* Alta y edición */
+
+.form-cliente {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+}
+
+.form-cliente-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.form-cliente-titulo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.form-cliente-titulo h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.form-cliente-pie {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--gris-100);
+}
+
+.form-cliente-botones {
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  flex-wrap: nowrap;
+  margin-left: auto;
 }
 
-.chip-accion {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 12px;
-  border: 1px solid var(--brand-soft);
-  border-radius: 20px;
-  background: var(--brand-soft);
-  color: var(--brand-dk);
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.12s, border-color 0.12s, color 0.12s;
+.form-cliente-estado { padding-left: 0; }
+
+.form-cliente-estado:not(.peligro) { color: var(--verde-700); }
+
+/* Responsive */
+
+@media (max-width: 1280px) {
+  .clientes-maestro { grid-template-columns: minmax(300px, 360px) minmax(0, 1fr); }
+
+  .vehiculo-cliente { grid-template-columns: 132px minmax(0, 1fr); }
+
+  .vehiculo-cliente-imagen { height: 96px; }
+
+  .orden-cliente { grid-template-columns: 80px minmax(0, 1fr) auto auto; }
 }
 
-.chip-accion:hover {
-  background: var(--brand);
-  border-color: var(--brand);
-  color: var(--blanco);
-}
+@media (max-width: 900px) {
+  .clientes-maestro { grid-template-columns: minmax(0, 1fr); }
 
-/* El <a> solo envuelve a <app-placa> para el enlace: no le agrega look propio */
-.placa-enlace {
-  display: inline-flex;
-  text-decoration: none;
-  border-radius: 5px;
-  transition: box-shadow 0.12s;
-}
+  .clientes-lista {
+    position: static;
+    max-height: none;
+  }
 
-.placa-enlace:hover {
-  box-shadow: 0 0 0 2px var(--brand-soft);
+  /* En el celular, una cosa a la vez: la lista o la ficha */
+  .clientes-maestro.ver-ficha .clientes-lista { display: none; }
+
+  .clientes-maestro:not(.ver-ficha) .clientes-detalle { display: none; }
+
+  .volver-lista {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 12px;
+    padding: 6px 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--gris-500);
+    cursor: pointer;
+  }
+
+  .ficha-cliente,
+  .form-cliente {
+    gap: 18px;
+    padding: 16px;
+  }
+
+  .ficha-cliente-datos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  /* Correo y dirección a todo el ancho: en media columna se parten */
+  .ficha-cliente-datos div:has(.dato-largo) { grid-column: 1 / -1; }
+
+  .vehiculo-cliente { grid-template-columns: minmax(0, 1fr); }
+
+  .vehiculo-cliente-imagen { height: 112px; }
+
+  .orden-cliente { grid-template-columns: auto minmax(0, 1fr) auto; }
+
+  .orden-cliente-cuando { display: none; }
 }

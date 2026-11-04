@@ -1,0 +1,125 @@
+.buscador-proveedores {
+  max-width: 380px;
+  margin-bottom: 18px;
+}
+
+.tarjetas-proveedor {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.tarjeta-proveedor {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio);
+  background: var(--blanco);
+}
+
+.tarjeta-proveedor.elegida { box-shadow: inset 3px 0 0 var(--brand); }
+
+.proveedor-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.proveedor-avatar {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--gris-100);
+  font-weight: 600;
+  color: var(--gris-500);
+}
+
+.proveedor-textos {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--gris-500);
+}
+
+.proveedor-textos strong {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.proveedor-datos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--fondo-app);
+}
+
+.proveedor-datos div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+}
+
+.proveedor-datos div > span:first-child {
+  font-size: 12px;
+  color: var(--gris-400);
+}
+
+.proveedor-datos .monto-mono { font-size: 15px; }
+
+.proveedor-botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.proveedor-compra { margin-left: auto; }
+
+.btn-icono-plano {
+  width: 32px;
+  height: 32px;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--gris-500);
+  cursor: pointer;
+}
+
+.btn-icono-plano:hover { background: var(--gris-100); color: var(--ink); }
+.btn-icono-plano.peligro:hover { color: var(--brand-dk); }
+.btn-icono-plano svg { width: 16px; height: 16px; }
+
+.proveedores-vacio {
+  grid-column: 1 / -1;
+  padding: 32px 20px;
+  text-align: center;
+  color: var(--gris-500);
+}
+
+#form-proveedor {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+@media (max-width: 1280px) {
+  :host-context(body.con-cajon) .tarjetas-proveedor { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 900px) {
+  .tarjetas-proveedor { grid-template-columns: minmax(0, 1fr); }
+  .proveedor-compra { margin-left: 0; }
+}

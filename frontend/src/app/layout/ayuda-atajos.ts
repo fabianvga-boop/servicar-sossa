@@ -79,7 +79,7 @@ interface GrupoAtajos {
       border-bottom-width: 2px;
       border-radius: 5px;
       background: var(--gris-50);
-      font-family: 'IBM Plex Mono', monospace;
+      font-family: var(--fuente-mono);
       font-size: 12.5px;
       text-align: center;
       color: var(--ink);

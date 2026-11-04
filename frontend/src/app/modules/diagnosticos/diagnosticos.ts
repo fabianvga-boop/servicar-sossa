@@ -1,30 +1,32 @@
 import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, debounceTime, distinctUntilChanged, map, of, switchMap } from 'rxjs';
 
-import { ETIQUETAS, EstadoDiag, RespuestaCliente } from '../../core/models/enums';
+import { EstadoDiag, RespuestaCliente } from '../../core/models/enums';
 import { Vehiculo } from '../../core/models/personas.model';
 import { Diagnostico, SugerenciaDiagnostico } from '../../core/models/taller.model';
 import { unicosOrdenados } from '../../shared/sugerencias-texto';
 import { AuthService } from '../../core/services/auth.service';
+import { ClientesService } from '../../core/services/clientes.service';
 import { ContadoresService } from '../../core/services/contadores.service';
 import { descargarArchivo } from '../../core/services/descarga';
 import { NotificacionService } from '../../core/services/notificacion.service';
 import { OrdenesService } from '../../core/services/ordenes.service';
-import { PreferenciasService } from '../../core/services/preferencias.service';
 import { DiagnosticosService } from '../../core/services/taller.service';
 import { VehiculosService } from '../../core/services/vehiculos.service';
+import { coincidePorPalabras } from '../../shared/busqueda';
+import { Cajon } from '../../shared/components/cajon';
 import { Confirmacion } from '../../shared/components/confirmacion';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
-import { InsigniaEstado } from '../../shared/components/insignia-estado';
-import { Modal } from '../../shared/components/modal';
 import { Paginador } from '../../shared/components/paginador';
 import { Placa } from '../../shared/components/placa';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
 import { detalleConNuevo } from '../../shared/recientes';
 import { Borrador, borrarBorrador, guardarBorrador, leerBorrador } from '../../shared/borradores';
+import { Atajo } from '../../shared/directives/atajo';
+import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 
 /** Lo que se guarda como borrador de un diagnóstico a medio escribir. */
 interface DatosDiagnostico {
@@ -33,11 +35,19 @@ interface DatosDiagnostico {
   observacionesTecnicas: string;
   montoEstimado: number | null;
 }
-import { Atajo } from '../../shared/directives/atajo';
-import { EnfocarError } from '../../shared/directives/enfocar-error';
-import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 
-const CLAVE_FILTRO = 'diagnosticos.estado';
+/** Filtro por la respuesta del cliente: lo que más importa de un diagnóstico. */
+type FiltroRespuesta = 'todos' | 'esperando' | 'aprobados' | 'rechazados';
+
+/** Los pasos del alta: vehículo, falla y presupuesto. */
+const PASOS = [
+  { numero: 1, nombre: 'Vehículo' },
+  { numero: 2, nombre: 'Falla' },
+  { numero: 3, nombre: 'Presupuesto' },
+];
+
+/** Motivos frecuentes de rechazo, para elegir con un toque. */
+const MOTIVOS_RECHAZO = ['Le pareció caro', 'Lo hará en otro taller', 'Lo va a pensar', 'Otro motivo'];
 
 /**
  * USU012, USU014-USU016 — diagnósticos de vehículos.
@@ -46,6 +56,9 @@ const CLAVE_FILTRO = 'diagnosticos.estado';
  * un diagnóstico. El cliente aprueba o rechaza el presupuesto aproximado, y
  * al aprobar el backend abre la orden en el acto — no hay paso manual salvo
  * el caso raro en que la creación automática falle (fallback abajo).
+ *
+ * La lista se trae entera (el tope de 500 sobra para un taller) y se filtra
+ * en pantalla, así los filtros por respuesta muestran su cantidad.
  */
 @Component({
   selector: 'app-diagnosticos',
@@ -54,58 +67,67 @@ const CLAVE_FILTRO = 'diagnosticos.estado';
     FormsModule,
     RouterLink,
     DatePipe,
-    Modal,
+    Cajon,
     Confirmacion,
     EstadoTabla,
-    InsigniaEstado,
     Paginador,
     Placa,
     SelectorBusqueda,
     Atajo,
-    EnfocarError,
     BolivianosPipe,
   ],
   templateUrl: './diagnosticos.html',
+  styleUrl: './diagnosticos.css',
 })
 export class Diagnosticos {
   private readonly servicio = inject(DiagnosticosService);
   private readonly vehiculosService = inject(VehiculosService);
+  private readonly clientesService = inject(ClientesService);
   private readonly ordenesService = inject(OrdenesService);
   private readonly fb = inject(FormBuilder);
   private readonly notificacion = inject(NotificacionService);
-  private readonly preferencias = inject(PreferenciasService);
   private readonly contadores = inject(ContadoresService);
   private readonly router = inject(Router);
+  private readonly ruta = inject(ActivatedRoute);
   protected readonly auth = inject(AuthService);
 
-  protected readonly diagnosticos = signal<Diagnostico[]>([]);
+  /** Todos los diagnósticos: la tabla, los filtros y el autocompletado salen de acá. */
+  protected readonly todos = signal<Diagnostico[]>([]);
   protected readonly vehiculos = signal<Vehiculo[]>([]);
   protected readonly cargando = signal(true);
-  protected readonly estadoFiltro = signal<string>('');
-  protected readonly buscar = signal('');
   protected readonly guardando = signal(false);
 
+  protected readonly filtro = signal<FiltroRespuesta>('todos');
+  protected readonly buscar = signal('');
   protected readonly pagina = signal(1);
   protected readonly tamanoPagina = signal(20);
-  protected readonly totalRegistros = signal(0);
-  protected readonly totalPaginas = signal(0);
 
+  // --- Paneles laterales (uno a la vez) ---------------------------------------
   protected readonly editando = signal<Diagnostico | null>(null);
   protected readonly formularioAbierto = signal(false);
-  protected readonly porAnular = signal<Diagnostico | null>(null);
+  protected readonly paso = signal(1);
   protected readonly detalle = signal<Diagnostico | null>(null);
+  protected readonly respondiendo = signal<Diagnostico | null>(null);
+  protected readonly porAnular = signal<Diagnostico | null>(null);
 
   /** Solo se usa como fallback si la orden no se creó sola al aprobar. */
   protected readonly guardandoOrden = signal(false);
-
-  // Respuesta del cliente al presupuesto y descarga del PDF.
-  protected readonly respondiendo = signal<Diagnostico | null>(null);
-  protected comentarioCliente = '';
   protected readonly descargando = signal<string | null>(null);
+
+  // --- Respuesta del cliente ---------------------------------------------------
+  /** Lo que eligió quien registra: nada hasta que toca Aprobó o Rechazó. */
+  protected readonly decision = signal<RespuestaCliente | null>(null);
+  protected readonly motivo = signal<string | null>(null);
+  protected comentarioCliente = '';
+  /** Fecha estimada de entrega al aprobar (opcional; la carga el Administrador). */
+  protected fechaEntrega = '';
+  /** Teléfono del cliente, para llamarlo o escribirle desde el panel. */
+  protected readonly telefonoCliente = signal<string | null>(null);
 
   protected readonly EstadoDiag = EstadoDiag;
   protected readonly RespuestaCliente = RespuestaCliente;
-  protected readonly ETIQUETAS = ETIQUETAS;
+  protected readonly PASOS = PASOS;
+  protected readonly MOTIVOS_RECHAZO = MOTIVOS_RECHAZO;
 
   protected readonly formulario = this.fb.nonNullable.group({
     vehiculoId: ['', Validators.required],
@@ -132,7 +154,9 @@ export class Diagnosticos {
   protected readonly cargandoSugerencia = signal(false);
 
   /** Fallas ya registradas: para no volver a escribir una que ya se tipeó antes. */
-  protected readonly fallasSugeridas = signal<string[]>([]);
+  protected readonly fallasSugeridas = computed(() =>
+    unicosOrdenados(this.todos().map((d) => d.descripcionFalla)),
+  );
 
   protected readonly opcionesVehiculo = computed<OpcionSelector[]>(() =>
     this.vehiculos().map((v) => ({
@@ -142,8 +166,58 @@ export class Diagnosticos {
     })),
   );
 
+  // --- Lista y filtros ------------------------------------------------------------
+
+  protected readonly cuentas = computed(() => {
+    const lista = this.todos();
+    return {
+      todos: lista.length,
+      esperando: lista.filter((d) => this.pasaFiltro(d, 'esperando')).length,
+      aprobados: lista.filter((d) => this.pasaFiltro(d, 'aprobados')).length,
+      rechazados: lista.filter((d) => this.pasaFiltro(d, 'rechazados')).length,
+    };
+  });
+
+  protected readonly filtrados = computed(() => {
+    const filtro = this.filtro();
+    const texto = this.buscar();
+
+    return this.todos().filter(
+      (d) =>
+        this.pasaFiltro(d, filtro) &&
+        coincidePorPalabras(
+          texto,
+          d.diagnosticoId,
+          d.placaVehiculo,
+          d.descripcionVehiculo,
+          d.nombreCliente,
+          d.descripcionFalla,
+        ),
+    );
+  });
+
+  protected readonly totalPaginas = computed(() =>
+    Math.max(1, Math.ceil(this.filtrados().length / this.tamanoPagina())),
+  );
+
+  protected readonly visibles = computed(() => {
+    const inicio = (Math.min(this.pagina(), this.totalPaginas()) - 1) * this.tamanoPagina();
+    return this.filtrados().slice(inicio, inicio + this.tamanoPagina());
+  });
+
+  /** La fila del diagnóstico abierto en el panel lateral. */
+  protected readonly filaElegida = computed(
+    () =>
+      this.respondiendo()?.diagnosticoId ??
+      this.detalle()?.diagnosticoId ??
+      (this.formularioAbierto() ? this.editando()?.diagnosticoId : null) ??
+      null,
+  );
+
+  /** Diagnóstico pedido por ?responder=: su panel se abre cuando llega la lista. */
+  private responderPendiente: string | null = null;
+
   constructor() {
-    this.estadoFiltro.set(this.preferencias.leer(CLAVE_FILTRO, ''));
     this.borradorEnPantalla.set(leerBorrador(this.auth.usuarioId(), 'diagnostico.nuevo'));
 
     // Mientras se escribe, lo cargado se guarda como borrador cada pocos
@@ -162,14 +236,6 @@ export class Diagnosticos {
     this.vehiculosService
       .getAll(undefined, undefined, 1, 500)
       .subscribe((resultado) => this.vehiculos.set(resultado.items));
-
-    // Solo para el autocompletado de "Descripción de la falla": no reemplaza
-    // la tabla paginada de arriba.
-    this.servicio
-      .getAll({ pagina: 1, tamanoPagina: 500 })
-      .subscribe((resultado) =>
-        this.fallasSugeridas.set(unicosOrdenados(resultado.items.map((d) => d.descripcionFalla))),
-      );
 
     // Diagnóstico asistido: apenas se redacta la falla (con algo de texto real),
     // se buscan casos históricos parecidos y se sugieren servicios/repuestos/precio.
@@ -191,63 +257,101 @@ export class Diagnosticos {
         this.cargandoSugerencia.set(false);
         this.sugerencia.set(resultado && resultado.basadoEnCasos > 0 ? resultado : null);
       });
+
+    // "Nuevo diagnóstico" desde Órdenes enlaza con ?nuevo=true: abre el alta directo.
+    // Desde la ficha de un vehículo llega además ?vehiculoId=: queda ya elegido.
+    const parametros = this.ruta.snapshot.queryParamMap;
+    if (parametros.get('responder')) {
+      this.responderPendiente = parametros.get('responder');
+      void this.router.navigate([], {
+        relativeTo: this.ruta,
+        queryParams: { responder: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
+    }
+    if (parametros.get('nuevo') === 'true') {
+      this.abrirNuevo();
+      const vehiculoId = parametros.get('vehiculoId');
+      if (vehiculoId) this.formulario.controls.vehiculoId.setValue(vehiculoId);
+      void this.router.navigate([], {
+        relativeTo: this.ruta,
+        queryParams: { nuevo: null, vehiculoId: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
+    }
   }
 
+  /** Todos de una vez: la lista se filtra y se pagina en pantalla. */
   protected cargar(): void {
     this.cargando.set(true);
 
-    const estado = this.estadoFiltro();
+    this.servicio.getAll({ pagina: 1, tamanoPagina: 500 }).subscribe({
+      next: (resultado) => {
+        this.todos.set(resultado.items);
+        this.cargando.set(false);
 
-    this.servicio
-      .getAll({
-        estado: estado === '' ? undefined : (Number(estado) as EstadoDiag),
-        buscar: this.buscar() || undefined,
-        pagina: this.pagina(),
-        tamanoPagina: this.tamanoPagina(),
-      })
-      .subscribe({
-        next: (resultado) => {
-          this.diagnosticos.set(resultado.items);
-          this.totalRegistros.set(resultado.totalRegistros);
-          this.totalPaginas.set(resultado.totalPaginas);
-          this.cargando.set(false);
-        },
-        error: () => this.cargando.set(false),
-      });
+        // "Registrar respuesta" desde el Panel enlaza con ?responder=DIA-001.
+        const pedido = this.responderPendiente;
+        this.responderPendiente = null;
+        const diagnostico = pedido ? resultado.items.find((d) => d.diagnosticoId === pedido) : null;
+        if (diagnostico) this.abrirResponder(diagnostico);
+      },
+      error: () => this.cargando.set(false),
+    });
   }
 
-  protected onFiltrarEstado(valor: string): void {
-    this.estadoFiltro.set(valor);
-    this.preferencias.guardar(CLAVE_FILTRO, valor);
+  protected elegirFiltro(filtro: FiltroRespuesta): void {
+    this.filtro.set(filtro);
     this.pagina.set(1);
-    this.cargar();
   }
 
   protected onBuscar(valor: string): void {
     this.buscar.set(valor);
     this.pagina.set(1);
-    this.cargar();
-  }
-
-  protected cambiarPagina(pagina: number): void {
-    this.pagina.set(pagina);
-    this.cargar();
   }
 
   protected cambiarTamano(tamano: number): void {
     this.tamanoPagina.set(tamano);
     this.pagina.set(1);
-    this.cargar();
+  }
+
+  /** Un anulado solo aparece en "Todos": ya no espera ni tiene respuesta que contar. */
+  private pasaFiltro(d: Diagnostico, filtro: FiltroRespuesta): boolean {
+    if (filtro === 'todos') return true;
+    if (d.estado === EstadoDiag.Anulado) return false;
+
+    switch (filtro) {
+      case 'esperando':
+        return d.respuestaCliente === RespuestaCliente.Pendiente;
+      case 'aprobados':
+        return d.respuestaCliente === RespuestaCliente.Aprobado;
+      default:
+        return d.respuestaCliente === RespuestaCliente.Rechazado;
+    }
+  }
+
+  /** Lo que dice la insignia de la columna Respuesta. */
+  protected textoRespuesta(d: Diagnostico): string {
+    if (d.estado === EstadoDiag.Anulado) return 'Anulado';
+    if (d.respuestaCliente === RespuestaCliente.Aprobado) return 'Aprobado';
+    if (d.respuestaCliente === RespuestaCliente.Rechazado) return 'Rechazado';
+    return d.montoEstimado == null ? 'Sin presupuesto' : 'Esperando respuesta';
+  }
+
+  protected claseRespuesta(d: Diagnostico): string {
+    if (d.estado === EstadoDiag.Anulado) return 'gris';
+    if (d.respuestaCliente === RespuestaCliente.Aprobado) return 'verde';
+    if (d.respuestaCliente === RespuestaCliente.Rechazado) return 'roja';
+    return d.montoEstimado == null ? 'gris' : 'naranja';
   }
 
   /**
-   * Posiciona el menú contextual (⋮) al abrirse. La tabla vive dentro de un
-   * contenedor con `overflow-x: auto` que, por spec de CSS, también recorta en
-   * vertical: un menú `absolute` quedaría atrapado (y con pocas filas obligaba
-   * a hacer scroll dentro de la tarjeta para verlo entero). Se lo pasa a
-   * `position: fixed`, que escapa cualquier contenedor con overflow, y se
-   * decide arriba/abajo según el espacio libre en la ventana. Es solo
-   * presentación: no toca datos ni la lógica del diagnóstico.
+   * Posiciona el menú contextual (⋮) al abrirse. La lista vive dentro de un
+   * contenedor con `overflow: hidden`: un menú `absolute` quedaría recortado.
+   * Se lo pasa a `position: fixed`, que escapa cualquier contenedor, y se
+   * decide arriba/abajo según el espacio libre en la ventana.
    */
   protected posicionarMenu(evento: Event): void {
     const detalle = evento.currentTarget as HTMLDetailsElement;
@@ -299,7 +403,7 @@ export class Diagnosticos {
     if (diagnostico.estado === EstadoDiag.Anulado) return false;
     // Una vez que el cliente respondió, el presupuesto queda sellado.
     if (diagnostico.respuestaCliente !== RespuestaCliente.Pendiente) return false;
-    return this.auth.esAdministrador() || diagnostico.mecanicoId === this.auth.sesion()?.usuarioId;
+    return this.esSuyoOAdmin(diagnostico);
   }
 
   /** El cliente solo puede responder si hay un monto estimado y aún no respondió. */
@@ -320,19 +424,49 @@ export class Diagnosticos {
     );
   }
 
-  protected abrirNuevo(): void {
+  /** El presupuesto lo responde el Administrador o el mecánico que lo hizo. */
+  protected esSuyoOAdmin(diagnostico: Diagnostico): boolean {
+    return this.auth.esAdministrador() || diagnostico.mecanicoId === this.auth.sesion()?.usuarioId;
+  }
+
+  /** "hoy", "ayer" o "hace N días": cuánto lleva esperando la respuesta. */
+  protected haceCuanto(fecha: string): string {
+    const dia = new Date(fecha);
+    const hoy = new Date();
+    dia.setHours(0, 0, 0, 0);
+    hoy.setHours(0, 0, 0, 0);
+
+    const dias = Math.round((hoy.getTime() - dia.getTime()) / 86_400_000);
+    if (dias <= 0) return 'hoy';
+    if (dias === 1) return 'ayer';
+    return `hace ${dias} días`;
+  }
+
+  /** Solo un panel abierto a la vez. */
+  private cerrarPaneles(): void {
+    this.formularioAbierto.set(false);
     this.editando.set(null);
+    this.detalle.set(null);
+    this.respondiendo.set(null);
+  }
+
+  // --- Alta (en tres pasos) y edición ------------------------------------------
+
+  protected abrirNuevo(): void {
+    this.cerrarPaneles();
     this.formulario.reset();
     this.formulario.controls.vehiculoId.enable();
     this.sugerencia.set(null);
+    this.paso.set(1);
     this.borradorPendiente.set(leerBorrador(this.auth.usuarioId(), this.claveBorrador()));
     this.formularioAbierto.set(true);
   }
 
   protected abrirEditar(diagnostico: Diagnostico): void {
+    this.cerrarPaneles();
     this.editando.set(diagnostico);
     this.sugerencia.set(null);
-    this.formulario.patchValue({
+    this.formulario.reset({
       vehiculoId: diagnostico.vehiculoId,
       descripcionFalla: diagnostico.descripcionFalla,
       observacionesTecnicas: diagnostico.observacionesTecnicas ?? '',
@@ -381,9 +515,44 @@ export class Diagnosticos {
     this.editando.set(null);
   }
 
+  protected textoSiguiente(): string {
+    if (this.guardando()) return 'Guardando…';
+    if (this.editando()) return 'Guardar cambios';
+    if (this.paso() < 3) return 'Siguiente';
+    return this.formulario.controls.montoEstimado.value != null ? 'Guardar y generar PDF' : 'Guardar';
+  }
+
+  /** Avanza un paso (validando el actual) o, en el último, guarda. */
+  protected siguiente(): void {
+    if (this.editando() || this.paso() === 3) {
+      this.guardar();
+      return;
+    }
+
+    const control =
+      this.paso() === 1 ? this.formulario.controls.vehiculoId : this.formulario.controls.descripcionFalla;
+    if (control.invalid) {
+      control.markAsTouched();
+      control.markAsDirty();
+      return;
+    }
+
+    this.paso.update((p) => p + 1);
+  }
+
+  protected atras(): void {
+    if (this.editando() || this.paso() === 1) {
+      this.cerrarFormulario();
+      return;
+    }
+    this.paso.update((p) => p - 1);
+  }
+
   protected guardar(): void {
     if (this.formulario.invalid) {
       this.formulario.markAllAsTouched();
+      // Vuelve al paso que tiene el problema.
+      if (!this.editando()) this.paso.set(this.formulario.controls.vehiculoId.invalid ? 1 : 2);
       return;
     }
 
@@ -400,13 +569,16 @@ export class Diagnosticos {
       : this.servicio.crear(datos);
 
     peticion.subscribe({
-      next: () => {
+      next: (guardado) => {
         this.notificacion.exito(
           enEdicion ? 'Diagnóstico actualizado.' : 'Diagnóstico registrado correctamente.',
         );
         this.guardando.set(false);
         this.cerrarFormulario();
         this.cargar();
+
+        // Con presupuesto, el PDF para el cliente sale en el acto.
+        if (!enEdicion && guardado.montoEstimado != null) this.descargarPdf(guardado);
       },
       error: () => this.guardando.set(false),
     });
@@ -433,23 +605,68 @@ export class Diagnosticos {
     });
   }
 
+  protected verDetalle(diagnostico: Diagnostico): void {
+    this.cerrarPaneles();
+    this.detalle.set(diagnostico);
+  }
+
   // --- Respuesta del cliente y presupuesto en PDF ---------------------------
 
   protected abrirResponder(diagnostico: Diagnostico): void {
+    this.cerrarPaneles();
     this.comentarioCliente = '';
+    this.fechaEntrega = '';
+    this.decision.set(null);
+    this.motivo.set(null);
+    this.telefonoCliente.set(null);
     this.respondiendo.set(diagnostico);
+
+    // El teléfono no viene con el diagnóstico: se pide al abrir el panel.
+    this.clientesService
+      .getById(diagnostico.clienteId)
+      .pipe(catchError(() => of(null)))
+      .subscribe((cliente) => {
+        if (this.respondiendo()?.diagnosticoId === diagnostico.diagnosticoId) {
+          this.telefonoCliente.set(cliente?.telefono?.trim() || null);
+        }
+      });
   }
 
-  protected confirmarRespuesta(respuesta: RespuestaCliente): void {
+  /** wa.me necesita el número con el código de país (591 para un celular de 8 dígitos). */
+  protected enlaceWhatsapp(telefono: string): string {
+    const digitos = telefono.replace(/\D/g, '');
+    return `https://wa.me/${digitos.length === 8 ? `591${digitos}` : digitos}`;
+  }
+
+  protected elegirMotivo(motivo: string): void {
+    this.motivo.update((actual) => (actual === motivo ? null : motivo));
+  }
+
+  /** Hoy en formato yyyy-mm-dd, como mínimo para la fecha de entrega. */
+  protected hoy(): string {
+    const ahora = new Date();
+    ahora.setMinutes(ahora.getMinutes() - ahora.getTimezoneOffset());
+    return ahora.toISOString().slice(0, 10);
+  }
+
+  protected confirmarRespuesta(): void {
     const diagnostico = this.respondiendo();
-    if (!diagnostico) return;
+    const respuesta = this.decision();
+    if (!diagnostico || respuesta === null) return;
+
+    // El motivo elegido con un toque va delante de lo que se escribió.
+    const motivo =
+      respuesta === RespuestaCliente.Rechazado && this.motivo() !== 'Otro motivo' ? this.motivo() : null;
+    const comentario = [motivo, this.comentarioCliente.trim()].filter(Boolean).join('. ');
+    const fechaEntrega =
+      respuesta === RespuestaCliente.Aprobado && this.auth.esAdministrador() ? this.fechaEntrega : '';
 
     this.guardando.set(true);
 
     this.servicio
       .responder(diagnostico.diagnosticoId, {
         respuesta,
-        comentarioCliente: this.comentarioCliente || null,
+        comentarioCliente: comentario || null,
       })
       .subscribe({
         next: (actualizado) => {
@@ -466,8 +683,19 @@ export class Diagnosticos {
           // Aprobado con orden ya creada: se salta la lista y se va directo a
           // trabajarla, igual que hacía antes el flujo manual de "Generar orden".
           if (actualizado.ordenId) {
-            this.notificacion.exito(`Presupuesto aprobado: se creó la orden ${actualizado.ordenId}.`);
-            void this.router.navigate(['/ordenes', actualizado.ordenId]);
+            const ordenId = actualizado.ordenId;
+            this.notificacion.exito(`Presupuesto aprobado: se creó la orden ${ordenId}.`);
+
+            if (!fechaEntrega) {
+              void this.router.navigate(['/ordenes', ordenId]);
+              return;
+            }
+
+            // La fecha estimada se guarda en la orden recién creada.
+            this.ordenesService.actualizar(ordenId, { fechaEstimada: fechaEntrega }).subscribe({
+              next: () => void this.router.navigate(['/ordenes', ordenId]),
+              error: () => void this.router.navigate(['/ordenes', ordenId]),
+            });
           } else {
             this.notificacion.advertencia(
               'Presupuesto aprobado, pero la orden no se pudo crear automáticamente. ' +
@@ -522,6 +750,7 @@ export class Diagnosticos {
         this.notificacion.exito('Diagnóstico anulado.');
         this.guardando.set(false);
         this.porAnular.set(null);
+        this.cerrarPaneles();
         this.cargar();
       },
       error: () => {

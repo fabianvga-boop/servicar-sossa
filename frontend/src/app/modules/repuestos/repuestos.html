@@ -1,7 +1,7 @@
 <div class="fila-entre envuelve mb-2 encabezado-pagina">
-  <div>
+  <div class="titulo-con-antetitulo">
+    <span>Almacén</span>
     <h1>Repuestos</h1>
-    <p class="texto-tenue texto-sm mb-0">Inventario del taller</p>
   </div>
   <div *appSiRol="['Administrador']" class="fila envuelve" style="gap: 8px">
     <button type="button" class="btn btn-secundario" (click)="gestionCategorias.set(true)">
@@ -21,161 +21,147 @@
   </div>
 </div>
 
-<div class="tarjeta">
-  <div class="tarjeta-encabezado">
-    <div class="fila envuelve">
-      <input
-        type="search"
-        maxlength="100"
-        placeholder="Buscar repuesto o vehículo…"
-        style="max-width: 280px"
-        [value]="buscar()"
-        (input)="onBuscar($any($event.target).value)"
-      />
-      <label class="fila texto-sm" style="gap: 6px">
-        <input
-          type="checkbox"
-          style="width: auto"
-          [checked]="soloStockBajo()"
-          (change)="alternarStockBajo()"
-        />
-        Solo stock bajo
-      </label>
+<div class="filtros-repuestos">
+  <label class="buscador-lista">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+    <input
+      type="search"
+      maxlength="100"
+      placeholder="Nombre, código o vehículo"
+      aria-label="Buscar repuestos"
+      [value]="buscar()"
+      (input)="onBuscar($any($event.target).value)"
+    />
+  </label>
 
-      <!-- Repuestos que sirven a un vehículo: universales y compatibles. -->
-      <div class="filtro-vehiculo">
-        <app-selector-busqueda
-          idCampo="filtroVehiculo"
-          marcador="Para el vehículo…"
-          [opciones]="opcionesVehiculo()"
-          [ngModel]="vehiculoFiltro()"
-          (ngModelChange)="filtrarPorVehiculo($event)"
-        />
-      </div>
-
-      <div class="filtro-vehiculo">
-        <app-selector-busqueda
-          idCampo="filtroCategoria"
-          marcador="Todas las categorías"
-          [opciones]="opcionesFiltroCategoria()"
-          [ngModel]="categoriaFiltro()"
-          (ngModelChange)="filtrarPorCategoria($event)"
-        />
-      </div>
-
-      @if (proveedorFiltro()) {
-        <span class="chip-filtro-proveedor">
-          Proveedor: {{ nombreProveedorFiltro() }}
-          <button
-            type="button"
-            (click)="limpiarFiltroProveedor()"
-            aria-label="Quitar filtro de proveedor"
-          >
-            ×
-          </button>
-        </span>
-      }
-    </div>
-    <span class="texto-tenue texto-sm">{{ totalRegistros() }} repuesto(s)</span>
+  <div class="chips-filtro" role="group" aria-label="Filtrar por estado">
+    <button type="button" class="chip-filtro" [class.activo]="vista() === 'todos'" [attr.aria-pressed]="vista() === 'todos'" (click)="elegirVista('todos')">
+      Todos <span class="chip-cuenta">{{ cuentasVista().todos }}</span>
+    </button>
+    <button type="button" class="chip-filtro" [class.activo]="vista() === 'minimo'" [attr.aria-pressed]="vista() === 'minimo'" (click)="elegirVista('minimo')">
+      En el mínimo <span class="chip-cuenta">{{ cuentasVista().minimo }}</span>
+    </button>
+    <button type="button" class="chip-filtro" [class.activo]="vista() === 'agotados'" [attr.aria-pressed]="vista() === 'agotados'" (click)="elegirVista('agotados')">
+      Agotados <span class="chip-cuenta">{{ cuentasVista().agotados }}</span>
+    </button>
+    <button type="button" class="chip-filtro" [class.activo]="vista() === 'especificos'" [attr.aria-pressed]="vista() === 'especificos'" (click)="elegirVista('especificos')">
+      Para ciertos vehículos <span class="chip-cuenta">{{ cuentasVista().especificos }}</span>
+    </button>
   </div>
 
-  @if (cargando() || repuestos().length === 0) {
-    <app-estado-tabla
-      [cargando]="cargando()"
-      [hayFiltro]="buscar().length > 0 || soloStockBajo() || proveedorFiltro().length > 0 || vehiculoFiltro().length > 0 || categoriaFiltro().length > 0"
-      titulo="Sin repuestos en inventario"
-      descripcion="Registre los repuestos que maneja el taller."
+  <span class="resumen-repuestos">{{ visibles().length }} de {{ repuestos().length }} repuestos</span>
+</div>
+
+<div class="filtros-repuestos filtros-secundarios">
+  <div class="filtro-vehiculo">
+    <app-selector-busqueda
+      idCampo="filtroVehiculo"
+      marcador="Para el vehículo…"
+      [opciones]="opcionesVehiculo()"
+      [ngModel]="vehiculoFiltro()"
+      (ngModelChange)="filtrarPorVehiculo($event)"
     />
+  </div>
+  <div class="filtro-vehiculo">
+    <app-selector-busqueda
+      idCampo="filtroCategoria"
+      marcador="Todas las categorías"
+      [opciones]="opcionesFiltroCategoria()"
+      [ngModel]="categoriaFiltro()"
+      (ngModelChange)="filtrarPorCategoria($event)"
+    />
+  </div>
+  @if (proveedorFiltro()) {
+    <span class="chip-filtro-proveedor">
+      Proveedor: {{ nombreProveedorFiltro() }}
+      <button type="button" (click)="limpiarFiltroProveedor()" aria-label="Quitar filtro de proveedor">×</button>
+    </span>
+  }
+</div>
+
+<section class="lista-filas lista-repuestos">
+  <div class="fila-lista fila-repuesto cabecera-lista" aria-hidden="true">
+    <span>Repuesto</span>
+    <span>Aplicación</span>
+    <span>Stock</span>
+    <span class="a-la-derecha">Precio</span>
+    <span class="a-la-derecha">{{ auth.esAdministrador() ? 'Acciones' : '' }}</span>
+  </div>
+
+  @if (cargando() && repuestos().length === 0) {
+    <div class="repuestos-esqueleto"><app-estado-tabla [cargando]="true" titulo="" descripcion="" /></div>
   } @else {
-    <div class="galeria-repuestos">
-      @for (repuesto of repuestos(); track repuesto.repuestoId) {
-        <article class="tarjeta-repuesto" [class.agotada]="repuesto.stockActual === 0">
-          <div class="repuesto-foto-caja">
-            @if (repuesto.fotoUrl) {
-              <img
-                class="repuesto-foto"
-                [src]="urlArchivo(repuesto.fotoUrl)"
-                [alt]="repuesto.nombre"
-              />
-            } @else {
-              <span class="repuesto-foto repuesto-foto-vacia" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M3 8l9-5 9 5-9 5-9-5Z" /><path d="M3 8v8l9 5 9-5V8" />
-                </svg>
-              </span>
-            }
-
-            <!-- Agotado bloquea el trabajo; stock bajo solo avisa: no son
-                 lo mismo, así que no comparten color. -->
-            @if (repuesto.stockActual === 0) {
-              <span class="repuesto-stock roja" title="Agotado: no se puede usar en órdenes">
-                Agotado
-              </span>
-            } @else if (repuesto.stockBajo) {
-              <span class="repuesto-stock naranja" [title]="'Stock bajo: mínimo ' + repuesto.stockMinimo">
-                {{ repuesto.stockActual }} · bajo
-              </span>
-            } @else {
-              <span class="repuesto-stock verde">{{ repuesto.stockActual }} disp.</span>
-            }
-          </div>
-
-          <div class="repuesto-cuerpo">
-            <span class="codigo">
-              {{ repuesto.repuestoId }} ·
+    @for (repuesto of visibles(); track repuesto.repuestoId) {
+      @let agotado = repuesto.stockActual <= 0;
+      @let bajo = !agotado && repuesto.stockBajo;
+      <div
+        class="fila-lista fila-repuesto"
+        [class.elegida]="formularioAbierto() && editando()?.repuestoId === repuesto.repuestoId"
+      >
+        <div class="repuesto-identidad">
+          @if (repuesto.fotoUrl) {
+            <button type="button" class="repuesto-foto" [disabled]="!auth.esAdministrador()" (click)="abrirFoto(repuesto)" [attr.aria-label]="'Foto de ' + repuesto.nombre">
+              <img [src]="urlArchivo(repuesto.fotoUrl)" alt="" loading="lazy" />
+            </button>
+          } @else {
+            <span class="repuesto-foto" aria-hidden="true">{{ inicialesRepuesto(repuesto.nombre) }}</span>
+          }
+          <span class="repuesto-textos">
+            <strong>{{ repuesto.nombre }}</strong>
+            <span>
+              <span class="codigo">{{ repuesto.repuestoId }}</span> ·
               @if (repuesto.nombreCategoria) {
                 {{ repuesto.nombreCategoria }}
               } @else {
                 <span class="sin-categoria" title="Sin categoría: en la orden no se controla para qué servicio se usa">sin categoría</span>
               }
             </span>
-            <h3 class="repuesto-nombre">{{ repuesto.nombre }}</h3>
-            <span class="texto-tenue texto-sm">{{ repuesto.nombreProveedor || 'Sin proveedor' }}</span>
-            <span
-              class="insignia-aplicacion"
-              [class.especifico]="repuesto.tipoAplicacion === TipoAplicacion.Especifico"
-              [title]="repuesto.tipoAplicacion === TipoAplicacion.Especifico
-                ? 'Compatible con: ' + repuesto.resumenCompatibilidad
-                : 'Sirve en cualquier vehículo'"
-            >
-              {{ repuesto.resumenCompatibilidad || 'Uso general' }}
-            </span>
-            <span class="repuesto-precio">{{ repuesto.precioVenta | bs }}</span>
-          </div>
-
-          <div *appSiRol="['Administrador']" class="acciones repuesto-acciones">
-            <button type="button" class="btn-enlace" (click)="abrirEditar(repuesto)">
-              Editar
+          </span>
+        </div>
+        <span class="repuesto-aplicacion" [title]="repuesto.tipoAplicacion === TipoAplicacion.Especifico ? 'Compatible con: ' + repuesto.resumenCompatibilidad : 'Sirve en cualquier vehículo'">
+          {{ repuesto.resumenCompatibilidad || 'Uso general' }}
+        </span>
+        <span class="repuesto-stock">
+          <span class="stock-texto" [class.agotado]="agotado" [class.bajo]="bajo">
+            {{ agotado ? 'Agotado' : bajo ? repuesto.stockActual + ' · en el mínimo' : repuesto.stockActual + ' disponibles' }}
+          </span>
+          <span class="stock-barra" aria-hidden="true">
+            <span [class.agotado]="agotado" [class.bajo]="bajo" [style.width.%]="nivelStock(repuesto)"></span>
+          </span>
+        </span>
+        <span class="monto-mono a-la-derecha">{{ repuesto.precioVenta | bs }}</span>
+        <span class="repuesto-acciones">
+          @if (auth.esAdministrador()) {
+            <button type="button" class="btn-icono-plano" title="Editar" aria-label="Editar repuesto" (click)="abrirEditar(repuesto)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /></svg>
             </button>
-            <button type="button" class="btn-enlace" (click)="abrirAjuste(repuesto)">
-              Stock
+            <button type="button" class="btn-icono-plano" title="Ajustar stock" aria-label="Ajustar stock" (click)="abrirAjuste(repuesto)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h10M4 17h6" /></svg>
             </button>
-            <button type="button" class="btn-enlace" (click)="abrirProcedencia(repuesto)">
-              Procedencia
+            <button type="button" class="btn-icono-plano" title="Procedencia y kárdex" aria-label="Procedencia y kárdex" (click)="abrirProcedencia(repuesto)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8v4l3 2" /><circle cx="12" cy="12" r="8" /></svg>
             </button>
-            <button type="button" class="btn-enlace" (click)="abrirFoto(repuesto)">
-              Foto
+            <button type="button" class="btn-icono-plano" title="Foto" aria-label="Foto del repuesto" (click)="abrirFoto(repuesto)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="9" cy="11" r="2" /><path d="m21 17-5-5-8 7" /></svg>
             </button>
-          </div>
-        </article>
-      }
-    </div>
-
-    <app-paginador
-      [pagina]="pagina()"
-      [totalPaginas]="totalPaginas()"
-      [totalRegistros]="totalRegistros()"
-      [tamanoPagina]="tamanoPagina()"
-      (cambiarPagina)="cambiarPagina($event)"
-      (cambiarTamano)="cambiarTamano($event)"
-    />
+          }
+        </span>
+      </div>
+    } @empty {
+      <div class="repuestos-vacio">
+        <strong>{{ repuestos().length === 0 && !buscar() ? 'Todavía no hay repuestos en el inventario' : 'Ningún repuesto coincide con la búsqueda' }}</strong>
+        <span>Revise lo escrito o quite el filtro. Si es un repuesto que nunca compró, regístrelo.</span>
+        <button type="button" class="btn btn-secundario" (click)="limpiarFiltros()">Quitar filtros</button>
+      </div>
+    }
   }
-</div>
+</section>
 
 @if (formularioAbierto()) {
-  <app-modal
+  <app-cajon
     [titulo]="editando() ? 'Editar repuesto' : 'Nuevo repuesto'"
-    [ancho]="720"
+    [etiqueta]="editando()?.repuestoId ?? ''"
+    [ancho]="520"
     (cerrar)="cerrarFormulario()"
   >
     <form [formGroup]="formulario" id="form-repuesto" (ngSubmit)="guardar()">
@@ -489,7 +475,7 @@
         {{ guardando() ? 'Guardando…' : 'Guardar' }}
       </button>
     </div>
-  </app-modal>
+  </app-cajon>
 }
 
 @if (ajustando(); as repuesto) {

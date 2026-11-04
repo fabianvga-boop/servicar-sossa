@@ -1,322 +1,359 @@
-.celda-vehiculo {
+/* Encabezado */
+
+.panel-cabecera {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
 }
 
-.indicadores {
+.panel-titulo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.panel-titulo span {
+  font-size: 14px;
+  color: var(--gris-400);
+}
+
+.panel-botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.panel-cargando {
+  margin-bottom: 24px;
+  padding: 20px;
+}
+
+/* Indicadores */
+
+.indicadores-panel {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 14px;
-}
-
-.indicador {
-  background: var(--blanco);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 24px;
   border: 1px solid var(--gris-200);
   border-radius: var(--radio);
-  padding: 15px 18px 17px;
-  animation: entrada-escalonada 0.28s var(--entrada-easing) backwards;
+  background: var(--blanco);
 }
 
-.indicador:nth-child(2) { animation-delay: 40ms; }
-.indicador:nth-child(3) { animation-delay: 80ms; }
-.indicador:nth-child(4) { animation-delay: 120ms; }
-
-@media (prefers-reduced-motion: reduce) {
-  .indicador { animation: none; }
-}
-
-/* La tarjeta más accionable del panel: trabajo ya terminado que solo falta
-   cerrar y facturar (a diferencia de "en proceso", que no exige ninguna
-   acción todavía). Mismo borde y sombra que el resto, solo un poco más
-   presente: acento superior a tono con su propio verde y valor algo mayor. */
-.indicador-prioridad {
-  border-top: 3px solid var(--verde-600);
-  box-shadow: var(--sombra-md);
-}
-
-.indicador-prioridad .indicador-valor {
-  font-size: 30px;
-}
-
-/* Etiqueta e ícono arriba, valor debajo: se lee "qué" antes que "cuánto". */
-.indicador-cabecera {
+.indicador-panel {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 20px;
+  font-size: 13px;
+  color: var(--gris-500);
 }
 
-.indicador-icono {
-  color: var(--gris-400);
-}
+.indicador-panel + .indicador-panel { border-left: 1px solid var(--gris-100); }
 
 .indicador-valor {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 27px;
-  font-weight: 600;
+  font-size: 26px;
+  letter-spacing: -0.02em;
   color: var(--ink);
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
 }
 
-.indicador-valor.naranja { color: var(--naranja-700); }
-.indicador-valor.verde { color: var(--verde-700); }
+.indicador-valor.alerta { color: var(--brand-dk); }
 
-.indicador-etiqueta {
+.indicador-pie {
   font-size: 12px;
-  font-weight: 500;
-  color: var(--gris-500);
-}
-
-/* Único dato de tendencia calculable de forma honesta (ver dashboard.ts) */
-.indicador-extra {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: var(--gris-500);
-  margin-top: 10px;
-}
-
-.indicador-extra .delta {
-  padding: 2px 7px;
-  border-radius: 20px;
-  background: var(--verde-100);
-  color: #1f6b39;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.alerta { border-left: 4px solid var(--naranja-600); }
-
-/* ------------------------------------------------- Tendencia (sparkline)
-
-   Sube y baja según cuántas órdenes se abrieron cada día de la semana: es
-   la misma lista que ya carga la tarjeta, agrupada por día. Al no haber
-   histórico guardado en el backend, esto es lo único que se puede mostrar
-   como tendencia sin inventar un dato que el sistema no tiene. */
-.chispa {
-  display: block;
-  width: 100%;
-  height: 30px;
-  margin-top: 10px;
-}
-
-.chispa-area {
-  fill: var(--azul-100);
-  opacity: 0.7;
-}
-
-.chispa-linea {
-  fill: none;
-  stroke: var(--azul-600);
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.chispa-punto {
-  fill: var(--azul-600);
-}
-
-/* Leyenda breve bajo cada gráfico (sparkline o anillo): aclara qué mide
-   exactamente, porque el número solo no lo dice. */
-.grafico-leyenda {
-  font-size: 10.5px;
   color: var(--gris-400);
-  margin-top: 6px;
-  line-height: 1.3;
 }
 
-/* --------------------------------------------------- Anillo de progreso
+/* Columnas */
 
-   Acompaña al número, no lo reemplaza: dice qué fracción de lo activo ya
-   avanzó de una etapa a la siguiente. */
-.indicador-fila {
+.panel-columnas {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  align-items: start;
+  gap: 24px;
+}
+
+.panel-principal,
+.panel-lateral {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.panel-bloque { overflow: hidden; }
+
+.panel-bloque-cabecera {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-}
-
-.anillo {
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
-}
-
-.anillo-fondo {
-  fill: none;
-  stroke: var(--gris-200);
-  stroke-width: 4;
-}
-
-.anillo-progreso {
-  fill: none;
-  stroke-width: 4;
-  stroke-linecap: round;
-  transform: rotate(-90deg);
-  transform-origin: 20px 20px;
-  transition: stroke-dasharray 0.3s ease;
-}
-
-.anillo-progreso.naranja { stroke: var(--naranja-600); }
-.anillo-progreso.verde { stroke: var(--verde-600); }
-
-.anillo-texto {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 9.5px;
-  font-weight: 700;
-  text-anchor: middle;
-  fill: var(--ink-soft);
-}
-
-/* --------------------------------------------------------- Layout 2 columnas */
-
-.panel-cols {
-  display: grid;
-  grid-template-columns: 1.6fr 1fr;
-  gap: 16px;
-  align-items: start;
-}
-
-.col-lateral {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-@media (max-width: 1000px) {
-  .panel-cols { grid-template-columns: 1fr; }
-}
-
-/* ------------------------------------------------------ Accesos directos */
-
-.accesos {
-  display: flex;
-  flex-direction: column;
-}
-
-.acceso {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 13px 18px;
-  border-bottom: 1px solid var(--gris-100);
-  border-left: 3px solid var(--azul-600);
-  color: inherit;
-  text-decoration: none;
-}
-
-.acceso:last-child { border-bottom: none; }
-
-.acceso:hover {
-  background: var(--gris-50);
-  text-decoration: none;
-}
-
-.acceso.urgente { border-left-color: var(--brand); }
-
-/* El color sigue al mismo código que el borde izquierdo de la fila: azul
-   para "hay que atender", rojo cuando además es urgente. */
-.acceso-icono {
-  color: var(--azul-700);
-  flex-shrink: 0;
-}
-
-.acceso.urgente .acceso-icono { color: var(--brand); }
-
-.acceso-texto {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
-}
-
-.acceso-etiqueta {
+  padding: 16px 20px;
   font-size: 13px;
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.acceso-descripcion {
-  font-size: 11.5px;
-  color: var(--gris-500);
-}
-
-.acceso-detalle {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--ink);
-  margin-top: 2px;
-}
-
-.acceso-cantidad {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 22px;
-  font-weight: 600;
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
-  flex-shrink: 0;
-}
-
-.acceso.urgente .acceso-cantidad { color: var(--brand-dk); }
-
-/* ------------------------------------------------------------ Por reponer */
-
-.reponer-lista {
-  display: flex;
-  flex-direction: column;
-}
-
-.reponer-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 18px;
-  border-bottom: 1px solid var(--gris-100);
-  color: inherit;
-  text-decoration: none;
-}
-
-.reponer-item:last-child { border-bottom: none; }
-.reponer-item:hover { background: var(--gris-50); text-decoration: none; }
-
-.reponer-foto {
-  width: 34px;
-  height: 34px;
-  flex-shrink: 0;
-  border-radius: var(--radio-sm);
-  border: 1px solid var(--gris-200);
-  object-fit: cover;
-  background: var(--gris-100);
-}
-
-.reponer-foto-vacia {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 15px;
   color: var(--gris-400);
 }
 
-.reponer-texto {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
+.panel-bloque-cabecera a { font-weight: 500; }
 
-.reponer-nombre {
-  font-size: 12.5px;
+.panel-bloque h2,
+.panel-comisiones h2 {
+  margin: 0;
+  font-size: 16px;
   font-weight: 600;
   color: var(--ink);
 }
 
-.reponer-stock {
-  font-size: 11px;
-  color: var(--naranja-700);
+.panel-vacio {
+  margin: 0;
+  padding: 14px 20px 18px;
+  border-top: 1px solid var(--gris-100);
+  font-size: 13px;
+  color: var(--gris-500);
+}
+
+.panel-mas {
+  width: 100%;
+  height: 44px;
+  border: 0;
+  border-top: 1px solid var(--gris-100);
+  background: var(--blanco);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--brand);
+  cursor: pointer;
+}
+
+.panel-mas:hover { background: var(--gris-50); }
+
+/* Pendientes de acción */
+
+.fila-tarea {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--gris-100);
+  transition: background-color 0.15s;
+}
+
+.fila-tarea:hover { background: var(--gris-50); }
+
+.tarea-punto {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.tarea-punto.roja { background: var(--brand); }
+.tarea-punto.naranja { background: var(--naranja-600); }
+.tarea-punto.azul { background: var(--azul-600); }
+.tarea-punto.verde { background: var(--verde-600); }
+
+.tarea-textos {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.tarea-titulo {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tarea-titulo strong {
+  font-size: 14px;
   font-weight: 600;
 }
 
-.reponer-stock.critico { color: var(--brand-dk); }
+.tarea-detalle {
+  font-size: 13px;
+  color: var(--gris-500);
+}
+
+.tarea-monto { font-size: 14px; }
+
+/* Órdenes recientes */
+
+.fila-reciente {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1.4fr) minmax(0, 1fr) 120px 110px;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--gris-100);
+  font-size: 14px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+a.fila-reciente:hover {
+  background: var(--gris-50);
+  color: var(--ink);
+}
+
+.cabecera-reciente {
+  background: var(--gris-50);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--gris-400);
+}
+
+.reciente-codigo { font-size: 13px; }
+
+.reciente-vehiculo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.reciente-vehiculo span,
+.reciente-cliente {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reciente-estado { font-weight: 500; }
+
+/* Stock por reponer */
+
+.fila-stock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--gris-100);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.fila-stock:hover {
+  background: var(--gris-50);
+  color: var(--ink);
+}
+
+.stock-linea {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.stock-linea strong { font-weight: 500; }
+
+.stock-estado {
+  font-size: 13px;
+  white-space: nowrap;
+  color: var(--naranja-700);
+}
+
+.stock-estado.agotado {
+  font-weight: 600;
+  color: var(--brand-dk);
+}
+
+.stock-barra {
+  display: block;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--gris-100);
+}
+
+.stock-barra span {
+  display: block;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--naranja-600);
+}
+
+.stock-barra span.agotado { background: var(--brand); }
+
+.panel-bloque-pie {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--gris-100);
+}
+
+.panel-enlace {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.panel-boton-ancho { justify-content: center; }
+
+/* Comisiones */
+
+.panel-comisiones {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 20px;
+}
+
+.comisiones-fila {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--gris-500);
+}
+
+.comisiones-monto {
+  font-size: 24px;
+  color: var(--ink);
+}
+
+/* Responsive */
+
+@media (max-width: 1200px) {
+  .panel-columnas { grid-template-columns: minmax(0, 1fr); }
+
+  .panel-lateral {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .indicadores-panel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  .indicador-panel:nth-child(3) { border-left: 0; }
+
+  .indicador-panel:nth-child(n + 3) { border-top: 1px solid var(--gris-100); }
+
+  .indicador-valor { font-size: 22px; }
+
+  .panel-lateral { display: flex; }
+
+  .fila-tarea {
+    grid-template-columns: 10px minmax(0, 1fr) auto;
+    gap: 6px 12px;
+  }
+
+  .fila-tarea .btn {
+    grid-column: 2 / -1;
+    justify-self: start;
+  }
+
+  .fila-reciente { grid-template-columns: minmax(0, 1fr) auto; }
+
+  .fila-reciente > :nth-child(1),
+  .fila-reciente > :nth-child(3),
+  .fila-reciente > :nth-child(4) { display: none; }
+
+  .cabecera-reciente { display: none; }
+}

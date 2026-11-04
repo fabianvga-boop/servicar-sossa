@@ -1,5 +1,5 @@
 import { DatePipe, KeyValuePipe } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { FormatoReporte, TipoReporte } from '../../core/models/enums';
@@ -9,7 +9,15 @@ import { ReportesService } from '../../core/services/reportes.service';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { Paginador } from '../../shared/components/paginador';
 
-/** USU017-USU020 — generación y exportación de reportes. */
+type Rango = 'hoy' | 'semana' | 'mes' | 'fechas';
+type Salida = 'pdf' | 'excel' | 'csv' | 'pantalla';
+
+const MESES = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+];
+
+/** USU017-USU020 — reportes: qué, de cuándo y en qué formato. */
 @Component({
   selector: 'app-reportes',
   imports: [FormsModule, DatePipe, KeyValuePipe, EstadoTabla, Paginador],
@@ -22,105 +30,139 @@ export class Reportes {
 
   protected readonly reporte = signal<Reporte | null>(null);
   protected readonly bitacora = signal<ReporteGenerado[]>([]);
-  protected readonly generando = signal(false);
-  protected readonly exportando = signal(false);
-  protected readonly mostrarBitacora = signal(false);
+  protected readonly procesando = signal(false);
 
   protected readonly paginaBitacora = signal(1);
-  protected readonly tamanoPaginaBitacora = signal(20);
+  protected readonly tamanoPaginaBitacora = signal(10);
   protected readonly totalBitacora = signal(0);
   protected readonly totalPaginasBitacora = signal(0);
 
   protected readonly tipos = [
-    { valor: TipoReporte.Ventas, etiqueta: 'Ventas', ayuda: 'Facturación emitida y cobrada' },
-    { valor: TipoReporte.Comisiones, etiqueta: 'Comisiones', ayuda: 'Comisiones por mecánico' },
-    { valor: TipoReporte.Inventario, etiqueta: 'Inventario', ayuda: 'Estado actual del stock' },
-    { valor: TipoReporte.Ordenes, etiqueta: 'Órdenes', ayuda: 'Órdenes de trabajo del periodo' },
+    {
+      valor: TipoReporte.Ventas,
+      etiqueta: 'Ventas',
+      ayuda: 'Lo cobrado por órdenes y mostrador, por día y método de pago.',
+      icono: 'M4 19V5M4 19h16M8 15l3-4 3 2 4-6',
+      tono: 'rojo',
+    },
+    {
+      valor: TipoReporte.Ordenes,
+      etiqueta: 'Órdenes',
+      ayuda: 'Cuántas se abrieron, cerraron y cancelaron en el periodo.',
+      icono: 'M7 3h10v18H7zM10 8h4M10 12h4M10 16h2',
+      tono: 'azul',
+    },
+    {
+      valor: TipoReporte.Comisiones,
+      etiqueta: 'Comisiones',
+      ayuda: 'Lo que corresponde a cada mecánico y lo ya pagado.',
+      icono: 'M12 3v18M17 7H9.5a3 3 0 0 0 0 6h5a3 3 0 0 1 0 6H7',
+      tono: 'naranja',
+    },
+    {
+      valor: TipoReporte.Inventario,
+      etiqueta: 'Inventario',
+      ayuda: 'Stock actual, valor del inventario y repuestos por reponer.',
+      icono: 'm12 3 8 4.5v9L12 21l-8-4.5v-9zM12 12v9',
+      tono: 'verde',
+    },
   ];
 
-  protected readonly FormatoReporte = FormatoReporte;
-  protected readonly TipoReporte = TipoReporte;
-
-  protected filtros = {
-    tipo: TipoReporte.Ventas,
-    desde: this.primerDiaDelMes(),
-    hasta: this.hoy(),
-  };
-
-  /**
-   * Chips de rango rápido. Por pedido expreso, aquí solo va la estructura visual
-   * y el estado del chip activo: la lógica de fechas la conecta el usuario luego.
-   * Marcar un chip no toca todavía `filtros.desde/hasta`.
-   */
-  protected readonly rangosRapidos = [
+  protected readonly rangos: { clave: Rango; etiqueta: string }[] = [
     { clave: 'hoy', etiqueta: 'Hoy' },
     { clave: 'semana', etiqueta: 'Esta semana' },
     { clave: 'mes', etiqueta: 'Este mes' },
-  ] as const;
-  protected readonly rangoRapido = signal<string | null>(null);
+    { clave: 'fechas', etiqueta: 'Elegir fechas' },
+  ];
 
-  protected marcarRango(clave: string): void {
-    this.rangoRapido.set(clave);
-  }
+  protected readonly salidas: { clave: Salida; etiqueta: string }[] = [
+    { clave: 'pdf', etiqueta: 'PDF' },
+    { clave: 'excel', etiqueta: 'Excel' },
+    { clave: 'csv', etiqueta: 'CSV' },
+    { clave: 'pantalla', etiqueta: 'Ver en pantalla' },
+  ];
+
+  protected readonly tipo = signal(TipoReporte.Ventas);
+  protected readonly rango = signal<Rango>('mes');
+  protected readonly salida = signal<Salida>('pdf');
+  protected readonly desde = signal(fechaIso(new Date(new Date().getFullYear(), new Date().getMonth(), 1)));
+  protected readonly hasta = signal(fechaIso(new Date()));
+
+  /** El de inventario es una foto del stock de hoy: el periodo no aplica. */
+  protected readonly periodoAplica = computed(() => this.tipo() !== TipoReporte.Inventario);
+
+  protected readonly nombreTipo = computed(
+    () => this.tipos.find((t) => t.valor === this.tipo())?.etiqueta.toLowerCase() ?? '',
+  );
+
+  /** "Del 1 al 4 de noviembre de 2026". */
+  protected readonly textoPeriodo = computed(() => textoPeriodo(this.desde(), this.hasta()));
 
   constructor() {
-    this.generar();
     this.cargarBitacora();
   }
 
-  private hoy(): string {
-    return new Date().toISOString().slice(0, 10);
-  }
-
-  private primerDiaDelMes(): string {
-    const ahora = new Date();
-    return new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString().slice(0, 10);
-  }
-
-  /** El reporte de inventario es una foto del stock: el periodo no aplica. */
-  protected get periodoAplica(): boolean {
-    return Number(this.filtros.tipo) !== TipoReporte.Inventario;
+  protected elegirRango(rango: Rango): void {
+    this.rango.set(rango);
+    const hoy = new Date();
+    if (rango === 'hoy') {
+      this.desde.set(fechaIso(hoy));
+      this.hasta.set(fechaIso(hoy));
+    } else if (rango === 'semana') {
+      const lunes = new Date(hoy);
+      lunes.setDate(hoy.getDate() - ((hoy.getDay() + 6) % 7));
+      this.desde.set(fechaIso(lunes));
+      this.hasta.set(fechaIso(hoy));
+    } else if (rango === 'mes') {
+      this.desde.set(fechaIso(new Date(hoy.getFullYear(), hoy.getMonth(), 1)));
+      this.hasta.set(fechaIso(hoy));
+    }
   }
 
   protected generar(): void {
-    if (this.filtros.desde > this.filtros.hasta) {
+    if (this.desde() > this.hasta()) {
       this.notificacion.advertencia('La fecha inicial no puede ser posterior a la final.');
       return;
     }
 
-    this.generando.set(true);
+    const salida = this.salida();
+    this.procesando.set(true);
 
-    this.servicio
-      .generar(Number(this.filtros.tipo) as TipoReporte, this.filtros.desde, this.filtros.hasta)
-      .subscribe({
+    if (salida === 'pantalla') {
+      this.servicio.generar(this.tipo(), this.desde(), this.hasta()).subscribe({
         next: (reporte) => {
           this.reporte.set(reporte);
-          this.generando.set(false);
+          this.procesando.set(false);
+          setTimeout(() => document.getElementById('reporte-en-pantalla')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
         },
-        error: () => this.generando.set(false),
+        error: () => this.procesando.set(false),
       });
+      return;
+    }
+
+    const formato = salida === 'excel' ? FormatoReporte.Excel : salida === 'csv' ? FormatoReporte.Csv : FormatoReporte.Pdf;
+    this.descargar(this.tipo(), this.desde(), this.hasta(), formato);
   }
 
-  protected exportar(formato: FormatoReporte): void {
-    this.exportando.set(true);
+  /** "Descargar de nuevo" en la lista de generados: mismo tipo, periodo y formato. */
+  protected repetir(registro: ReporteGenerado): void {
+    const tipo = TipoReporte[registro.tipoReporte as keyof typeof TipoReporte];
+    if (tipo === undefined) return;
+    this.procesando.set(true);
+    this.descargar(tipo, registro.fechaInicio.slice(0, 10), registro.fechaFin.slice(0, 10), registro.formato);
+  }
 
-    this.servicio
-      .exportar(
-        Number(this.filtros.tipo) as TipoReporte,
-        this.filtros.desde,
-        this.filtros.hasta,
-        formato,
-      )
-      .subscribe({
-        next: ({ blob, nombreArchivo }) => {
-          this.servicio.descargar(blob, nombreArchivo);
-          this.notificacion.exito(`Reporte descargado: ${nombreArchivo}`);
-          this.exportando.set(false);
-          // La exportación queda registrada en la bitácora del backend.
-          this.cargarBitacora();
-        },
-        error: () => this.exportando.set(false),
-      });
+  private descargar(tipo: TipoReporte, desde: string, hasta: string, formato: FormatoReporte): void {
+    this.servicio.exportar(tipo, desde, hasta, formato).subscribe({
+      next: ({ blob, nombreArchivo }) => {
+        this.servicio.descargar(blob, nombreArchivo);
+        this.notificacion.exito(`Reporte descargado: ${nombreArchivo}`);
+        this.procesando.set(false);
+        // La descarga queda registrada en la bitácora del backend.
+        this.cargarBitacora();
+      },
+      error: () => this.procesando.set(false),
+    });
   }
 
   protected cargarBitacora(): void {
@@ -145,6 +187,33 @@ export class Reportes {
   }
 
   protected nombreFormato(formato: FormatoReporte): string {
-    return FormatoReporte[formato];
+    return formato === FormatoReporte.Pdf ? 'PDF' : formato === FormatoReporte.Excel ? 'Excel' : 'CSV';
   }
+
+  protected nombreTipoGuardado(tipo: string): string {
+    return tipo === 'Ordenes' ? 'Órdenes' : tipo;
+  }
+
+  protected periodoGuardado(registro: ReporteGenerado): string {
+    // Registros viejos sin fechas guardadas llegan con el año 1.
+    if (Number(registro.fechaInicio.slice(0, 4)) < 2000) return 'Sin periodo';
+    return registro.tipoReporte === 'Inventario'
+      ? 'Al ' + registro.fechaFin.slice(8, 10) + '/' + registro.fechaFin.slice(5, 7) + '/' + registro.fechaFin.slice(0, 4)
+      : textoPeriodo(registro.fechaInicio.slice(0, 10), registro.fechaFin.slice(0, 10));
+  }
+}
+
+function fechaIso(fecha: Date): string {
+  return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`;
+}
+
+/** "Del 1 al 4 de noviembre de 2026", "El 4 de noviembre de 2026" o con dos meses. */
+function textoPeriodo(desde: string, hasta: string): string {
+  const [a1, m1, d1] = desde.split('-').map(Number);
+  const [a2, m2, d2] = hasta.split('-').map(Number);
+  if (!a1 || !a2) return '';
+  if (desde === hasta) return `El ${d1} de ${MESES[m1 - 1]} de ${a1}`;
+  if (a1 === a2 && m1 === m2) return `Del ${d1} al ${d2} de ${MESES[m2 - 1]} de ${a2}`;
+  if (a1 === a2) return `Del ${d1} de ${MESES[m1 - 1]} al ${d2} de ${MESES[m2 - 1]} de ${a2}`;
+  return `Del ${d1} de ${MESES[m1 - 1]} de ${a1} al ${d2} de ${MESES[m2 - 1]} de ${a2}`;
 }

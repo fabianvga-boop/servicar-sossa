@@ -1,0 +1,142 @@
+/* ------------------------------------------------- Guía de facturación */
+
+.encabezado-guia h1 { margin-bottom: 4px; }
+
+.guia-intro {
+  max-width: 70ch;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+/* Pasos a la izquierda, resumen de lo hecho y lo pendiente a la derecha */
+.guia {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.guia-pasos { padding: 6px 24px; }
+
+.guia-paso {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 14px;
+  padding: 16px 0;
+  border-top: 1px solid var(--gris-100);
+}
+
+.guia-paso:first-child { border-top: none; }
+
+.guia-numero {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* El color dice quién lo hace: azul el taller, ámbar el programador, verde
+   lo que ya está. Es el mismo de la etiqueta al lado del título. */
+.guia-numero.tramite,
+.guia-tipo.tramite { background: var(--azul-100); color: var(--azul-700); }
+
+.guia-numero.programar,
+.guia-tipo.programar { background: var(--naranja-100); color: var(--naranja-700); }
+
+.guia-numero.listo,
+.guia-tipo.listo { background: var(--verde-100); color: var(--verde-700); }
+
+.guia-paso-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.guia-paso-titulo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+
+.guia-paso-titulo strong {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.guia-tipo {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.guia-paso-texto p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+.guia-lateral {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.guia-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px;
+}
+
+.guia-lista h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.guia-item {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.guia-check {
+  margin-top: 1px;
+  color: var(--verde-700);
+}
+
+.guia-pendiente {
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
+  border: 2px solid var(--gris-400);
+  border-radius: 4px;
+}
+
+.guia-nota {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--gris-500);
+}
+
+.guia-enlace { align-self: flex-start; }
+
+@media (max-width: 900px) {
+  .guia { grid-template-columns: 1fr; }
+
+  .guia-pasos { padding: 4px 16px; }
+}

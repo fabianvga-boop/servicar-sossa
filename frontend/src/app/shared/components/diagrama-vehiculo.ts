@@ -74,6 +74,20 @@ const ZONAS_POR_FAMILIA: Record<Familia, { codigo: string; etiqueta: string }[]>
   generico: [{ codigo: 'general', etiqueta: 'Vehículo (general)' }],
 };
 
+/**
+ * Nombre legible de una zona por su código, para listarla fuera del dibujo
+ * ("capo" → "Capó"). Las zonas propias de una plantilla subida no están en
+ * la tabla: se muestran con el código, sin guiones bajos.
+ */
+export function etiquetaZona(codigo: string): string {
+  for (const zonas of Object.values(ZONAS_POR_FAMILIA)) {
+    const zona = zonas.find((z) => z.codigo === codigo);
+    if (zona) return zona.etiqueta;
+  }
+  const texto = codigo.replace(/_/g, ' ');
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
 /** Etiquetas y atributos que jamás deben sobrevivir en un SVG subido por un usuario. */
 const ETIQUETAS_PELIGROSAS = ['script', 'foreignobject', 'iframe', 'embed', 'object', 'style'];
 

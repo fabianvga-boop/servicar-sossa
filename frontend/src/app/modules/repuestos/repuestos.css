@@ -52,120 +52,170 @@
 
 .chip-filtro-proveedor button:hover { background: rgba(255, 255, 255, 0.5); }
 
-/* ------------------------------------------------------- Galería de repuestos */
+/* Lista de repuestos */
 
-.galeria-repuestos {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 14px;
-  padding: 16px;
-}
-
-.tarjeta-repuesto {
+.titulo-con-antetitulo {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--gris-200);
-  border-radius: var(--radio);
-  background: var(--blanco);
-  overflow: hidden;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  gap: 4px;
 }
 
-.tarjeta-repuesto:hover {
-  border-color: var(--gris-400);
-  box-shadow: var(--sombra-sm);
-}
-
-/* El agotado se atenúa un poco: sigue visible, pero no compite por atención
-   con lo que sí se puede vender o usar en una orden ahora mismo. */
-.tarjeta-repuesto.agotada { opacity: 0.75; }
-
-/* La caja tiene siempre la misma proporción, sea cual sea la foto: una
-   imagen alta (una botella de aceite) no puede estirar su tarjeta. */
-.repuesto-foto-caja {
-  position: relative;
-  aspect-ratio: 4 / 3;
-  overflow: hidden;
-  background: var(--blanco);
-  border-bottom: 1px solid var(--gris-100);
-}
-
-/* La foto se ubica dentro de la caja y se ve entera (contain): sin recortar
-   la pieza ni deformarla, centrada y con un pequeño margen. */
-.repuesto-foto {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  padding: 10px;
-  object-fit: contain;
-  display: block;
-}
-
-.repuesto-foto-vacia { padding: 0; background: var(--gris-50); }
-
-.repuesto-foto-vacia {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.titulo-con-antetitulo span {
+  font-size: 14px;
   color: var(--gris-400);
 }
 
-.repuesto-foto-vacia svg {
-  width: 30px;
-  height: 30px;
+.filtros-repuestos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
-/* Rojo bloquea el trabajo (agotado), naranja solo avisa (bajo mínimo),
-   verde confirma que hay para vender o usar — tres estados reales, no dos. */
-.repuesto-stock {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  padding: 2px 8px;
-  border-radius: 20px;
-  font-size: 10.5px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
+.filtros-repuestos .buscador-lista { max-width: 420px; }
+
+.filtros-secundarios { margin-bottom: 16px; }
+
+.resumen-repuestos {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--gris-400);
+}
+
+.fila-repuesto { grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr) 150px 110px 150px; }
+
+.repuesto-identidad {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.repuesto-foto {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 9px;
+  background: var(--gris-100);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gris-500);
+}
+
+.repuesto-foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: var(--blanco);
+}
+
+button.repuesto-foto:not(:disabled) { cursor: zoom-in; }
+
+.repuesto-textos {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.repuesto-textos strong {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.repuesto-stock.verde { background: var(--verde-100); color: #1a5c31; }
-.repuesto-stock.naranja { background: var(--naranja-100); color: #7a5700; }
-.repuesto-stock.roja { background: var(--brand-soft); color: #a00400; }
+.repuesto-textos > span,
+.repuesto-aplicacion {
+  font-size: 13px;
+  color: var(--gris-500);
+}
 
-.repuesto-cuerpo {
+.repuesto-stock {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 10px 12px 4px;
+  gap: 6px;
 }
 
-.repuesto-nombre {
-  margin: 1px 0 0;
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--ink);
-  line-height: 1.3;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+.stock-texto {
+  font-size: 13px;
+  color: var(--gris-500);
 }
 
-.repuesto-precio {
-  margin-top: 4px;
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
+.stock-texto.bajo { font-weight: 500; color: var(--naranja-700); }
+.stock-texto.agotado { font-weight: 600; color: var(--brand-dk); }
+
+.stock-barra {
+  display: block;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--gris-100);
 }
+
+.stock-barra span {
+  display: block;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--verde-700);
+}
+
+.stock-barra span.bajo { background: var(--naranja-600); }
+.stock-barra span.agotado { background: var(--brand); }
 
 .repuesto-acciones {
-  justify-content: flex-start;
-  padding: 8px 8px 10px;
-  margin-top: auto;
+  display: flex;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
+.btn-icono-plano {
+  width: 32px;
+  height: 32px;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--gris-500);
+  cursor: pointer;
+}
+
+.btn-icono-plano:hover { background: var(--gris-100); color: var(--ink); }
+.btn-icono-plano svg { width: 16px; height: 16px; }
+
+.repuestos-vacio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 48px 20px;
   border-top: 1px solid var(--gris-100);
+  text-align: center;
+  font-size: 14px;
+  color: var(--gris-500);
+}
+
+.repuestos-vacio strong { font-size: 15px; color: var(--ink); }
+
+.repuestos-esqueleto { padding: 8px 20px; }
+
+@media (max-width: 1700px) {
+  :host-context(body.con-cajon) .fila-repuesto { grid-template-columns: minmax(0, 2fr) 130px 100px 130px; }
+  :host-context(body.con-cajon) .fila-repuesto > :nth-child(2) { display: none; }
+}
+
+@media (max-width: 900px) {
+  .resumen-repuestos { margin-left: 0; }
+  .fila-repuesto { grid-template-columns: minmax(0, 1fr) auto; }
+  .fila-repuesto > :nth-child(2) { display: none; }
+  .fila-repuesto > :nth-child(3) { grid-row: 2; }
+  .cabecera-lista.fila-repuesto { display: none; }
 }
 
 /* Foto grande en el modal */
@@ -273,25 +323,6 @@
 }
 
 /* Insignia de la tarjeta: Universal en gris, Específico en azul. */
-.insignia-aplicacion {
-  align-self: flex-start;
-  max-width: 100%;
-  padding: 2px 8px;
-  border-radius: 20px;
-  background: var(--gris-200);
-  color: #2c323c;
-  font-size: 11.5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.insignia-aplicacion.especifico {
-  background: var(--azul-100);
-  color: #14417f;
-}
-
-/* .selector-aplicacion (las dos tarjetas de Aplicación) vive en styles.css. */
 .filas-compat {
   display: flex;
   flex-direction: column;

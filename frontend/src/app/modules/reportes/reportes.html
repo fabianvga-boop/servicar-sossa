@@ -1,207 +1,101 @@
-<div class="fila-entre envuelve mb-2">
-  <div>
-    <h1>Reportes</h1>
-    <p class="texto-tenue texto-sm mb-0">Consulta y exportación de información del taller</p>
-  </div>
-  <button type="button" class="btn btn-secundario" (click)="mostrarBitacora.set(!mostrarBitacora())">
-    {{ mostrarBitacora() ? 'Ocultar historial' : 'Ver historial de emisiones' }}
-  </button>
+<div class="encabezado-pagina mb-2">
+  <h1>Reportes</h1>
+  <p class="texto-tenue texto-sm mb-0">Elija qué quiere ver, el periodo y el formato.</p>
 </div>
 
-<div class="tarjeta mb-2">
-  <div class="tarjeta-cuerpo">
-    <div class="filtros">
-      <div class="campo mb-0">
-        <label for="tipoReporte">Tipo de reporte</label>
-        <select id="tipoReporte" name="tipoReporte" [(ngModel)]="filtros.tipo" (ngModelChange)="generar()">
-          @for (tipo of tipos; track tipo.valor) {
-            <option [value]="tipo.valor">{{ tipo.etiqueta }} — {{ tipo.ayuda }}</option>
+<div class="reportes-columnas">
+  <section class="reportes-paso">
+    <span class="paso-titulo">1. ¿Qué reporte?</span>
+    <div class="tipos-reporte" role="radiogroup" aria-label="Tipo de reporte">
+      @for (t of tipos; track t.valor) {
+        <button
+          type="button"
+          role="radio"
+          class="tipo-reporte"
+          [class.activo]="tipo() === t.valor"
+          [attr.aria-checked]="tipo() === t.valor"
+          (click)="tipo.set(t.valor)"
+        >
+          <span class="tipo-icono tono-{{ t.tono }}" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path [attr.d]="t.icono" /></svg>
+          </span>
+          <span class="tipo-textos">
+            <strong>{{ t.etiqueta }}</strong>
+            <span>{{ t.ayuda }}</span>
+          </span>
+        </button>
+      }
+    </div>
+  </section>
+
+  <section class="tarjeta reportes-opciones">
+    <div class="opcion-reporte">
+      <span class="paso-titulo">2. Periodo</span>
+      @if (periodoAplica()) {
+        <div class="chips-filtro">
+          @for (r of rangos; track r.clave) {
+            <button type="button" class="chip-filtro" [class.activo]="rango() === r.clave" [attr.aria-pressed]="rango() === r.clave" (click)="elegirRango(r.clave)">
+              {{ r.etiqueta }}
+            </button>
           }
-        </select>
-      </div>
-
-      <div class="campo mb-0">
-        <label for="desde">Desde</label>
-        <input
-          id="desde"
-          type="date"
-          name="desde"
-          [(ngModel)]="filtros.desde"
-          [disabled]="!periodoAplica"
-        />
-      </div>
-
-      <div class="campo mb-0">
-        <label for="hasta">Hasta</label>
-        <input
-          id="hasta"
-          type="date"
-          name="hasta"
-          [(ngModel)]="filtros.hasta"
-          [disabled]="!periodoAplica"
-        />
-      </div>
-
-      <button type="button" class="btn btn-primario" [disabled]="generando()" (click)="generar()">
-        {{ generando() ? 'Generando…' : 'Generar' }}
-      </button>
+        </div>
+        @if (rango() === 'fechas') {
+          <div class="fechas-reporte">
+            <label class="campo mb-0">
+              <span>Desde</span>
+              <input type="date" [ngModel]="desde()" (ngModelChange)="desde.set($event)" />
+            </label>
+            <label class="campo mb-0">
+              <span>Hasta</span>
+              <input type="date" [ngModel]="hasta()" (ngModelChange)="hasta.set($event)" />
+            </label>
+          </div>
+        }
+        <span class="texto-periodo">{{ textoPeriodo() }}</span>
+      } @else {
+        <span class="texto-periodo">Muestra el stock de hoy: el inventario no guarda cómo estaba en otras fechas.</span>
+      }
     </div>
 
-    <!-- Filtros rápidos: estructura visual; la lógica de fechas se conecta luego -->
-    @if (periodoAplica) {
-      <div class="rangos-rapidos">
-        <span class="rangos-etiqueta">Rango rápido:</span>
-        @for (rango of rangosRapidos; track rango.clave) {
+    <div class="opcion-reporte">
+      <span class="paso-titulo">3. Formato</span>
+      <div class="salidas-reporte" role="radiogroup" aria-label="Formato">
+        @for (s of salidas; track s.clave) {
           <button
             type="button"
-            class="chip-rango"
-            [class.activo]="rangoRapido() === rango.clave"
-            (click)="marcarRango(rango.clave)"
+            role="radio"
+            class="salida-reporte"
+            [class.activo]="salida() === s.clave"
+            [attr.aria-checked]="salida() === s.clave"
+            (click)="salida.set(s.clave)"
           >
-            {{ rango.etiqueta }}
+            {{ s.etiqueta }}
           </button>
         }
       </div>
-    }
-
-    @if (!periodoAplica) {
-      <p class="texto-tenue texto-sm mt-2 mb-0">
-        El reporte de inventario refleja el estado actual del stock: el rango de fechas no aplica,
-        porque el sistema no guarda histórico de movimientos.
-      </p>
-    }
-  </div>
-</div>
-
-@if (mostrarBitacora()) {
-  <div class="tarjeta mb-2">
-    <div class="tarjeta-encabezado">
-      <h2>Historial de reportes emitidos</h2>
-      <span class="texto-tenue texto-sm">{{ totalBitacora() }} registro(s)</span>
     </div>
 
-    @if (bitacora().length === 0) {
-      <div class="vacio">
-        <div class="vacio-titulo">Sin emisiones registradas</div>
-        <div class="texto-sm">Cada descarga de reporte queda registrada aquí.</div>
-      </div>
-    } @else {
-      <div class="tabla-contenedor">
-        <table class="tabla">
-          <thead>
-            <tr>
-              <th>Código</th>
-              <th>Tipo</th>
-              <th>Periodo</th>
-              <th>Formato</th>
-              <th>Emitido por</th>
-              <th>Fecha</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (registro of bitacora(); track registro.reporteId) {
-              <tr>
-                <td class="codigo">{{ registro.reporteId }}</td>
-                <td>{{ registro.tipoReporte }}</td>
-                <td class="texto-sm">
-                  {{ registro.fechaInicio | date: 'dd/MM/yyyy' }} —
-                  {{ registro.fechaFin | date: 'dd/MM/yyyy' }}
-                </td>
-                <td>
-                  <span class="insignia insignia-gris">{{ nombreFormato(registro.formato) }}</span>
-                </td>
-                <td class="texto-sm">{{ registro.nombreUsuario }}</td>
-                <td class="texto-sm">{{ registro.fechaGeneracion | date: 'dd/MM/yyyy HH:mm' }}</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
+    <button type="button" class="btn btn-primario boton-generar" [disabled]="procesando()" (click)="generar()">
+      {{ procesando() ? 'Generando…' : 'Generar reporte de ' + nombreTipo() }}
+    </button>
+  </section>
+</div>
 
-      <app-paginador
-        [pagina]="paginaBitacora()"
-        [totalPaginas]="totalPaginasBitacora()"
-        [totalRegistros]="totalBitacora()"
-        [tamanoPagina]="tamanoPaginaBitacora()"
-        (cambiarPagina)="cambiarPaginaBitacora($event)"
-        (cambiarTamano)="cambiarTamanoBitacora($event)"
-      />
-    }
-  </div>
-}
-
-@if (generando()) {
-  <div class="tarjeta"><div class="cargando">Generando reporte…</div></div>
-} @else if (reporte(); as r) {
-  <div class="tarjeta">
+@if (reporte(); as r) {
+  <section class="tarjeta reporte-pantalla" id="reporte-en-pantalla">
     <div class="tarjeta-encabezado">
       <div>
         <h2>{{ r.titulo }}</h2>
         <p class="texto-tenue texto-sm mb-0">
-          Periodo {{ r.fechaInicio | date: 'dd/MM/yyyy' }} — {{ r.fechaFin | date: 'dd/MM/yyyy' }}
-          · {{ r.cantidadFilas }} fila(s)
+          {{ r.fechaInicio | date: 'dd/MM/yyyy' }} — {{ r.fechaFin | date: 'dd/MM/yyyy' }} · {{ r.cantidadFilas }}
+          {{ r.cantidadFilas === 1 ? 'fila' : 'filas' }}
         </p>
       </div>
-
-      <div class="fila">
-        <span class="texto-tenue texto-sm">Descargar:</span>
-        <button
-          type="button"
-          class="btn-exportar pdf"
-          [disabled]="exportando()"
-          (click)="exportar(FormatoReporte.Pdf)"
-        >
-          <span class="exportar-icono" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" />
-            </svg>
-          </span>
-          PDF
-        </button>
-        <button
-          type="button"
-          class="btn-exportar excel"
-          [disabled]="exportando()"
-          (click)="exportar(FormatoReporte.Excel)"
-        >
-          <span class="exportar-icono" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="m9 13 6 5M15 13l-6 5" />
-            </svg>
-          </span>
-          Excel
-        </button>
-        <button
-          type="button"
-          class="btn-exportar csv"
-          [disabled]="exportando()"
-          (click)="exportar(FormatoReporte.Csv)"
-        >
-          <span class="exportar-icono" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M8 13h8M8 17h5" />
-            </svg>
-          </span>
-          CSV
-        </button>
-      </div>
-    </div>
-
-    <!-- Espacio reservado para un futuro gráfico de resumen (Chart.js) -->
-    <div class="tarjeta-cuerpo">
-      <div class="grafico-marcador">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M3 3v18h18" /><path d="M18 17V9M13 17V5M8 17v-3" />
-        </svg>
-        <span>Espacio para Gráfico de Resumen</span>
-      </div>
+      <button type="button" class="btn btn-secundario btn-sm" (click)="reporte.set(null)">Cerrar</button>
     </div>
 
     @if (r.filas.length === 0) {
-      <app-estado-tabla
-        titulo="Sin datos en el periodo"
-        descripcion="No hay registros para el rango de fechas seleccionado."
-      />
+      <app-estado-tabla titulo="Sin datos en el periodo" descripcion="No hay registros para el rango de fechas elegido." />
     } @else {
       <div class="tabla-contenedor">
         <table class="tabla">
@@ -227,16 +121,50 @@
 
     @if (r.totales | keyvalue; as totales) {
       @if (totales.length > 0) {
-        <div class="tarjeta-cuerpo resumen">
-          <h3 class="mb-1">Resumen</h3>
+        <div class="totales-reporte">
           @for (total of totales; track total.key) {
-            <div class="linea-resumen">
-              <span class="texto-tenue">{{ total.key }}</span>
-              <span class="texto-fuerte">{{ total.value }}</span>
-            </div>
+            <div><span>{{ total.key }}</span><strong class="monto-mono">{{ total.value }}</strong></div>
           }
         </div>
       }
     }
-  </div>
+  </section>
 }
+
+<section class="lista-filas generados">
+  <div class="generados-cabecera"><h2>Generados antes</h2></div>
+  @if (bitacora().length > 0) {
+    <div class="fila-lista fila-generado cabecera-lista" aria-hidden="true">
+      <span>Código</span>
+      <span>Reporte</span>
+      <span>Periodo</span>
+      <span>Formato</span>
+      <span>Fecha</span>
+      <span></span>
+    </div>
+  }
+  @for (g of bitacora(); track g.reporteId) {
+    <div class="fila-lista fila-generado">
+      <span class="monto-mono generado-codigo">{{ g.reporteId }}</span>
+      <span>{{ nombreTipoGuardado(g.tipoReporte) }}</span>
+      <span class="generado-tenue">{{ periodoGuardado(g) }}</span>
+      <span class="monto-mono generado-formato">{{ nombreFormato(g.formato) }}</span>
+      <span class="generado-tenue">{{ g.fechaGeneracion | date: 'dd/MM/yyyy HH:mm' }}</span>
+      <button type="button" class="btn-icono-plano" title="Descargar de nuevo" aria-label="Descargar de nuevo" [disabled]="procesando()" (click)="repetir(g)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>
+      </button>
+    </div>
+  } @empty {
+    <p class="generados-vacio">Cada reporte descargado queda registrado aquí.</p>
+  }
+  @if (totalPaginasBitacora() > 1) {
+    <app-paginador
+      [pagina]="paginaBitacora()"
+      [totalPaginas]="totalPaginasBitacora()"
+      [totalRegistros]="totalBitacora()"
+      [tamanoPagina]="tamanoPaginaBitacora()"
+      (cambiarPagina)="cambiarPaginaBitacora($event)"
+      (cambiarTamano)="cambiarTamanoBitacora($event)"
+    />
+  }
+</section>

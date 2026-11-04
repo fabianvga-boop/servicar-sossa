@@ -75,6 +75,11 @@ export const routes: Routes = [
         data: { title: 'Vehículos' },
         loadComponent: () => import('./modules/vehiculos/vehiculos').then((m) => m.Vehiculos),
       },
+      {
+        path: 'vehiculos/:id',
+        data: { title: 'Vehículos' },
+        loadComponent: () => import('./modules/vehiculos/vehiculo-ficha').then((m) => m.VehiculoFicha),
+      },
 
       // --- Inventario -----------------------------------------------------
       {

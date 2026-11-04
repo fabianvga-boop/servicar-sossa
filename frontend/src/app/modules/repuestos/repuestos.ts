@@ -32,7 +32,7 @@ import { ElegirFoto } from '../../shared/components/elegir-foto';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { GestionCategorias } from '../../shared/components/gestion-categorias';
 import { Modal } from '../../shared/components/modal';
-import { Paginador } from '../../shared/components/paginador';
+import { Cajon } from '../../shared/components/cajon';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
 import { Atajo } from '../../shared/directives/atajo';
 import { EnfocarError } from '../../shared/directives/enfocar-error';
@@ -47,6 +47,9 @@ import {
 
 const CLAVE_BUSCAR = 'repuestos.buscar';
 const CLAVE_STOCK_BAJO = 'repuestos.stockBajo';
+
+/** Vista rápida de la lista: todos, por reponer, agotados o solo para ciertos vehículos. */
+type VistaRepuestos = 'todos' | 'minimo' | 'agotados' | 'especificos';
 
 /** Una fila editable de "Vehículos compatibles" en el formulario. */
 interface FilaCompatibilidad {
@@ -76,7 +79,7 @@ const SIN_OPCIONES: OpcionSelector[] = [];
     ElegirFoto,
     EstadoTabla,
     GestionCategorias,
-    Paginador,
+    Cajon,
     SelectorBusqueda,
     Atajo,
     EnfocarError,
@@ -176,6 +179,8 @@ export class Repuestos {
 
   // Procedencia del stock (historial de compras del repuesto).
   protected readonly procedenciaDe = signal<Repuesto | null>(null);
+  /** Repuesto cuyo kárdex pidió abrir un enlace, hasta que llega la lista. */
+  private procedenciaPendiente: string | null = null;
   protected readonly procedencia = signal<ProcedenciaRepuesto | null>(null);
   protected readonly cargandoProcedencia = signal(false);
 
@@ -304,16 +309,20 @@ export class Repuestos {
     const parametros = this.ruta.snapshot.queryParamMap;
 
     this.buscar.set(parametros.get('buscar') ?? this.preferencias.leer(CLAVE_BUSCAR, ''));
-    this.soloStockBajo.set(
+    const enMinimo =
       parametros.get('stockBajo') === 'true' ||
-        (!parametros.has('stockBajo') && this.preferencias.leer(CLAVE_STOCK_BAJO, false)),
-    );
+      (!parametros.has('stockBajo') && this.preferencias.leer(CLAVE_STOCK_BAJO, false));
+    this.vista.set(enMinimo ? 'minimo' : 'todos');
     // El badge "Repuestos" de la ficha de un proveedor enlaza aquí con
     // ?proveedorId=…: es un filtro de paso, no se guarda como preferencia.
     this.proveedorFiltro.set(parametros.get('proveedorId') ?? '');
 
     this.vehiculoFiltro.set(parametros.get('vehiculoId') ?? '');
     this.categoriaFiltro.set(parametros.get('categoriaId') ?? '');
+
+    // El "Kárdex" del detalle de una compra enlaza con ?procedencia=REP-…: se
+    // abre en cuanto llega la lista (que viene filtrada por ese código).
+    this.procedenciaPendiente = parametros.get('procedencia');
 
     this.cargar();
     this.cargarCategorias();
@@ -331,18 +340,73 @@ export class Repuestos {
     }
   }
 
+  // --- Vista rápida por estado (sobre lo cargado) ------------------------------
+
+  protected readonly vista = signal<VistaRepuestos>('todos');
+
+  protected pasaVista(r: Repuesto, vista: VistaRepuestos): boolean {
+    switch (vista) {
+      case 'minimo':
+        return r.stockBajo || r.stockActual <= 0;
+      case 'agotados':
+        return r.stockActual <= 0;
+      case 'especificos':
+        return r.tipoAplicacion === TipoAplicacionRepuesto.Especifico;
+      default:
+        return true;
+    }
+  }
+
+  protected readonly cuentasVista = computed(() => {
+    const lista = this.repuestos();
+    return {
+      todos: lista.length,
+      minimo: lista.filter((r) => this.pasaVista(r, 'minimo')).length,
+      agotados: lista.filter((r) => this.pasaVista(r, 'agotados')).length,
+      especificos: lista.filter((r) => this.pasaVista(r, 'especificos')).length,
+    };
+  });
+
+  protected readonly visibles = computed(() =>
+    this.repuestos().filter((r) => this.pasaVista(r, this.vista())),
+  );
+
+  protected elegirVista(vista: VistaRepuestos): void {
+    this.vista.set(vista);
+    this.preferencias.guardar(CLAVE_STOCK_BAJO, vista === 'minimo');
+  }
+
+  /** Barra de stock: el actual contra cuatro veces el mínimo (un nivel cómodo). */
+  protected nivelStock(r: Repuesto): number {
+    if (r.stockActual <= 0) return 3;
+    return Math.min(100, Math.max(6, Math.round((r.stockActual / Math.max(r.stockMinimo * 4, 1)) * 100)));
+  }
+
+  protected inicialesRepuesto(nombre: string): string {
+    const palabras = nombre.split(/\s+/).filter((p) => p.length > 2);
+    return (palabras.length ? palabras : [nombre]).slice(0, 2).map((p) => p[0] ?? '').join('').toUpperCase();
+  }
+
+  protected limpiarFiltros(): void {
+    this.vista.set('todos');
+    this.vehiculoFiltro.set('');
+    this.categoriaFiltro.set('');
+    this.proveedorFiltro.set('');
+    this.onBuscar('');
+  }
+
   protected cargar(): void {
     this.cargando.set(true);
 
+    // Todo lo que coincide de una vez: la vista por estado se filtra en pantalla.
     this.servicio
       .getAll({
         buscar: this.buscar() || undefined,
-        soloStockBajo: this.soloStockBajo() || undefined,
         proveedorId: this.proveedorFiltro() || undefined,
         vehiculoId: this.vehiculoFiltro() || undefined,
         categoriaId: this.categoriaFiltro() || undefined,
-        pagina: this.pagina(),
-        tamanoPagina: this.tamanoPagina(),
+        pagina: 1,
+        tamanoPagina: 500,
       })
       .subscribe({
         next: (resultado) => {
@@ -350,6 +414,10 @@ export class Repuestos {
           this.totalRegistros.set(resultado.totalRegistros);
           this.totalPaginas.set(resultado.totalPaginas);
           this.cargando.set(false);
+
+          const pendiente = resultado.items.find((r) => r.repuestoId === this.procedenciaPendiente);
+          this.procedenciaPendiente = null;
+          if (pendiente) this.abrirProcedencia(pendiente);
         },
         error: () => this.cargando.set(false),
       });

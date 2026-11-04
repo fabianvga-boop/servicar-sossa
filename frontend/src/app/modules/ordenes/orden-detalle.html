@@ -3,301 +3,185 @@
 } @else if (orden(); as o) {
   <app-migas [items]="migas()" />
 
-  <!-- Barra de acciones globales: navegación, impresión y transiciones de estado -->
-  <div class="orden-acciones no-imprimir mb-2">
-    <a routerLink="/ordenes" class="btn btn-secundario btn-sm">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M19 12H5" /><path d="m12 19-7-7 7-7" />
-      </svg>
-      Volver a Órdenes
-    </a>
-
-    <div class="crece"></div>
-
-    <button type="button" class="btn btn-secundario btn-sm" (click)="imprimir()" title="Imprimir o guardar como PDF la nota de entrega">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M6 9V2h12v7" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" rx="1" />
-      </svg>
-      Imprimir / PDF
-    </button>
-
-    <div class="fila envuelve">
-      @if (puedeTrabajar()) {
-      @switch (o.estado) {
-        @case (EstadoOrden.Abierta) {
-          @if (!puedeGestionar()) {
-            <span class="texto-tenue texto-sm">El Administrador inicia el trabajo.</span>
-          } @else {
-          <!-- Deshabilitado con motivo, no oculto: así se aprende el requisito -->
-          <button
-            type="button"
-            class="btn btn-primario"
-            [disabled]="procesando() || requisitosPendientes() > 0"
-            [title]="
-              requisitosPendientes() > 0
-                ? 'Asigne al menos un mecánico antes de iniciar el trabajo.'
-                : 'Habilita la carga de servicios y repuestos'
-            "
-            (click)="iniciar()"
-          >
-            Iniciar trabajo
-          </button>
-          }
-          @if (puedeGestionar()) {
-            <button type="button" class="btn btn-secundario" (click)="porCancelar.set(true)">
-              Cancelar orden
-            </button>
-          }
-        }
-        @case (EstadoOrden.EnProceso) {
-          <button
-            type="button"
-            class="btn btn-exito"
-            [disabled]="procesando() || requisitosPendientes() > 0"
-            [title]="
-              requisitosPendientes() > 0
-                ? 'Complete los servicios pendientes antes de finalizar.'
-                : 'Declara terminado el trabajo del taller'
-            "
-            (click)="finalizar()"
-          >
-            Finalizar trabajo
-          </button>
-          @if (puedeGestionar()) {
-            <button type="button" class="btn btn-secundario" (click)="porCancelar.set(true)">
-              Cancelar orden
-            </button>
-          }
-        }
-        @case (EstadoOrden.Finalizada) {
-          @if (puedeGestionar()) {
-          <button
-            type="button"
-            class="btn btn-primario"
-            [disabled]="requisitosPendientes() > 0"
-            [title]="
-              requisitosPendientes() > 0
-                ? 'Quedan servicios sin completar.'
-                : 'Descuenta stock y calcula comisiones'
-            "
-            (click)="porCerrar.set(true)"
-          >
-            Cerrar orden
-          </button>
-          <button type="button" class="btn btn-secundario" (click)="abrirCorregir()">
-            Corregir orden
-          </button>
-          }
-        }
-        @case (EstadoOrden.Cerrada) {
-          @if (puedeGestionar()) {
-            <button type="button" class="btn btn-secundario" (click)="abrirCorregir()">
-              Corregir orden
-            </button>
-          }
-        }
-      }
-      }
-    </div>
-  </div>
-
-  <!-- Tarjeta de contexto: identidad del vehículo y del cliente a la izquierda,
-       número de orden y estado a la derecha; se lee como un solo bloque. -->
-  <div class="tarjeta contexto-orden mb-2">
-    <div class="contexto-vehiculo-bloque">
-      @if (fotosVehiculo().length > 0) {
-        <button
-          type="button"
-          class="foto-vehiculo-mini clicable"
-          title="Ver fotos del vehículo"
-          aria-label="Ver fotos del vehículo"
-          (click)="abrirGaleriaVehiculo()"
-        >
-          <img [src]="urlArchivo(fotosVehiculo()[0].url)" [alt]="'Foto de ' + o.placaVehiculo" />
-          @if (fotosVehiculo().length > 1) {
-            <span class="foto-vehiculo-contador">+{{ fotosVehiculo().length - 1 }}</span>
-          }
-        </button>
-      }
-
-      <app-placa [valor]="o.placaVehiculo" tamano="grande" />
-
-      <div class="contexto-datos">
-        <h2 class="contexto-vehiculo-nombre">{{ o.descripcionVehiculo }}</h2>
-        <a
-          class="contexto-cliente"
-          [routerLink]="['/clientes']"
-          [queryParams]="{ buscar: o.nombreCliente }"
-          title="Ver ficha del cliente"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-            <circle cx="12" cy="7" r="4" />
-          </svg>
-          <span>{{ o.nombreCliente }}</span>
-        </a>
+  <!-- ------------------------------------------------------------- Cabecera -->
+  <section class="orden-cabecera">
+    <app-placa [valor]="o.placaVehiculo" tamano="grande" />
+    <div class="orden-titulo">
+      <div class="orden-titulo-fila">
+        <h1>{{ o.descripcionVehiculo }}</h1>
+        <span class="insignia insignia-{{ tonoEstado(o.estado) }} estado-orden">
+          <span class="estado-punto" aria-hidden="true"></span>
+          {{ textoEstado(o.estado) }}
+        </span>
       </div>
-
-      <button
-        type="button"
-        class="btn btn-secundario btn-sm no-imprimir"
-        title="Ver diagrama del vehículo"
-        (click)="diagramaAbierto.set(true)"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <rect x="5" y="3" width="14" height="18" rx="3" />
-          <path d="M9 8h6M9 12h6M9 16h3" />
-        </svg>
-        Diagrama
-      </button>
-    </div>
-
-    <div class="contexto-identificador">
-      <span class="contexto-orden-etq">Orden</span>
-      <span class="contexto-orden-id">{{ o.ordenId }}</span>
-      <app-insignia-estado familia="orden" [valor]="o.estado" />
-    </div>
-  </div>
-
-  <!-- Aviso de solo lectura en una orden ya cerrada: explica por qué los
-       botones de carga están deshabilitados. -->
-  @if (o.estado === EstadoOrden.Cerrada) {
-    <div class="banner-info no-imprimir mb-2">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <circle cx="12" cy="12" r="9" /><path d="M12 16v-4" /><path d="M12 8h.01" />
-      </svg>
-      <span>
-        Orden cerrada@if (o.fechaCierre) { el {{ o.fechaCierre | date: 'dd/MM/yyyy' }} }. Modo de solo
-        lectura: no se pueden añadir ni quitar ítems.
+      <span class="orden-subtitulo">
+        @if (puedeGestionar()) {
+          <a [routerLink]="['/clientes']" [queryParams]="{ clienteId: o.clienteId }">{{ o.nombreCliente }}</a>
+        } @else {
+          {{ o.nombreCliente }}
+        }
+        · abierta el {{ o.fechaCreacion | date: 'dd/MM' }}
+        @if (nombresMecanicos()) {
+          · mecánico {{ nombresMecanicos() }}
+        }
+        @if (o.fechaEstimada && o.estado !== EstadoOrden.Cerrada && o.estado !== EstadoOrden.Cancelada) {
+          · entrega {{ o.fechaEstimada | date: 'dd/MM' }}
+        }
       </span>
     </div>
-  }
-
-  <!-- ----------------------------------------------- Progreso del flujo -->
-  <div class="tarjeta mb-2">
-    <div class="tarjeta-cuerpo">
-      <app-pasos
-        [pasos]="pasos()"
-        [anulado]="cancelada()"
-        motivoAnulado="Esta orden fue cancelada: no se puede reabrir ni facturar."
-      />
-
-      @if (requisitos().length > 0) {
-        <ul class="requisitos">
-          @for (requisito of requisitos(); track requisito.etiqueta) {
-            <li [class.cumplido]="requisito.cumplido">
-              <span class="marca" aria-hidden="true">{{ requisito.cumplido ? '✓' : '○' }}</span>
-              <span>
-                {{ requisito.etiqueta }}
-                @if (!requisito.cumplido) {
-                  <span class="texto-tenue texto-sm"> — {{ requisito.ayuda }}</span>
-                }
-              </span>
-            </li>
-          }
-        </ul>
-      }
+    <div class="orden-botones no-imprimir">
+      <button type="button" class="btn btn-secundario" (click)="imprimir()" title="Imprimir o guardar como PDF la nota de entrega">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M6 9V3h12v6M6 18H4a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-2M6 14h12v7H6z" />
+        </svg>
+        Imprimir
+      </button>
+      <div class="menu-mas">
+        <button
+          type="button"
+          class="btn btn-secundario"
+          aria-haspopup="menu"
+          [attr.aria-expanded]="menuMas()"
+          (click)="menuMas.set(!menuMas())"
+        >
+          Más
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+        </button>
+        @if (menuMas()) {
+          <div class="menu-mas-lista" role="menu">
+            <button type="button" role="menuitem" [disabled]="fotosVehiculo().length === 0" (click)="menuMas.set(false); abrirGaleriaVehiculo()">
+              Ver fotos del vehículo
+            </button>
+            <button type="button" role="menuitem" (click)="menuMas.set(false); diagramaAbierto.set(true)">
+              Marcar zonas en el dibujo
+            </button>
+            <a role="menuitem" [routerLink]="['/vehiculos', o.vehiculoId]">Ficha del vehículo</a>
+            @if (o.diagnosticoId) {
+              <a role="menuitem" [routerLink]="['/diagnosticos']" [queryParams]="{ buscar: o.diagnosticoId }">
+                Diagnóstico {{ o.diagnosticoId }}
+              </a>
+            }
+            @if (puedeGestionar() && (o.estado === EstadoOrden.Finalizada || o.estado === EstadoOrden.Cerrada)) {
+              <button type="button" role="menuitem" (click)="menuMas.set(false); abrirCorregir()">Corregir orden</button>
+            }
+            @if (puedeGestionar() && (o.estado === EstadoOrden.Abierta || o.estado === EstadoOrden.EnProceso)) {
+              <button type="button" role="menuitem" class="peligro" (click)="menuMas.set(false); porCancelar.set(true)">
+                Cancelar orden
+              </button>
+            }
+          </div>
+        }
+      </div>
     </div>
-  </div>
+  </section>
+
+  <!-- --------------------------------------------------------------- Avance -->
+  <ol class="avance-orden" aria-label="Avance de la orden">
+    @for (e of etapas(); track e.nombre) {
+      <li class="{{ e.estado }}" [attr.aria-current]="e.estado === 'actual' ? 'step' : null">
+        <span class="avance-barra" aria-hidden="true"></span>
+        <span class="avance-nombre">{{ e.nombre }}</span>
+      </li>
+    }
+  </ol>
+
+  <!-- ------------------------------------------------------- Siguiente paso -->
+  @if (siguientePaso(); as paso) {
+    <section class="siguiente-paso no-imprimir tipo-{{ paso.tipo }}">
+      <span class="siguiente-icono" aria-hidden="true">
+        @switch (paso.tipo) {
+          @case ('listo') {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+          }
+          @case ('cancelada') {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+          }
+          @case ('esperar') {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+          }
+          @default {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+          }
+        }
+      </span>
+      <div class="siguiente-textos">
+        <span class="siguiente-etiqueta">
+          {{ paso.tipo === 'listo' ? 'Listo' : paso.tipo === 'cancelada' ? 'Sin acciones' : paso.tipo === 'esperar' ? 'En espera' : 'Siguiente paso' }}
+        </span>
+        <strong>{{ paso.titulo }}</strong>
+        <span>{{ paso.detalle }}</span>
+      </div>
+      <div class="siguiente-botones">
+        @switch (paso.tipo) {
+          @case ('asignar') {
+            <button type="button" class="btn btn-primario" (click)="abrirPanelMecanico()">Asignar mecánico</button>
+          }
+          @case ('iniciar') {
+            <button type="button" class="btn btn-primario" [disabled]="procesando()" (click)="iniciar()">Iniciar trabajo</button>
+          }
+          @case ('finalizar') {
+            @if (puedeTrabajar()) {
+              <button type="button" class="btn btn-primario" [disabled]="procesando()" (click)="finalizar()">Finalizar trabajo</button>
+            }
+          }
+          @case ('cerrar') {
+            <button type="button" class="btn btn-primario" [disabled]="procesando()" (click)="porCerrar.set(true)">Cerrar orden</button>
+          }
+          @case ('emitir') {
+            <a class="btn btn-primario" [routerLink]="['/proformas']" [queryParams]="{ ordenId: o.ordenId }">Emitir proforma</a>
+          }
+          @case ('cobrar') {
+            <a class="btn btn-primario" [routerLink]="['/pagos']" [queryParams]="{ proformaId: proformaVigente()?.proformaId }">Registrar pago</a>
+          }
+          @case ('agregarServicio') {
+            @if (puedeTrabajar()) {
+              <button type="button" class="btn btn-bloqueado" disabled title="Primero cargue los servicios">Finalizar trabajo</button>
+              <button type="button" class="btn btn-primario" (click)="abrirPanelServicio()">+ Agregar servicio</button>
+            }
+          }
+          @case ('registrarRepuesto') {
+            @if (puedeTrabajar()) {
+              <button type="button" class="btn btn-bloqueado" disabled title="Falta registrar un repuesto">
+                {{ o.estado === EstadoOrden.Finalizada ? 'Cerrar orden' : 'Finalizar trabajo' }}
+              </button>
+              <button type="button" class="btn btn-primario" [disabled]="!editableTrabajo()" (click)="abrirPanelRepuesto(paso.servicio)">
+                Registrar repuesto
+              </button>
+            }
+          }
+          @case ('completar') {
+            @if (puedeTrabajar()) {
+              <button type="button" class="btn btn-bloqueado" disabled [title]="'Falta completar ' + serviciosPendientes() + ' servicio(s)'">
+                {{ o.estado === EstadoOrden.Finalizada ? 'Cerrar orden' : 'Finalizar trabajo' }}
+              </button>
+              @if (paso.servicio; as servicio) {
+                <button
+                  type="button"
+                  class="btn btn-primario"
+                  [disabled]="procesando()"
+                  (click)="avanzarServicio(servicio.ordenServicioId, EstadoServicioOrden.Completado)"
+                >
+                  Marcar completado
+                </button>
+              }
+            }
+          }
+        }
+      </div>
+    </section>
+  }
 
   <div class="columnas">
     <div class="principal-col">
-      <!-- ------------------------------------------------------ Diagnóstico -->
-      @if (o.diagnosticoId) {
-        <div class="tarjeta mb-2">
-          <div class="tarjeta-encabezado">
-            <h2>Diagnóstico de origen</h2>
-            <a
-              [routerLink]="['/diagnosticos']"
-              [queryParams]="{ buscar: o.diagnosticoId }"
-              class="enlace-diagnostico"
-              title="Abrir el diagnóstico de origen (fotos y presupuesto)"
-            >
-              {{ o.diagnosticoId }}
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M15 3h6v6" /><path d="M10 14 21 3" /><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-              </svg>
-            </a>
-          </div>
-          <div class="tarjeta-cuerpo">
-            <div class="bloque-diagnostico">
-              <span class="bloque-etiqueta">Falla reportada</span>
-              <p class="bloque-valor">{{ o.descripcionFalla }}</p>
-            </div>
-            @if (o.observacionesTecnicasDiagnostico) {
-              <div class="bloque-diagnostico">
-                <span class="bloque-etiqueta">Observaciones técnicas</span>
-                <p class="bloque-valor">{{ o.observacionesTecnicasDiagnostico }}</p>
-              </div>
+      <!-- ------------------------------------------------------------ Servicios -->
+      <section class="tarjeta bloque-orden">
+        <div class="bloque-orden-cabecera">
+          <h2>
+            Servicios
+            @if (o.servicios.length > 0) {
+              <span class="bloque-orden-cuenta">{{ serviciosCompletados() }} de {{ o.servicios.length }} completados</span>
             }
-          </div>
-        </div>
-      }
-
-      <!-- ------------------------------------------------- Diagnóstico asistido -->
-      @if (puedeTrabajar() && sugerenciaOrden(); as s) {
-        <div class="tarjeta mb-2">
-          <div class="tarjeta-encabezado">
-            <h2>Sugerencias para esta orden</h2>
-          </div>
-          <div class="tarjeta-cuerpo">
-            <p class="texto-tenue texto-sm mb-2">
-              Basado en {{ s.basadoEnCasos }} caso(s) con una falla similar. Haga clic en una
-              sugerencia para agregarla.
-            </p>
-
-            @if (s.servicios.length > 0) {
-              <div class="mb-2">
-                <span class="panel-sugerencia-etq">Servicios probables</span>
-                <div class="chips-sugerencia mt-1">
-                  @for (sv of s.servicios; track sv.nombre) {
-                    <button
-                      type="button"
-                      class="chip-sugerido"
-                      [disabled]="!editableTrabajo()"
-                      [title]="motivoBloqueoTrabajo()"
-                      (click)="abrirPanelServicioSugerido(sv)"
-                    >
-                      + {{ sv.nombre }} · {{ sv.frecuencia }} de {{ s.basadoEnCasos }}
-                    </button>
-                  }
-                </div>
-              </div>
-            }
-
-            @if (s.repuestos.length > 0) {
-              <div class="mb-2">
-                <span class="panel-sugerencia-etq">Repuestos probables</span>
-                <div class="chips-sugerencia mt-1">
-                  @for (rp of s.repuestos; track rp.nombre) {
-                    <button
-                      type="button"
-                      class="chip-sugerido"
-                      [disabled]="!editableTrabajo()"
-                      [title]="motivoBloqueoTrabajo()"
-                      (click)="abrirPanelRepuestoSugerido(rp)"
-                    >
-                      + {{ rp.nombre }} · {{ rp.frecuencia }} de {{ s.basadoEnCasos }}
-                    </button>
-                  }
-                </div>
-              </div>
-            }
-
-            @if (s.precioMinimo != null) {
-              <p class="texto-tenue texto-sm mb-0">
-                Precio en casos similares: {{ s.precioMinimo | bs }} – {{ s.precioMaximo | bs }}
-                (prom. {{ s.precioPromedio | bs }})
-              </p>
-            }
-          </div>
-        </div>
-      }
-
-      <!-- ------------------------------------------------------ Servicios -->
-      <div class="tarjeta mb-2">
-        <div class="tarjeta-encabezado">
-          <h2>Servicios</h2>
+          </h2>
           @if (puedeTrabajar()) {
             <button
               type="button"
@@ -311,158 +195,95 @@
           }
         </div>
 
-        @if (o.servicios.length === 0) {
-          <div class="vacio">
-            <div class="vacio-titulo">Sin servicios registrados</div>
-            <div class="texto-sm">
-              @if (o.estado === EstadoOrden.Abierta) {
-                Inicie el trabajo para poder cargar los servicios que se ejecutarán.
-              } @else {
-                Agregue los servicios que se ejecutarán en este vehículo.
+        @for (servicio of o.servicios; track servicio.ordenServicioId) {
+          @let faltaSuRepuesto =
+            servicio.requiereRepuesto &&
+            servicio.estado !== EstadoServicioOrden.Completado &&
+            repuestosDe(servicio).length === 0;
+          @let estado = textoEstadoServicio(servicio.estado);
+          <div class="fila-orden">
+            <div class="fila-orden-textos">
+              <strong>
+                {{ servicio.nombreServicio }}
+                @if (!servicio.servicioId) {
+                  <span class="insignia insignia-gris etiqueta-chica">Fuera de catálogo</span>
+                }
+              </strong>
+              <span>
+                @if (servicio.requiereRepuesto) {
+                  @if (repuestosDe(servicio).length > 0) {
+                    Repuesto: {{ resumenRepuestosDe(servicio) }}
+                  } @else if (servicio.estado === EstadoServicioOrden.Completado) {
+                    Completado sin repuesto (excepción)
+                  } @else {
+                    Sin repuesto todavía
+                  }
+                } @else {
+                  {{ servicio.descripcion || 'Solo mano de obra' }}
+                }
+                @if (o.mecanicos.length > 1) {
+                  · {{ servicio.nombreMecanico }}
+                }
+              </span>
+              @let avanza = puedeAvanzarServicios() && puedeTrabajar() && servicio.estado !== EstadoServicioOrden.Completado;
+              @let edita = puedeTrabajar() && editableTrabajo();
+              @if (avanza || edita) {
+                <span class="fila-orden-enlaces no-imprimir">
+                  @if (avanza) {
+                    @if (servicio.estado === EstadoServicioOrden.Pendiente) {
+                      <button type="button" class="btn-enlace" [disabled]="procesando()" (click)="avanzarServicio(servicio.ordenServicioId, EstadoServicioOrden.EnProceso)">Empezar</button>
+                    } @else {
+                      <button type="button" class="btn-enlace" [disabled]="procesando()" (click)="avanzarServicio(servicio.ordenServicioId, EstadoServicioOrden.Pendiente)">Volver a pendiente</button>
+                    }
+                  }
+                  @if (puedeGestionar() && editableTrabajo()) {
+                    <button type="button" class="btn-enlace" [disabled]="procesando()" (click)="abrirEditarServicio(servicio)">Editar</button>
+                  }
+                  @if (edita) {
+                    <button type="button" class="btn-enlace texto-rojo" [disabled]="procesando()" (click)="quitarServicio(servicio)">Quitar</button>
+                  }
+                </span>
               }
             </div>
+            <span><span class="insignia insignia-{{ estado.tono }} etiqueta-chica">{{ estado.texto }}</span></span>
+            <span class="monto-mono a-la-derecha">{{ servicio.precio | bs }}</span>
+            <span class="fila-orden-acciones">
+              @if (avanza) {
+                <button
+                  type="button"
+                  class="btn btn-secundario btn-sm"
+                  [disabled]="procesando()"
+                  (click)="avanzarServicio(servicio.ordenServicioId, EstadoServicioOrden.Completado)"
+                >
+                  Marcar completado
+                </button>
+              }
+            </span>
           </div>
-        } @else {
-          <div class="tabla-contenedor">
-            <table class="tabla">
-              <thead>
-                <tr>
-                  <th>Servicio</th>
-                  <th>Mecánico</th>
-                  <th>Estado</th>
-                  <th class="num">Precio</th>
-                  <th class="th-acciones">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (servicio of o.servicios; track servicio.ordenServicioId) {
-                  @let faltaSuRepuesto =
-                    servicio.requiereRepuesto &&
-                    servicio.estado !== EstadoServicioOrden.Completado &&
-                    repuestosDe(servicio).length === 0;
-                  <tr [class.con-aviso]="faltaSuRepuesto">
-                    <td>
-                      <div class="texto-fuerte">
-                        {{ servicio.nombreServicio }}
-                        @if (!servicio.servicioId) {
-                          <span class="insignia insignia-gris ml-1">Fuera de catálogo</span>
-                        }
-                      </div>
-                      @if (servicio.descripcion) {
-                        <div class="texto-tenue texto-sm">{{ servicio.descripcion }}</div>
-                      }
-                      @if (servicio.requiereRepuesto) {
-                        @if (repuestosDe(servicio).length > 0) {
-                          <div class="repuesto-servicio texto-sm">
-                            Repuesto: {{ resumenRepuestosDe(servicio) }}
-                          </div>
-                        } @else if (servicio.estado === EstadoServicioOrden.Completado) {
-                          <span
-                            class="insignia insignia-naranja mt-1"
-                            title="Se completó sin repuesto registrado; el motivo está en Auditoría"
-                          >
-                            Completado sin repuesto (excepción)
-                          </span>
-                        }
-                      }
-                    </td>
-                    <td class="texto-sm">
-                      <span class="celda-mecanico">
-                        <span class="avatar-ini" aria-hidden="true">{{ iniciales(servicio.nombreMecanico) }}</span>
-                        <span>{{ servicio.nombreMecanico }}</span>
-                      </span>
-                    </td>
-                    <td>
-                      <app-insignia-estado familia="servicioOrden" [valor]="servicio.estado" />
-                    </td>
-                    <td class="num">{{ servicio.precio | bs }}</td>
-                    <td>
-                      <div class="acciones">
-                        @if (puedeAvanzarServicios() && servicio.estado !== EstadoServicioOrden.Completado) {
-                          @if (servicio.estado === EstadoServicioOrden.Pendiente) {
-                            <button
-                              type="button"
-                              class="btn-enlace"
-                              [disabled]="procesando()"
-                              (click)="avanzarServicio(servicio.ordenServicioId, EstadoServicioOrden.EnProceso)"
-                            >
-                              En proceso
-                            </button>
-                          } @else {
-                            <button
-                              type="button"
-                              class="btn-enlace"
-                              [disabled]="procesando()"
-                              (click)="avanzarServicio(servicio.ordenServicioId, EstadoServicioOrden.Pendiente)"
-                            >
-                              Volver a pendiente
-                            </button>
-                          }
-                          <button
-                            type="button"
-                            class="btn-enlace"
-                            [disabled]="procesando()"
-                            (click)="avanzarServicio(servicio.ordenServicioId, EstadoServicioOrden.Completado)"
-                          >
-                            Completar
-                          </button>
-                        }
-                        @if (puedeGestionar() && editableTrabajo()) {
-                          <button
-                            type="button"
-                            class="btn-enlace"
-                            [disabled]="procesando()"
-                            (click)="abrirEditarServicio(servicio)"
-                          >
-                            Editar
-                          </button>
-                        }
-                        @if (puedeTrabajar() && editableTrabajo()) {
-                          <button
-                            type="button"
-                            class="btn-enlace texto-rojo"
-                            [disabled]="procesando()"
-                            (click)="quitarServicio(servicio)"
-                          >
-                            Quitar
-                          </button>
-                        }
-                      </div>
-                    </td>
-                  </tr>
-                  @if (faltaSuRepuesto) {
-                    <!-- Aviso a todo el ancho: en la columna del servicio quedaba apretado. -->
-                    <tr class="fila-aviso">
-                      <td colspan="5">
-                        <div class="falta-repuesto">
-                          <span>
-                            <strong>{{ servicio.nombreServicio }}</strong> usa repuestos: falta registrar el que se
-                            usó para poder completarlo.
-                          </span>
-                          @if (puedeTrabajar() && editableTrabajo()) {
-                            <button
-                              type="button"
-                              class="btn-enlace"
-                              [disabled]="procesando()"
-                              (click)="abrirPanelRepuesto(servicio)"
-                            >
-                              Registrar repuesto
-                            </button>
-                          }
-                        </div>
-                      </td>
-                    </tr>
-                  }
-                }
-              </tbody>
-            </table>
-          </div>
+          @if (faltaSuRepuesto) {
+            <div class="falta-repuesto">
+              <span><strong>{{ servicio.nombreServicio }}</strong> usa repuestos: falta registrar el que se usó para poder completarlo.</span>
+              @if (puedeTrabajar() && editableTrabajo()) {
+                <button type="button" class="btn-enlace" [disabled]="procesando()" (click)="abrirPanelRepuesto(servicio)">
+                  Registrar repuesto
+                </button>
+              }
+            </div>
+          }
+        } @empty {
+          <p class="bloque-orden-vacio">
+            @if (o.estado === EstadoOrden.Abierta) {
+              Inicie el trabajo para poder cargar los servicios que se harán.
+            } @else {
+              Sin servicios registrados.
+            }
+          </p>
         }
-      </div>
+      </section>
 
-      <!-- ------------------------------------------------------ Repuestos -->
-      <div class="tarjeta">
-        <div class="tarjeta-encabezado">
+      <!-- ------------------------------------------------------------ Repuestos -->
+      <section class="tarjeta bloque-orden">
+        <div class="bloque-orden-cabecera">
           <h2>Repuestos utilizados</h2>
           @if (puedeTrabajar()) {
             <button
@@ -477,193 +298,161 @@
           }
         </div>
 
-        @if (o.repuestos.length === 0) {
-          <div class="vacio">
-            <div class="vacio-titulo">Sin repuestos cargados</div>
-            <div class="texto-sm">
-              @if (o.estado === EstadoOrden.Abierta) {
-                Inicie el trabajo para poder cargar los repuestos utilizados.
+        @for (repuesto of o.repuestos; track repuesto.ordenRepuestoId) {
+          @let foto = fotoRepuesto(repuesto);
+          @let compat = compatibilidadDe(repuesto);
+          <div class="fila-orden">
+            <div class="fila-orden-repuesto">
+              @if (foto) {
+                <img class="repuesto-miniatura" [src]="urlArchivo(foto)" alt="" loading="lazy" />
               } @else {
-                El stock se descuenta recién al cerrar la orden.
+                <span class="repuesto-miniatura" aria-hidden="true">{{ iniciales(repuesto.nombreRepuesto) }}</span>
               }
+              <div class="fila-orden-textos">
+                <strong>{{ repuesto.nombreRepuesto }}</strong>
+                <span>
+                  @if (repuesto.nombreServicio) {
+                    Para: {{ repuesto.nombreServicio }} ·
+                  }
+                  {{ repuesto.cantidad }} {{ repuesto.cantidad === 1 ? 'unidad' : 'unidades' }}
+                  @if (repuesto.origen !== OrigenRepuesto.Inventario) {
+                    · {{ ETIQUETAS.origenRepuesto[repuesto.origen] }}
+                  }
+                </span>
+              </div>
             </div>
+            <span>
+              @if (compat) {
+                <span class="insignia etiqueta-chica" [class.insignia-verde]="compat === 'Compatible'" [class.insignia-gris]="compat !== 'Compatible'">
+                  {{ compat }}
+                </span>
+              }
+            </span>
+            <span class="monto-mono a-la-derecha">
+              @if (repuesto.origen === OrigenRepuesto.ClienteTrae) {
+                <span class="texto-tenue">Sin cargo</span>
+              } @else {
+                {{ repuesto.subtotal | bs }}
+              }
+            </span>
+            <span class="fila-orden-acciones">
+              @if (puedeTrabajar() && editableTrabajo()) {
+                <button type="button" class="btn-enlace" [disabled]="procesando()" (click)="abrirEditarRepuesto(repuesto)">Editar</button>
+                <button type="button" class="btn-enlace texto-rojo" [disabled]="procesando()" (click)="quitarRepuesto(repuesto)">
+                  Quitar
+                </button>
+              }
+            </span>
           </div>
-        } @else {
-          <div class="tabla-contenedor">
-            <table class="tabla">
-              <thead>
-                <tr>
-                  <th>Repuesto</th>
-                  <th class="num">Cantidad</th>
-                  <th class="num">Precio unit.</th>
-                  <th class="num">Subtotal</th>
-                  <th class="th-acciones">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (repuesto of o.repuestos; track repuesto.ordenRepuestoId) {
-                  <tr>
-                    <td>
-                      <div class="texto-fuerte">
-                        {{ repuesto.nombreRepuesto }}
-                        @if (repuesto.origen !== OrigenRepuesto.Inventario) {
-                          <span class="insignia insignia-gris ml-1">{{ ETIQUETAS.origenRepuesto[repuesto.origen] }}</span>
-                        }
-                      </div>
-                      @if (repuesto.nombreServicio) {
-                        <div class="texto-tenue texto-sm">Para: {{ repuesto.nombreServicio }}</div>
-                      }
-                    </td>
-                    <td class="num">{{ repuesto.cantidad }}</td>
-                    <td class="num">
-                      @if (repuesto.origen === OrigenRepuesto.ClienteTrae) {
-                        <span class="texto-tenue">Sin cargo</span>
-                      } @else {
-                        {{ repuesto.precioUnitario | bs }}
-                      }
-                    </td>
-                    <td class="num">
-                      @if (repuesto.origen === OrigenRepuesto.ClienteTrae) {
-                        <span class="texto-tenue">—</span>
-                      } @else {
-                        {{ repuesto.subtotal | bs }}
-                      }
-                    </td>
-                    <td>
-                      @if (puedeTrabajar() && editableTrabajo()) {
-                        <div class="acciones">
-                          <button
-                            type="button"
-                            class="btn-enlace"
-                            [disabled]="procesando()"
-                            (click)="abrirEditarRepuesto(repuesto)"
-                          >
-                            Editar
-                          </button>
-                          <button
-                            type="button"
-                            class="btn-enlace texto-rojo"
-                            [disabled]="procesando()"
-                            (click)="quitarRepuesto(repuesto)"
-                          >
-                            Quitar
-                          </button>
-                        </div>
-                      }
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
+        } @empty {
+          <p class="bloque-orden-vacio">
+            @if (o.estado === EstadoOrden.Abierta) {
+              Inicie el trabajo para poder cargar los repuestos.
+            } @else {
+              Sin repuestos cargados. El stock se descuenta recién al cerrar la orden.
+            }
+          </p>
         }
-      </div>
+      </section>
+
+      <!-- ------------------------------------------------- Diagnóstico asistido -->
+      @if (puedeTrabajar() && sugerenciaOrden(); as s) {
+        <section class="tarjeta bloque-orden bloque-orden-cuerpo">
+          <h2>Sugerencias para esta orden</h2>
+          <p class="texto-tenue texto-sm mb-0">
+            Basado en {{ s.basadoEnCasos }} caso(s) con una falla similar. Toque una sugerencia para agregarla.
+          </p>
+          @if (s.servicios.length > 0) {
+            <div>
+              <span class="etiqueta-campo">Servicios probables</span>
+              <div class="chips-sugerencia mt-1">
+                @for (sv of s.servicios; track sv.nombre) {
+                  <button
+                    type="button"
+                    class="chip-sugerido"
+                    [disabled]="!editableTrabajo()"
+                    [title]="motivoBloqueoTrabajo()"
+                    (click)="abrirPanelServicioSugerido(sv)"
+                  >
+                    + {{ sv.nombre }} · {{ sv.frecuencia }} de {{ s.basadoEnCasos }}
+                  </button>
+                }
+              </div>
+            </div>
+          }
+          @if (s.repuestos.length > 0) {
+            <div>
+              <span class="etiqueta-campo">Repuestos probables</span>
+              <div class="chips-sugerencia mt-1">
+                @for (rp of s.repuestos; track rp.nombre) {
+                  <button
+                    type="button"
+                    class="chip-sugerido"
+                    [disabled]="!editableTrabajo()"
+                    [title]="motivoBloqueoTrabajo()"
+                    (click)="abrirPanelRepuestoSugerido(rp)"
+                  >
+                    + {{ rp.nombre }} · {{ rp.frecuencia }} de {{ s.basadoEnCasos }}
+                  </button>
+                }
+              </div>
+            </div>
+          }
+          @if (s.precioMinimo != null) {
+            <p class="texto-tenue texto-sm mb-0">
+              Precio en casos similares: {{ s.precioMinimo | bs }} – {{ s.precioMaximo | bs }} (prom. {{ s.precioPromedio | bs }})
+            </p>
+          }
+        </section>
+      }
+
+      <!-- --------------------------------------------------- Diagnóstico de origen -->
+      @if (o.diagnosticoId) {
+        <section class="tarjeta bloque-orden bloque-orden-cuerpo">
+          <div class="bloque-orden-titulo">
+            <h2>Diagnóstico de origen</h2>
+            <a class="codigo" [routerLink]="['/diagnosticos']" [queryParams]="{ buscar: o.diagnosticoId }">{{ o.diagnosticoId }}</a>
+          </div>
+          <div class="dato-orden">
+            <span>Falla reportada</span>
+            <p>{{ o.descripcionFalla }}</p>
+          </div>
+          @if (o.observacionesTecnicasDiagnostico) {
+            <div class="dato-orden">
+              <span>Observaciones técnicas</span>
+              <p>{{ o.observacionesTecnicasDiagnostico }}</p>
+            </div>
+          }
+        </section>
+      }
     </div>
 
-    <!-- ----------------------------------------------------- Barra lateral -->
-    <div class="lateral-col">
-      <div class="tarjeta mb-2">
-        <div class="tarjeta-encabezado"><h2>Resumen</h2></div>
-        <div class="tarjeta-cuerpo">
-          <dl class="datos">
-            <dt>
-              <svg class="dato-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
-              </svg>
-              Apertura
-            </dt>
-            <dd>{{ o.fechaCreacion | date: 'dd/MM/yyyy HH:mm' }}</dd>
-            <dt>
-              <svg class="dato-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
-              </svg>
-              Entrega estimada
-            </dt>
-            <dd>{{ o.fechaEstimada ? (o.fechaEstimada | date: 'dd/MM/yyyy') : '—' }}</dd>
-            @if (o.fechaCierre) {
-              <dt>
-                <svg class="dato-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" />
-                </svg>
-                Cierre
-              </dt>
-              <dd>{{ o.fechaCierre | date: 'dd/MM/yyyy HH:mm' }}</dd>
-            }
-            <dt>
-              <svg class="dato-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
-              </svg>
-              Responsable
-            </dt>
-            <dd>{{ o.nombreAdministrador }}</dd>
-          </dl>
-
-          <hr class="separador" />
-
-          <div class="linea-total">
-            <span class="texto-tenue">Servicios</span>
-            <span>{{ o.totalServicios | bs }}</span>
-          </div>
-          <div class="linea-total">
-            <span class="texto-tenue">Repuestos</span>
-            <span>{{ o.totalRepuestos | bs }}</span>
-          </div>
-
-          <div class="total-caja mt-1">
-            <span>Total</span>
-            <span class="total-monto">{{ o.total | bs }}</span>
-          </div>
-
-          <!-- Estado de cobro: la pregunta clave al entregar el auto -->
-          @if (proforma(); as f) {
-            @if (f.estaSaldada) {
-              <div class="cobro cobro-pagado mt-1">
-                <span class="cobro-punto" aria-hidden="true"></span>
-                <div class="cobro-texto">
-                  <span class="cobro-estado">Pagado completamente</span>
-                  <span class="cobro-detalle">{{ f.totalPagado | bs }} cobrados</span>
-                </div>
-              </div>
-            } @else {
-              <div class="cobro cobro-pendiente mt-1">
-                <span class="cobro-punto" aria-hidden="true"></span>
-                <div class="cobro-texto">
-                  <span class="cobro-estado">Saldo pendiente: {{ f.saldoPendiente | bs }}</span>
-                  <a
-                    class="cobro-accion no-imprimir"
-                    [routerLink]="['/pagos']"
-                    [queryParams]="{ proformaId: f.proformaId }"
-                  >
-                    Cobrar en caja →
-                  </a>
-                </div>
-              </div>
-            }
-          } @else if (o.estado === EstadoOrden.Cerrada) {
-            <div class="cobro cobro-neutro mt-1 no-imprimir">
-              <div class="cobro-texto">
-                <span class="cobro-estado">Sin proforma emitida</span>
-                <a
-                  class="cobro-accion"
-                  [routerLink]="['/proformas']"
-                  [queryParams]="{ buscar: o.ordenId }"
-                >
-                  Emitir proforma →
-                </a>
-              </div>
-            </div>
+    <!-- -------------------------------------------------------- Columna lateral -->
+    <aside class="lateral-col">
+      <section class="tarjeta bloque-orden-cuerpo">
+        <h2>Resumen</h2>
+        <div class="linea-resumen"><span>Servicios</span><span class="monto-mono">{{ o.totalServicios | bs }}</span></div>
+        <div class="linea-resumen"><span>Repuestos</span><span class="monto-mono">{{ o.totalRepuestos | bs }}</span></div>
+        <div class="total-resumen"><strong>Total</strong><span class="monto-mono">{{ o.total | bs }}</span></div>
+        <dl class="fechas-orden">
+          <div><dt>Abierta</dt><dd>{{ o.fechaCreacion | date: 'dd/MM/yyyy HH:mm' }}</dd></div>
+          <div><dt>Entrega estimada</dt><dd>{{ o.fechaEstimada ? (o.fechaEstimada | date: 'dd/MM/yyyy') : '—' }}</dd></div>
+          @if (o.fechaCierre) {
+            <div><dt>Cerrada</dt><dd>{{ o.fechaCierre | date: 'dd/MM/yyyy HH:mm' }}</dd></div>
           }
+          <div><dt>Responsable</dt><dd>{{ o.nombreAdministrador }}</dd></div>
+        </dl>
+        @if (o.observaciones) {
+          <div class="dato-orden">
+            <span>Observaciones</span>
+            <p>{{ o.observaciones }}</p>
+          </div>
+        }
+      </section>
 
-          @if (o.observaciones) {
-            <h3 class="mt-2 mb-1">Observaciones</h3>
-            <p class="parrafo texto-sm">{{ o.observaciones }}</p>
-          }
-        </div>
-      </div>
-
-      <div class="tarjeta">
-        <div class="tarjeta-encabezado">
-          <h2>Mecánicos</h2>
+      <section class="tarjeta bloque-orden-cuerpo">
+        <div class="bloque-orden-titulo">
+          <h2>Mecánico</h2>
           <button
             *appSiRol="['Administrador']"
             type="button"
@@ -678,76 +467,80 @@
             {{ asignarEsExcepcion() ? '+ Otro (excepción)' : '+ Asignar' }}
           </button>
         </div>
-        <div class="tarjeta-cuerpo">
-          @if (o.mecanicos.length === 0) {
-            <p class="texto-tenue texto-sm mb-0">
-              Sin mecánicos asignados. Debe asignar uno antes de iniciar el trabajo.
-            </p>
-          } @else {
-            <ul class="lista-mecanicos">
-              @for (mecanico of o.mecanicos; track mecanico.mecanicoId) {
-                <li>
-                  <div class="mecanico-info">
-                    <span class="avatar-ini avatar-md" aria-hidden="true">{{ iniciales(mecanico.nombreMecanico) }}</span>
-                    <div>
-                      <div class="texto-fuerte texto-sm">{{ mecanico.nombreMecanico }}</div>
-                      <div class="texto-tenue texto-sm">
-                        Desde {{ mecanico.fechaAsignacion | date: 'dd/MM/yyyy' }}
-                      </div>
-                    </div>
-                  </div>
-                  @if (editable() && puedeGestionar()) {
-                    <button
-                      type="button"
-                      class="btn-enlace texto-rojo"
-                      [disabled]="procesando()"
-                      (click)="quitarMecanico(mecanico.mecanicoId)"
-                    >
-                      Quitar
-                    </button>
-                  }
-                </li>
-              }
-            </ul>
+        @for (mecanico of o.mecanicos; track mecanico.mecanicoId) {
+          <div class="mecanico-orden">
+            <span class="avatar-orden" aria-hidden="true">{{ iniciales(mecanico.nombreMecanico) }}</span>
+            <span class="mecanico-orden-textos">
+              <strong>{{ mecanico.nombreMecanico }}</strong>
+              <span>Desde {{ mecanico.fechaAsignacion | date: 'dd/MM/yyyy' }}</span>
+            </span>
+            @if (editable() && puedeGestionar()) {
+              <button type="button" class="btn-enlace texto-rojo" [disabled]="procesando()" (click)="quitarMecanico(mecanico.mecanicoId)">
+                Quitar
+              </button>
+            }
+          </div>
+        } @empty {
+          <p class="texto-tenue texto-sm mb-0">Sin mecánico asignado. Debe asignarse antes de iniciar el trabajo.</p>
+        }
+      </section>
+
+      <section class="tarjeta bloque-orden-cuerpo">
+        <div class="bloque-orden-titulo">
+          <h2>Estado del vehículo</h2>
+          @if (fotosVehiculo().length > 0) {
+            <button type="button" class="btn-enlace" (click)="abrirGaleriaVehiculo()">Ver fotos</button>
           }
         </div>
-      </div>
+        @if (fotosVehiculo().length > 0) {
+          <button type="button" class="foto-estado" (click)="abrirGaleriaVehiculo()" aria-label="Ver fotos del vehículo">
+            <img [src]="urlArchivo(fotosVehiculo()[0].url)" [alt]="'Foto de ' + o.placaVehiculo" />
+          </button>
+        }
+        @for (z of zonasMarcadas(); track z.zonaObsId; let i = $index) {
+          <span class="zona-orden">
+            <strong>{{ i + 1 }}</strong>
+            <span>{{ etiquetaZona(z.zona) }} · {{ textoZona(z.estado) }}{{ z.detalle ? ' — ' + z.detalle : '' }}</span>
+          </span>
+        } @empty {
+          <span class="texto-tenue texto-sm">Sin zonas marcadas.</span>
+        }
+        <div class="pie-estado">
+          <span>{{ fotosVehiculo().length === 1 ? '1 foto' : fotosVehiculo().length + ' fotos' }}</span>
+          @if (kilometrajeVehiculo() !== null) {
+            <span class="monto-mono">{{ kilometrajeVehiculo()!.toLocaleString('es-BO') }} km</span>
+          }
+          <button type="button" class="btn-enlace no-imprimir" (click)="diagramaAbierto.set(true)">Marcar zonas</button>
+        </div>
+      </section>
 
       @if (puedeGestionar()) {
         <!-- Todo lo que se hizo sobre la orden y quién lo hizo (Auditoría). -->
-        <div class="tarjeta mt-2">
-          <div class="tarjeta-encabezado"><h2>Historial</h2></div>
-          <div class="tarjeta-cuerpo">
-            @if (historial().length === 0) {
-              <p class="texto-tenue texto-sm mb-0">Sin movimientos registrados.</p>
-            } @else {
-              <ol class="historial">
-                @for (h of historial(); track h.auditoriaId) {
-                  @let estilo = ESTILO_HISTORIAL[h.accion];
-                  <li
-                    [class]="'tono-' + estilo.tono"
-                    [class.excepcion]="h.accion === AccionAuditoria.Excepcion"
-                  >
-                    <span class="historial-icono" [attr.title]="estilo.etiqueta" aria-hidden="true">
-                      <svg viewBox="0 0 24 24"><path [attr.d]="estilo.icono" /></svg>
-                    </span>
-                    <div class="historial-cuerpo">
-                      <div class="historial-meta">
-                        @if (h.accion === AccionAuditoria.Excepcion) {
-                          <span class="historial-accion">{{ estilo.etiqueta }}</span>
-                        }
-                        <span>{{ h.fecha | date: 'dd/MM HH:mm' }} · {{ h.nombreUsuario }}</span>
-                      </div>
-                      <div class="historial-texto"><app-texto-resaltado [texto]="h.descripcion" /></div>
-                    </div>
-                  </li>
+        <section class="tarjeta bloque-orden-cuerpo">
+          <h2>Historial</h2>
+          @for (h of historialVisible(); track h.auditoriaId) {
+            @let estilo = ESTILO_HISTORIAL[h.accion];
+            <div class="evento-orden" [class.excepcion]="h.accion === AccionAuditoria.Excepcion">
+              <span class="evento-orden-punto tono-{{ estilo.tono }}" aria-hidden="true"></span>
+              <span class="evento-orden-textos">
+                @if (h.accion === AccionAuditoria.Excepcion) {
+                  <strong class="evento-orden-excepcion">{{ estilo.etiqueta }}</strong>
                 }
-              </ol>
-            }
-          </div>
-        </div>
+                <span class="evento-orden-texto"><app-texto-resaltado [texto]="h.descripcion" /></span>
+                <span class="evento-orden-cuando">{{ h.fecha | date: 'dd/MM HH:mm' }} · {{ h.nombreUsuario }}</span>
+              </span>
+            </div>
+          } @empty {
+            <p class="texto-tenue texto-sm mb-0">Sin movimientos registrados.</p>
+          }
+          @if (historial().length > historialVisible().length) {
+            <button type="button" class="btn-enlace historial-mas" (click)="verTodoHistorial.set(true)">
+              Ver historial completo ({{ historial().length }})
+            </button>
+          }
+        </section>
       }
-    </div>
+    </aside>
   </div>
 
   <!-- ========================================================== Diálogos -->

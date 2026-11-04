@@ -1,62 +1,130 @@
-/* Filtros en una sola fila ordenada: los cuatro campos alineados, sin que las
-   fechas salten a otra línea. En pantallas chicas recién ahí se apilan. */
 .filtros-auditoria {
-  display: grid;
-  grid-template-columns: minmax(150px, 1fr) minmax(140px, 1fr) minmax(140px, 1fr) minmax(140px, 1fr) auto;
-  align-items: end;
-  gap: 12px;
-  flex: 1;
-  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
 }
 
-.filtro-campo {
+.filtro-usuario {
+  width: auto;
+  min-width: 190px;
+  height: 40px;
+}
+
+.buscador-auditoria {
+  max-width: 320px;
+  margin-left: auto;
+}
+
+.dia-auditoria {
+  margin-bottom: 18px;
+  overflow: hidden;
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio);
+  background: var(--blanco);
+}
+
+.dia-cabecera {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 20px;
+  background: var(--gris-50);
+  font-size: 13px;
+  color: var(--gris-400);
+}
+
+.dia-cabecera h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.evento-auditoria {
+  display: grid;
+  grid-template-columns: 56px 32px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 14px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--gris-100);
+}
+
+.evento-auditoria:hover { background: var(--gris-50); }
+
+.evento-hora,
+.evento-codigo {
+  padding-top: 6px;
+  font-size: 13px;
+}
+
+.evento-hora { color: var(--gris-500); }
+
+.evento-codigo.sin-enlace { color: var(--gris-500); }
+
+.evento-avatar {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--blanco);
+}
+
+.evento-cuerpo {
   display: flex;
   flex-direction: column;
   gap: 4px;
   min-width: 0;
 }
 
-.filtro-etiqueta {
-  font-size: 10.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--gris-500);
-}
-
-.filtros-auditoria select,
-.filtros-auditoria input {
-  width: 100%;
-}
-
-.filtro-limpiar {
-  align-self: end;
-  padding-bottom: 8px;
-  white-space: nowrap;
-}
-
-@media (max-width: 820px) {
-  .filtros-auditoria { grid-template-columns: 1fr 1fr; }
-  .filtro-limpiar { grid-column: 1 / -1; justify-self: start; }
-}
-
-/* Avatar del usuario en la columna USUARIO */
-.celda-usuario {
-  display: inline-flex;
+.evento-quien {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
 
-.avatar-ini {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--brand-soft);
-  color: var(--brand-dk);
-  font-size: 9.5px;
-  font-weight: 700;
+.evento-quien strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.evento-accion {
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.evento-texto {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--gris-500);
+}
+
+.auditoria-vacia {
+  padding: 32px 20px;
+  text-align: center;
+  color: var(--gris-500);
+}
+
+.paginador-auditoria { padding: 4px 8px; }
+
+@media (max-width: 900px) {
+  .buscador-auditoria { max-width: none; margin-left: 0; }
+
+  .evento-auditoria {
+    grid-template-columns: 32px minmax(0, 1fr);
+    padding: 12px 16px;
+  }
+
+  .evento-hora { display: none; }
+
+  .evento-codigo {
+    grid-column: 2;
+    padding-top: 0;
+  }
 }

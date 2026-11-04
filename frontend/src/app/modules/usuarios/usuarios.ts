@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
@@ -7,9 +8,7 @@ import { NotificacionService } from '../../core/services/notificacion.service';
 import { UsuariosService } from '../../core/services/usuarios.service';
 import { Confirmacion } from '../../shared/components/confirmacion';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
-import { InsigniaEstado } from '../../shared/components/insignia-estado';
-import { Modal } from '../../shared/components/modal';
-import { Paginador } from '../../shared/components/paginador';
+import { Cajon } from '../../shared/components/cajon';
 import { Atajo } from '../../shared/directives/atajo';
 import { EnfocarError } from '../../shared/directives/enfocar-error';
 
@@ -18,15 +17,15 @@ import { EnfocarError } from '../../shared/directives/enfocar-error';
   selector: 'app-usuarios',
   imports: [
     ReactiveFormsModule,
-    Modal,
+    DatePipe,
+    Cajon,
     Confirmacion,
     EstadoTabla,
-    InsigniaEstado,
-    Paginador,
     Atajo,
     EnfocarError,
   ],
   templateUrl: './usuarios.html',
+  styleUrl: './usuarios.css',
 })
 export class Usuarios {
   private readonly servicio = inject(UsuariosService);
@@ -69,7 +68,7 @@ export class Usuarios {
     this.cargando.set(true);
 
     this.servicio
-      .getAll(this.buscar() || undefined, this.pagina(), this.tamanoPagina())
+      .getAll(undefined, 1, 500)
       .subscribe({
         next: (resultado) => {
           this.usuarios.set(resultado.items);
@@ -96,6 +95,10 @@ export class Usuarios {
     this.tamanoPagina.set(tamano);
     this.pagina.set(1);
     this.cargar();
+  }
+
+  protected iniciales(usuario: Usuario): string {
+    return ((usuario.nombre[0] ?? '') + (usuario.apellido[0] ?? '')).toUpperCase();
   }
 
   protected invalido(control: string): boolean {

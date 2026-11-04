@@ -1,27 +1,17 @@
-import { DatePipe, DecimalPipe } from '@angular/common';
+import { DecimalPipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
-import { EstadoCliente, EstadoZonaVehiculo } from '../../core/models/enums';
-import {
-  Cliente,
-  HistorialVehiculo,
-  Vehiculo,
-  VehiculoFoto,
-  VehiculoZona,
-} from '../../core/models/personas.model';
+import { EstadoCliente } from '../../core/models/enums';
+import { Cliente, Vehiculo } from '../../core/models/personas.model';
 import { AuthService } from '../../core/services/auth.service';
 import { ClientesService } from '../../core/services/clientes.service';
 import { NotificacionService } from '../../core/services/notificacion.service';
 import { PreferenciasService } from '../../core/services/preferencias.service';
-import { urlArchivo } from '../../core/services/api-base';
 import { VehiculosService } from '../../core/services/vehiculos.service';
-import { DiagramaVehiculo } from '../../shared/components/diagrama-vehiculo';
-import { Esqueleto } from '../../shared/components/esqueleto';
-import { ElegirFoto } from '../../shared/components/elegir-foto';
+import { Cajon } from '../../shared/components/cajon';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
-import { Modal } from '../../shared/components/modal';
 import { Paginador } from '../../shared/components/paginador';
 import { Placa } from '../../shared/components/placa';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
@@ -29,7 +19,6 @@ import { detalleConNuevo } from '../../shared/recientes';
 import { Atajo } from '../../shared/directives/atajo';
 import { EnfocarError } from '../../shared/directives/enfocar-error';
 import { SiTieneRol } from '../../shared/directives/si-tiene-rol';
-import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 import {
   COLORES_RAPIDOS,
   colorPunto,
@@ -40,25 +29,24 @@ import {
 
 const CLAVE_BUSCAR = 'vehiculos.buscar';
 
-/** USU009-USU011 — gestión de vehículos. */
+/**
+ * USU009-USU011 — gestión de vehículos. El historial, las fotos y el dibujo
+ * con las zonas marcadas viven en la ficha de cada vehículo (/vehiculos/:id).
+ */
 @Component({
   selector: 'app-vehiculos',
   imports: [
     ReactiveFormsModule,
-    DatePipe,
+    RouterLink,
     DecimalPipe,
-    Modal,
-    ElegirFoto,
+    Cajon,
     EstadoTabla,
     Paginador,
     SelectorBusqueda,
     Atajo,
     EnfocarError,
     SiTieneRol,
-    Esqueleto,
     Placa,
-    BolivianosPipe,
-    DiagramaVehiculo,
   ],
   templateUrl: './vehiculos.html',
   styleUrl: './vehiculos.css',
@@ -88,6 +76,12 @@ export class Vehiculos {
   protected readonly editando = signal<Vehiculo | null>(null);
   protected readonly formularioAbierto = signal(false);
 
+  /**
+   * "Editar" desde la ficha de un vehículo abre el formulario aquí; al guardar
+   * o cerrar se vuelve a esa ficha, que es donde estaba quien lo pidió.
+   */
+  private volverAFicha: string | null = null;
+
   /** Espejo reactivo de la placa: alimenta la vista previa en vivo. */
   protected readonly placaActual = signal('');
   /** Espejo reactivo de la marca: acota los modelos sugeridos a esa marca. */
@@ -95,30 +89,6 @@ export class Vehiculos {
 
   protected readonly COLORES_RAPIDOS = COLORES_RAPIDOS;
   protected readonly colorPunto = colorPunto;
-
-  protected readonly historialDe = signal<Vehiculo | null>(null);
-  protected readonly historial = signal<HistorialVehiculo | null>(null);
-  protected readonly cargandoHistorial = signal(false);
-
-  // Galería de fotos (opcional).
-  protected readonly galeriaDe = signal<Vehiculo | null>(null);
-  protected readonly fotos = signal<VehiculoFoto[]>([]);
-  protected readonly cargandoFotos = signal(false);
-  protected readonly subiendoFoto = signal(false);
-  protected readonly eliminandoFoto = signal<string | null>(null);
-  protected readonly urlArchivo = urlArchivo;
-
-  // Diagrama vectorial (zonas marcadas del vehículo).
-  protected readonly diagramaDe = signal<Vehiculo | null>(null);
-  protected readonly zonasDiagrama = signal<VehiculoZona[]>([]);
-  protected readonly cargandoZonas = signal(false);
-  protected readonly zonaEditando = signal<string | null>(null);
-  protected readonly guardandoZona = signal(false);
-  protected readonly EstadoZonaVehiculo = EstadoZonaVehiculo;
-  protected readonly formularioZona = this.fb.nonNullable.group({
-    estado: [EstadoZonaVehiculo.Atencion],
-    detalle: [''],
-  });
 
   protected readonly formulario = this.fb.nonNullable.group({
     clienteId: ['', Validators.required],
@@ -166,17 +136,31 @@ export class Vehiculos {
       );
     }
 
-    // "+ Vehículo" desde la ficha de un cliente enlaza con ?clienteId=...&nuevo=true:
+    // "+ Agregar vehículo" desde la ficha de un cliente enlaza con ?clienteId=...&nuevo=true:
     // abre el alta directo con el propietario ya elegido, sin buscarlo de nuevo.
     if (parametros.get('nuevo') === 'true') {
       this.abrirNuevo();
-      void this.router.navigate([], {
-        relativeTo: this.ruta,
-        queryParams: { nuevo: null },
-        queryParamsHandling: 'merge',
-        replaceUrl: true,
-      });
+      this.limpiarParametro('nuevo');
     }
+
+    // "Editar" desde la ficha del vehículo enlaza con ?editar=VEH-001.
+    const editar = parametros.get('editar');
+    if (editar && this.auth.esAdministrador()) {
+      this.servicio.getById(editar).subscribe((vehiculo) => {
+        this.volverAFicha = vehiculo.vehiculoId;
+        this.abrirEditar(vehiculo);
+      });
+      this.limpiarParametro('editar');
+    }
+  }
+
+  private limpiarParametro(nombre: string): void {
+    void this.router.navigate([], {
+      relativeTo: this.ruta,
+      queryParams: { [nombre]: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   protected cargar(): void {
@@ -247,6 +231,7 @@ export class Vehiculos {
 
   protected abrirNuevo(): void {
     this.editando.set(null);
+    this.volverAFicha = null;
     // El año casi siempre es el actual: se ofrece hecho y solo se corrige si no.
     this.formulario.reset({
       kilometraje: 0,
@@ -302,139 +287,10 @@ export class Vehiculos {
   protected cerrarFormulario(): void {
     this.formularioAbierto.set(false);
     this.editando.set(null);
-  }
 
-  // --- Historial (trazabilidad del vehículo) --------------------------------
-
-  protected abrirHistorial(vehiculo: Vehiculo): void {
-    this.historialDe.set(vehiculo);
-    this.historial.set(null);
-    this.cargandoHistorial.set(true);
-
-    this.servicio.historial(vehiculo.vehiculoId).subscribe({
-      next: (historial) => {
-        this.historial.set(historial);
-        this.cargandoHistorial.set(false);
-      },
-      error: () => this.cargandoHistorial.set(false),
-    });
-  }
-
-  protected cerrarHistorial(): void {
-    this.historialDe.set(null);
-    this.historial.set(null);
-  }
-
-  // --- Fotos (galería opcional) ----------------------------------------------
-
-  protected abrirGaleria(vehiculo: Vehiculo): void {
-    this.galeriaDe.set(vehiculo);
-    this.cargarFotos(vehiculo.vehiculoId);
-  }
-
-  protected cerrarGaleria(): void {
-    this.galeriaDe.set(null);
-    this.fotos.set([]);
-  }
-
-  private cargarFotos(vehiculoId: string): void {
-    this.cargandoFotos.set(true);
-
-    this.servicio.getFotos(vehiculoId).subscribe({
-      next: (lista) => {
-        this.fotos.set(lista);
-        this.cargandoFotos.set(false);
-      },
-      error: () => this.cargandoFotos.set(false),
-    });
-  }
-
-  /** La foto llega ya validada y achicada por app-elegir-foto. */
-  protected onArchivoSeleccionado(archivo: File): void {
-    const vehiculo = this.galeriaDe();
-    if (!vehiculo) return;
-
-    this.subiendoFoto.set(true);
-
-    this.servicio.subirFoto(vehiculo.vehiculoId, archivo).subscribe({
-      next: (foto) => {
-        this.fotos.update((lista) => [foto, ...lista]);
-        this.subiendoFoto.set(false);
-      },
-      error: () => this.subiendoFoto.set(false),
-    });
-  }
-
-  protected eliminarFoto(foto: VehiculoFoto): void {
-    this.eliminandoFoto.set(foto.fotoId);
-
-    this.servicio.eliminarFoto(foto.vehiculoId, foto.fotoId).subscribe({
-      next: () => {
-        this.fotos.update((lista) => lista.filter((f) => f.fotoId !== foto.fotoId));
-        this.eliminandoFoto.set(null);
-      },
-      error: () => this.eliminandoFoto.set(null),
-    });
-  }
-
-  // --- Diagrama vectorial (zonas) ---------------------------------------------
-
-  protected abrirDiagrama(vehiculo: Vehiculo): void {
-    this.diagramaDe.set(vehiculo);
-    this.zonaEditando.set(null);
-    this.cargarZonas(vehiculo.vehiculoId);
-  }
-
-  protected cerrarDiagrama(): void {
-    this.diagramaDe.set(null);
-    this.zonasDiagrama.set([]);
-    this.zonaEditando.set(null);
-  }
-
-  private cargarZonas(vehiculoId: string): void {
-    this.cargandoZonas.set(true);
-
-    this.servicio.getZonas(vehiculoId).subscribe({
-      next: (lista) => {
-        this.zonasDiagrama.set(lista);
-        this.cargandoZonas.set(false);
-      },
-      error: () => this.cargandoZonas.set(false),
-    });
-  }
-
-  protected onZonaClick(zona: string): void {
-    this.zonaEditando.set(zona);
-    this.formularioZona.reset({ estado: EstadoZonaVehiculo.Atencion, detalle: '' });
-  }
-
-  protected cancelarZona(): void {
-    this.zonaEditando.set(null);
-  }
-
-  protected guardarZona(): void {
-    const vehiculo = this.diagramaDe();
-    const zona = this.zonaEditando();
-    if (!vehiculo || !zona) return;
-
-    this.guardandoZona.set(true);
-    const datos = this.formularioZona.getRawValue();
-
-    this.servicio
-      .registrarZona(vehiculo.vehiculoId, {
-        zona,
-        estado: datos.estado,
-        detalle: datos.detalle || null,
-      })
-      .subscribe({
-        next: (nueva) => {
-          this.zonasDiagrama.update((lista) => [nueva, ...lista]);
-          this.guardandoZona.set(false);
-          this.zonaEditando.set(null);
-          this.notificacion.exito('Zona registrada en el diagrama.');
-        },
-        error: () => this.guardandoZona.set(false),
-      });
+    const ficha = this.volverAFicha;
+    this.volverAFicha = null;
+    if (ficha) void this.router.navigate(['/vehiculos', ficha]);
   }
 
   protected guardar(): void {

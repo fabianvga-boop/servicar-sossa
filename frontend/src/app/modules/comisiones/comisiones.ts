@@ -2,32 +2,58 @@ import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
 import { EstadoPago, EstadoUsuario } from '../../core/models/enums';
 import { Comision, ComisionConfig, ResumenComisiones } from '../../core/models/finanzas.model';
 import { Usuario } from '../../core/models/personas.model';
+import { Orden } from '../../core/models/taller.model';
 import { AuthService } from '../../core/services/auth.service';
 import { ContadoresService } from '../../core/services/contadores.service';
 import { ComisionesService } from '../../core/services/finanzas.service';
 import { NotificacionService } from '../../core/services/notificacion.service';
-import { PreferenciasService } from '../../core/services/preferencias.service';
+import { OrdenesService } from '../../core/services/ordenes.service';
 import { UsuariosService } from '../../core/services/usuarios.service';
+import { Cajon } from '../../shared/components/cajon';
 import { Confirmacion } from '../../shared/components/confirmacion';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
-import { InsigniaEstado } from '../../shared/components/insignia-estado';
-import { Modal } from '../../shared/components/modal';
-import { Paginador } from '../../shared/components/paginador';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 
-type Pestania = 'comisiones' | 'resumen' | 'config';
+/** Qué comisiones muestra el panel de un mecánico. */
+type VistaPanel = 'pendientes' | 'pagadas' | 'todas';
 
-const CLAVE_FILTRO = 'comisiones.estadoPago';
+/** Una tarjeta de mecánico: lo que se le debe y lo que ya se le pagó. */
+interface TarjetaMecanico {
+  mecanicoId: string;
+  nombre: string;
+  iniciales: string;
+  porcentaje: number | null;
+  pendiente: number;
+  cantidadPendiente: number;
+  pagado: number;
+  /** "desde agosto": desde cuándo se le paga, o que todavía no se le pagó. */
+  desde: string;
+}
+
+/** Una liquidación: lo que se le pagó a un mecánico en un mismo día. */
+interface Liquidacion {
+  clave: string;
+  fecha: string;
+  mecanico: string;
+  cantidad: number;
+  monto: number;
+}
+
+const nombreMes = (fecha: string) => new Date(fecha).toLocaleDateString('es-BO', { month: 'long' });
 
 /**
- * USU031-USU034 — comisiones de mecánicos. El Mecánico entra en modo consulta
- * (USU032): ve solo las suyas, sin pestañas de resumen ni de porcentajes y sin
- * las acciones de pago, que son del Administrador.
+ * USU031-USU034 — comisiones de mecánicos. Una tarjeta por mecánico con lo
+ * que se le debe y lo que ya cobró; el detalle (servicio por servicio de cada
+ * orden) y la liquidación, con el adelanto que ya recibió, van en el panel
+ * lateral. El Mecánico entra en modo consulta (USU032): ve solo lo suyo, sin
+ * liquidar ni cambiar porcentajes.
  */
 @Component({
   selector: 'app-comisiones',
@@ -35,11 +61,9 @@ const CLAVE_FILTRO = 'comisiones.estadoPago';
     FormsModule,
     RouterLink,
     DatePipe,
-    Modal,
+    Cajon,
     Confirmacion,
     EstadoTabla,
-    InsigniaEstado,
-    Paginador,
     SelectorBusqueda,
     BolivianosPipe,
   ],
@@ -48,95 +72,116 @@ const CLAVE_FILTRO = 'comisiones.estadoPago';
 })
 export class Comisiones {
   private readonly servicio = inject(ComisionesService);
+  private readonly ordenesService = inject(OrdenesService);
   private readonly usuariosService = inject(UsuariosService);
   private readonly notificacion = inject(NotificacionService);
-  private readonly preferencias = inject(PreferenciasService);
   private readonly contadores = inject(ContadoresService);
   private readonly auth = inject(AuthService);
 
   /** Administrador: gestiona todo. Mecánico: solo consulta sus comisiones. */
   protected readonly esAdmin = this.auth.esAdministrador;
 
-  protected readonly pestania = signal<Pestania>('comisiones');
-
-  protected readonly comisiones = signal<Comision[]>([]);
   protected readonly resumen = signal<ResumenComisiones[]>([]);
+  /** Todas las comisiones (el tope de 500 sobra para un taller). */
+  protected readonly comisiones = signal<Comision[]>([]);
   protected readonly configuraciones = signal<ComisionConfig[]>([]);
   protected readonly mecanicos = signal<Usuario[]>([]);
+  /** Órdenes por código: vehículo, cliente y fecha de cierre de cada comisión. */
+  protected readonly ordenes = signal<ReadonlyMap<string, Orden>>(new Map());
 
   protected readonly cargando = signal(true);
   protected readonly procesando = signal(false);
-  protected readonly estadoFiltro = signal('');
 
-  protected readonly pagina = signal(1);
-  protected readonly tamanoPagina = signal(20);
-  protected readonly totalRegistros = signal(0);
-  protected readonly totalPaginas = signal(0);
+  // --- Panel del mecánico -------------------------------------------------------
+  protected readonly mecanicoAbierto = signal<string | null>(null);
+  protected readonly vistaPanel = signal<VistaPanel>('pendientes');
+  /** Comisiones marcadas para liquidar (al abrir, todas las pendientes). */
+  protected readonly elegidas = signal<ReadonlySet<string>>(new Set());
+  /** Adelanto que el mecánico ya recibió: se descuenta de lo que se le paga ahora. */
+  protected readonly adelanto = signal(0);
+  protected readonly porLiquidar = signal(false);
 
-  /** Comisiones marcadas para liquidar en lote. */
-  protected readonly seleccionadas = signal<Set<string>>(new Set());
-
-  /** Comisión cuyo detalle de servicios está desplegado en la tabla. */
-  protected readonly expandida = signal<string | null>(null);
-
-  protected readonly panelConfig = signal(false);
-  protected readonly porPagar = signal<Comision | null>(null);
-  protected readonly porPagarLote = signal(false);
-
+  // --- Panel de porcentajes ----------------------------------------------------------
+  protected readonly panelPorcentajes = signal(false);
   protected config = { mecanicoId: '', porcentaje: 0 };
-
-  /** Adelantos ya entregados al mecánico, a descontar en la liquidación. */
-  protected adelanto = 0;
 
   protected readonly EstadoPago = EstadoPago;
 
-  protected readonly pendientes = computed(() =>
-    this.comisiones().filter((c) => c.estadoPago === EstadoPago.Pendiente),
+  protected readonly tarjetas = computed<TarjetaMecanico[]>(() =>
+    this.resumen().map((r) => {
+      const suyas = this.comisiones().filter((c) => c.mecanicoId === r.mecanicoId);
+      const fechasPago = suyas
+        .filter((c) => c.estadoPago === EstadoPago.Pagado && c.fechaPago)
+        .map((c) => c.fechaPago!)
+        .sort();
+
+      return {
+        mecanicoId: r.mecanicoId,
+        nombre: r.nombreMecanico,
+        iniciales: this.iniciales(r.nombreMecanico),
+        porcentaje: r.porcentajeConfigurado ?? null,
+        pendiente: r.totalPendiente,
+        cantidadPendiente: suyas.filter((c) => c.estadoPago === EstadoPago.Pendiente).length,
+        pagado: r.totalPagado,
+        desde: fechasPago.length ? `desde ${nombreMes(fechasPago[0])}` : 'sin pagos todavía',
+      };
+    }),
   );
 
-  /**
-   * KPIs de la barra superior. Los montos salen de `resumen()`, que se carga
-   * sin el filtro de la tabla, así que son globales y no cambian al filtrar el
-   * listado. Es solo lectura de datos ya cargados; no agrega llamadas.
-   */
-  protected readonly kpiTotalPendiente = computed(() =>
-    this.resumen().reduce((suma, r) => suma + r.totalPendiente, 0),
+  protected readonly seleccion = computed(
+    () => this.tarjetas().find((t) => t.mecanicoId === this.mecanicoAbierto()) ?? null,
   );
-  protected readonly kpiTotalPagado = computed(() =>
-    this.resumen().reduce((suma, r) => suma + r.totalPagado, 0),
+
+  /** Las comisiones del mecánico abierto, las más nuevas primero. */
+  private readonly delMecanico = computed(() =>
+    this.comisiones()
+      .filter((c) => c.mecanicoId === this.mecanicoAbierto())
+      .sort((a, b) => b.fechaCalculo.localeCompare(a.fechaCalculo)),
   );
-  protected readonly kpiCantidadPendiente = computed(() => this.pendientes().length);
 
-  /** Porcentaje del propio mecánico; su resumen trae una sola fila. */
-  protected readonly miPorcentaje = computed(() => this.resumen()[0]?.porcentajeConfigurado ?? null);
+  protected readonly pendientesDelMecanico = computed(() =>
+    this.delMecanico().filter((c) => c.estadoPago === EstadoPago.Pendiente),
+  );
 
-  /** Iniciales para el avatar del mecánico: solo presentación. */
-  protected iniciales(nombre: string | null | undefined): string {
-    const partes = (nombre ?? '').trim().split(/\s+/).filter(Boolean);
-    if (partes.length === 0) return '—';
-
-    return partes.length === 1
-      ? partes[0].slice(0, 2).toUpperCase()
-      : (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
-  }
-
-  protected readonly totalSeleccionado = computed(() => {
-    const ids = this.seleccionadas();
-    return this.comisiones()
-      .filter((c) => ids.has(c.comisionId))
-      .reduce((suma, c) => suma + c.monto, 0);
+  protected readonly comisionesPanel = computed(() => {
+    const vista = this.vistaPanel();
+    return this.delMecanico().filter(
+      (c) =>
+        vista === 'todas' ||
+        (vista === 'pendientes') === (c.estadoPago === EstadoPago.Pendiente),
+    );
   });
 
-  /**
-   * Nombre del mecánico si toda la selección es de uno solo; null si hay varios.
-   * El adelanto solo puede descontarse cuando la planilla es de un único mecánico.
-   */
-  protected readonly mecanicoUnicoSeleccionado = computed<string | null>(() => {
-    const ids = this.seleccionadas();
-    const elegidas = this.comisiones().filter((c) => ids.has(c.comisionId));
-    if (elegidas.length === 0) return null;
-    const mecanicos = new Set(elegidas.map((c) => c.mecanicoId));
-    return mecanicos.size === 1 ? elegidas[0].nombreMecanico : null;
+  protected readonly totalElegido = computed(() =>
+    this.pendientesDelMecanico()
+      .filter((c) => this.elegidas().has(c.comisionId))
+      .reduce((suma, c) => suma + c.monto, 0),
+  );
+
+  protected readonly aPagar = computed(() => Math.max(0, this.totalElegido() - (this.adelanto() || 0)));
+
+  /** Lo pagado, agrupado por día y mecánico: las últimas seis liquidaciones. */
+  protected readonly liquidaciones = computed<Liquidacion[]>(() => {
+    const grupos = new Map<string, Liquidacion>();
+
+    for (const c of this.comisiones()) {
+      if (c.estadoPago !== EstadoPago.Pagado || !c.fechaPago) continue;
+
+      const dia = c.fechaPago.slice(0, 10);
+      const clave = `${dia}|${c.mecanicoId}`;
+      const grupo = grupos.get(clave) ?? {
+        clave,
+        fecha: c.fechaPago,
+        mecanico: c.nombreMecanico,
+        cantidad: 0,
+        monto: 0,
+      };
+      grupo.cantidad++;
+      grupo.monto += c.monto;
+      grupos.set(clave, grupo);
+    }
+
+    return [...grupos.values()].sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 6);
   });
 
   protected readonly opcionesMecanico = computed<OpcionSelector[]>(() =>
@@ -148,9 +193,13 @@ export class Comisiones {
   );
 
   constructor() {
-    this.estadoFiltro.set(this.preferencias.leer(CLAVE_FILTRO, ''));
-
     this.cargar();
+
+    // El vehículo y el cliente de cada comisión salen de su orden.
+    this.ordenesService
+      .getAll()
+      .pipe(catchError(() => of([] as Orden[])))
+      .subscribe((lista) => this.ordenes.set(new Map(lista.map((o) => [o.ordenId, o]))));
 
     // La lista de mecánicos solo sirve para configurar porcentajes.
     if (!this.esAdmin()) return;
@@ -171,123 +220,112 @@ export class Comisiones {
   protected cargar(): void {
     this.cargando.set(true);
 
-    const estado = this.estadoFiltro();
-
-    this.servicio
-      .getAll({
-        estadoPago: estado === '' ? undefined : (Number(estado) as EstadoPago),
-        pagina: this.pagina(),
-        tamanoPagina: this.tamanoPagina(),
-      })
-      .subscribe({
-        next: (resultado) => {
-          this.comisiones.set(resultado.items);
-          this.totalRegistros.set(resultado.totalRegistros);
-          this.totalPaginas.set(resultado.totalPaginas);
-          this.cargando.set(false);
-        },
-        error: () => this.cargando.set(false),
-      });
-
-    // Para el mecánico, la API devuelve solo su fila del resumen.
+    // Para el mecánico, la API devuelve solo lo suyo.
     this.servicio.getResumen().subscribe((lista) => this.resumen.set(lista));
+    this.servicio.getAll({ pagina: 1, tamanoPagina: 500 }).subscribe({
+      next: (resultado) => {
+        this.comisiones.set(resultado.items);
+        this.cargando.set(false);
+      },
+      error: () => this.cargando.set(false),
+    });
+
     if (this.esAdmin()) {
       this.servicio.getConfiguraciones().subscribe((lista) => this.configuraciones.set(lista));
     }
   }
 
-  protected cambiarPestania(valor: Pestania): void {
-    this.pestania.set(valor);
+  /** Iniciales para el avatar del mecánico: solo presentación. */
+  protected iniciales(nombre: string | null | undefined): string {
+    const partes = (nombre ?? '').trim().split(/\s+/).filter(Boolean);
+    if (partes.length === 0) return '—';
+
+    return partes.length === 1
+      ? partes[0].slice(0, 2).toUpperCase()
+      : (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
   }
 
-  protected onFiltrarEstado(valor: string): void {
-    this.estadoFiltro.set(valor);
-    this.preferencias.guardar(CLAVE_FILTRO, valor);
-    this.seleccionadas.set(new Set());
-    this.pagina.set(1);
-    this.cargar();
+  // --- Panel del mecánico -------------------------------------------------------
+
+  /** Abre el panel con lo pendiente ya elegido para liquidar (si hay). */
+  protected abrirMecanico(mecanicoId: string): void {
+    this.panelPorcentajes.set(false);
+    this.mecanicoAbierto.set(mecanicoId);
+    this.adelanto.set(0);
+
+    const pendientes = this.pendientesDelMecanico();
+    this.vistaPanel.set(pendientes.length > 0 ? 'pendientes' : 'todas');
+    this.elegidas.set(new Set(pendientes.map((c) => c.comisionId)));
   }
 
-  protected cambiarPagina(pagina: number): void {
-    this.pagina.set(pagina);
-    this.cargar();
+  protected cerrarMecanico(): void {
+    this.mecanicoAbierto.set(null);
   }
 
-  protected cambiarTamano(tamano: number): void {
-    this.tamanoPagina.set(tamano);
-    this.pagina.set(1);
-    this.cargar();
-  }
-
-  // --- Selección para el pago por lote -------------------------------------
-
-  protected estaSeleccionada(comisionId: string): boolean {
-    return this.seleccionadas().has(comisionId);
-  }
-
-  protected alternarSeleccion(comisionId: string): void {
-    this.seleccionadas.update((actual) => {
+  protected alternarElegida(comisionId: string): void {
+    this.elegidas.update((actual) => {
       const nueva = new Set(actual);
       nueva.has(comisionId) ? nueva.delete(comisionId) : nueva.add(comisionId);
       return nueva;
     });
   }
 
-  protected alternarDetalle(comisionId: string): void {
-    this.expandida.update((actual) => (actual === comisionId ? null : comisionId));
+  /** "Toyota Rav4 · 6792UHD", o solo la placa si la orden no está a mano. */
+  protected vehiculoDe(comision: Comision): string {
+    const orden = this.ordenes().get(comision.ordenId);
+    return orden ? `${orden.descripcionVehiculo} · ${comision.placaVehiculo}` : comision.placaVehiculo;
   }
 
-  protected limpiarSeleccion(): void {
-    this.seleccionadas.set(new Set());
+  /** "Cerrada el 27/10/2026 · Jhon Lara" o "Pagada el …". */
+  protected detalleDe(comision: Comision): string {
+    const orden = this.ordenes().get(comision.ordenId);
+    const fecha = (iso: string) => new Date(iso).toLocaleDateString('es-BO');
+    const partes = [
+      comision.estadoPago === EstadoPago.Pagado && comision.fechaPago
+        ? `Pagada el ${fecha(comision.fechaPago)}`
+        : `Calculada el ${fecha(orden?.fechaCierre ?? comision.fechaCalculo)}`,
+      orden?.nombreCliente,
+    ];
+    return partes.filter(Boolean).join(' · ');
   }
 
-  protected seleccionarTodasPendientes(): void {
-    const pendientes = this.pendientes().map((c) => c.comisionId);
-
-    this.seleccionadas.update((actual) =>
-      actual.size === pendientes.length ? new Set() : new Set(pendientes),
-    );
+  /**
+   * Lo que le toca al mecánico por un servicio: su parte del monto, en
+   * proporción al precio (monto × precio / suma de los servicios).
+   */
+  protected comisionServicio(comision: Comision, precio: number): number {
+    const suma = comision.detalle.reduce((total, d) => total + d.precio, 0);
+    return suma > 0 ? (comision.monto * precio) / suma : 0;
   }
 
-  // --- Pago (USU034) -------------------------------------------------------
-
-  protected pagar(): void {
-    const comision = this.porPagar();
-    if (!comision) return;
-
-    this.procesando.set(true);
-
-    this.servicio.pagar(comision.comisionId).subscribe({
-      next: () => {
-        this.notificacion.exito('Comisión marcada como pagada.');
-        this.procesando.set(false);
-        this.porPagar.set(null);
-        this.cargar();
-        // Bajó el pendiente: la insignia del menú debe reflejarlo.
-        this.contadores.refrescar();
-      },
-      error: () => {
-        this.procesando.set(false);
-        this.porPagar.set(null);
-      },
-    });
+  protected onAdelanto(valor: number | string | null): void {
+    const numero = Number(valor);
+    this.adelanto.set(Number.isFinite(numero) && numero > 0 ? numero : 0);
   }
 
-  protected abrirPagarLote(): void {
-    this.adelanto = 0;
-    this.porPagarLote.set(true);
+  // --- Liquidación (USU034) ---------------------------------------------------
+
+  protected pedirLiquidacion(): void {
+    if (this.elegidas().size === 0) {
+      this.notificacion.advertencia('Elija al menos una comisión para liquidar.');
+      return;
+    }
+    if ((this.adelanto() || 0) > this.totalElegido()) {
+      this.notificacion.advertencia('El adelanto no puede ser mayor que lo que se liquida.');
+      return;
+    }
+    this.porLiquidar.set(true);
   }
 
-  protected pagarLote(): void {
-    const ids = [...this.seleccionadas()];
+  protected liquidar(): void {
+    const ids = this.pendientesDelMecanico()
+      .filter((c) => this.elegidas().has(c.comisionId))
+      .map((c) => c.comisionId);
     if (ids.length === 0) return;
 
-    // El adelanto solo se envía si la planilla es de un único mecánico.
-    const adelanto = this.mecanicoUnicoSeleccionado() ? this.adelanto || 0 : 0;
-
     this.procesando.set(true);
 
-    this.servicio.pagarLote(ids, adelanto).subscribe({
+    this.servicio.pagarLote(ids, this.adelanto() || 0).subscribe({
       next: (res) => {
         const mensaje =
           res.adelantoDescontado > 0
@@ -296,24 +334,30 @@ export class Comisiones {
             : `${res.cantidadComisiones} comisión(es) liquidadas por Bs ${res.netoPagado.toFixed(2)}.`;
         this.notificacion.exito(mensaje);
         this.procesando.set(false);
-        this.porPagarLote.set(false);
-        this.adelanto = 0;
-        this.seleccionadas.set(new Set());
+        this.porLiquidar.set(false);
+        this.mecanicoAbierto.set(null);
         this.cargar();
+        // Bajó el pendiente: la insignia del menú debe reflejarlo.
         this.contadores.refrescar();
       },
       error: () => {
         this.procesando.set(false);
-        this.porPagarLote.set(false);
+        this.porLiquidar.set(false);
       },
     });
   }
 
-  // --- Configuración (USU031) ----------------------------------------------
+  // --- Porcentajes (USU031) ----------------------------------------------------
 
-  protected abrirConfig(mecanicoId = '', porcentaje = 0): void {
-    this.config = { mecanicoId, porcentaje };
-    this.panelConfig.set(true);
+  protected abrirPorcentajes(): void {
+    this.mecanicoAbierto.set(null);
+    this.config = { mecanicoId: '', porcentaje: 0 };
+    this.panelPorcentajes.set(true);
+  }
+
+  protected cambiarPorcentaje(cfg: ComisionConfig): void {
+    this.config = { mecanicoId: cfg.mecanicoId, porcentaje: cfg.porcentaje };
+    setTimeout(() => document.getElementById('porcentajeConfig')?.focus());
   }
 
   protected guardarConfig(): void {
@@ -324,16 +368,14 @@ export class Comisiones {
 
     this.procesando.set(true);
 
-    this.servicio
-      .establecerPorcentaje(this.config.mecanicoId, this.config.porcentaje)
-      .subscribe({
-        next: () => {
-          this.notificacion.exito('Porcentaje de comisión guardado.');
-          this.procesando.set(false);
-          this.panelConfig.set(false);
-          this.cargar();
-        },
-        error: () => this.procesando.set(false),
-      });
+    this.servicio.establecerPorcentaje(this.config.mecanicoId, this.config.porcentaje).subscribe({
+      next: () => {
+        this.notificacion.exito('Porcentaje de comisión guardado.');
+        this.procesando.set(false);
+        this.config = { mecanicoId: '', porcentaje: 0 };
+        this.cargar();
+      },
+      error: () => this.procesando.set(false),
+    });
   }
 }

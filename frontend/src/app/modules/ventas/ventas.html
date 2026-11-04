@@ -1,206 +1,270 @@
-<div class="fila-entre envuelve mb-2">
-  <div>
-    <h1>Punto de venta</h1>
-    <p class="texto-tenue texto-sm mb-0">
-      Venta de repuestos en mostrador, sin orden de trabajo
-    </p>
+<!-- Título y pestañas: en la terminal van en la columna de productos, para que
+     la venta ocupe todo el alto a la derecha. -->
+<ng-template #encabezado>
+  <div class="encabezado-pos">
+    <div>
+      <h1>Punto de venta</h1>
+      <p class="encabezado-pos-sub">Venta de repuestos en mostrador, sin orden de trabajo.</p>
+    </div>
+    <div class="segmentos en-linea" role="tablist" aria-label="Terminal o historial">
+      <button
+        type="button"
+        role="tab"
+        class="segmento"
+        [class.activo]="pestania() === 'terminal'"
+        [attr.aria-selected]="pestania() === 'terminal'"
+        (click)="pestania.set('terminal')"
+      >
+        Terminal de venta
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="segmento"
+        [class.activo]="pestania() === 'historial'"
+        [attr.aria-selected]="pestania() === 'historial'"
+        (click)="pestania.set('historial')"
+      >
+        Historial del día <span class="vista-cuenta">{{ ventas().length }}</span>
+      </button>
+    </div>
   </div>
-</div>
-
-<!-- El historial sale del flujo principal: en la pestaña Terminal, el buscador
-     y el carrito se quedan con todo el alto de la pantalla. -->
-<div class="pestanias-pos mb-2" role="tablist">
-  <button
-    type="button"
-    role="tab"
-    [attr.aria-selected]="pestania() === 'terminal'"
-    [class.activa]="pestania() === 'terminal'"
-    (click)="pestania.set('terminal')"
-  >
-    Terminal de venta
-  </button>
-  <button
-    type="button"
-    role="tab"
-    [attr.aria-selected]="pestania() === 'historial'"
-    [class.activa]="pestania() === 'historial'"
-    (click)="pestania.set('historial')"
-  >
-    Historial del día
-    <span class="contador-pildora">{{ ventas().length }}</span>
-  </button>
-</div>
+</ng-template>
 
 @if (pestania() === 'terminal') {
-<div class="columnas-pos">
-  <!-- ------------------------------------------------------------- Catálogo -->
-  <div class="tarjeta">
-    <div class="tarjeta-encabezado"><h2>Nueva venta</h2></div>
+<div class="pos">
+  <!-- ------------------------------------------------------------- Productos -->
+  <div class="pos-productos">
+    <ng-container *ngTemplateOutlet="encabezado" />
 
-    <div class="tarjeta-cuerpo">
-      <div class="buscador-pos">
-        <svg class="buscador-lupa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.4-4.4"/>
-        </svg>
-        <input
-          #campoBusqueda
-          type="search"
-          maxlength="100"
-          placeholder="Buscar por nombre, código (REP-012) o vehículo…"
-          aria-label="Buscar producto por nombre, código o vehículo"
-          [value]="buscarProducto()"
-          (input)="buscarProducto.set($any($event.target).value); categoriaActiva.set('')"
-          (keydown)="alTeclearBusqueda($event)"
-        />
-      </div>
-      <p class="buscador-ayuda">
-        <kbd>Enter</kbd> agrega cuando queda un solo producto · <kbd>Esc</kbd> limpia
-      </p>
+    <label class="buscador-pos" title="Enter agrega cuando queda un solo producto · Esc limpia">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+      </svg>
+      <input
+        #campoBusqueda
+        type="search"
+        maxlength="100"
+        placeholder="Buscar repuesto por nombre o código"
+        aria-label="Buscar repuesto por nombre, código o vehículo"
+        [value]="buscarProducto()"
+        (input)="buscarProducto.set($any($event.target).value)"
+        (keydown)="alTeclearBusqueda($event)"
+      />
+    </label>
 
-      <!-- Filtros rápidos de ejemplo: reutilizan el buscador de arriba -->
-      <div class="chips-categorias">
-        @for (categoria of categoriasRapidas; track categoria.etiqueta) {
+    @if (categoriasVenta().length > 0) {
+      <div class="categorias-pos" role="group" aria-label="Categorías">
+        <button
+          type="button"
+          class="categoria-pos"
+          [class.activa]="categoriaActiva() === ''"
+          [attr.aria-pressed]="categoriaActiva() === ''"
+          (click)="categoriaActiva.set('')"
+        >
+          Todos
+        </button>
+        @for (categoria of categoriasVenta(); track categoria) {
           <button
             type="button"
-            class="chip-categoria"
-            [class.activa]="categoriaActiva() === categoria.etiqueta"
-            (click)="filtrarPorCategoria(categoria)"
+            class="categoria-pos"
+            [class.activa]="categoriaActiva() === categoria"
+            [attr.aria-pressed]="categoriaActiva() === categoria"
+            (click)="categoriaActiva.set(categoria)"
           >
-            {{ categoria.etiqueta }}
+            {{ categoria }}
           </button>
         }
       </div>
+    }
 
-      @if (productosFiltrados().length === 0) {
-        <p class="texto-tenue texto-sm mt-1 mb-0">No hay productos que coincidan con la búsqueda.</p>
-      } @else {
-        <div class="catalogo-pos mt-1">
-          @for (repuesto of productosFiltrados(); track repuesto.repuestoId) {
+    @if (productosFiltrados().length === 0) {
+      <p class="pos-vacio">No hay repuestos que coincidan con la búsqueda.</p>
+    } @else {
+      <div class="productos-pos">
+        @for (repuesto of productosFiltrados(); track repuesto.repuestoId) {
+          @let enVenta = cantidadEnCarrito(repuesto);
+          @let quedan = disponible(repuesto);
+          <button
+            type="button"
+            class="producto-pos"
+            [class.en-venta]="enVenta > 0"
+            [disabled]="quedan < 1 && enVenta === 0"
+            [attr.aria-label]="repuesto.nombre + ', ' + (repuesto.precioVenta | bs) + (enVenta ? ', ' + enVenta + ' en la venta' : '')"
+            (click)="agregarProducto(repuesto)"
+          >
+            @if (repuesto.fotoUrl) {
+              <img class="producto-pos-foto" [src]="urlArchivo(repuesto.fotoUrl)" alt="" loading="lazy" />
+            } @else {
+              <span class="producto-pos-foto sin-foto {{ tono(repuesto) }}" aria-hidden="true">
+                {{ iniciales(repuesto.nombre) }}
+              </span>
+            }
+
+            @if (enVenta > 0) {
+              <span class="producto-pos-cantidad" aria-hidden="true">{{ enVenta }}</span>
+            }
+
+            <span class="producto-pos-cuerpo">
+              <strong class="producto-pos-nombre">{{ repuesto.nombre }}</strong>
+              <span class="producto-pos-precio">{{ repuesto.precioVenta | bs }}</span>
+              @if (quedan < 1) {
+                <span class="producto-pos-stock agotado">{{ enVenta > 0 ? 'No quedan más' : 'Agotado' }}</span>
+              } @else if (quedan <= 2) {
+                <span class="producto-pos-stock poco">Quedan {{ quedan }}</span>
+              } @else {
+                <span class="producto-pos-stock">{{ quedan }} en stock</span>
+              }
+            </span>
+          </button>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- ---------------------------------------------------------------- Venta -->
+  <!-- Siempre a la vista: en mostrador hay que poder leer el total sin bajar -->
+  <aside class="pos-venta" aria-label="Venta en curso">
+    <div class="venta-cabecera">
+      <h2>Venta</h2>
+      <span class="venta-unidades">
+        {{ articulos() === 1 ? '1 unidad' : articulos() + ' unidades' }}
+        @if (carrito().length > 0) {
+          · <button type="button" class="btn-enlace" (click)="vaciarCarrito()">Vaciar</button>
+        }
+      </span>
+    </div>
+
+    <div class="venta-lineas">
+      @for (linea of carrito(); track linea.repuesto.repuestoId) {
+        <div class="venta-linea">
+          <strong class="venta-linea-nombre">{{ linea.repuesto.nombre }}</strong>
+          <span class="venta-linea-subtotal">{{ linea.cantidad * linea.precioUnitario | bs }}</span>
+
+          <div class="venta-linea-cantidad">
             <button
               type="button"
-              class="tarjeta-producto"
-              [disabled]="disponible(repuesto) < 1"
-              [title]="disponible(repuesto) < 1 ? 'Sin stock disponible' : 'Agregar al carrito'"
-              (click)="agregarProducto(repuesto)"
+              class="boton-cantidad"
+              [attr.aria-label]="linea.cantidad === 1 ? 'Quitar ' + linea.repuesto.nombre + ' de la venta' : 'Quitar uno'"
+              (click)="restarUno(linea)"
             >
-              @if (repuesto.fotoUrl) {
-                <img class="producto-foto" [src]="urlArchivo(repuesto.fotoUrl)" [alt]="repuesto.nombre" />
-              } @else {
-                <span class="producto-foto producto-foto-vacia" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M3 8l9-5 9 5-9 5-9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>
-                  </svg>
-                </span>
-              }
+              −
+            </button>
+            <input
+              class="cantidad-linea"
+              type="number"
+              min="1"
+              inputmode="numeric"
+              [max]="linea.repuesto.stockActual"
+              [value]="linea.cantidad"
+              [attr.aria-label]="'Cantidad de ' + linea.repuesto.nombre"
+              (change)="cambiarCantidad(linea.repuesto.repuestoId, +$any($event.target).value)"
+            />
+            <button
+              type="button"
+              class="boton-cantidad"
+              aria-label="Agregar uno"
+              [disabled]="disponible(linea.repuesto) < 1"
+              (click)="agregarProducto(linea.repuesto)"
+            >
+              +
+            </button>
+          </div>
 
-              <span class="producto-nombre">{{ repuesto.nombre }}</span>
-              <span class="producto-precio">{{ repuesto.precioVenta | bs }}</span>
-              <span class="producto-codigo">{{ repuesto.repuestoId }}</span>
+          <!-- Precio por unidad: se puede cambiar tocándolo -->
+          <label class="venta-linea-unitario">
+            <span aria-hidden="true">Bs</span>
+            <input
+              class="precio-linea"
+              type="number"
+              min="0"
+              step="0.01"
+              inputmode="decimal"
+              [value]="linea.precioUnitario"
+              [attr.aria-label]="'Precio por unidad de ' + linea.repuesto.nombre"
+              (change)="cambiarPrecio(linea.repuesto.repuestoId, +$any($event.target).value)"
+            />
+            <span aria-hidden="true">c/u</span>
+          </label>
+        </div>
+      } @empty {
+        <p class="venta-vacia">Toque un repuesto de la izquierda para agregarlo a la venta.</p>
+      }
+    </div>
 
-              <!-- Badge semántico de stock, integrado al pie de la tarjeta:
-                   verde con holgura, naranja para reponer, rojo casi sin stock -->
-              <span
-                class="producto-stock"
-                [class.alto]="nivelStock(disponible(repuesto)) === 'alto'"
-                [class.medio]="nivelStock(disponible(repuesto)) === 'medio'"
-                [class.bajo]="nivelStock(disponible(repuesto)) === 'bajo'"
-                [attr.aria-label]="disponible(repuesto) + ' en stock'"
-              >
-                @if (disponible(repuesto) < 1) {
-                  Agotado
-                } @else {
-                  {{ disponible(repuesto) }} en stock
-                }
-              </span>
+    <div class="venta-pie">
+      <div class="venta-bloque">
+        <span class="venta-titulo-campo">Método de pago</span>
+        <div class="metodos-pago" role="radiogroup" aria-label="Método de pago">
+          @for (metodo of metodosPago; track metodo) {
+            <button
+              type="button"
+              role="radio"
+              class="metodo-pago"
+              [class.activo]="metodoPago() === metodo"
+              [class.ancho]="metodo === MetodoPago.Otro"
+              [attr.aria-checked]="metodoPago() === metodo"
+              (click)="metodoPago.set(metodo)"
+            >
+              {{ ETIQUETAS.metodoPago[metodo] }}
             </button>
           }
         </div>
-      }
-    </div>
-  </div>
-
-  <!-- --------------------------------------------------------------- Carrito -->
-  <!-- Siempre a la vista: en mostrador hay que poder leer el total sin scroll -->
-  <aside class="tarjeta carrito-panel">
-    <div class="tarjeta-encabezado">
-      <h2>Carrito</h2>
-      @if (carrito().length > 0) {
-        <span class="texto-tenue texto-sm">{{ articulos() }} artículo(s)</span>
-      }
-    </div>
-
-    @if (carrito().length === 0) {
-      <div class="vacio">
-        <div class="vacio-titulo">Carrito vacío</div>
-        <div class="texto-sm">Busque un producto o toque una tarjeta del catálogo.</div>
       </div>
-    } @else {
-      <ul class="carrito-lista">
-        @for (linea of carrito(); track linea.repuesto.repuestoId) {
-          <li class="carrito-linea">
-            <div class="carrito-linea-cabecera">
-              <span class="carrito-nombre">{{ linea.repuesto.nombre }}</span>
-              <button
-                type="button"
-                class="carrito-quitar"
-                [attr.aria-label]="'Quitar ' + linea.repuesto.nombre + ' del carrito'"
-                (click)="quitarDelCarrito(linea.repuesto.repuestoId)"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M18 6 6 18" /><path d="m6 6 12 12" />
-                </svg>
-              </button>
-            </div>
 
-            <div class="carrito-linea-cuerpo">
-              <label class="carrito-campo">
-                <span class="carrito-etiqueta">Cant.</span>
-                <input
-                  class="entrada-mini"
-                  type="number"
-                  min="1"
-                  [max]="linea.repuesto.stockActual"
-                  [value]="linea.cantidad"
-                  (change)="cambiarCantidad(linea.repuesto.repuestoId, +$any($event.target).value)"
-                />
-              </label>
-
-              <label class="carrito-campo">
-                <span class="carrito-etiqueta">P. unit.</span>
-                <input
-                  class="entrada-mini"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  [value]="linea.precioUnitario"
-                  (change)="cambiarPrecio(linea.repuesto.repuestoId, +$any($event.target).value)"
-                />
-              </label>
-
-              <span class="carrito-subtotal">{{ linea.cantidad * linea.precioUnitario | bs }}</span>
-            </div>
-          </li>
-        }
-      </ul>
-
-      <div class="carrito-pie">
-        <div class="carrito-total">
-          <span class="carrito-total-etq">Total · {{ articulos() }} art.</span>
-          <span class="carrito-total-monto">{{ total() | bs }}</span>
+      @if (extrasAbiertos()) {
+        <div class="venta-extras">
+          <div class="campo">
+            <label for="clienteVenta">Cliente <span class="texto-tenue">(opcional)</span></label>
+            <app-selector-busqueda
+              idCampo="clienteVenta"
+              name="clienteVenta"
+              marcador="Venta de mostrador"
+              [opciones]="opcionesCliente()"
+              [(ngModel)]="cobro.clienteId"
+            />
+          </div>
+          <div class="campo">
+            <label for="observacionesVenta">Observación <span class="texto-tenue">(opcional)</span></label>
+            <input
+              id="observacionesVenta"
+              name="observacionesVenta"
+              maxlength="255"
+              [(ngModel)]="cobro.observaciones"
+            />
+          </div>
         </div>
+      } @else {
+        <button type="button" class="btn-enlace venta-agregar-extras" (click)="extrasAbiertos.set(true)">
+          + Cliente u observación (opcional)
+        </button>
+      }
 
-        <button type="button" class="btn btn-exito btn-cobrar" (click)="abrirCobro()">
-          Cobrar {{ total() | bs }}
-        </button>
-        <button type="button" class="btn-vaciar" (click)="vaciarCarrito()">
-          Vaciar carrito
-        </button>
+      <div class="venta-total">
+        <strong>Total</strong>
+        <span class="venta-total-monto">{{ total() | bs }}</span>
       </div>
-    }
+
+      <button
+        type="button"
+        class="boton-cobrar"
+        [disabled]="carrito().length === 0 || procesando()"
+        (click)="cobrar()"
+      >
+        @if (procesando()) {
+          Registrando…
+        } @else {
+          Cobrar {{ total() | bs }}
+        }
+      </button>
+      <p class="venta-nota">El stock se descuenta al cobrar; si la venta se anula, vuelve al inventario.</p>
+    </div>
   </aside>
 </div>
 } @else {
 <!-- -------------------------------------------------------- Historial del día -->
+<ng-container *ngTemplateOutlet="encabezado" />
+
 <div class="tarjeta">
   <div class="tarjeta-encabezado">
     <h2>Ventas registradas</h2>
@@ -245,14 +309,11 @@
                   <div class="acciones-iconos">
                     <button
                       type="button"
-                      class="btn-icono"
-                      title="Ver"
-                      aria-label="Ver detalle de la venta"
+                      class="btn btn-secundario btn-sm"
+                      [attr.aria-label]="'Ver el detalle de la venta ' + venta.ventaId"
                       (click)="detalleDe.set(venta)"
                     >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z" /><circle cx="12" cy="12" r="3" />
-                      </svg>
+                      Ver detalle
                     </button>
                     @if (venta.estado === EstadoVenta.Emitida) {
                       <button
@@ -285,68 +346,6 @@
       />
     }
 </div>
-}
-
-@if (panelCobro()) {
-  <app-modal titulo="Cobrar venta" [ancho]="560" (cerrar)="panelCobro.set(false)">
-    <div class="total-caja mb-2">
-      <span>{{ articulos() }} artículo(s)</span>
-      <span class="total-monto">{{ total() | bs }}</span>
-    </div>
-
-    <div class="campo">
-      <label for="metodoPagoVenta">Método de pago</label>
-      <select id="metodoPagoVenta" name="metodoPagoVenta" [(ngModel)]="cobro.metodoPago">
-        @for (metodo of metodosPago; track metodo) {
-          <option [value]="metodo">{{ ETIQUETAS.metodoPago[metodo] }}</option>
-        }
-      </select>
-    </div>
-
-    <div class="campo">
-      <label for="clienteVenta">Cliente <span class="texto-tenue">(opcional)</span></label>
-      <app-selector-busqueda
-        idCampo="clienteVenta"
-        name="clienteVenta"
-        marcador="Venta de mostrador"
-        [opciones]="opcionesCliente()"
-        [(ngModel)]="cobro.clienteId"
-      />
-      <span class="texto-tenue texto-sm">
-        Déjelo vacío si el cliente no está registrado.
-      </span>
-    </div>
-
-    <div class="campo">
-      <label for="observacionesVenta">Observaciones</label>
-      <input
-        id="observacionesVenta"
-        name="observacionesVenta"
-        maxlength="255"
-        placeholder="Opcional"
-        [(ngModel)]="cobro.observaciones"
-      />
-    </div>
-
-    <p class="texto-tenue texto-sm mb-0">
-      Al confirmar, el stock de cada repuesto se descuenta en el acto. Si la venta se anula
-      después, el stock vuelve al inventario.
-    </p>
-
-    <div pie>
-      <button type="button" class="btn btn-secundario" (click)="panelCobro.set(false)">
-        Cancelar
-      </button>
-      <button
-        type="button"
-        class="btn btn-exito"
-        [disabled]="procesando()"
-        (click)="confirmarVenta()"
-      >
-        {{ procesando() ? 'Registrando…' : 'Confirmar venta' }}
-      </button>
-    </div>
-  </app-modal>
 }
 
 @if (detalleDe(); as venta) {

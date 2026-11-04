@@ -7,6 +7,7 @@
   <aside class="lateral" [class.abierto]="menuAbierto()">
     <div class="marca">
       <img src="assets/logo.png" alt="Servicar SOSSA" class="marca-logo" />
+      <span class="marca-lugar">Taller automotriz · {{ taller.ciudad }}</span>
     </div>
 
     <nav class="navegacion">
@@ -53,6 +54,9 @@
       >
         <app-icono-menu nombre="menu" />
       </button>
+
+      <!-- En el celular el menú vive detrás de la hamburguesa: el logo va en la barra -->
+      <img src="assets/logo.png" alt="Servicar SOSSA" class="logo-movil" />
 
       <!-- Nombre de la sección activa: la señal de "dónde estoy" para quien
            entra por un enlace directo, sin depender de ver la píldora activa

@@ -1,0 +1,355 @@
+/* ------------------------------------------------------ Filtros y búsqueda */
+
+.filtros-diag {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+}
+
+/* -------------------------------------------------------------------- Lista */
+
+.fila-diag {
+  grid-template-columns: 84px minmax(0, 1fr) minmax(0, 1.5fr) 110px 150px 190px;
+}
+
+.diag-vehiculo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.diag-vehiculo-texto,
+.diag-falla {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diag-vehiculo-texto {
+  font-size: 13px;
+  color: var(--gris-500);
+}
+
+.diag-monto {
+  font-family: var(--fuente-mono);
+  font-weight: 500;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.insignia-respuesta {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.insignia-respuesta.naranja { background: var(--naranja-100); color: var(--naranja-700); }
+.insignia-respuesta.verde { background: var(--verde-100); color: var(--verde-700); }
+.insignia-respuesta.roja { background: var(--brand-soft); color: var(--brand-dk); }
+.insignia-respuesta.gris { background: var(--gris-100); color: var(--gris-500); }
+
+.diag-accion {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.enlace-orden-diag {
+  font-family: var(--fuente-mono);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.enlace-gris { color: var(--gris-500); }
+
+/* ------------------------------------------- Panel: respuesta del cliente */
+
+.resp-cliente {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.resp-cliente-textos {
+  flex: 1 1 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+}
+
+.resp-telefono {
+  font-family: var(--fuente-mono);
+  font-size: 13px;
+  color: var(--gris-500);
+}
+
+.resp-contacto {
+  display: flex;
+  gap: 6px;
+}
+
+.resp-presupuesto {
+  border: 1px solid var(--gris-200);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.resp-presupuesto-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--gris-50);
+  font-size: 13px;
+  color: var(--gris-500);
+}
+
+.resp-presupuesto-cabecera .btn-enlace { font-weight: 500; }
+
+.resp-linea {
+  padding: 12px 14px;
+  border-top: 1px solid var(--gris-100);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.resp-linea-tenue {
+  font-size: 13px;
+  color: var(--gris-500);
+}
+
+.resp-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--gris-100);
+}
+
+.resp-monto {
+  font-family: var(--fuente-mono);
+  font-size: 17px;
+  font-weight: 500;
+}
+
+/* Las dos respuestas como opciones grandes: se elige una y recién después
+   se confirma, así un clic de más no registra nada. La elegida se marca con
+   su color en el borde, sin rellenar el fondo. */
+.respuesta-opciones {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.respuesta-opcion {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--gris-300);
+  border-radius: 12px;
+  background: var(--blanco);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.respuesta-opcion:hover { border-color: var(--gris-400); }
+
+.respuesta-opcion strong {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.respuesta-opcion > span:last-child {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--gris-500);
+}
+
+.respuesta-icono {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--blanco);
+}
+
+.respuesta-opcion.si .respuesta-icono { background: var(--verde-700); }
+.respuesta-opcion.no .respuesta-icono { background: var(--brand); }
+
+.respuesta-opcion.si.elegida {
+  border-color: var(--verde-700);
+  box-shadow: 0 0 0 1px var(--verde-700);
+}
+
+.respuesta-opcion.no.elegida {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 1px var(--brand);
+}
+
+.motivos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ----------------------------------------------- Panel: nuevo diagnóstico */
+
+/* Tres pasos: barra verde lo hecho, roja el actual, gris lo que falta */
+.pasos-diag {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pasos-diag li {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.paso-barra {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--gris-200);
+}
+
+.pasos-diag li.hecho .paso-barra { background: var(--verde-700); }
+.pasos-diag li.actual .paso-barra { background: var(--brand); }
+
+.paso-nombre {
+  font-size: 12px;
+  color: var(--gris-400);
+}
+
+.pasos-diag li.actual .paso-nombre {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.form-diag {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dato-fijo-diag {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radio-sm);
+  background: var(--fondo-app);
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.casos-parecidos {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.caso-parecido {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio-sm);
+  background: var(--blanco);
+  font-size: 13px;
+}
+
+.entrada-monto-diag { font-family: var(--fuente-mono); }
+
+/* En el asistente, Atrás a la izquierda y Siguiente a la derecha */
+.pie-diag {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* -------------------------------------------------------- Panel: detalle */
+
+.detalle-bloque {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detalle-bloque .parrafo { margin: 0; }
+
+/* ------------------------------------------------------------- Responsive */
+
+/* Con el panel abierto la lista se angosta: la falla pasa debajo del vehículo */
+@media (max-width: 1700px) {
+  :host-context(body.con-cajon) .fila-diag {
+    grid-template-columns: 76px minmax(0, 1fr) 100px 140px 44px;
+  }
+
+  :host-context(body.con-cajon) .diag-falla,
+  :host-context(body.con-cajon) .cabecera-lista span:nth-child(3) { display: none; }
+
+  :host-context(body.con-cajon) .diag-accion .btn,
+  :host-context(body.con-cajon) .diag-accion .btn-enlace,
+  :host-context(body.con-cajon) .diag-accion .enlace-orden-diag { display: none; }
+
+  :host-context(body.con-cajon) .cabecera-lista span:nth-child(6) { visibility: hidden; }
+}
+
+@media (max-width: 900px) {
+  .cabecera-lista { display: none; }
+
+  .fila-diag {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 12px;
+    padding: 14px 16px;
+  }
+
+  .fila-diag .codigo { grid-row: 1; grid-column: 1; }
+  .fila-diag > span:nth-child(5) { grid-row: 1; grid-column: 2; justify-self: end; }
+  .diag-vehiculo { grid-row: 2; grid-column: 1 / -1; }
+  .diag-falla { grid-row: 3; grid-column: 1 / -1; white-space: normal; }
+  .diag-monto { grid-row: 4; grid-column: 1; text-align: left; }
+  .diag-accion { grid-row: 4; grid-column: 2; }
+
+  .filtros-diag .chips-filtro {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  .buscador-lista { max-width: none; }
+}
+
+@media (max-width: 520px) {
+  .respuesta-opciones { grid-template-columns: 1fr; }
+}

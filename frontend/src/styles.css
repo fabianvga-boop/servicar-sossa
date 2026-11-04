@@ -1,37 +1,43 @@
 /* ==========================================================================
    Servicar SOSSA — estilos globales
-   Paleta e identidad del taller: rojo de marca sobre gris/tinta oscura,
-   tipografía Plus Jakarta Sans (títulos y texto) + IBM Plex Mono (códigos).
+   Paleta e identidad del taller: un solo rojo de marca, reservado para la
+   acción principal y la marca, sobre grises fríos; tipografía Geist (títulos
+   y texto) + Geist Mono (códigos, placas y montos).
    Un único sistema de tokens y componentes base, para que todas las pantallas
    se vean iguales sin repetir CSS en cada módulo.
    ========================================================================== */
 
 :root {
+  /* Tipografía: Geist para todo el texto y Geist Mono para lo que se lee
+     como dato (códigos, placas, montos), así no se parte y se alinea. */
+  --fuente: 'Geist', 'Segoe UI', Roboto, sans-serif;
+  --fuente-mono: 'Geist Mono', 'Consolas', ui-monospace, monospace;
+
   /* Marca del taller */
-  --brand: #e10600;
-  --brand-dk: #b00500;
-  --brand-soft: #fde3e2;
+  --brand: #c8231c;
+  --brand-dk: #a81c16;
+  --brand-soft: #fbeae9;
 
   /* Tinta: los dos tonos oscuros del sistema, usados como color de texto.
      --ink para el texto principal, --ink-soft para el secundario. */
-  --ink: #111c2d;
-  --ink-soft: #3f4c63;
+  --ink: #151a22;
+  --ink-soft: #4a5363;
 
   /* Colores de estado, para insignias y avisos. Cada familia tiene tres tonos:
        700 → texto, y fondo de botones con texto blanco (≥ 4,5:1, WCAG AA)
        600 → acentos sin texto: bordes, puntos, íconos, barras
        100 → fondo suave de avisos e insignias */
-  --azul-700: #265cc0;
-  --azul-600: #2d6cdf;
-  --azul-100: #e1eafc;
+  --azul-700: #1f4e99;
+  --azul-600: #1f5fbf;
+  --azul-100: #e7effb;
 
-  --naranja-700: #8a5c00;
+  --naranja-700: #8a5a00;
   --naranja-600: #c68a00;
-  --naranja-100: #fbefd2;
+  --naranja-100: #fbf1dc;
 
-  --verde-700: #1d7438;
+  --verde-700: #1e6b3e;
   --verde-600: #2f9e52;
-  --verde-100: #def3e4;
+  --verde-100: #e3f2e8;
 
   /* El rojo de estado es el mismo de la marca: se usan --brand* de arriba. */
 
@@ -42,12 +48,12 @@
                  detalles, el mínimo legal se veía "escondido" en pantalla.
        200     → bordes
        100/50  → rellenos y superficies secundarias */
-  --gris-500: #4b5463;
-  --gris-400: #555e6d;
-  --gris-300: #c3cad3;
-  --gris-200: #e5eaef;
-  --gris-100: #eef3f9;
-  --gris-50: #f8fafc;
+  --gris-500: #4a5363;
+  --gris-400: #646d7c;
+  --gris-300: #cdd2da;
+  --gris-200: #e3e6eb;
+  --gris-100: #eef0f3;
+  --gris-50: #fafbfc;
   --blanco: #ffffff;
 
   /* Fondo de la aplicación: gris muy claro para que las tarjetas blancas
@@ -59,17 +65,17 @@
        gris   = marco de la aplicación (piso, menú, encabezado)
      Cuando el marco era blanco competía con las tarjetas y el menú se leía
      como una tarjeta más. */
-  --fondo-app: #f0f5f9;
+  --fondo-app: #f5f6f8;
 
   /* Radios un poco más generosos: esquinas más suaves leen como una
      interfaz más amigable/cercana que el look "SaaS" cuadrado. */
-  --radio: 16px;
-  --radio-sm: 7px;
+  --radio: 14px;
+  --radio-sm: 10px;
   --sombra-sm: 0 9px 17.5px rgba(0, 0, 0, 0.05);
   --sombra-md: 0 4px 14px rgba(20, 23, 28, 0.12);
   --sombra-lg: 0 18px 50px rgba(0, 0, 0, 0.35);
 
-  --ancho-lateral: 264px;
+  --ancho-lateral: 248px;
   --alto-encabezado: 66px;
 
   /* Sangría lateral compartida: el contenido y el menú arrancan en la misma
@@ -88,7 +94,7 @@
      íconos toman el mismo secundario que el resto del sistema (8,7:1), para
      que el menú y el contenido se lean como una sola pieza. */
   --sidebar-fondo: #ffffff;
-  --sidebar-borde: #e5eaef;
+  --sidebar-borde: #e3e6eb;
   --sidebar-tenue: var(--ink-soft);
   --sidebar-texto: #2a3547;
 
@@ -174,7 +180,7 @@ body {
 }
 
 body {
-  font-family: 'Plus Jakarta Sans', 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--fuente);
   /* Base más grande a propósito: el sistema lo usa personal de taller no
      necesariamente habituado a computadoras, y una base de 14px + jerarquía
      comprimida exige demasiado esfuerzo de lectura. 15.5px con buen
@@ -188,12 +194,13 @@ body {
 
 h1, h2, h3, h4 {
   margin: 0;
-  font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
-  font-weight: 700;
+  font-family: var(--fuente);
+  font-weight: 600;
   line-height: 1.3;
+  letter-spacing: -0.01em;
 }
 
-h1 { font-size: 24px; }
+h1 { font-size: 26px; letter-spacing: -0.02em; }
 h2 { font-size: 18px; }
 h3 { font-size: 15.5px; }
 
@@ -216,9 +223,8 @@ a:hover {
    física (una hoja) en vez de un simple recuadro. */
 .tarjeta {
   background: var(--blanco);
-  border: 1px solid transparent;
+  border: 1px solid var(--gris-200);
   border-radius: var(--radio);
-  box-shadow: var(--sombra-sm);
 }
 
 .tarjeta-cuerpo {
@@ -263,11 +269,11 @@ a:hover {
   gap: 7px;
   /* Objetivo táctil más grande: fácil de acertar con el dedo o con el mouse
      sin apuntar con precisión, clave para quien no maneja mucho una PC. */
-  padding: 11px 20px;
+  padding: 10px 18px;
   border: 1px solid transparent;
   border-radius: var(--radio-sm);
   font-size: 14.5px;
-  font-weight: 600;
+  font-weight: 500;
   font-family: inherit;
   cursor: pointer;
   white-space: nowrap;
@@ -288,22 +294,21 @@ a:hover {
 .btn-primario {
   background: var(--brand);
   color: var(--blanco);
-  box-shadow: 0 2px 8px rgba(225, 6, 0, 0.28);
 }
-.btn-primario:not(:disabled):hover { background: var(--brand-dk); filter: none; box-shadow: 0 3px 10px rgba(225, 6, 0, 0.34); }
+.btn-primario:not(:disabled):hover { background: var(--brand-dk); filter: none; }
 
 /* Acción neutra/cancelar: outline gris, como el "ghost" del taller */
 .btn-secundario {
   background: var(--blanco);
-  border-color: var(--gris-200);
-  color: var(--ink-soft);
+  border-color: var(--gris-300);
+  color: var(--ink);
 }
-.btn-secundario:not(:disabled):hover { background: var(--gris-50); filter: none; }
+.btn-secundario:not(:disabled):hover { background: var(--gris-100); filter: none; }
 
 /* Acción destructiva: outline rojo — distinto del primario sólido, mismo color de marca */
 .btn-peligro {
   background: var(--blanco);
-  border-color: var(--brand);
+  border-color: #e9a9a5;
   color: var(--brand-dk);
 }
 .btn-peligro:not(:disabled):hover { background: var(--brand-soft); filter: none; }
@@ -318,36 +323,21 @@ a:hover {
    más se usa, así que tiene que encontrarse sin buscarla: más grande, con un
    ícono que se reconoce de lejos, el atajo de teclado a la vista y siempre en
    pantalla (ver .encabezado-pagina y la versión flotante en el celular). */
+/* El botón "Nuevo" de cada pantalla: un primario común con el + delante,
+   como en el rediseño. El atajo (tecla N) sigue andando y se ve en el
+   título del botón y en la ayuda de atajos (?). */
 .btn-nuevo {
-  padding: 12px 16px 12px 12px;
-  font-size: 15px;
-  box-shadow: 0 4px 14px rgba(225, 6, 0, 0.32);
+  padding: 10px 18px 10px 15px;
+  font-size: 14.5px;
 }
 
 .btn-nuevo-mas {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--blanco);
-  color: var(--brand-dk);
-  font-size: 19px;
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 500;
   line-height: 1;
 }
 
-.btn-nuevo-atajo {
-  margin-left: 4px;
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.22);
-  color: var(--blanco);
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 11.5px;
-  font-weight: 600;
-}
+.btn-nuevo-atajo { display: none; }
 
 /* En computadora la cabecera de la pantalla (título y botón "Nuevo") queda
    fija debajo de la barra superior al bajar por una lista larga: el botón
@@ -377,7 +367,7 @@ a:hover {
     z-index: 45;
     border-radius: 999px;
     padding: 13px 20px 13px 14px;
-    box-shadow: 0 8px 24px rgba(225, 6, 0, 0.38);
+    box-shadow: 0 10px 24px -8px rgba(21, 26, 34, 0.45);
   }
 
   .btn-nuevo-atajo { display: none; }
@@ -412,11 +402,9 @@ a:hover {
 }
 
 .campo label {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--ink-soft);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ink);
 }
 
 .campo .obligatorio {
@@ -427,13 +415,13 @@ input,
 select,
 textarea {
   width: 100%;
-  padding: 11px 13px;
-  border: 1px solid var(--gris-200);
+  padding: 10px 13px;
+  border: 1px solid var(--gris-300);
   border-radius: var(--radio-sm);
   font-size: 15px;
   font-family: inherit;
   color: var(--ink);
-  background: var(--gris-50);
+  background: var(--blanco);
   transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
 }
 
@@ -454,7 +442,7 @@ textarea:focus {
   outline: none;
   border-color: var(--brand);
   background: var(--blanco);
-  box-shadow: 0 0 0 3px var(--brand-soft);
+  box-shadow: 0 0 0 3px rgba(200, 35, 28, 0.14);
 }
 
 input:disabled,
@@ -808,8 +796,8 @@ table.tabla th {
   background: var(--gris-50);
   border-bottom: 1px solid var(--gris-200);
   font-size: var(--etiqueta-tam);
-  font-weight: 700;
-  color: var(--gris-500);
+  font-weight: 600;
+  color: var(--gris-400);
   text-transform: uppercase;
   letter-spacing: var(--etiqueta-tracking);
   white-space: nowrap;
@@ -1084,7 +1072,7 @@ table.tabla th.th-acciones {
   border-radius: 20px;
   background: var(--azul-100);
   color: #14417f;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: var(--fuente-mono);
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -1224,9 +1212,11 @@ table.tabla th.th-acciones {
   margin: 4px 2px;
 }
 
+/* Un monto no se parte en dos líneas ("Bs" arriba, la cifra abajo). */
 .num {
   text-align: right;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 /* ------------------------------------------------ Grupos de identidad
@@ -1283,7 +1273,7 @@ table.tabla tbody tr:hover .avatar-mini { box-shadow: 0 0 0 2px var(--gris-50); 
   border: 1px solid var(--gris-200);
   border-radius: var(--radio-sm);
   background: var(--gris-50);
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: var(--fuente-mono);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -1314,10 +1304,17 @@ table.tabla th.num {
 
 /* Códigos alfanuméricos (ORD-001, CLI-002...) en mono, como en el taller real */
 .codigo {
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
-  font-size: 11.5px;
-  font-weight: 600;
+  font-family: var(--fuente-mono);
+  font-size: 12.5px;
+  font-weight: 500;
   color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+/* Códigos muy largos (el CUF de una factura): se cortan donde haga falta. */
+.codigo-largo {
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 /* ------------------------------------------------------------------ Avisos */
@@ -1351,21 +1348,21 @@ table.tabla th.num {
 
 .insignia {
   display: inline-block;
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 11.5px;
-  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
   white-space: nowrap;
 }
 
 /* Texto oscurecido respecto del tinte de fondo: el caso más flojo era el
    naranja, que quedaba en 4,75:1 — apenas sobre el mínimo. Ahora el rango va
    de 5,76:1 a 10,46:1. --punto es el tono sólido del punto de estado. */
-.insignia-verde { background: var(--verde-100); color: #1a5c31; --punto: var(--verde-600); }
-.insignia-azul { background: var(--azul-100); color: #14417f; --punto: var(--azul-600); }
-.insignia-naranja { background: var(--naranja-100); color: #7a5700; --punto: var(--naranja-600); }
-.insignia-roja { background: var(--brand-soft); color: #a00400; --punto: var(--brand); }
-.insignia-gris { background: var(--gris-200); color: #2c323c; --punto: var(--gris-500); }
+.insignia-verde { background: var(--verde-100); color: var(--verde-700); --punto: var(--verde-600); }
+.insignia-azul { background: var(--azul-100); color: var(--azul-700); --punto: var(--azul-600); }
+.insignia-naranja { background: var(--naranja-100); color: var(--naranja-700); --punto: var(--naranja-600); }
+.insignia-roja { background: var(--brand-soft); color: var(--brand-dk); --punto: var(--brand); }
+.insignia-gris { background: var(--gris-100); color: var(--gris-500); --punto: var(--gris-400); }
 
 /* Píldora contador: número de elementos junto a un nombre (repuestos de un
    proveedor, líneas de una compra, pestaña con conteo). Antes cada módulo
@@ -1459,33 +1456,70 @@ table.tabla th.num {
 .segmentos {
   display: flex;
   gap: 4px;
-  padding: 3px;
+  padding: 4px;
   background: var(--gris-100);
-  border-radius: var(--radio);
+  border-radius: var(--radio-sm);
 }
 
 .segmento {
   flex: 1;
-  padding: 8px 10px;
+  padding: 8px 12px;
   border: none;
   background: transparent;
-  border-radius: var(--radio-sm);
+  border-radius: 8px;
   font: inherit;
-  font-size: 13.5px;
-  color: var(--ink-soft);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gris-500);
   cursor: pointer;
   transition: background 0.12s, color 0.12s, box-shadow 0.12s;
 }
 
 .segmento:hover {
+  background: var(--gris-200);
   color: var(--ink);
 }
 
+/* La elegida: blanca sobre el carril gris, con un borde fino */
 .segmento.activo {
   background: var(--blanco);
-  color: var(--brand-dk);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(21, 26, 34, 0.08), 0 0 0 1px var(--gris-200);
+}
+
+/* Pestañas de una pantalla: del ancho de su texto, con el conteo al lado */
+.segmentos.en-linea {
+  display: inline-flex;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.segmentos.en-linea .segmento {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.vista-cuenta {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--gris-200);
+  color: var(--gris-500);
+  font-size: 12px;
   font-weight: 600;
-  box-shadow: var(--sombra-sm);
+  line-height: 20px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Hay algo pendiente (plata por cobrar): el conteo se tiñe de rojo suave */
+.vista-cuenta.alerta {
+  background: var(--brand-soft);
+  color: var(--brand-dk);
 }
 
 /* Aviso de borrador recuperable: lo escrito antes de un cierre de sesión. */
@@ -1519,7 +1553,7 @@ table.tabla th.num {
 }
 
 .total-monto {
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--fuente);
   font-size: 20px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -1606,7 +1640,7 @@ table.tabla th.num {
 }
 
 .indicador-mini-valor {
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--fuente);
   font-size: 17px;
   font-weight: 600;
   color: var(--ink);
@@ -1684,4 +1718,213 @@ table.tabla th.num {
     border-color: var(--gris-300);
     break-inside: avoid;
   }
+}
+
+/* ------------------------------------------------------- Panel lateral
+
+   Con un panel lateral abierto (app-cajon), el contenido de la pantalla le
+   deja lugar a la derecha en vez de quedar tapado: la lista sigue a la
+   vista y se puede elegir otra fila sin cerrar el panel. En el celular el
+   panel ocupa la pantalla y no hace falta correr nada. */
+@media (min-width: 901px) {
+  body.con-cajon .contenido {
+    padding-right: calc(var(--ancho-cajon, 440px) + var(--sangria));
+  }
+}
+
+/* Dentro del panel la separación entre campos la da el propio panel */
+.cajon-cuerpo .campo { margin-bottom: 0; }
+
+/* Lo que va en el panel no se encoge para caber: el panel scrollea. Sin
+   esto, una caja con overflow:hidden (un presupuesto, una orden) se aplasta
+   y corta su propio contenido. */
+.cajon-cuerpo > * { flex-shrink: 0; }
+
+/* Interruptor de encendido/apagado (Activo): verde encendido, gris apagado */
+.interruptor {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--gris-300);
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.interruptor::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--blanco);
+  box-shadow: 0 1px 2px rgba(21, 26, 34, 0.25);
+  transition: transform 0.15s;
+}
+
+.interruptor[aria-checked='true'] { background: var(--verde-700); }
+.interruptor[aria-checked='true']::after { transform: translateX(16px); }
+.interruptor:disabled { cursor: not-allowed; opacity: 0.6; }
+
+@media (prefers-reduced-motion: reduce) {
+  .interruptor,
+  .interruptor::after { transition: none; }
+}
+
+/* ---------------------------------------------- Filtros en píldora y búsqueda
+
+   Filtros de una lista (por respuesta, por estado, por período): píldoras con
+   su cantidad; la elegida, en tinta. Y la búsqueda con la lupa adentro, cuyo
+   borde y foco los lleva la etiqueta que la envuelve. */
+.chips-filtro {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip-filtro {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--gris-300);
+  border-radius: 999px;
+  background: var(--blanco);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gris-500);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.chip-filtro:hover {
+  border-color: var(--gris-400);
+  color: var(--ink);
+}
+
+.chip-filtro.activo {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--blanco);
+}
+
+.chip-cuenta { opacity: 0.7; }
+
+.chip-punto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.chip-punto.naranja { background: var(--naranja-600); }
+.chip-punto.verde { background: var(--verde-600); }
+.chip-punto.roja { background: var(--brand); }
+
+.buscador-lista {
+  flex: 1 1 240px;
+  max-width: 340px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--gris-300);
+  border-radius: var(--radio-sm);
+  background: var(--blanco);
+  color: var(--gris-400);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.buscador-lista:focus-within {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(200, 35, 28, 0.14);
+}
+
+.buscador-lista input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: 14px;
+}
+
+.buscador-lista input:focus,
+.buscador-lista input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Rótulo de un grupo de opciones que no es un <label> de un campo */
+.etiqueta-campo {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+/* Botón principal mientras falta elegir algo: gris, sin el rojo */
+.btn-bloqueado,
+.btn-bloqueado:disabled {
+  background: var(--gris-100);
+  color: var(--gris-400);
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+/* Lista en filas (en vez de <table>): fondo blanco, filas separadas por una
+   línea, la elegida en el panel lateral con una barra roja a la izquierda. */
+.lista-filas {
+  background: var(--blanco);
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio);
+  overflow: hidden;
+}
+
+.lista-filas .fila-lista {
+  display: grid;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--gris-100);
+  font-size: 14px;
+  transition: background-color 0.12s;
+}
+
+.lista-filas .fila-lista:hover { background: var(--gris-50); }
+
+.lista-filas .fila-lista.elegida {
+  background: var(--gris-50);
+  box-shadow: inset 3px 0 0 var(--brand);
+}
+
+.lista-filas .cabecera-lista {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  border-top: 0;
+  background: var(--gris-50);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--gris-400);
+}
+
+.lista-filas .cabecera-lista:hover { background: var(--gris-50); }
+
+.a-la-derecha { text-align: right; }
+
+.monto-mono {
+  font-family: var(--fuente-mono);
+  font-weight: 500;
+  white-space: nowrap;
 }

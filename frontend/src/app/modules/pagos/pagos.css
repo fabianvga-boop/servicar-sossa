@@ -1,0 +1,125 @@
+.resumen-mes { color: var(--ink); }
+
+.filtros-pagos { margin-bottom: 16px; }
+
+.fila-pago { grid-template-columns: 86px 130px 86px minmax(0, 1fr) 120px 110px 40px; }
+
+.pago-codigo { font-size: 13px; }
+
+.pago-tenue {
+  font-size: 13px;
+  color: var(--gris-500);
+}
+
+.pago-cliente {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pago-metodo { font-weight: 500; }
+
+.pagos-vacio {
+  margin: 0;
+  padding: 20px;
+  border-top: 1px solid var(--gris-100);
+  font-size: 14px;
+  color: var(--gris-500);
+}
+
+.btn-icono-plano {
+  width: 32px;
+  height: 32px;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--gris-500);
+  cursor: pointer;
+}
+
+.btn-icono-plano:hover { background: var(--gris-100); color: var(--brand-dk); }
+.btn-icono-plano svg { width: 16px; height: 16px; }
+
+/* Registrar pago */
+
+.cobro-datos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--fondo-app);
+}
+
+.cobro-datos div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+}
+
+.cobro-datos div > span:first-child {
+  font-size: 12px;
+  color: var(--gris-400);
+}
+
+.cobro-datos .saldo { color: var(--brand-dk); }
+
+.entrada-monto {
+  height: 44px;
+  font-size: 15px;
+}
+
+.campo .chips-filtro { margin-top: 8px; }
+
+.metodos-pago {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.metodo-pago {
+  height: 40px;
+  border: 1px solid var(--gris-300);
+  border-radius: 9px;
+  background: var(--blanco);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gris-500);
+  cursor: pointer;
+}
+
+.metodo-pago.activo {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--blanco);
+}
+
+.pie-pago { width: 100%; }
+
+.boton-cobrar {
+  width: 100%;
+  height: 48px;
+  justify-content: center;
+}
+
+@media (max-width: 1500px) {
+  :host-context(body.con-cajon) .fila-pago { grid-template-columns: 86px minmax(0, 1fr) 110px 40px; }
+  :host-context(body.con-cajon) .fila-pago > :nth-child(2),
+  :host-context(body.con-cajon) .fila-pago > :nth-child(3),
+  :host-context(body.con-cajon) .fila-pago > :nth-child(5) { display: none; }
+}
+
+@media (max-width: 900px) {
+  .fila-pago { grid-template-columns: minmax(0, 1fr) auto; }
+  .fila-pago > :nth-child(1),
+  .fila-pago > :nth-child(3),
+  .fila-pago > :nth-child(5),
+  .fila-pago > :nth-child(7) { display: none; }
+  .fila-pago > :nth-child(2) { grid-row: 2; }
+  .cabecera-lista.fila-pago { display: none; }
+}

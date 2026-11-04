@@ -332,7 +332,7 @@ export class Modal {
     if (!panel) return;
 
     const campo = panel.querySelector<HTMLElement>(
-      '.cuerpo input:not([disabled]), .cuerpo select:not([disabled]), .cuerpo textarea:not([disabled])',
+      '.cuerpo input:not([disabled]):not([readonly]), .cuerpo select:not([disabled]), .cuerpo textarea:not([disabled])',
     );
 
     (campo ?? panel).focus();

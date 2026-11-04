@@ -1,14 +1,15 @@
-import { Component, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
-import { Proveedor } from '../../core/models/inventario.model';
-import { ProveedoresService } from '../../core/services/inventario.service';
+import { Compra, Proveedor } from '../../core/models/inventario.model';
+import { ComprasService, ProveedoresService } from '../../core/services/inventario.service';
 import { NotificacionService } from '../../core/services/notificacion.service';
 import { Confirmacion } from '../../shared/components/confirmacion';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
-import { Modal } from '../../shared/components/modal';
-import { Paginador } from '../../shared/components/paginador';
+import { Cajon } from '../../shared/components/cajon';
+import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 import { Atajo } from '../../shared/directives/atajo';
 import { EnfocarError } from '../../shared/directives/enfocar-error';
 import { unicosOrdenados } from '../../shared/sugerencias-texto';
@@ -19,10 +20,11 @@ import { unicosOrdenados } from '../../shared/sugerencias-texto';
   imports: [
     ReactiveFormsModule,
     RouterLink,
-    Modal,
+    DatePipe,
+    Cajon,
     Confirmacion,
     EstadoTabla,
-    Paginador,
+    BolivianosPipe,
     Atajo,
     EnfocarError,
   ],
@@ -31,6 +33,7 @@ import { unicosOrdenados } from '../../shared/sugerencias-texto';
 })
 export class Proveedores {
   private readonly servicio = inject(ProveedoresService);
+  private readonly comprasService = inject(ComprasService);
   private readonly fb = inject(FormBuilder);
   private readonly notificacion = inject(NotificacionService);
 
@@ -40,6 +43,30 @@ export class Proveedores {
   protected readonly cargando = signal(true);
   protected readonly buscar = signal('');
   protected readonly guardando = signal(false);
+
+  /** Compras del taller, para saber cuánto se le compró a cada uno y cuándo. */
+  private readonly compras = signal<Compra[]>([]);
+
+  protected readonly resumenCompras = computed(() => {
+    const mapa = new Map<string, { total: number; ultima: string | null }>();
+    for (const c of this.compras()) {
+      if (!c.proveedorId) continue;
+      const actual = mapa.get(c.proveedorId) ?? { total: 0, ultima: null };
+      actual.total += c.total;
+      if (!actual.ultima || c.fecha > actual.ultima) actual.ultima = c.fecha;
+      mapa.set(c.proveedorId, actual);
+    }
+    return mapa;
+  });
+
+  protected iniciales(nombre: string): string {
+    const palabras = nombre.split(/\s+/).filter((p) => p.length > 2);
+    return (palabras.length ? palabras : [nombre]).slice(0, 2).map((p) => p[0] ?? '').join('').toUpperCase();
+  }
+
+  protected enlaceLlamada(telefono: string): string {
+    return 'tel:' + telefono.replace(/[^\d+]/g, '');
+  }
 
   protected readonly pagina = signal(1);
   protected readonly tamanoPagina = signal(20);
@@ -60,6 +87,9 @@ export class Proveedores {
 
   constructor() {
     this.cargar();
+    this.comprasService
+      .getAll({ tamanoPagina: 500 })
+      .subscribe({ next: (r) => this.compras.set(r.items), error: () => this.compras.set([]) });
 
     // Solo para el autocompletado de "Dirección": no reemplaza la tabla paginada.
     this.servicio
@@ -73,7 +103,7 @@ export class Proveedores {
     this.cargando.set(true);
 
     this.servicio
-      .getAll(this.buscar() || undefined, this.pagina(), this.tamanoPagina())
+      .getAll(this.buscar() || undefined, 1, 500)
       .subscribe({
         next: (resultado) => {
           this.proveedores.set(resultado.items);

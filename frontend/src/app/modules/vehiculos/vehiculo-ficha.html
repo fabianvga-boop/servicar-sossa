@@ -1,0 +1,329 @@
+@if (noEncontrado()) {
+  <div class="tarjeta ficha-vacia">
+    <p>No se encontró el vehículo.</p>
+    <a routerLink="/vehiculos" class="btn btn-secundario">Volver a Vehículos</a>
+  </div>
+} @else if (vehiculo(); as v) {
+  <nav class="migas-ficha" aria-label="Ruta">
+    <a routerLink="/vehiculos">Vehículos</a>
+    <span aria-hidden="true">/</span>
+    <span class="migas-actual">{{ v.placa }}</span>
+  </nav>
+
+  <!-- ------------------------------------------------------------- Cabecera -->
+  <section class="ficha-cabecera">
+    <app-placa [valor]="v.placa" tamano="grande" />
+    <div class="ficha-titulo">
+      <h1>{{ v.marca }} {{ v.modelo }} {{ v.anio ?? '' }}</h1>
+      <span class="ficha-subtitulo">
+        @if (v.color) {
+          {{ v.color }} ·
+        }
+        dueño
+        @if (auth.esAdministrador()) {
+          <a [routerLink]="['/clientes']" [queryParams]="{ clienteId: v.clienteId }">{{ v.nombreCliente }}</a>
+        } @else {
+          {{ v.nombreCliente }}
+        }
+        @if (v.numMotor) {
+          · motor {{ v.numMotor }}
+        }
+      </span>
+    </div>
+    <div class="ficha-acciones">
+      @if (auth.esAdministrador()) {
+        <a class="btn btn-secundario" [routerLink]="['/vehiculos']" [queryParams]="{ editar: v.vehiculoId }">Editar</a>
+      }
+      <a class="btn btn-primario" [routerLink]="['/diagnosticos']" [queryParams]="{ nuevo: true, vehiculoId: v.vehiculoId }">
+        Nuevo diagnóstico
+      </a>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- Indicadores -->
+  <section class="ficha-indicadores">
+    <div class="ficha-indicador">
+      <span>Kilometraje</span>
+      <span class="monto-mono">{{ v.kilometraje != null ? (v.kilometraje | number) + ' km' : '—' }}</span>
+    </div>
+    <div class="ficha-indicador">
+      <span>Visitas al taller</span>
+      <span class="monto-mono">{{ historial()?.resumen?.totalVisitas ?? 0 }}</span>
+    </div>
+    <div class="ficha-indicador">
+      <span>Gastado en total</span>
+      <span class="monto-mono">{{ (historial()?.resumen?.gastoAcumulado ?? 0) | bs }}</span>
+    </div>
+    <div class="ficha-indicador">
+      <span>Última visita</span>
+      <span class="monto-mono">
+        {{ historial()?.resumen?.ultimaVisita ? (historial()!.resumen.ultimaVisita | date: 'dd/MM/yyyy') : '—' }}
+      </span>
+    </div>
+  </section>
+
+  <!-- -------------------------------------------------------------- Pestañas -->
+  <div class="ficha-pestanas" role="tablist" aria-label="Ficha del vehículo">
+    <button
+      type="button"
+      role="tab"
+      class="ficha-pestana"
+      [class.activa]="pestania() === 'historial'"
+      [attr.aria-selected]="pestania() === 'historial'"
+      (click)="pestania.set('historial')"
+    >
+      Historial y repuestos
+    </button>
+    <button
+      type="button"
+      role="tab"
+      class="ficha-pestana"
+      [class.activa]="pestania() === 'fotos'"
+      [attr.aria-selected]="pestania() === 'fotos'"
+      (click)="pestania.set('fotos')"
+    >
+      Fotos y estado
+    </button>
+    <button
+      type="button"
+      role="tab"
+      class="ficha-pestana"
+      [class.activa]="pestania() === 'datos'"
+      [attr.aria-selected]="pestania() === 'datos'"
+      (click)="pestania.set('datos')"
+    >
+      Datos del vehículo
+    </button>
+  </div>
+
+  @switch (pestania()) {
+    <!-- ================================================= Historial y repuestos -->
+    @case ('historial') {
+      <div class="ficha-columnas">
+        <section class="tarjeta ficha-bloque ficha-tiempo">
+          <h2>Línea de tiempo</h2>
+          @if (!historial()) {
+            <app-esqueleto [filas]="4" [columnas]="1" />
+          } @else {
+            @for (item of lineaTiempo(); track item.clave; let ultimo = $last) {
+              <div class="evento">
+                <span class="evento-guia" aria-hidden="true">
+                  <span class="evento-punto {{ item.tono }}"></span>
+                  @if (!ultimo) {
+                    <span class="evento-linea"></span>
+                  }
+                </span>
+                <span class="evento-cuerpo">
+                  <span class="evento-titulo">
+                    @if (item.tipo === 'Orden') {
+                      <a class="codigo" [routerLink]="['/ordenes', item.id]">{{ item.id }}</a>
+                    } @else {
+                      <span class="codigo">{{ item.id }}</span>
+                    }
+                    <strong>{{ item.titulo }}</strong>
+                  </span>
+                  <span class="evento-detalle">{{ item.detalle }}</span>
+                  <span class="evento-fecha">{{ item.fecha | date: 'dd/MM/yyyy' }}</span>
+                </span>
+              </div>
+            } @empty {
+              <p class="ficha-nota">Este vehículo todavía no tiene diagnósticos ni órdenes.</p>
+            }
+          }
+        </section>
+
+        <div class="ficha-lateral">
+          <section class="tarjeta ficha-lista-repuestos">
+            <div class="ficha-lista-cabecera">
+              <h2>Repuestos para este vehículo</h2>
+              <span>Los que calzan en un {{ v.marca }} {{ v.modelo }}{{ v.anio ? ' ' + v.anio : '' }}, con su stock.</span>
+            </div>
+            @for (r of repuestosVehiculo().slice(0, 8); track r.repuesto.repuestoId) {
+              <div class="repuesto-fila">
+                <span class="repuesto-fila-nombre">
+                  <strong>{{ r.repuesto.nombre }}</strong>
+                  <span>
+                    <span class="etiqueta-compat" [class.compatible]="r.nivel === NivelCompatibilidad.Compatible">
+                      {{ r.nivel === NivelCompatibilidad.Compatible ? 'Compatible' : 'Uso general' }}
+                    </span>
+                  </span>
+                </span>
+                <span class="repuesto-fila-stock" [class.agotado]="r.repuesto.stockActual < 1">
+                  {{
+                    r.repuesto.stockActual < 1
+                      ? 'Agotado'
+                      : r.repuesto.stockActual + (r.repuesto.stockActual === 1 ? ' disponible' : ' disponibles')
+                  }}
+                </span>
+                <span class="monto-mono">{{ r.repuesto.precioVenta | bs }}</span>
+              </div>
+            } @empty {
+              <p class="ficha-nota ficha-nota-lista">Todavía no hay repuestos marcados para este modelo.</p>
+            }
+            @if (repuestosVehiculo().length > 8) {
+              <a class="ficha-ver-todos" [routerLink]="['/repuestos']" [queryParams]="{ vehiculoId: v.vehiculoId }">
+                Ver los {{ repuestosVehiculo().length }} repuestos
+              </a>
+            }
+          </section>
+
+          <section class="tarjeta ficha-bloque">
+            <h2>Servicios más frecuentes</h2>
+            @if (historial()?.serviciosFrecuentes?.length) {
+              <div class="servicios-frecuentes">
+                @for (s of historial()!.serviciosFrecuentes; track s.nombre) {
+                  <span class="servicio-frecuente">{{ s.nombre }} · {{ s.cantidad }}</span>
+                }
+              </div>
+            } @else {
+              <p class="ficha-nota">Se arman con las órdenes cerradas del vehículo.</p>
+            }
+          </section>
+        </div>
+      </div>
+    }
+
+    <!-- ===================================================== Fotos y estado -->
+    @case ('fotos') {
+      <div class="ficha-columnas fotos-columnas">
+        <section class="tarjeta ficha-bloque">
+          <div class="ficha-bloque-cabecera">
+            <h2>Estado del vehículo</h2>
+            @if (auth.esAdministrador()) {
+              <span class="ficha-ayuda">Toque una zona del dibujo para marcar cómo está.</span>
+            }
+          </div>
+
+          <div class="diagrama-ficha">
+            <app-diagrama-vehiculo
+              [tipoCarroceria]="v.tipoCarroceria"
+              [svgUrl]="v.diagramaSvgUrl"
+              [zonas]="zonas()"
+              [interactivo]="auth.esAdministrador()"
+              [zonaSeleccionada]="zonaEditando()"
+              (zonaClick)="onZonaClick($event)"
+            />
+          </div>
+
+          @if (zonaEditando(); as zona) {
+            <form class="form-zona" [formGroup]="formularioZona" (ngSubmit)="guardarZona()">
+              <strong>{{ zona }}</strong>
+              <div class="campo">
+                <label for="estadoZona">Estado</label>
+                <select id="estadoZona" formControlName="estado">
+                  <option [ngValue]="EstadoZonaVehiculo.Ok">Bien</option>
+                  <option [ngValue]="EstadoZonaVehiculo.Atencion">Atención</option>
+                  <option [ngValue]="EstadoZonaVehiculo.EnReparacion">En reparación</option>
+                </select>
+              </div>
+              <div class="campo">
+                <label for="detalleZona">Detalle (opcional)</label>
+                <input id="detalleZona" formControlName="detalle" placeholder="Rayón leve, golpe, falta una pieza…" />
+              </div>
+              <div class="form-zona-botones">
+                <button type="button" class="btn btn-secundario" (click)="zonaEditando.set(null)">Cancelar</button>
+                <button type="submit" class="btn btn-primario" [disabled]="guardandoZona()">
+                  {{ guardandoZona() ? 'Guardando…' : 'Marcar zona' }}
+                </button>
+              </div>
+            </form>
+          }
+
+          @if (observacionesZonas().length > 0) {
+            <div class="zonas-observaciones">
+              <span class="etiqueta-campo">Observaciones</span>
+              @for (z of observacionesZonas(); track z.zonaObsId) {
+                <div class="zona-fila">
+                  <span class="zona-punto {{ z.estado }}" aria-hidden="true"></span>
+                  <span class="zona-texto">
+                    <strong>{{ etiquetaZona(z.zona) }}</strong> · {{ textoZona(z.estado) }}
+                    <span class="zona-detalle">— {{ z.detalle }}</span>
+                  </span>
+                  <span class="zona-fecha">{{ z.fechaRegistro | date: 'dd/MM/yyyy' }}</span>
+                </div>
+              }
+            </div>
+          }
+
+          <span class="ficha-pie-dibujo">
+            @if (v.diagramaSvgUrl) {
+              Dibujo de la plantilla {{ v.marca }} {{ v.modelo }}.
+            } @else {
+              Este modelo no tiene plantilla propia: se usa la silueta genérica.
+            }
+          </span>
+        </section>
+
+        <section class="tarjeta ficha-bloque">
+          <div class="ficha-bloque-cabecera">
+            <h2>Fotos</h2>
+            @if (auth.esAdministrador()) {
+              <app-elegir-foto etiqueta="Elegir archivo" [ocupado]="subiendoFoto()" [mostrarAyuda]="false" (archivo)="onArchivoSeleccionado($event)" />
+            }
+          </div>
+
+          @for (grupo of gruposFotos(); track grupo.dia) {
+            <div class="fotos-grupo">
+              <div class="fotos-grupo-cabecera">
+                <strong>Subidas el {{ grupo.dia | date: 'dd/MM/yyyy' }}</strong>
+                <span>{{ grupo.fotos.length === 1 ? '1 foto' : grupo.fotos.length + ' fotos' }}</span>
+              </div>
+              <div class="fotos-rejilla">
+                @for (foto of grupo.fotos; track foto.fotoId) {
+                  <div class="foto-ficha">
+                    <a [href]="urlArchivo(foto.url)" target="_blank" rel="noopener" class="foto-ficha-imagen">
+                      <img [src]="urlArchivo(foto.url)" [alt]="'Foto de ' + v.placa" loading="lazy" />
+                    </a>
+                    @if (auth.esAdministrador()) {
+                      <button
+                        type="button"
+                        class="foto-ficha-quitar"
+                        title="Eliminar la foto"
+                        aria-label="Eliminar la foto"
+                        [disabled]="eliminandoFoto() === foto.fotoId"
+                        (click)="eliminarFoto(foto)"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          } @empty {
+            <p class="ficha-nota">
+              Este vehículo todavía no tiene fotos. Sirven para dejar constancia de cómo llegó: golpes,
+              rayones, nivel de combustible.
+            </p>
+          }
+        </section>
+      </div>
+    }
+
+    <!-- ================================================== Datos del vehículo -->
+    @case ('datos') {
+      <section class="tarjeta ficha-bloque ficha-datos">
+        <dl class="datos-vehiculo">
+          <div><dt>Placa</dt><dd class="monto-mono">{{ v.placa }}</dd></div>
+          <div><dt>Marca</dt><dd>{{ v.marca }}</dd></div>
+          <div><dt>Modelo</dt><dd>{{ v.modelo }}</dd></div>
+          <div><dt>Año</dt><dd>{{ v.anio ?? '—' }}</dd></div>
+          <div><dt>Color</dt><dd>{{ v.color || '—' }}</dd></div>
+          <div><dt>Kilometraje</dt><dd class="monto-mono">{{ v.kilometraje != null ? (v.kilometraje | number) + ' km' : '—' }}</dd></div>
+          <div><dt>N.º de motor</dt><dd class="monto-mono">{{ v.numMotor || '—' }}</dd></div>
+          <div><dt>N.º de chasis</dt><dd class="monto-mono">{{ v.numChasis || '—' }}</dd></div>
+          <div><dt>Dueño</dt><dd>{{ v.nombreCliente }}</dd></div>
+          <div><dt>Registrado el</dt><dd>{{ v.fechaRegistro | date: 'dd/MM/yyyy' }}</dd></div>
+          <div><dt>Código</dt><dd class="codigo">{{ v.vehiculoId }}</dd></div>
+        </dl>
+        @if (auth.esAdministrador()) {
+          <a class="btn btn-secundario ficha-editar" [routerLink]="['/vehiculos']" [queryParams]="{ editar: v.vehiculoId }">
+            Editar los datos
+          </a>
+        }
+      </section>
+    }
+  }
+} @else {
+  <app-esqueleto [filas]="6" [columnas]="2" />
+}
