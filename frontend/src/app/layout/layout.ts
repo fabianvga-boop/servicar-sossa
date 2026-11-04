@@ -75,6 +75,10 @@ export class Layout {
   protected readonly ayudaAtajos = signal(false);
 
   protected alTeclear(evento: KeyboardEvent): void {
+    if (evento.key === 'Escape' && (this.masAbierto() || this.nuevoAbierto())) {
+      this.cerrarHojas();
+      return;
+    }
     if (evento.key !== '?' || evento.ctrlKey || evento.metaKey || evento.altKey) return;
 
     // Escribiendo en un campo, el "?" es texto; con un diálogo abierto, no se apila otro.
@@ -121,6 +125,7 @@ export class Layout {
           contador: 'ordenesActivas',
         },
         { ruta: '/diagnosticos', etiqueta: 'Diagnósticos', icono: 'diagnosticos' },
+        { ruta: '/agenda', etiqueta: 'Agenda', icono: 'agenda' },
         { ruta: '/tipos-servicio', etiqueta: 'Catálogo de servicios', icono: 'catalogo' },
       ],
     },
@@ -185,7 +190,94 @@ export class Layout {
       .filter((grupo) => grupo.enlaces.length > 0);
   });
 
+  // --- Barra de abajo en el celular ---------------------------------------------
+
+  /** "Más": el resto del menú, la cuenta y cerrar sesión, a pantalla completa. */
+  protected readonly masAbierto = signal(false);
+  /** "Nuevo": hoja con lo que se puede registrar desde cualquier pantalla. */
+  protected readonly nuevoAbierto = signal(false);
+
+  private readonly rutaActual = toSignal(
+    this.router.events.pipe(
+      filter((evento): evento is NavigationEnd => evento instanceof NavigationEnd),
+      map((evento) => evento.urlAfterRedirects),
+    ),
+    { initialValue: this.router.url },
+  );
+
+  /** Pestaña marcada: las tres fijas, o "Más" para cualquier otra pantalla. */
+  protected readonly pestaniaActiva = computed(() => {
+    if (this.masAbierto()) return 'mas';
+    const ruta = this.rutaActual().split('?')[0];
+    if (ruta.startsWith('/dashboard')) return 'panel';
+    if (ruta.startsWith('/ordenes')) return 'ordenes';
+    if (ruta.startsWith('/repuestos')) return 'repuestos';
+    return 'mas';
+  });
+
+  /** El menú de "Más": todo menos lo que ya está en la barra. */
+  protected readonly menuMas = computed(() =>
+    this.menu()
+      .map((grupo) => ({
+        ...grupo,
+        enlaces: grupo.enlaces.filter((e) => !['/dashboard', '/ordenes', '/repuestos'].includes(e.ruta)),
+      }))
+      .filter((grupo) => grupo.enlaces.length > 0),
+  );
+
+  protected readonly accionesNuevo = computed(() => {
+    const acciones = [
+      {
+        titulo: 'Diagnóstico',
+        detalle: 'Recibir un vehículo y anotar la falla',
+        icono: 'M14 7a4 4 0 1 1-5.6 3.7L4 15v5h5l4.3-4.4A4 4 0 0 1 14 7z',
+        tono: 'rojo',
+        ruta: '/diagnosticos',
+        parametros: { nuevo: 'true' } as Record<string, string>,
+      },
+    ];
+    if (this.auth.esAdministrador()) {
+      acciones.push(
+        {
+          titulo: 'Venta de mostrador',
+          detalle: 'Vender repuestos sin orden de trabajo',
+          icono: 'M4 6h16l-2 9H6zM9 20h.01M17 20h.01',
+          tono: 'azul',
+          ruta: '/ventas',
+          parametros: {},
+        },
+        {
+          titulo: 'Compra',
+          detalle: 'Ingresar repuestos al inventario',
+          icono: 'M12 3 4 7.5v9L12 21l8-4.5v-9zM12 12v9',
+          tono: 'verde',
+          ruta: '/compras',
+          parametros: { nueva: 'true' },
+        },
+        {
+          titulo: 'Cliente',
+          detalle: 'Registrar un cliente con su vehículo',
+          icono: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0',
+          tono: 'gris',
+          ruta: '/clientes',
+          parametros: { nuevo: 'true' },
+        },
+      );
+    }
+    return acciones;
+  });
+
+  protected cerrarHojas(): void {
+    this.masAbierto.set(false);
+    this.nuevoAbierto.set(false);
+  }
+
   constructor() {
+    // Al cambiar de pantalla se cierran "Más" y "Nuevo".
+    this.router.events
+      .pipe(filter((evento) => evento instanceof NavigationEnd))
+      .subscribe(() => this.cerrarHojas());
+
     this.contadores.refrescar();
     // El layout solo existe mientras hay sesión: es el punto justo para
     // empezar a vigilar la inactividad (CAPA 2.3).

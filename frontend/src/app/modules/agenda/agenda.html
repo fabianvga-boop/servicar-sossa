@@ -1,109 +1,108 @@
-<div class="fila-entre envuelve mb-2">
+<div class="fila-entre envuelve mb-2 encabezado-pagina agenda-cabecera">
   <div>
     <h1>Agenda</h1>
-    <p class="texto-tenue texto-sm mb-0">Calendario de diagnósticos y ocupación de mecánicos</p>
+    <p class="texto-tenue texto-sm mb-0">{{ titulo() }}</p>
+  </div>
+  <div class="agenda-botones">
+    <button type="button" class="btn-icono agenda-flecha" aria-label="Semana anterior" (click)="moverSemana(-1)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m15 6-6 6 6 6" /></svg>
+    </button>
+    <button type="button" class="btn btn-secundario" [disabled]="esEstaSemana()" (click)="irAHoy()">Hoy</button>
+    <button type="button" class="btn-icono agenda-flecha" aria-label="Semana siguiente" (click)="moverSemana(1)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+    </button>
+    <a class="btn btn-primario" [routerLink]="['/diagnosticos']" [queryParams]="{ nuevo: true }">+ Nuevo diagnóstico</a>
   </div>
 </div>
 
-<!-- El componente base pedido, con datos de ejemplo: el modelo real no tiene
-     inicio ni fin para dibujar un bloque de verdad (ver el comentario en
-     agenda.ts). No hay nada acá conectado al taller todavía. -->
-<div class="aviso-muestra mb-2">
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-    <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
-    <path d="M12 9v4" /><path d="M12 17h.01" />
-  </svg>
-  <div>
-    <span class="texto-fuerte">Vista de ejemplo, sin datos reales.</span>
-    El sistema no guarda hora de inicio ni duración de un diagnóstico o una asignación —
-    solo el instante en que se registran. Los bloques de acá son ilustrativos, para validar
-    el diseño antes de decidir si se agregan esos campos al modelo real.
-  </div>
-</div>
+<div class="agenda-columnas">
+  <section class="tarjeta agenda-grilla" aria-label="Semana">
+    <div class="grilla">
+      <span class="grilla-esquina"></span>
+      @for (d of dias(); track d.indice) {
+        <span class="grilla-dia" [class.hoy]="d.esHoy">{{ d.corto }}</span>
+      }
 
-<div class="pestanias mb-2">
-  <button type="button" [class.activa]="pestania() === 'calendario'" (click)="cambiarPestania('calendario')">
-    Calendario
-  </button>
-  <button type="button" [class.activa]="pestania() === 'mecanicos'" (click)="cambiarPestania('mecanicos')">
-    Mecánicos
-  </button>
-</div>
-
-@if (pestania() === 'calendario') {
-  <!-- ------------------------------------------------------- Calendario semanal -->
-  <div class="tarjeta">
-    <div class="tarjeta-cuerpo" style="padding: 0">
-      <div class="calendario">
-        <div class="calendario-esquina"></div>
-        @for (dia of dias; track dia) {
-          <div class="calendario-dia-cabecera">{{ dia }}</div>
+      @if (hayEventosDia()) {
+        <span class="grilla-hora todo-el-dia">Todo el día</span>
+        @for (d of dias(); track d.indice) {
+          <div class="grilla-celda celda-dia">
+            @for (e of eventosDia()[d.indice]; track e.clave) {
+              <a class="evento evento-{{ e.tipo }}" [routerLink]="e.ruta" [title]="e.titulo + ' · ' + e.detalle">
+                <strong>{{ e.titulo }}</strong>
+                <span>{{ e.detalle }}</span>
+              </a>
+            }
+          </div>
         }
+      }
 
-        <div class="calendario-horas">
-          @for (hora of horas; track hora) {
-            <div class="calendario-hora">{{ etiquetaHora(hora) }}</div>
+      @for (h of horas; track h) {
+        <span class="grilla-hora">{{ etiquetaHora(h) }}</span>
+        @for (d of dias(); track d.indice) {
+          <div class="grilla-celda" [class.hoy]="d.esHoy">
+            @for (e of eventosDe(d.indice, h); track e.clave) {
+              <a class="evento evento-{{ e.tipo }}" [routerLink]="e.ruta" [queryParams]="e.parametros" [title]="e.titulo + ' · ' + e.detalle">
+                <strong>{{ e.minutos }} {{ e.titulo }}</strong>
+                <span>{{ e.detalle }}</span>
+              </a>
+            }
+          </div>
+        }
+      }
+    </div>
+  </section>
+
+  <!-- En el celular la semana se lee como una lista por día -->
+  <section class="agenda-lista">
+    @for (d of dias(); track d.indice) {
+      <div class="lista-dia tarjeta">
+        <h2 [class.hoy]="d.esHoy">{{ d.esHoy ? 'Hoy, ' + d.largo : d.largo }}</h2>
+        @for (e of eventosDia()[d.indice]; track e.clave) {
+          <a class="evento evento-{{ e.tipo }}" [routerLink]="e.ruta">
+            <strong>{{ e.titulo }}</strong>
+            <span>{{ e.detalle }}</span>
+          </a>
+        }
+        @for (h of horas; track h) {
+          @for (e of eventosDe(d.indice, h); track e.clave) {
+            <a class="evento evento-{{ e.tipo }}" [routerLink]="e.ruta" [queryParams]="e.parametros">
+              <strong>{{ e.minutos }} {{ e.titulo }}</strong>
+              <span>{{ e.detalle }}</span>
+            </a>
           }
+        }
+        @if (!tieneEventos(d.indice)) {
+          <span class="lista-vacia">Sin movimientos.</span>
+        }
+      </div>
+    }
+  </section>
+
+  <aside class="agenda-lateral">
+    <section class="tarjeta lateral-bloque">
+      <h2>Ocupación esta semana</h2>
+      @for (m of ocupacion(); track m.nombre) {
+        <div class="ocupacion">
+          <div class="ocupacion-linea">
+            <span>{{ m.nombre }}</span>
+            <span class="monto-mono">{{ m.cantidad === 1 ? '1 orden' : m.cantidad + ' órdenes' }}</span>
+          </div>
+          <span class="ocupacion-barra" aria-hidden="true"><span [style.width.%]="m.porcentaje"></span></span>
         </div>
+      } @empty {
+        <span class="lateral-nota">{{ cargando() ? 'Cargando…' : 'Ninguna orden en el taller esta semana.' }}</span>
+      }
+      <span class="lateral-nota">
+        {{ recepcionesSemana() === 1 ? '1 vehículo recibido' : recepcionesSemana() + ' vehículos recibidos' }} en la semana.
+      </span>
+    </section>
 
-        @for (dia of dias; track dia; let i = $index) {
-          <div class="calendario-columna">
-            @for (hora of horas; track hora) {
-              <div class="calendario-linea"></div>
-            }
-
-            @for (cita of citasDelDia(i); track cita.titulo + cita.horaInicio) {
-              <div
-                class="bloque-cita"
-                [class.azul]="cita.color === 'azul'"
-                [class.naranja]="cita.color === 'naranja'"
-                [class.verde]="cita.color === 'verde'"
-                [style.top.%]="topPct(cita.horaInicio)"
-                [style.height.%]="altoPct(cita.horaInicio, cita.horaFin)"
-                [title]="cita.titulo + ' — ' + cita.subtitulo"
-              >
-                <span class="bloque-titulo">{{ cita.titulo }}</span>
-                <span class="bloque-subtitulo">{{ cita.subtitulo }}</span>
-              </div>
-            }
-          </div>
-        }
-      </div>
-    </div>
-  </div>
-} @else {
-  <!-- --------------------------------------------------- Gantt de mecánicos -->
-  <div class="tarjeta">
-    <div class="tarjeta-cuerpo" style="padding: 0">
-      <div class="gantt">
-        <div class="gantt-esquina"></div>
-        @for (hora of horas; track hora) {
-          <div class="gantt-hora-cabecera">{{ etiquetaHora(hora) }}</div>
-        }
-
-        @for (mecanico of mecanicos; track mecanico) {
-          <div class="gantt-mecanico">{{ mecanico }}</div>
-          <div class="gantt-fila">
-            @for (hora of horas; track hora) {
-              <div class="gantt-linea"></div>
-            }
-
-            @for (tarea of tareasDelMecanico(mecanico); track tarea.titulo + tarea.horaInicio) {
-              <div
-                class="bloque-tarea"
-                [class.azul]="tarea.color === 'azul'"
-                [class.naranja]="tarea.color === 'naranja'"
-                [class.verde]="tarea.color === 'verde'"
-                [style.left.%]="leftPct(tarea.horaInicio)"
-                [style.width.%]="anchoPct(tarea.horaInicio, tarea.horaFin)"
-                [title]="tarea.titulo + ' — ' + mecanico"
-              >
-                {{ tarea.titulo }}
-              </div>
-            }
-          </div>
-        }
-      </div>
-    </div>
-  </div>
-}
+    <section class="tarjeta lateral-bloque">
+      <h2>Referencias</h2>
+      <span class="referencia"><span class="muestra recepcion"></span>Recepción y diagnóstico</span>
+      <span class="referencia"><span class="muestra trabajo"></span>Orden en el taller</span>
+      <span class="referencia"><span class="muestra entrega"></span>Entrega estimada y cierre</span>
+    </section>
+  </aside>
+</div>

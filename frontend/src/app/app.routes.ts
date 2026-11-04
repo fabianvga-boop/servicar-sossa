@@ -49,11 +49,11 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./modules/diagnosticos/diagnosticos').then((m) => m.Diagnosticos),
       },
-      // Maqueta de calendario/Gantt con datos de ejemplo (ver agenda.ts):
-      // el modelo real no tiene inicio/fin para dibujar un bloque de verdad,
-      // así que a propósito no tiene entrada en el menú todavía.
+      // Semana del taller con los datos reales: recepciones, órdenes en el
+      // taller, entregas estimadas y cierres (ver agenda.ts).
       {
         path: 'agenda',
+        data: { title: 'Agenda' },
         loadComponent: () => import('./modules/agenda/agenda').then((m) => m.Agenda),
       },
       {

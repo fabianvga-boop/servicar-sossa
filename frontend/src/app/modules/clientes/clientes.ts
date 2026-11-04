@@ -338,6 +338,17 @@ export class Clientes {
 
     this.cargar();
 
+    // "Nuevo → Cliente" desde la barra del celular enlaza con ?nuevo=true.
+    if (parametros.get('nuevo') === 'true') {
+      this.abrirNuevo();
+      void this.router.navigate([], {
+        relativeTo: this.ruta,
+        queryParams: { nuevo: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
+    }
+
     this.vehiculosService
       .getAll(undefined, undefined, 1, 500)
       .pipe(catchError(() => of(null)))
