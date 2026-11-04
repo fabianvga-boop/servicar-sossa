@@ -39,14 +39,14 @@ public class CompraRepository(AppDbContext context)
         // llegado por error, ya que el filtro es por día completo.
         if (desde.HasValue)
         {
-            var inicio = DateTime.SpecifyKind(desde.Value.Date, DateTimeKind.Utc);
+            var inicio = FiltroFechas.InicioDelDia(desde.Value);
             query = query.Where(c => c.Fecha >= inicio);
         }
 
         if (hasta.HasValue)
         {
             // El filtro "hasta" incluye todo el día indicado (mismo criterio que auditoría).
-            var limite = DateTime.SpecifyKind(hasta.Value.Date.AddDays(1), DateTimeKind.Utc);
+            var limite = FiltroFechas.FinDelDia(hasta.Value);
             query = query.Where(c => c.Fecha < limite);
         }
 

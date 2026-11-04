@@ -36,10 +36,17 @@ public class PagoRepository(AppDbContext context)
             query = query.Where(p => p.MetodoPago == metodoPago.Value);
 
         if (desde.HasValue)
-            query = query.Where(p => p.FechaPago >= desde.Value);
+        {
+            var inicio = FiltroFechas.InicioDelDia(desde.Value);
+            query = query.Where(p => p.FechaPago >= inicio);
+        }
 
         if (hasta.HasValue)
-            query = query.Where(p => p.FechaPago <= hasta.Value);
+        {
+            // "Hasta" incluye todo el día indicado.
+            var limite = FiltroFechas.FinDelDia(hasta.Value);
+            query = query.Where(p => p.FechaPago < limite);
+        }
 
         return await query.OrderByDescending(p => p.FechaPago).ToPagedListAsync(pagina, tamanoPagina, ct);
     }

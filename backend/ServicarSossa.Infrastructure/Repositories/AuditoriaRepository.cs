@@ -41,12 +41,15 @@ public class AuditoriaRepository(AppDbContext context)
             query = query.Where(a => a.Accion == accion.Value);
 
         if (desde.HasValue)
-            query = query.Where(a => a.Fecha >= desde.Value);
+        {
+            var inicio = FiltroFechas.InicioDelDia(desde.Value);
+            query = query.Where(a => a.Fecha >= inicio);
+        }
 
         if (hasta.HasValue)
         {
             // El filtro "hasta" incluye todo el día indicado.
-            var limite = hasta.Value.Date.AddDays(1);
+            var limite = FiltroFechas.FinDelDia(hasta.Value);
             query = query.Where(a => a.Fecha < limite);
         }
 
