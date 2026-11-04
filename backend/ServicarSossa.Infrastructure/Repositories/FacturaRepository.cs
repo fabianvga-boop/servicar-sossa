@@ -35,10 +35,17 @@ public class FacturaRepository(AppDbContext context)
             query = query.Where(f => f.EstadoSiat == estadoSiat.Value);
 
         if (desde.HasValue)
-            query = query.Where(f => f.FechaEmision >= desde.Value);
+        {
+            var inicio = FiltroFechas.InicioDelDia(desde.Value);
+            query = query.Where(f => f.FechaEmision >= inicio);
+        }
 
         if (hasta.HasValue)
-            query = query.Where(f => f.FechaEmision <= hasta.Value);
+        {
+            // "Hasta" incluye todo el día indicado.
+            var limite = FiltroFechas.FinDelDia(hasta.Value);
+            query = query.Where(f => f.FechaEmision < limite);
+        }
 
         return await query.OrderByDescending(f => f.FechaEmision).ToPagedListAsync(pagina, tamanoPagina, ct);
     }

@@ -32,10 +32,17 @@ public class ProformaRepository(AppDbContext context)
             query = query.Where(p => p.Estado == estado.Value);
 
         if (desde.HasValue)
-            query = query.Where(p => p.FechaEmision >= desde.Value);
+        {
+            var inicio = FiltroFechas.InicioDelDia(desde.Value);
+            query = query.Where(p => p.FechaEmision >= inicio);
+        }
 
         if (hasta.HasValue)
-            query = query.Where(p => p.FechaEmision <= hasta.Value);
+        {
+            // "Hasta" incluye todo el día indicado.
+            var limite = FiltroFechas.FinDelDia(hasta.Value);
+            query = query.Where(p => p.FechaEmision < limite);
+        }
 
         return await query.OrderByDescending(p => p.FechaEmision).ToPagedListAsync(pagina, tamanoPagina, ct);
     }

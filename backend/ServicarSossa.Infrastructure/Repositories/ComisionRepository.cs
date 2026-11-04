@@ -44,10 +44,17 @@ public class ComisionRepository(AppDbContext context)
             query = query.Where(c => c.EstadoPago == estadoPago.Value);
 
         if (desde.HasValue)
-            query = query.Where(c => c.FechaCalculo >= desde.Value);
+        {
+            var inicio = FiltroFechas.InicioDelDia(desde.Value);
+            query = query.Where(c => c.FechaCalculo >= inicio);
+        }
 
         if (hasta.HasValue)
-            query = query.Where(c => c.FechaCalculo <= hasta.Value);
+        {
+            // "Hasta" incluye todo el día indicado.
+            var limite = FiltroFechas.FinDelDia(hasta.Value);
+            query = query.Where(c => c.FechaCalculo < limite);
+        }
 
         return query.OrderByDescending(c => c.FechaCalculo);
     }

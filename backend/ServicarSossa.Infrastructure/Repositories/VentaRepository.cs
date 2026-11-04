@@ -42,12 +42,15 @@ public class VentaRepository(AppDbContext context) : Repository<Venta>(context),
             query = query.Where(v => v.Estado == estado.Value);
 
         if (desde.HasValue)
-            query = query.Where(v => v.FechaVenta >= desde.Value);
+        {
+            var inicio = FiltroFechas.InicioDelDia(desde.Value);
+            query = query.Where(v => v.FechaVenta >= inicio);
+        }
 
         if (hasta.HasValue)
         {
             // El filtro "hasta" incluye todo el día indicado.
-            var limite = hasta.Value.Date.AddDays(1);
+            var limite = FiltroFechas.FinDelDia(hasta.Value);
             query = query.Where(v => v.FechaVenta < limite);
         }
 
