@@ -32,6 +32,7 @@ export const routes: Routes = [
       },
       {
         path: 'perfil',
+        data: { title: 'Mi perfil' },
         loadComponent: () => import('./modules/auth/perfil').then((m) => m.Perfil),
       },
 
