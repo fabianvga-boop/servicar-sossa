@@ -382,14 +382,16 @@
 
   .principal { margin-left: 0; }
 
-  .hamburguesa { display: block; }
+  /* En el celular se navega con la barra de abajo (ver styles.css, .barra-movil). */
+  .hamburguesa,
+  .boton-atajos { display: none; }
 
   .logo-movil { display: block; }
 
   .cortina { display: block; }
 
-  /* Abajo queda lugar para el botón "Nuevo" flotante (ver .btn-nuevo). */
-  .contenido { padding: 16px 16px 88px; }
+  /* Abajo queda lugar para la barra de navegación. */
+  .contenido { padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); }
 
   .usuario-datos { display: none; }
 

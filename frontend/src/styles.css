@@ -356,20 +356,9 @@ a:hover {
   }
 }
 
-/* En el celular no hay lugar para una cabecera fija: el botón flota abajo a
-   la derecha, al alcance del pulgar, sobre la lista (y debajo del menú y de
-   los diálogos). El atajo de teclado no aplica en una pantalla táctil. */
+/* En el celular el botón "Nuevo" de cada pantalla queda en su cabecera: lo que
+   flota abajo es la barra de navegación, con su propio "Nuevo" general. */
 @media (max-width: 900px) {
-  .btn-nuevo {
-    position: fixed;
-    right: 16px;
-    bottom: 16px;
-    z-index: 45;
-    border-radius: 999px;
-    padding: 13px 20px 13px 14px;
-    box-shadow: 0 10px 24px -8px rgba(21, 26, 34, 0.45);
-  }
-
   .btn-nuevo-atajo { display: none; }
 }
 
@@ -1927,4 +1916,315 @@ table.tabla th.num {
   font-family: var(--fuente-mono);
   font-weight: 500;
   white-space: nowrap;
+}
+
+/* ------------------------------------------------- Barra de abajo (celular)
+
+   En el celular se navega con el pulgar: Panel, Órdenes, Nuevo, Repuestos y
+   Más. "Más" abre el resto del menú a pantalla completa y "Nuevo", una hoja
+   con lo que se puede registrar. En computadora no existe. */
+.barra-movil,
+.pantalla-mas,
+.velo-nuevo { display: none; }
+
+@media (max-width: 900px) {
+  .barra-movil {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 60;
+    display: flex;
+    padding: 4px 8px calc(10px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--gris-200);
+    background: var(--blanco);
+  }
+
+  .barra-movil .tab {
+    flex: 1;
+    min-height: 56px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--gris-400);
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .barra-movil .tab svg { width: 22px; height: 22px; }
+
+  .barra-movil .tab.activo { color: var(--brand); }
+
+  .tab-nuevo-boton {
+    width: 52px;
+    height: 52px;
+    margin-top: -22px;
+    display: grid;
+    place-items: center;
+    border-radius: 16px;
+    background: var(--brand);
+    color: var(--blanco);
+    box-shadow: 0 8px 18px -8px rgba(200, 35, 28, 0.7);
+  }
+
+  .barra-movil .tab-nuevo-boton svg { width: 24px; height: 24px; }
+
+  /* Más */
+
+  .pantalla-mas {
+    position: fixed;
+    inset: 0 0 calc(70px + env(safe-area-inset-bottom));
+    z-index: 55;
+    display: flex;
+    flex-direction: column;
+    background: var(--fondo-app);
+  }
+
+  .mas-cabecera {
+    flex: none;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--gris-200);
+    background: var(--blanco);
+  }
+
+  .mas-cabecera h1 { font-size: 22px; }
+
+  .mas-cuerpo {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 16px 16px 24px;
+    overflow-y: auto;
+  }
+
+  .mas-cuenta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1px solid var(--gris-200);
+    border-radius: var(--radio);
+    background: var(--blanco);
+  }
+
+  .mas-avatar {
+    width: 44px;
+    height: 44px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--ink);
+    object-fit: cover;
+    font-weight: 600;
+    color: var(--blanco);
+  }
+
+  .mas-cuenta-textos {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 13px;
+    color: var(--gris-400);
+  }
+
+  .mas-cuenta-textos strong { font-size: 15px; color: var(--ink); }
+
+  .mas-cuenta a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .mas-grupo {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .mas-grupo-titulo {
+    padding: 0 4px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--gris-400);
+  }
+
+  .mas-opciones {
+    overflow: hidden;
+    border: 1px solid var(--gris-200);
+    border-radius: var(--radio);
+    background: var(--blanco);
+  }
+
+  .mas-opcion {
+    min-height: 52px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 16px;
+    font-size: 15px;
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .mas-opcion + .mas-opcion { border-top: 1px solid var(--gris-100); }
+
+  .mas-opcion:active { background: var(--gris-50); }
+
+  .mas-icono { width: 20px; height: 20px; color: var(--gris-500); }
+
+  .mas-contador {
+    min-width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: var(--gris-100);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gris-500);
+  }
+
+  .mas-flecha { width: 18px; height: 18px; color: var(--gris-400); }
+
+  .mas-salir {
+    min-height: 48px;
+    border: 1px solid #e9a9a5;
+    border-radius: 12px;
+    background: var(--blanco);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--brand-dk);
+    cursor: pointer;
+  }
+
+  /* Nuevo */
+
+  .velo-nuevo {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    background: rgba(21, 26, 34, 0.42);
+    animation: entrada-velo 0.2s ease-out;
+  }
+
+  .velo-cerrar {
+    flex: 1;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .hoja-nuevo {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 8px 16px calc(20px + env(safe-area-inset-bottom));
+    border-radius: 20px 20px 0 0;
+    background: var(--fondo-app);
+    animation: entrada-hoja 0.24s var(--entrada-easing);
+  }
+
+  .hoja-tirador {
+    align-self: center;
+    width: 40px;
+    height: 5px;
+    margin-bottom: 4px;
+    border-radius: 999px;
+    background: var(--gris-300);
+  }
+
+  .hoja-nuevo h2 {
+    margin: 0 4px 4px;
+    font-size: 18px;
+  }
+
+  .accion-nuevo {
+    min-height: 68px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 16px;
+    border: 1px solid var(--gris-200);
+    border-radius: var(--radio);
+    background: var(--blanco);
+    color: var(--ink);
+    text-decoration: none;
+    transition: transform 0.12s;
+  }
+
+  .accion-nuevo:active { transform: scale(0.98); }
+
+  .accion-cuadro {
+    width: 44px;
+    height: 44px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+  }
+
+  .accion-cuadro svg { width: 22px; height: 22px; }
+
+  .accion-cuadro.tono-rojo { background: var(--brand-soft); color: var(--brand); }
+  .accion-cuadro.tono-azul { background: var(--azul-100); color: var(--azul-700); }
+  .accion-cuadro.tono-verde { background: var(--verde-100); color: var(--verde-700); }
+  .accion-cuadro.tono-gris { background: var(--gris-100); color: var(--gris-500); }
+
+  .accion-textos {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: 13px;
+    color: var(--gris-500);
+  }
+
+  .accion-textos strong { font-size: 15px; color: var(--ink); }
+
+  .hoja-cancelar {
+    min-height: 48px;
+    margin-top: 4px;
+    border: 1px solid var(--gris-300);
+    border-radius: 12px;
+    background: var(--blanco);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  /* El panel lateral y los diálogos quedan por encima de la barra */
+  .cajon { bottom: 0; z-index: 80 !important; }
+}
+
+@keyframes entrada-velo { from { opacity: 0; } to { opacity: 1; } }
+
+@keyframes entrada-hoja { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .velo-nuevo,
+  .hoja-nuevo { animation: none; }
 }

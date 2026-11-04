@@ -1,119 +1,292 @@
-import { Component, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
-/** Franja horaria que cubre el tablero: el taller no se dibuja fuera de este rango. */
+import { EstadoDiag, EstadoOrden } from '../../core/models/enums';
+import { Diagnostico, Orden } from '../../core/models/taller.model';
+import { AuthService } from '../../core/services/auth.service';
+import { OrdenesService } from '../../core/services/ordenes.service';
+import { DiagnosticosService } from '../../core/services/taller.service';
+
+/** Franja que dibuja la grilla; lo que cae antes o después va a la primera o última fila. */
 const HORA_INICIO = 8;
 const HORA_FIN = 18;
-const RANGO_HORAS = HORA_FIN - HORA_INICIO;
 
-interface CitaEjemplo {
-  dia: number; // 0 = lunes … 5 = sábado
-  horaInicio: number;
-  horaFin: number;
+const DIAS_CORTOS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+const DIAS_LARGOS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const MESES = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+];
+
+type Tipo = 'recepcion' | 'trabajo' | 'entrega';
+
+/** Algo que pasó (o va a pasar) a una hora: una recepción o un cierre. */
+interface EventoHora {
+  clave: string;
+  dia: number;
+  hora: number;
+  minutos: string;
+  tipo: Tipo;
   titulo: string;
-  subtitulo: string;
-  color: 'azul' | 'naranja' | 'verde';
+  detalle: string;
+  ruta: string[];
+  parametros?: Record<string, string>;
 }
 
-interface TareaEjemplo {
-  mecanico: string;
-  horaInicio: number;
-  horaFin: number;
+/** Lo que ocupa el día entero: una orden en el taller o una entrega estimada. */
+interface EventoDia {
+  clave: string;
+  tipo: Tipo;
   titulo: string;
-  color: 'azul' | 'naranja' | 'verde';
+  detalle: string;
+  ruta: string[];
+}
+
+interface DiaSemana {
+  indice: number;
+  fecha: Date;
+  corto: string;
+  largo: string;
+  esHoy: boolean;
 }
 
 /**
- * Componente base de agenda — Calendario semanal + Gantt de mecánicos.
- *
- * ES UNA MAQUETA CON DATOS DE EJEMPLO, no una pantalla conectada al backend.
- * El modelo de datos real no tiene con qué dibujar un bloque: un diagnóstico
- * (`Diagnostico.fecha`) y una asignación de mecánico (`OrdenMecanico.
- * fechaAsignacion`) son un solo instante, sin hora de inicio ni de fin ni
- * duración en ningún lado. Un bloque necesita ancho — inventar una duración
- * para poder dibujarlo sería fabricar un dato que el sistema no tiene, así
- * que esta vista se queda en ejemplo hasta que el modelo real lo soporte
- * (agregar algo como `horaInicio`/`duracionMinutos` es un cambio de backend,
- * fuera de "solo HTML/CSS y presentación").
- *
- * No está enlazada desde el menú a propósito: no es una función que el
- * taller deba usar todavía, es la base para decidir si vale la pena sumar
- * esos campos.
+ * Agenda de la semana con lo que registra el sistema: cada recepción
+ * (diagnóstico) y cada cierre a su hora, y arriba, todo el día, las órdenes
+ * que están en el taller y las entregas estimadas. El sistema guarda
+ * momentos, no duraciones: por eso nada se dibuja como un bloque de horas.
  */
 @Component({
   selector: 'app-agenda',
-  imports: [],
+  imports: [RouterLink],
   templateUrl: './agenda.html',
   styleUrl: './agenda.css',
 })
 export class Agenda {
-  protected readonly pestania = signal<'calendario' | 'mecanicos'>('calendario');
+  private readonly ordenesService = inject(OrdenesService);
+  private readonly diagnosticosService = inject(DiagnosticosService);
+  private readonly auth = inject(AuthService);
 
-  protected readonly dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-  protected readonly horas = Array.from({ length: RANGO_HORAS }, (_, i) => HORA_INICIO + i);
-  protected readonly mecanicos = ['Mecánico A', 'Mecánico B', 'Mecánico C'];
+  protected readonly cargando = signal(true);
+  private readonly ordenes = signal<Orden[]>([]);
+  private readonly diagnosticos = signal<Diagnostico[]>([]);
 
-  protected cambiarPestania(valor: 'calendario' | 'mecanicos'): void {
-    this.pestania.set(valor);
+  /** Lunes de la semana que se mira. */
+  protected readonly lunes = signal(lunesDe(new Date()));
+
+  protected readonly horas = Array.from({ length: HORA_FIN - HORA_INICIO }, (_, i) => HORA_INICIO + i);
+
+  protected readonly dias = computed<DiaSemana[]>(() => {
+    const hoy = claveDia(new Date());
+    return Array.from({ length: 6 }, (_, i) => {
+      const fecha = new Date(this.lunes());
+      fecha.setDate(fecha.getDate() + i);
+      return {
+        indice: i,
+        fecha,
+        corto: `${DIAS_CORTOS[fecha.getDay()]} ${fecha.getDate()}`,
+        largo: `${DIAS_LARGOS[fecha.getDay()]} ${fecha.getDate()} de ${MESES[fecha.getMonth()]}`,
+        esHoy: claveDia(fecha) === hoy,
+      };
+    });
+  });
+
+  protected readonly titulo = computed(() => {
+    const dias = this.dias();
+    const a = dias[0].fecha;
+    const b = dias[dias.length - 1].fecha;
+    return a.getMonth() === b.getMonth()
+      ? `Semana del ${a.getDate()} al ${b.getDate()} de ${MESES[b.getMonth()]}`
+      : `Semana del ${a.getDate()} de ${MESES[a.getMonth()]} al ${b.getDate()} de ${MESES[b.getMonth()]}`;
+  });
+
+  protected readonly esEstaSemana = computed(() => claveDia(this.lunes()) === claveDia(lunesDe(new Date())));
+
+  // --- Lo que pasa a una hora ------------------------------------------------------
+
+  protected readonly eventosHora = computed<EventoHora[]>(() => {
+    const inicio = this.lunes().getTime();
+    const fin = inicio + 6 * 86_400_000;
+    const lista: EventoHora[] = [];
+
+    const ubicar = (iso: string) => {
+      const fecha = new Date(iso);
+      const t = fecha.getTime();
+      if (t < inicio || t >= fin) return null;
+      const dia = Math.floor((new Date(fecha).setHours(0, 0, 0, 0) - inicio) / 86_400_000);
+      if (dia < 0 || dia > 5) return null;
+      const hora = Math.min(Math.max(fecha.getHours(), HORA_INICIO), HORA_FIN - 1);
+      const minutos = `${String(fecha.getHours()).padStart(2, '0')}:${String(fecha.getMinutes()).padStart(2, '0')}`;
+      return { dia, hora, minutos };
+    };
+
+    for (const d of this.diagnosticos()) {
+      if (d.estado === EstadoDiag.Anulado) continue;
+      const lugar = ubicar(d.fecha);
+      if (!lugar) continue;
+      lista.push({
+        clave: 'D' + d.diagnosticoId,
+        ...lugar,
+        tipo: 'recepcion',
+        titulo: `Recepción ${d.placaVehiculo}`,
+        detalle: `${d.nombreCliente} · ${recortar(d.descripcionFalla, 40)}`,
+        ruta: ['/diagnosticos'],
+        parametros: { buscar: d.diagnosticoId },
+      });
+    }
+
+    for (const o of this.ordenes()) {
+      if (o.estado !== EstadoOrden.Cerrada || !o.fechaCierre) continue;
+      const lugar = ubicar(o.fechaCierre);
+      if (!lugar) continue;
+      lista.push({
+        clave: 'C' + o.ordenId,
+        ...lugar,
+        tipo: 'entrega',
+        titulo: `Cierre ${o.ordenId}`,
+        detalle: `${o.nombreCliente} · ${o.descripcionVehiculo}`,
+        ruta: ['/ordenes', o.ordenId],
+      });
+    }
+
+    return lista.sort((a, b) => a.minutos.localeCompare(b.minutos));
+  });
+
+  protected tieneEventos(dia: number): boolean {
+    return this.eventosDia()[dia].length > 0 || this.eventosHora().some((e) => e.dia === dia);
   }
 
-  /**
-   * Citas de ejemplo para el calendario semanal. Los vehículos y clientes son
-   * genéricos a propósito: no son registros reales del taller, así que no
-   * llevan una placa ni un nombre que pudieran confundirse con datos reales.
-   */
-  protected readonly citas: CitaEjemplo[] = [
-    { dia: 0, horaInicio: 9, horaFin: 10, titulo: 'Diagnóstico', subtitulo: 'Vehículo de ejemplo A', color: 'azul' },
-    { dia: 0, horaInicio: 11, horaFin: 12.5, titulo: 'Revisión de frenos', subtitulo: 'Vehículo de ejemplo B', color: 'naranja' },
-    { dia: 1, horaInicio: 8.5, horaFin: 9.5, titulo: 'Diagnóstico', subtitulo: 'Vehículo de ejemplo C', color: 'azul' },
-    { dia: 1, horaInicio: 14, horaFin: 16, titulo: 'Mantención general', subtitulo: 'Vehículo de ejemplo D', color: 'verde' },
-    { dia: 2, horaInicio: 10, horaFin: 11, titulo: 'Diagnóstico', subtitulo: 'Vehículo de ejemplo E', color: 'azul' },
-    { dia: 3, horaInicio: 9, horaFin: 10.5, titulo: 'Revisión eléctrica', subtitulo: 'Vehículo de ejemplo F', color: 'naranja' },
-    { dia: 3, horaInicio: 15, horaFin: 17, titulo: 'Mantención general', subtitulo: 'Vehículo de ejemplo G', color: 'verde' },
-    { dia: 4, horaInicio: 8, horaFin: 9, titulo: 'Diagnóstico', subtitulo: 'Vehículo de ejemplo H', color: 'azul' },
-    { dia: 4, horaInicio: 12, horaFin: 13.5, titulo: 'Revisión de frenos', subtitulo: 'Vehículo de ejemplo I', color: 'naranja' },
-    { dia: 5, horaInicio: 9, horaFin: 11, titulo: 'Mantención general', subtitulo: 'Vehículo de ejemplo J', color: 'verde' },
-  ];
-
-  /** Tareas de ejemplo para el Gantt de mecánicos: nombres genéricos, no reales. */
-  protected readonly tareas: TareaEjemplo[] = [
-    { mecanico: 'Mecánico A', horaInicio: 8, horaFin: 10, titulo: 'Diagnóstico — ejemplo', color: 'azul' },
-    { mecanico: 'Mecánico A', horaInicio: 10.5, horaFin: 13, titulo: 'Reparación — ejemplo', color: 'naranja' },
-    { mecanico: 'Mecánico A', horaInicio: 14.5, horaFin: 17, titulo: 'Mantención — ejemplo', color: 'verde' },
-    { mecanico: 'Mecánico B', horaInicio: 8.5, horaFin: 11.5, titulo: 'Reparación — ejemplo', color: 'naranja' },
-    { mecanico: 'Mecánico B', horaInicio: 12, horaFin: 13, titulo: 'Diagnóstico — ejemplo', color: 'azul' },
-    { mecanico: 'Mecánico B', horaInicio: 15, horaFin: 18, titulo: 'Reparación — ejemplo', color: 'naranja' },
-    { mecanico: 'Mecánico C', horaInicio: 9, horaFin: 12, titulo: 'Mantención — ejemplo', color: 'verde' },
-    { mecanico: 'Mecánico C', horaInicio: 13, horaFin: 15, titulo: 'Diagnóstico — ejemplo', color: 'azul' },
-    { mecanico: 'Mecánico C', horaInicio: 15.5, horaFin: 17.5, titulo: 'Reparación — ejemplo', color: 'naranja' },
-  ];
-
-  protected citasDelDia(dia: number): CitaEjemplo[] {
-    return this.citas.filter((c) => c.dia === dia);
+  /** Eventos de una celda (día, hora) de la grilla. */
+  protected eventosDe(dia: number, hora: number): EventoHora[] {
+    return this.eventosHora().filter((e) => e.dia === dia && e.hora === hora);
   }
 
-  protected tareasDelMecanico(mecanico: string): TareaEjemplo[] {
-    return this.tareas.filter((t) => t.mecanico === mecanico);
+  // --- Lo que ocupa el día --------------------------------------------------------
+
+  protected readonly eventosDia = computed<EventoDia[][]>(() =>
+    this.dias().map((dia) => {
+      const desde = new Date(dia.fecha).setHours(0, 0, 0, 0);
+      const hasta = desde + 86_400_000;
+      const lista: EventoDia[] = [];
+
+      for (const o of this.ordenes()) {
+        if (o.estado === EstadoOrden.Cancelada) continue;
+        const abierta = new Date(o.fechaCreacion).getTime();
+        const cerrada = o.fechaCierre ? new Date(o.fechaCierre).getTime() : null;
+        const enTaller =
+          abierta < hasta && (o.estado !== EstadoOrden.Cerrada || (cerrada !== null && cerrada >= desde));
+        // Las que siguen abiertas solo hasta hoy: el futuro todavía no pasó.
+        if (enTaller && (o.estado === EstadoOrden.Cerrada || desde <= Date.now())) {
+          lista.push({
+            clave: 'T' + o.ordenId,
+            tipo: 'trabajo',
+            titulo: `${o.ordenId} ${o.descripcionVehiculo}`,
+            detalle: o.mecanicos.map((m) => m.nombreMecanico).join(', ') || o.nombreCliente,
+            ruta: ['/ordenes', o.ordenId],
+          });
+        }
+
+        if (o.fechaEstimada && o.estado !== EstadoOrden.Cerrada && claveDiaIso(o.fechaEstimada) === claveDia(dia.fecha)) {
+          lista.push({
+            clave: 'E' + o.ordenId,
+            tipo: 'entrega',
+            titulo: `Entrega estimada ${o.ordenId}`,
+            detalle: o.nombreCliente,
+            ruta: ['/ordenes', o.ordenId],
+          });
+        }
+      }
+      return lista;
+    }),
+  );
+
+  protected readonly hayEventosDia = computed(() => this.eventosDia().some((d) => d.length > 0));
+
+  // --- Trabajo de la semana por mecánico ---------------------------------------------
+
+  protected readonly ocupacion = computed(() => {
+    const cuentas = new Map<string, Set<string>>();
+    for (const dia of this.eventosDia()) {
+      for (const e of dia) {
+        if (e.tipo !== 'trabajo') continue;
+        const orden = this.ordenes().find((o) => 'T' + o.ordenId === e.clave);
+        for (const m of orden?.mecanicos ?? []) {
+          if (!cuentas.has(m.nombreMecanico)) cuentas.set(m.nombreMecanico, new Set());
+          cuentas.get(m.nombreMecanico)!.add(orden!.ordenId);
+        }
+      }
+    }
+    const lista = [...cuentas.entries()].map(([nombre, ordenes]) => ({ nombre, cantidad: ordenes.size }));
+    const maximo = Math.max(1, ...lista.map((m) => m.cantidad));
+    return lista
+      .sort((a, b) => b.cantidad - a.cantidad)
+      .map((m) => ({ ...m, porcentaje: Math.max(6, Math.round((m.cantidad / maximo) * 100)) }));
+  });
+
+  protected readonly recepcionesSemana = computed(
+    () => this.eventosHora().filter((e) => e.tipo === 'recepcion').length,
+  );
+
+  constructor() {
+    const esAdmin = this.auth.esAdministrador();
+    const mecanicoId = this.auth.usuarioId() ?? undefined;
+    let pendientes = 2;
+    const listo = () => {
+      pendientes -= 1;
+      if (pendientes === 0) this.cargando.set(false);
+    };
+
+    this.ordenesService
+      .getAll(esAdmin ? {} : { mecanicoId })
+      .pipe(catchError(() => of([] as Orden[])))
+      .subscribe((lista) => {
+        this.ordenes.set(lista);
+        listo();
+      });
+
+    this.diagnosticosService
+      .getAll(esAdmin ? { tamanoPagina: 500 } : { mecanicoId, tamanoPagina: 500 })
+      .pipe(catchError(() => of(null)))
+      .subscribe((r) => {
+        this.diagnosticos.set(r?.items ?? []);
+        listo();
+      });
   }
 
-  /** Posición y alto del bloque dentro de la columna del día, en porcentaje. */
-  protected topPct(horaInicio: number): number {
-    return ((horaInicio - HORA_INICIO) / RANGO_HORAS) * 100;
+  protected moverSemana(semanas: number): void {
+    const lunes = new Date(this.lunes());
+    lunes.setDate(lunes.getDate() + semanas * 7);
+    this.lunes.set(lunes);
   }
 
-  protected altoPct(horaInicio: number, horaFin: number): number {
-    return ((horaFin - horaInicio) / RANGO_HORAS) * 100;
-  }
-
-  /** Posición y ancho del bloque dentro de la fila del mecánico, en porcentaje. */
-  protected leftPct(horaInicio: number): number {
-    return ((horaInicio - HORA_INICIO) / RANGO_HORAS) * 100;
-  }
-
-  protected anchoPct(horaInicio: number, horaFin: number): number {
-    return ((horaFin - horaInicio) / RANGO_HORAS) * 100;
+  protected irAHoy(): void {
+    this.lunes.set(lunesDe(new Date()));
   }
 
   protected etiquetaHora(hora: number): string {
-    return `${String(hora).padStart(2, '0')}:00`;
+    return `${hora}:00`;
   }
+}
+
+function lunesDe(fecha: Date): Date {
+  const lunes = new Date(fecha);
+  lunes.setHours(0, 0, 0, 0);
+  lunes.setDate(lunes.getDate() - ((lunes.getDay() + 6) % 7));
+  return lunes;
+}
+
+function claveDia(fecha: Date): string {
+  return `${fecha.getFullYear()}-${fecha.getMonth()}-${fecha.getDate()}`;
+}
+
+/** Fechas "solo día" (yyyy-MM-dd…): se leen sin pasar por la zona horaria. */
+function claveDiaIso(iso: string): string {
+  const [a, m, d] = iso.slice(0, 10).split('-').map(Number);
+  return `${a}-${m - 1}-${d}`;
+}
+
+function recortar(texto: string, largo: number): string {
+  return texto.length > largo ? texto.slice(0, largo - 1).trimEnd() + '…' : texto;
 }

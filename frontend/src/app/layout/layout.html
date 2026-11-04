@@ -114,6 +114,96 @@
       <router-outlet />
     </main>
   </div>
+
+  <!-- ------------------------------------------- Barra de abajo (celular) -->
+  <nav class="barra-movil" aria-label="Navegación principal">
+    <a class="tab" routerLink="/dashboard" [class.activo]="pestaniaActiva() === 'panel'" [attr.aria-current]="pestaniaActiva() === 'panel' ? 'page' : null">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" /></svg>
+      Panel
+    </a>
+    <a class="tab" routerLink="/ordenes" [class.activo]="pestaniaActiva() === 'ordenes'" [attr.aria-current]="pestaniaActiva() === 'ordenes' ? 'page' : null">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 9h6M9 13h6M9 17h3" /></svg>
+      Órdenes
+    </a>
+    <button type="button" class="tab tab-nuevo" aria-label="Nuevo: diagnóstico, venta, compra o cliente" (click)="masAbierto.set(false); nuevoAbierto.set(true)">
+      <span class="tab-nuevo-boton" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+      </span>
+      Nuevo
+    </button>
+    <a class="tab" routerLink="/repuestos" [class.activo]="pestaniaActiva() === 'repuestos'" [attr.aria-current]="pestaniaActiva() === 'repuestos' ? 'page' : null">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z" /><path d="m4 7.5 8 4.5 8-4.5M12 12v9" /></svg>
+      Repuestos
+    </a>
+    <button type="button" class="tab" [class.activo]="pestaniaActiva() === 'mas'" [attr.aria-expanded]="masAbierto()" (click)="nuevoAbierto.set(false); masAbierto.set(!masAbierto())">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+      Más
+    </button>
+  </nav>
+
+  @if (masAbierto()) {
+    <section class="pantalla-mas" role="dialog" aria-label="Más opciones">
+      <header class="mas-cabecera"><h1>Más</h1></header>
+      <div class="mas-cuerpo">
+        <div class="mas-cuenta">
+          @if (auth.fotoUrl(); as foto) {
+            <img class="mas-avatar" [src]="urlArchivo(foto)" alt="" />
+          } @else {
+            <span class="mas-avatar">{{ iniciales() }}</span>
+          }
+          <span class="mas-cuenta-textos">
+            <strong>{{ auth.nombreCompleto() }}</strong>
+            <span>{{ auth.rol() === 'Mecanico' ? 'Mecánico' : auth.rol() }}</span>
+          </span>
+          <a routerLink="/perfil">Mi perfil</a>
+        </div>
+
+        @for (grupo of menuMas(); track grupo.titulo) {
+          <div class="mas-grupo">
+            @if (grupo.titulo) {
+              <span class="mas-grupo-titulo">{{ grupo.titulo }}</span>
+            }
+            <div class="mas-opciones">
+              @for (enlace of grupo.enlaces; track enlace.ruta) {
+                <a class="mas-opcion" [routerLink]="enlace.ruta">
+                  <app-icono-menu class="mas-icono" [nombre]="enlace.icono" />
+                  <span class="crece">{{ enlace.etiqueta }}</span>
+                  @if (valorContador(enlace.contador); as pendientes) {
+                    <span class="mas-contador">{{ pendientes }}</span>
+                  }
+                  <svg class="mas-flecha" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+                </a>
+              }
+            </div>
+          </div>
+        }
+
+        <button type="button" class="mas-salir" (click)="salir()">Cerrar sesión</button>
+      </div>
+    </section>
+  }
+
+  @if (nuevoAbierto()) {
+    <div class="velo-nuevo">
+      <button type="button" class="velo-cerrar" aria-label="Cerrar" (click)="nuevoAbierto.set(false)"></button>
+      <section class="hoja-nuevo" role="dialog" aria-modal="true" aria-label="Crear algo nuevo">
+        <span class="hoja-tirador" aria-hidden="true"></span>
+        <h2>¿Qué quiere registrar?</h2>
+        @for (a of accionesNuevo(); track a.titulo) {
+          <a class="accion-nuevo" [routerLink]="a.ruta" [queryParams]="a.parametros" (click)="nuevoAbierto.set(false)">
+            <span class="accion-cuadro tono-{{ a.tono }}" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path [attr.d]="a.icono" /></svg>
+            </span>
+            <span class="accion-textos">
+              <strong>{{ a.titulo }}</strong>
+              <span>{{ a.detalle }}</span>
+            </span>
+          </a>
+        }
+        <button type="button" class="hoja-cancelar" (click)="nuevoAbierto.set(false)">Cancelar</button>
+      </section>
+    </div>
+  }
 </div>
 
 <app-buscador-global />
