@@ -46,11 +46,10 @@ import { DiagnosticosService, TiposServicioService } from '../../core/services/t
 import { UsuariosService } from '../../core/services/usuarios.service';
 import { VehiculosService } from '../../core/services/vehiculos.service';
 import { Confirmacion } from '../../shared/components/confirmacion';
-import { DiagramaVehiculo } from '../../shared/components/diagrama-vehiculo';
-import { InsigniaEstado } from '../../shared/components/insignia-estado';
+import { DiagramaVehiculo, etiquetaZona } from '../../shared/components/diagrama-vehiculo';
 import { Migas } from '../../shared/components/migas';
 import { Modal } from '../../shared/components/modal';
-import { Paso, Pasos } from '../../shared/components/pasos';
+import { Paso } from '../../shared/components/pasos';
 import { Placa } from '../../shared/components/placa';
 import {
   MarcaOpcion,
@@ -68,7 +67,27 @@ interface Requisito {
   ayuda: string;
 }
 
-/** Prefijo del detalle de cada repuesto en el selector, según su compatibilidad. */
+/** La próxima acción de la orden, para el recuadro "Siguiente paso". */
+interface SiguientePaso {
+  tipo:
+    | 'asignar'
+    | 'iniciar'
+    | 'esperar'
+    | 'agregarServicio'
+    | 'registrarRepuesto'
+    | 'completar'
+    | 'finalizar'
+    | 'cerrar'
+    | 'emitir'
+    | 'cobrar'
+    | 'listo'
+    | 'cancelada';
+  titulo: string;
+  detalle: string;
+  /** El servicio al que apunta el botón, cuando hay uno solo. */
+  servicio?: OrdenServicio;
+}
+
 /**
  * Si un repuesto del inventario corresponde al servicio para el que se
  * registra, según las categorías que lleva el servicio en el catálogo.
@@ -176,9 +195,7 @@ function repuestoSugeridoPara(nombreServicio: string): string | null {
     DatePipe,
     Modal,
     Confirmacion,
-    InsigniaEstado,
     Migas,
-    Pasos,
     Placa,
     SelectorBusqueda,
     SiTieneRol,
@@ -190,6 +207,8 @@ function repuestoSugeridoPara(nombreServicio: string): string | null {
   host: {
     // Cierre de la pestaña/navegador: el guard de ruta no alcanza a interceptarlo.
     '(window:beforeunload)': 'alCerrarPestania($event)',
+    // Un clic fuera del menú "Más" lo cierra.
+    '(document:click)': 'alHacerClic($event)',
   },
 })
 export class OrdenDetalle implements ConfirmarSalida {
@@ -444,6 +463,196 @@ export class OrdenDetalle implements ConfirmarSalida {
     () => this.requisitos().filter((r) => !r.cumplido).length,
   );
 
+  // --- Cabecera: avance y siguiente paso --------------------------------------
+
+  /** Menú "Más" de la cabecera: fotos, estado del vehículo, corregir o cancelar. */
+  protected readonly menuMas = signal(false);
+
+  protected alHacerClic(evento: MouseEvent): void {
+    if (!(evento.target as HTMLElement | null)?.closest('.menu-mas')) this.menuMas.set(false);
+  }
+
+  /** Avance en cinco pasos; el último, Cobrada, sale de la proforma saldada. */
+  protected readonly etapas = computed(() => {
+    const estado = this.orden()?.estado ?? EstadoOrden.Abierta;
+    const cobrada = !!this.proformaVigente()?.estaSaldada;
+    const actual =
+      estado === EstadoOrden.Cancelada ? -1 : estado === EstadoOrden.Cerrada ? (cobrada ? 5 : 4) : estado;
+
+    return ['Abierta', 'En proceso', 'Finalizada', 'Cerrada', 'Cobrada'].map((nombre, i) => ({
+      nombre,
+      estado: i < actual ? 'hecho' : i === actual ? 'actual' : '',
+    }));
+  });
+
+  protected textoEstado(estado: EstadoOrden): string {
+    return ['En espera', 'En proceso', 'Finalizada', 'Cerrada', 'Cancelada'][estado] ?? '';
+  }
+
+  protected textoEstadoServicio(estado: EstadoServicioOrden): { texto: string; tono: string } {
+    return [
+      { texto: 'Pendiente', tono: 'naranja' },
+      { texto: 'En proceso', tono: 'azul' },
+      { texto: 'Completado', tono: 'verde' },
+    ][estado] ?? { texto: '', tono: 'gris' };
+  }
+
+  protected readonly serviciosCompletados = computed(
+    () => this.orden()?.servicios.filter((s) => s.estado === EstadoServicioOrden.Completado).length ?? 0,
+  );
+
+  /** Nombres de los mecánicos de la orden, para la línea de la cabecera. */
+  protected readonly nombresMecanicos = computed(() =>
+    (this.orden()?.mecanicos ?? []).map((m) => m.nombreMecanico).join(', '),
+  );
+
+  /** Foto del repuesto del inventario, si la tiene. */
+  protected fotoRepuesto(consumo: OrdenRepuesto): string | null {
+    if (!consumo.repuestoId) return null;
+    return this.repuestos().find((r) => r.repuestoId === consumo.repuestoId)?.fotoUrl ?? null;
+  }
+
+  /** "Compatible" o "Uso general" según la clasificación para este vehículo. */
+  protected compatibilidadDe(consumo: OrdenRepuesto): 'Compatible' | 'Uso general' | null {
+    if (!consumo.repuestoId) return null;
+    const nivel = this.clasificacionRepuestos()?.find((c) => c.repuesto.repuestoId === consumo.repuestoId)?.nivel;
+    if (nivel === NivelCompatibilidad.Compatible) return 'Compatible';
+    if (nivel === NivelCompatibilidad.Universal) return 'Uso general';
+    return null;
+  }
+
+  // --- Estado del vehículo (columna lateral) ---------------------------------
+
+  protected readonly kilometrajeVehiculo = signal<number | null>(null);
+  protected readonly etiquetaZona = etiquetaZona;
+
+  /** Las zonas marcadas con algo (la última marca de cada una que no esté "Bien"). */
+  protected readonly zonasMarcadas = computed(() => {
+    const ultimas = new Map<string, VehiculoZona>();
+    for (const z of [...this.zonasVehiculo()].sort((a, b) => b.fechaRegistro.localeCompare(a.fechaRegistro))) {
+      if (!ultimas.has(z.zona)) ultimas.set(z.zona, z);
+    }
+    return [...ultimas.values()].filter((z) => z.estado !== 'Ok');
+  });
+
+  protected textoZona(estado: string): string {
+    return estado === 'Atencion' ? 'Atención' : estado === 'EnReparacion' ? 'En reparación' : 'Bien';
+  }
+
+  /** El historial se muestra corto; el resto, a pedido. */
+  protected readonly verTodoHistorial = signal(false);
+  protected readonly historialVisible = computed(() =>
+    this.verTodoHistorial() ? this.historial() : this.historial().slice(0, 5),
+  );
+
+  protected tonoEstado(estado: EstadoOrden): string {
+    return ['azul', 'naranja', 'verde', 'gris', 'roja'][estado] ?? 'gris';
+  }
+
+  /**
+   * Lo único que hay que hacer ahora con la orden, con su botón. Reemplaza a
+   * la lista de requisitos: en vez de leer qué falta, se ve la próxima acción.
+   */
+  protected readonly siguientePaso = computed<SiguientePaso | null>(() => {
+    const o = this.orden();
+    if (!o) return null;
+    const admin = this.puedeGestionar();
+
+    switch (o.estado) {
+      case EstadoOrden.Cancelada:
+        return { tipo: 'cancelada', titulo: 'Orden cancelada', detalle: 'No se puede reabrir ni cobrar.' };
+
+      case EstadoOrden.Abierta:
+        if (o.mecanicos.length === 0) {
+          return admin
+            ? {
+                tipo: 'asignar',
+                titulo: 'Asignar el mecánico de la orden',
+                detalle: 'Una orden la trabaja un solo mecánico: debe quedar registrado antes de empezar.',
+              }
+            : { tipo: 'esperar', titulo: 'Falta asignar el mecánico', detalle: 'Lo asigna el Administrador.' };
+        }
+        return admin
+          ? {
+              tipo: 'iniciar',
+              titulo: 'Iniciar el trabajo',
+              detalle: 'Con el trabajo iniciado se cargan los servicios y los repuestos.',
+            }
+          : { tipo: 'esperar', titulo: 'Esperando que se inicie el trabajo', detalle: 'El Administrador inicia el trabajo.' };
+
+      case EstadoOrden.EnProceso:
+        return this.pasoDelTrabajo(o, 'finalizar');
+
+      case EstadoOrden.Finalizada:
+        if (this.serviciosPendientes() > 0) return this.pasoDelTrabajo(o, 'cerrar');
+        return admin
+          ? {
+              tipo: 'cerrar',
+              titulo: 'Cerrar la orden',
+              detalle: 'Al cerrarla se descuenta el stock de los repuestos y se calculan las comisiones.',
+            }
+          : { tipo: 'esperar', titulo: 'Trabajo terminado', detalle: 'El Administrador cierra la orden y la cobra.' };
+
+      default: {
+        const bs = new BolivianosPipe();
+        const f = this.proformaVigente();
+        if (!admin) return { tipo: 'listo', titulo: 'Orden cerrada', detalle: 'El trabajo quedó registrado.' };
+        if (!f) {
+          return o.total > 0
+            ? { tipo: 'emitir', titulo: 'Emitir la proforma para cobrar', detalle: `Total de la orden: ${bs.transform(o.total)}.` }
+            : { tipo: 'listo', titulo: 'Orden cerrada', detalle: 'No hay monto que cobrar.' };
+        }
+        if (!f.estaSaldada) {
+          return {
+            tipo: 'cobrar',
+            titulo: `Cobrar el saldo de ${bs.transform(f.saldoPendiente)}`,
+            detalle: `Proforma ${f.proformaId} · cobrado ${bs.transform(f.totalPagado)} de ${bs.transform(f.total)}.`,
+          };
+        }
+        return { tipo: 'listo', titulo: 'Orden cobrada', detalle: `Proforma ${f.proformaId} pagada por completo.` };
+      }
+    }
+  });
+
+  private pasoDelTrabajo(o: OrdenDetalleModel, final: 'finalizar' | 'cerrar'): SiguientePaso {
+    if (o.servicios.length === 0) {
+      return {
+        tipo: 'agregarServicio',
+        titulo: 'Cargar los servicios que se harán',
+        detalle: 'Sin servicios la orden no cobra nada ni genera comisiones.',
+      };
+    }
+
+    const sinRepuesto = this.serviciosSinRepuesto()[0];
+    if (sinRepuesto) {
+      return {
+        tipo: 'registrarRepuesto',
+        titulo: `Registrar el repuesto de ${sinRepuesto.nombreServicio}`,
+        detalle: 'Un servicio que usa repuestos no se completa sin el suyo registrado.',
+        servicio: sinRepuesto,
+      };
+    }
+
+    const pendientes = o.servicios.filter((s) => s.estado !== EstadoServicioOrden.Completado);
+    const boton = final === 'finalizar' ? 'Finalizar trabajo' : 'Cerrar orden';
+    if (pendientes.length === 1) {
+      return {
+        tipo: 'completar',
+        titulo: `Completar el servicio ${pendientes[0].nombreServicio} para poder ${final}`,
+        detalle: `Es el único servicio pendiente. Al completarlo se habilita ${boton}.`,
+        servicio: pendientes[0],
+      };
+    }
+    if (pendientes.length > 1) {
+      return {
+        tipo: 'completar',
+        titulo: `Completar los ${pendientes.length} servicios pendientes para poder ${final}`,
+        detalle: 'Marque cada servicio como completado a medida que termine, uno a la vez.',
+      };
+    }
+    return { tipo: 'finalizar', titulo: 'Finalizar el trabajo', detalle: 'Todos los servicios están completos.' };
+  }
+
   /**
    * Motivo por el que no se puede tocar el detalle, o cadena vacía si sí se
    * puede. Alimenta el `title` de los botones deshabilitados: un botón que
@@ -531,12 +740,17 @@ export class OrdenDetalle implements ConfirmarSalida {
       })) ?? [],
   );
 
+  /** Con el precio va lo que incluye el servicio (Catálogo), para elegir el correcto. */
   protected readonly opcionesCatalogo = computed<OpcionSelector[]>(() =>
-    this.catalogo().map((s) => ({
-      valor: s.servicioId,
-      etiqueta: s.nombre,
-      detalle: `Bs ${s.precioBase.toFixed(2)}`,
-    })),
+    this.catalogo().map((s) => {
+      const incluye = s.descripcion?.trim();
+      const precio = `Bs ${s.precioBase.toFixed(2)}`;
+      return {
+        valor: s.servicioId,
+        etiqueta: s.nombre,
+        detalle: incluye ? `${precio} · ${recortar(incluye, 90)}` : precio,
+      };
+    }),
   );
 
   /**
@@ -712,6 +926,7 @@ export class OrdenDetalle implements ConfirmarSalida {
           .pipe(catchError(() => of(null)))
           .subscribe((vehiculo) => {
             if (!vehiculo) return;
+            this.kilometrajeVehiculo.set(vehiculo.kilometraje ?? null);
             this.tipoCarroceriaVehiculo.set(vehiculo.tipoCarroceria);
             this.diagramaSvgUrlVehiculo.set(vehiculo.diagramaSvgUrl ?? null);
           });
@@ -1493,4 +1708,12 @@ export class OrdenDetalle implements ConfirmarSalida {
     evento.preventDefault();
     evento.returnValue = '';
   }
+}
+
+/** Corta un texto largo en la última palabra que entra, con puntos suspensivos. */
+function recortar(texto: string, largo: number): string {
+  if (texto.length <= largo) return texto;
+  const corte = texto.slice(0, largo);
+  const espacio = corte.lastIndexOf(' ');
+  return `${(espacio > largo * 0.6 ? corte.slice(0, espacio) : corte).trimEnd()}…`;
 }

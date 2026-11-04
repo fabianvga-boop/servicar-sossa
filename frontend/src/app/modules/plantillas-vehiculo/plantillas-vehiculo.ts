@@ -9,6 +9,7 @@ import { urlArchivo } from '../../core/services/api-base';
 import { NotificacionService } from '../../core/services/notificacion.service';
 import { PlantillasVehiculoService } from '../../core/services/plantillas-vehiculo.service';
 import { VehiculosService } from '../../core/services/vehiculos.service';
+import { Cajon } from '../../shared/components/cajon';
 import { Confirmacion } from '../../shared/components/confirmacion';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { EnfocarError } from '../../shared/directives/enfocar-error';
@@ -25,7 +26,7 @@ const TAMANIO_MAXIMO_BYTES = 512 * 1024;
  */
 @Component({
   selector: 'app-plantillas-vehiculo',
-  imports: [ReactiveFormsModule, DatePipe, EstadoTabla, Confirmacion, EnfocarError],
+  imports: [ReactiveFormsModule, DatePipe, Cajon, EstadoTabla, Confirmacion, EnfocarError],
   templateUrl: './plantillas-vehiculo.html',
   styleUrl: './plantillas-vehiculo.css',
 })
@@ -57,6 +58,9 @@ export class PlantillasVehiculo {
   protected readonly subiendo = signal(false);
   protected readonly archivoSeleccionado = signal<File | null>(null);
   protected readonly porEliminar = signal<PlantillaVehiculo | null>(null);
+  /** Panel lateral para subir (o reemplazar) una plantilla. */
+  protected readonly panelSubir = signal(false);
+  protected readonly reemplazando = signal<PlantillaVehiculo | null>(null);
   protected readonly eliminando = signal(false);
 
   /** Espejo reactivo de la marca: acota los modelos sugeridos a esa marca. */
@@ -78,6 +82,41 @@ export class PlantillasVehiculo {
     this.vehiculosService
       .getAll(undefined, undefined, 1, 500)
       .subscribe((resultado) => this.vehiculos.set(resultado.items));
+  }
+
+  /** Cuántos vehículos registrados usan esta plantilla (misma marca y modelo). */
+  protected usos(plantilla: PlantillaVehiculo): number {
+    const marca = plantilla.marca.trim().toLowerCase();
+    const modelo = plantilla.modelo.trim().toLowerCase();
+    return this.vehiculos().filter(
+      (v) => v.marca.trim().toLowerCase() === marca && v.modelo.trim().toLowerCase() === modelo,
+    ).length;
+  }
+
+  protected abrirSubir(): void {
+    this.reemplazando.set(null);
+    this.formulario.reset({ marca: '', modelo: '' });
+    this.formulario.controls.marca.enable();
+    this.formulario.controls.modelo.enable();
+    this.marcaActual.set('');
+    this.archivoSeleccionado.set(null);
+    this.panelSubir.set(true);
+  }
+
+  /** Reemplazar: misma marca y modelo, otro archivo (el backend pisa la anterior). */
+  protected abrirReemplazar(plantilla: PlantillaVehiculo): void {
+    this.reemplazando.set(plantilla);
+    this.formulario.reset({ marca: plantilla.marca, modelo: plantilla.modelo });
+    this.formulario.controls.marca.disable();
+    this.formulario.controls.modelo.disable();
+    this.marcaActual.set(plantilla.marca);
+    this.archivoSeleccionado.set(null);
+    this.panelSubir.set(true);
+  }
+
+  protected cerrarSubir(): void {
+    this.panelSubir.set(false);
+    this.reemplazando.set(null);
   }
 
   protected onMarcaInput(valor: string): void {
@@ -174,6 +213,7 @@ export class PlantillasVehiculo {
         this.formulario.reset({ marca: '', modelo: '' });
         this.marcaActual.set('');
         this.archivoSeleccionado.set(null);
+        this.cerrarSubir();
         this.cargarVistaPrevia(plantilla);
         this.notificacion.exito('Plantilla guardada correctamente.');
       },

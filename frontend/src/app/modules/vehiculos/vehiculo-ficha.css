@@ -1,0 +1,510 @@
+/* ------------------------------------------------------- Ruta y cabecera */
+
+.migas-ficha {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  color: var(--gris-500);
+}
+
+.migas-ficha a {
+  color: var(--gris-500);
+  text-decoration: none;
+}
+
+.migas-ficha a:hover { color: var(--ink); }
+
+.migas-actual {
+  font-family: var(--fuente-mono);
+  color: var(--ink);
+}
+
+.ficha-cabecera {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.ficha-titulo {
+  flex: 1 1 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ficha-titulo h1 { margin: 0; }
+
+.ficha-subtitulo {
+  font-size: 14px;
+  color: var(--gris-500);
+}
+
+.ficha-acciones {
+  display: flex;
+  gap: 8px;
+}
+
+/* ------------------------------------------------------------ Indicadores */
+
+.ficha-indicadores {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 20px;
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio);
+  background: var(--blanco);
+}
+
+.ficha-indicador {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 20px;
+  font-size: 13px;
+  color: var(--gris-500);
+}
+
+.ficha-indicador + .ficha-indicador { border-left: 1px solid var(--gris-100); }
+
+.ficha-indicador .monto-mono {
+  font-size: 22px;
+  color: var(--ink);
+}
+
+/* --------------------------------------------------------------- Pestañas */
+
+.ficha-pestanas {
+  display: flex;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--gris-200);
+  overflow-x: auto;
+}
+
+.ficha-pestana {
+  height: 40px;
+  margin-right: 20px;
+  padding: 0 4px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gris-500);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ficha-pestana:hover { color: var(--ink); }
+
+.ficha-pestana.activa {
+  border-bottom-color: var(--brand);
+  color: var(--ink);
+}
+
+/* --------------------------------------------------------------- Columnas */
+
+.ficha-columnas {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 20px;
+}
+
+.fotos-columnas { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); }
+
+.ficha-lateral {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.ficha-bloque {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+}
+
+.ficha-bloque h2,
+.ficha-lista-cabecera h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.ficha-bloque-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* La línea de tiempo va más junta: el aire lo da cada evento hacia abajo */
+.ficha-tiempo { gap: 4px; }
+
+.ficha-tiempo h2 { margin-bottom: 8px; }
+
+.ficha-ayuda,
+.ficha-nota {
+  margin: 0;
+  font-size: 13px;
+  color: var(--gris-500);
+}
+
+/* --------------------------------------------------------- Línea de tiempo */
+
+.evento {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  gap: 14px;
+}
+
+.evento-guia {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.evento-punto {
+  width: 12px;
+  height: 12px;
+  margin-top: 3px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.evento-punto.verde { background: var(--verde-700); }
+.evento-punto.naranja { background: var(--naranja-600); }
+.evento-punto.roja { background: var(--brand); }
+.evento-punto.gris { background: var(--gris-300); }
+
+.evento-linea {
+  flex: 1;
+  width: 2px;
+  background: var(--gris-100);
+}
+
+.evento-cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 18px;
+}
+
+.evento-titulo {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.evento-titulo strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.evento-detalle {
+  font-size: 13px;
+  color: var(--gris-500);
+}
+
+.evento-fecha {
+  font-size: 12px;
+  color: var(--gris-400);
+}
+
+/* --------------------------------------------- Repuestos para este vehículo */
+
+.ficha-lista-repuestos {
+  overflow: hidden;
+}
+
+.ficha-lista-cabecera {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 16px 20px 10px;
+  font-size: 13px;
+  color: var(--gris-500);
+}
+
+.repuesto-fila {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--gris-100);
+  font-size: 14px;
+}
+
+.repuesto-fila-nombre {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.repuesto-fila-nombre strong { font-weight: 500; }
+
+.etiqueta-compat {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--gris-100);
+  color: var(--gris-500);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.etiqueta-compat.compatible {
+  background: var(--verde-100);
+  color: var(--verde-700);
+}
+
+.repuesto-fila-stock {
+  font-size: 13px;
+  color: var(--gris-500);
+}
+
+.repuesto-fila-stock.agotado {
+  font-weight: 600;
+  color: var(--brand-dk);
+}
+
+.ficha-nota-lista { padding: 0 20px 16px; }
+
+.ficha-ver-todos {
+  display: block;
+  padding: 12px 20px;
+  border-top: 1px solid var(--gris-100);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.servicios-frecuentes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.servicio-frecuente {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--gris-100);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+/* ------------------------------------------------------- Estado y fotos */
+
+.diagrama-ficha {
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--fondo-app);
+}
+
+.form-zona {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--gris-200);
+  border-radius: 12px;
+}
+
+.form-zona .campo { margin-bottom: 0; }
+
+.form-zona-botones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.zona-fila {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--gris-100);
+  font-size: 14px;
+}
+
+.zonas-observaciones {
+  display: flex;
+  flex-direction: column;
+}
+
+.zonas-observaciones .etiqueta-campo { margin-bottom: 6px; }
+
+.zona-punto {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--gris-400);
+}
+
+.zona-punto.Atencion { background: var(--naranja-600); }
+.zona-punto.EnReparacion { background: var(--brand); }
+.zona-punto.Ok { background: var(--verde-700); }
+
+.zona-texto { flex: 1; }
+
+.zona-detalle { color: var(--gris-500); }
+
+.zona-fecha {
+  font-size: 12px;
+  color: var(--gris-400);
+}
+
+.fotos-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fotos-grupo-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.fotos-grupo-cabecera strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.fotos-grupo-cabecera span {
+  font-size: 12px;
+  color: var(--gris-400);
+}
+
+.ficha-pie-dibujo {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--gris-400);
+}
+
+.fotos-rejilla {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.foto-ficha { position: relative; }
+
+.foto-ficha-imagen {
+  display: block;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--gris-100);
+}
+
+.foto-ficha-imagen img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.foto-ficha-imagen:hover,
+.foto-ficha-imagen:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.foto-ficha-quitar {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(21, 26, 34, 0.72);
+  color: var(--blanco);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.foto-ficha:hover .foto-ficha-quitar,
+.foto-ficha-quitar:focus-visible { opacity: 1; }
+
+/* ---------------------------------------------------------------- Datos */
+
+.ficha-datos { max-width: 760px; }
+
+.datos-vehiculo {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 24px;
+  margin: 0;
+}
+
+.datos-vehiculo div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.datos-vehiculo dt {
+  font-size: 12px;
+  color: var(--gris-400);
+}
+
+.datos-vehiculo dd {
+  margin: 0;
+  font-size: 15px;
+}
+
+.ficha-editar { align-self: flex-start; }
+
+.ficha-vacia {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 24px;
+}
+
+.ficha-vacia p { margin: 0; }
+
+/* ------------------------------------------------------------- Responsive */
+
+@media (max-width: 1100px) {
+  .ficha-columnas,
+  .fotos-columnas { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 900px) {
+  .ficha-pestana { margin-right: 12px; }
+
+  .ficha-indicadores { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  .ficha-indicador:nth-child(3) { border-left: none; }
+
+  .ficha-indicador:nth-child(n + 3) { border-top: 1px solid var(--gris-100); }
+
+  .fotos-rejilla { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  .datos-vehiculo { grid-template-columns: 1fr; }
+
+  .foto-ficha-quitar { opacity: 1; }
+}

@@ -2,7 +2,7 @@
   <div>
     <h1>Compras</h1>
     <p class="texto-tenue texto-sm mb-0">
-      Ingreso de repuestos al inventario — registrar una compra incrementa el stock
+      Cada compra sube el stock y queda en la procedencia del repuesto.
     </p>
   </div>
   <div class="fila envuelve" style="gap: 8px">
@@ -31,79 +31,88 @@
 <!-- ------------------------------------------- KPIs de abastecimiento -->
 <div class="kpis-compras mb-2">
   <div class="kpi-compra">
-    <span class="kpi-etiqueta">Total compras del mes</span>
+    <span class="kpi-etiqueta">Comprado en {{ nombreMes }}</span>
     <span class="kpi-valor">{{ kpiTotalMes() | bs }}</span>
   </div>
   <div class="kpi-compra">
     <span class="kpi-etiqueta">Repuestos ingresados</span>
-    <span class="kpi-valor">{{ kpiRepuestosIngresados() }}</span>
-    <span class="kpi-pie">Líneas de repuesto este mes</span>
+    <span class="kpi-valor">{{ kpiUnidadesMes() === 1 ? '1 unidad' : kpiUnidadesMes() + ' unidades' }}</span>
   </div>
   <div class="kpi-compra">
-    <span class="kpi-etiqueta">Proveedores activos</span>
-    <span class="kpi-valor">{{ kpiProveedoresActivos() }}</span>
-    <span class="kpi-pie">Con compras este mes</span>
+    <span class="kpi-etiqueta">Compras ocasionales</span>
+    <span class="kpi-valor">{{ kpiOcasionales().ocasionales }} de {{ kpiOcasionales().total }}</span>
   </div>
 </div>
 
-<div class="tarjeta">
-  <div class="tarjeta-encabezado">
-    <div class="filtros-compras">
-      <input
-        type="search"
-        maxlength="100"
-        placeholder="Buscar por código de compra o proveedor…"
-        class="filtro-ancho-lg"
-        [value]="buscarTexto()"
-        (input)="onBuscarTexto($any($event.target).value)"
-      />
+<!-- ------------------------------------------------------------------ Filtros -->
+<div class="filtros-compras mb-2">
+  <label class="buscador-lista">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+    </svg>
+    <input
+      type="search"
+      maxlength="100"
+      placeholder="Código, proveedor o repuesto"
+      aria-label="Buscar compras por código, proveedor o repuesto"
+      [value]="buscarTexto()"
+      (input)="onBuscarTexto($any($event.target).value)"
+    />
+  </label>
 
-      <select
-        class="filtro-ancho-md"
-        [value]="proveedorFiltro()"
-        (change)="onFiltrarProveedor($any($event.target).value)"
-      >
-        <option value="">Todos los proveedores</option>
-        <option value="ocasional">Compras ocasionales</option>
-        @for (proveedor of proveedores(); track proveedor.proveedorId) {
-          <option [value]="proveedor.proveedorId">{{ proveedor.nombre }}</option>
-        }
-      </select>
+  <select
+    class="filtro-proveedor"
+    aria-label="Proveedor"
+    [value]="proveedorFiltro()"
+    (change)="onFiltrarProveedor($any($event.target).value)"
+  >
+    <option value="">Todos los proveedores</option>
+    <option value="ocasional">Solo ocasionales</option>
+    @for (proveedor of proveedores(); track proveedor.proveedorId) {
+      <option [value]="proveedor.proveedorId">{{ proveedor.nombre }}</option>
+    }
+  </select>
 
-      <input
-        type="date"
-        class="filtro-ancho-sm"
-        [value]="desde()"
-        (change)="onFecha('desde', $any($event.target).value)"
-      />
-      <input
-        type="date"
-        class="filtro-ancho-sm"
-        [value]="hasta()"
-        (change)="onFecha('hasta', $any($event.target).value)"
-      />
-    </div>
-
-    <span class="texto-tenue texto-sm">{{ totalRegistros() }} compra(s)</span>
-  </div>
-
-  <div class="chips-rango-compras">
-    <span class="rangos-etiqueta">Periodo rápido:</span>
+  <div class="chips-filtro" role="group" aria-label="Período">
     @for (rango of rangosRapidos; track rango.clave) {
       <button
         type="button"
-        class="chip-rango"
+        class="chip-filtro"
         [class.activo]="rangoActivo() === rango.clave"
-        (click)="aplicarRango(rango.clave)"
+        [attr.aria-pressed]="rangoActivo() === rango.clave"
+        (click)="rangoActivo() === rango.clave ? limpiarFechas() : aplicarRango(rango.clave)"
       >
         {{ rango.etiqueta }}
       </button>
     }
-    @if (desde() || hasta()) {
-      <button type="button" class="btn-enlace" (click)="limpiarFechas()">Limpiar fechas</button>
-    }
   </div>
 
+  <div class="rango-fechas-compras">
+    <input
+      type="date"
+      aria-label="Desde"
+      [value]="desde()"
+      (change)="onFecha('desde', $any($event.target).value)"
+    />
+    <span class="separador" aria-hidden="true"></span>
+    <input
+      type="date"
+      aria-label="Hasta"
+      [value]="hasta()"
+      (change)="onFecha('hasta', $any($event.target).value)"
+    />
+    @if (desde() || hasta()) {
+      <button type="button" class="limpiar-fechas" aria-label="Quitar las fechas" (click)="limpiarFechas()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+      </button>
+    }
+  </div>
+</div>
+
+<!-- -------------------------------------------------------------------- Lista -->
+<section class="lista-filas">
   @if (cargando() || comprasFiltradas().length === 0) {
     <app-estado-tabla
       [cargando]="cargando()"
@@ -112,75 +121,55 @@
       descripcion="Registre una compra para ingresar repuestos al inventario."
     />
   } @else {
-    <div class="tabla-contenedor">
-      <table class="tabla">
-        <thead>
-          <tr>
-            <th>Código</th>
-            <th>Fecha</th>
-            <th>Proveedor</th>
-            <th>Registrada por</th>
-            <th class="num">Líneas</th>
-            <th class="num">Total</th>
-            <th class="th-acciones">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (compra of comprasFiltradas(); track compra.compraId) {
-            <tr>
-              <td class="codigo">{{ compra.compraId }}</td>
-              <td class="texto-sm">{{ compra.fecha | date: 'dd/MM/yyyy HH:mm' }}</td>
-              <td>
-                @if (compra.ocasional) {
-                  <span class="insignia insignia-naranja">Ocasional</span>
-                  @if (compra.referencia) {
-                    <div class="texto-tenue texto-sm mt-1">{{ compra.referencia }}</div>
-                  }
-                } @else {
-                  <span class="texto-fuerte">{{ compra.nombreProveedor }}</span>
-                }
-              </td>
-              <td class="texto-sm">{{ compra.nombreUsuario }}</td>
-              <td class="num">
-                <span
-                  class="contador-pildora"
-                  [title]="etiquetaLineas(compra.cantidadLineas) + ' — abra el detalle para ver el desglose'"
-                >
-                  {{ etiquetaLineas(compra.cantidadLineas) }}
-                </span>
-              </td>
-              <td class="num texto-fuerte">{{ compra.total | bs }}</td>
-              <td>
-                <div class="acciones-iconos">
-                  <button
-                    type="button"
-                    class="btn-icono"
-                    title="Ver detalle"
-                    aria-label="Ver detalle de la compra"
-                    (click)="verDetalle(compra)"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z" /><circle cx="12" cy="12" r="3" />
-                    </svg>
-                  </button>
-                </div>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
+    <div class="fila-lista fila-compra cabecera-lista" aria-hidden="true">
+      <span>Código</span>
+      <span>Fecha</span>
+      <span>Origen</span>
+      <span>Repuestos</span>
+      <span class="a-la-derecha">Total</span>
+      <span></span>
     </div>
 
-    <app-paginador
-      [pagina]="pagina()"
-      [totalPaginas]="totalPaginas()"
-      [totalRegistros]="totalRegistros()"
-      [tamanoPagina]="tamanoPagina()"
-      (cambiarPagina)="cambiarPagina($event)"
-      (cambiarTamano)="cambiarTamano($event)"
-    />
+    @for (compra of comprasFiltradas(); track compra.compraId) {
+      <div class="fila-lista fila-compra" [class.elegida]="detalle()?.compraId === compra.compraId">
+        <span class="codigo">{{ compra.compraId }}</span>
+        <span class="compra-fecha">{{ compra.fecha | date: 'dd/MM/yyyy HH:mm' }}</span>
+        <span class="compra-origen">
+          @if (compra.ocasional) {
+            <span class="insignia-ocasional">Ocasional</span>
+            <span class="compra-origen-texto">{{ compra.referencia || 'Sin referencia' }}</span>
+          } @else {
+            <span class="compra-origen-texto">{{ compra.nombreProveedor }}</span>
+          }
+        </span>
+        <span class="compra-repuestos" [title]="resumenRepuestos(compra)">{{ resumenRepuestos(compra) }}</span>
+        <span class="monto-mono a-la-derecha">{{ compra.total | bs }}</span>
+        <span class="a-la-derecha">
+          <!-- Con texto, no solo un ícono: que se vea que la compra se puede abrir -->
+          <button
+            type="button"
+            class="btn btn-secundario btn-sm"
+            [attr.aria-label]="'Ver el detalle de la compra ' + compra.compraId"
+            (click)="verDetalle(compra)"
+          >
+            Ver detalle
+          </button>
+        </span>
+      </div>
+    }
+
+    @if (totalPaginas() > 1) {
+      <app-paginador
+        [pagina]="pagina()"
+        [totalPaginas]="totalPaginas()"
+        [totalRegistros]="totalRegistros()"
+        [tamanoPagina]="tamanoPagina()"
+        (cambiarPagina)="cambiarPagina($event)"
+        (cambiarTamano)="cambiarTamano($event)"
+      />
+    }
   }
-</div>
+</section>
 
 @if (formularioAbierto()) {
   <app-modal
@@ -397,56 +386,70 @@
 }
 
 @if (detalle(); as compra) {
-  <app-modal titulo="Compra {{ compra.compraId }}" [ancho]="680" (cerrar)="detalle.set(null)">
-    <dl class="datos mb-2">
-      <dt>Proveedor</dt>
-      <dd>
-        @if (compra.ocasional) {
-          <span class="insignia insignia-naranja">Compra ocasional</span>
-        } @else {
-          {{ compra.nombreProveedor }}
-        }
-      </dd>
-      @if (compra.referencia) {
-        <dt>Referencia</dt>
-        <dd>{{ compra.referencia }}</dd>
+  <app-cajon
+    [titulo]="compra.ocasional ? 'Compra ocasional' : 'Compra a ' + compra.nombreProveedor"
+    [etiqueta]="compra.compraId"
+    (cerrar)="detalle.set(null)"
+  >
+    <p class="detalle-compra-sub">
+      {{ compra.fecha | date: 'dd/MM/yyyy HH:mm' }} · registrada por {{ compra.nombreUsuario }}
+    </p>
+
+    <div class="detalle-compra-origen">
+      <span class="detalle-compra-icono" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 7h11v9H3zM14 10h4l3 3v3h-7" /><circle cx="7" cy="18" r="1.5" /><circle cx="17" cy="18" r="1.5" />
+        </svg>
+      </span>
+      <span class="detalle-compra-origen-textos">
+        <strong>{{ compra.ocasional ? (compra.referencia || 'Compra ocasional') : compra.nombreProveedor }}</strong>
+        <span>{{ contactoDe(compra) }}</span>
+      </span>
+      @if (!compra.ocasional && compra.proveedorId) {
+        <a class="detalle-compra-enlace" [routerLink]="['/repuestos']" [queryParams]="{ proveedorId: compra.proveedorId }">
+          Sus repuestos
+        </a>
       }
-      <dt>Fecha</dt>
-      <dd>{{ compra.fecha | date: 'dd/MM/yyyy HH:mm' }}</dd>
-      <dt>Registrada por</dt>
-      <dd>{{ compra.nombreUsuario }}</dd>
-    </dl>
-
-    <div class="tabla-contenedor">
-      <table class="tabla">
-        <thead>
-          <tr>
-            <th>Repuesto</th>
-            <th class="num">Cantidad</th>
-            <th class="num">Precio unit.</th>
-            <th class="num">Subtotal</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (linea of compra.detalles; track linea.detalleId) {
-            <tr>
-              <td>{{ linea.nombreRepuesto }}</td>
-              <td class="num">{{ linea.cantidad }}</td>
-              <td class="num">{{ linea.precioUnitario | bs }}</td>
-              <td class="num">{{ linea.subtotal | bs }}</td>
-            </tr>
-          }
-        </tbody>
-      </table>
     </div>
 
-    <div class="total-caja mt-2">
-      <span>Total</span>
-      <span class="total-monto">{{ compra.total | bs }}</span>
+    <div class="detalle-compra-bloque">
+      <span class="etiqueta-campo">Lo que se compró</span>
+      @for (linea of compra.detalles; track linea.detalleId) {
+        <div class="detalle-compra-linea">
+          <span class="detalle-compra-ini" aria-hidden="true">{{ iniciales(linea.nombreRepuesto) }}</span>
+          <span class="detalle-compra-nombre">
+            <strong>{{ linea.nombreRepuesto }}</strong>
+            <span class="detalle-compra-cantidad">
+              <span class="monto-mono">{{ linea.cantidad }} × {{ linea.precioUnitario | bs }}</span>
+              @if (ventaDe(linea.repuestoId); as venta) {
+                · venta {{ venta | bs }} ({{ ganancia(linea.precioUnitario, venta) }})
+              }
+            </span>
+          </span>
+          <span class="detalle-compra-derecha">
+            <span class="monto-mono">{{ linea.subtotal | bs }}</span>
+            <a [routerLink]="['/repuestos']" [queryParams]="{ buscar: linea.repuestoId, procedencia: linea.repuestoId }">Kárdex</a>
+          </span>
+        </div>
+      }
+      <div class="detalle-compra-total">
+        <strong>Total pagado</strong>
+        <span class="monto-mono">{{ compra.total | bs }}</span>
+      </div>
     </div>
+
+    <div class="detalle-compra-ok">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="m5 12 5 5 9-10" />
+      </svg>
+      <span>El stock subió {{ unidades(compra) }} y el precio de compra de cada repuesto quedó actualizado.</span>
+    </div>
+    <p class="detalle-compra-nota">
+      Las compras no se editan. Si hubo un error, corrija el stock desde Repuestos con Ajustar stock.
+    </p>
 
     <div pie>
       <button type="button" class="btn btn-secundario" (click)="detalle.set(null)">Cerrar</button>
     </div>
-  </app-modal>
+  </app-cajon>
 }

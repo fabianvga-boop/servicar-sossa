@@ -1,104 +1,73 @@
 <div class="fila-entre envuelve mb-2 encabezado-pagina">
   <div>
     <h1>Pagos</h1>
-    <p class="texto-tenue texto-sm mb-0">Cobros registrados contra proformas emitidas</p>
+    <p class="texto-tenue texto-sm mb-0">
+      Cobrado en {{ mesActual }}: <span class="monto-mono resumen-mes">{{ cobradoMes().monto | bs }}</span>
+      en {{ cobradoMes().cantidad === 1 ? '1 pago' : cobradoMes().cantidad + ' pagos' }}
+    </p>
   </div>
-  <button
-    type="button"
-    class="btn btn-primario btn-nuevo"
-    appAtajo="n"
-    title="Atajo: tecla N"
-    (click)="abrirNuevo()"
-  >
+  <button type="button" class="btn btn-primario btn-nuevo" appAtajo="n" title="Atajo: tecla N" (click)="abrirNuevo()">
     <span class="btn-nuevo-mas" aria-hidden="true">+</span>
     Registrar pago
     <kbd class="btn-nuevo-atajo" aria-hidden="true">N</kbd>
   </button>
 </div>
 
-<div class="tarjeta">
-  <div class="tarjeta-encabezado">
-    <select
-      style="max-width: 220px"
-      [value]="metodoFiltro()"
-      (change)="onFiltrarMetodo($any($event.target).value)"
-    >
-      <option value="">Todos los métodos</option>
-      @for (metodo of metodos; track metodo.valor) {
-        <option [value]="metodo.valor">{{ metodo.etiqueta }}</option>
-      }
-    </select>
-    <span class="texto-tenue texto-sm">{{ totalRegistros() }} pago(s)</span>
+@if (chipsMetodo().length > 1) {
+  <div class="chips-filtro filtros-pagos" role="group" aria-label="Filtrar por método">
+    <button type="button" class="chip-filtro" [class.activo]="metodoVista() === null" [attr.aria-pressed]="metodoVista() === null" (click)="metodoVista.set(null)">
+      Todos <span class="chip-cuenta">{{ pagos().length }}</span>
+    </button>
+    @for (m of chipsMetodo(); track m.valor) {
+      <button type="button" class="chip-filtro" [class.activo]="metodoVista() === m.valor" [attr.aria-pressed]="metodoVista() === m.valor" (click)="metodoVista.set(m.valor)">
+        {{ m.etiqueta }} <span class="chip-cuenta">{{ m.cuenta }}</span>
+      </button>
+    }
   </div>
+}
 
-  @if (cargando() || pagos().length === 0) {
-    <app-estado-tabla
-      [cargando]="cargando()"
-      [hayFiltro]="metodoFiltro().length > 0"
-      titulo="Sin pagos registrados"
-      descripcion="Registre el cobro de una proforma emitida."
-    />
+<section class="lista-filas">
+  <div class="fila-lista fila-pago cabecera-lista" aria-hidden="true">
+    <span>Código</span>
+    <span>Fecha</span>
+    <span>Proforma</span>
+    <span>Cliente</span>
+    <span>Método</span>
+    <span class="a-la-derecha">Monto</span>
+    <span></span>
+  </div>
+  @if (cargando() && pagos().length === 0) {
+    <app-estado-tabla [cargando]="true" titulo="" descripcion="" />
   } @else {
-    <div class="tabla-contenedor">
-      <table class="tabla">
-        <thead>
-          <tr>
-            <th>Código</th>
-            <th>Fecha</th>
-            <th>Proforma</th>
-            <th>Cliente</th>
-            <th>Método</th>
-            <th>Referencia</th>
-            <th class="num">Monto</th>
-            <th class="th-acciones">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (pago of pagos(); track pago.pagoId) {
-            <tr>
-              <td class="codigo">{{ pago.pagoId }}</td>
-              <td class="texto-sm">{{ pago.fechaPago | date: 'dd/MM/yyyy HH:mm' }}</td>
-              <td class="codigo">{{ pago.proformaId }}</td>
-              <td>{{ pago.nombreCliente }}</td>
-              <td>
-                <span class="insignia insignia-azul">{{ etiquetaMetodo(pago.metodoPago) }}</span>
-              </td>
-              <td class="texto-sm texto-tenue">{{ pago.referencia || '—' }}</td>
-              <td class="num texto-fuerte">{{ pago.monto | bs }}</td>
-              <td>
-                <div class="acciones-iconos">
-                  <button
-                    type="button"
-                    class="btn-icono btn-icono-peligro"
-                    title="Revertir"
-                    aria-label="Revertir pago"
-                    (click)="porRevertir.set(pago)"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <path d="M3 7v6h6" /><path d="M3.51 13a9 9 0 1 0 2.13-9.36L3 7" />
-                    </svg>
-                  </button>
-                </div>
-              </td>
-            </tr>
+    @for (pago of visibles(); track pago.pagoId) {
+      <div class="fila-lista fila-pago">
+        <span class="monto-mono pago-codigo">{{ pago.pagoId }}</span>
+        <span class="pago-tenue">{{ pago.fechaPago | date: 'dd/MM/yyyy HH:mm' }}</span>
+        <span class="monto-mono pago-codigo">{{ pago.proformaId }}</span>
+        <span class="pago-cliente">
+          {{ pago.nombreCliente }}
+          @if (pago.referencia) {
+            <span class="pago-tenue">Ref. {{ pago.referencia }}</span>
           }
-        </tbody>
-      </table>
-    </div>
-
-    <app-paginador
-      [pagina]="pagina()"
-      [totalPaginas]="totalPaginas()"
-      [totalRegistros]="totalRegistros()"
-      [tamanoPagina]="tamanoPagina()"
-      (cambiarPagina)="cambiarPagina($event)"
-      (cambiarTamano)="cambiarTamano($event)"
-    />
+        </span>
+        <span><span class="insignia insignia-gris pago-metodo">{{ etiquetaMetodo(pago.metodoPago) }}</span></span>
+        <span class="monto-mono a-la-derecha">{{ pago.monto | bs }}</span>
+        <span class="a-la-derecha">
+          <button type="button" class="btn-icono-plano" title="Revertir" aria-label="Revertir pago" (click)="porRevertir.set(pago)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 7v6h6" /><path d="M3.51 13a9 9 0 1 0 2.13-9.36L3 7" />
+            </svg>
+          </button>
+        </span>
+      </div>
+    } @empty {
+      <p class="pagos-vacio">Todavía no hay pagos registrados. Se registran al cobrar una proforma.</p>
+    }
   }
-</div>
+</section>
 
 @if (panelNuevo()) {
-  <app-modal titulo="Registrar pago" (cerrar)="panelNuevo.set(false)">
+  <app-cajon titulo="Registrar pago" [ancho]="420" (cerrar)="panelNuevo.set(false)">
     @if (proformasCobrables().length === 0) {
       <p class="texto-tenue mb-0">
         No hay proformas emitidas con saldo pendiente. Emita una proforma antes de registrar un pago.
@@ -117,107 +86,81 @@
       </div>
 
       @if (proformaElegida(); as proforma) {
-        <div class="total-caja mb-2">
-          <span>Saldo pendiente</span>
-          <span class="total-monto">{{ proforma.saldoPendiente | bs }}</span>
-        </div>
-
-        <div class="campo">
-          <label>¿Cuánto paga el cliente?</label>
-          <div class="segmentos" role="radiogroup" aria-label="Tipo de pago">
-            <button
-              type="button"
-              role="radio"
-              class="segmento"
-              [class.activo]="nuevo.tipo === 'total'"
-              [attr.aria-checked]="nuevo.tipo === 'total'"
-              (click)="elegirTipo('total')"
-            >
-              Pago total
-            </button>
-            <button
-              type="button"
-              role="radio"
-              class="segmento"
-              [class.activo]="nuevo.tipo === 'cuenta'"
-              [attr.aria-checked]="nuevo.tipo === 'cuenta'"
-              (click)="elegirTipo('cuenta')"
-            >
-              Pago a cuenta (deja saldo)
-            </button>
-          </div>
+        <div class="cobro-datos">
+          <div><span>Total</span><span class="monto-mono">{{ proforma.total | bs }}</span></div>
+          <div><span>Pagado</span><span class="monto-mono">{{ proforma.totalPagado | bs }}</span></div>
+          <div><span>Saldo</span><span class="monto-mono saldo">{{ proforma.saldoPendiente | bs }}</span></div>
         </div>
       }
 
-      <div class="rejilla">
-        <div class="campo">
-          <label for="montoPago">Monto (Bs)</label>
-          <input
-            id="montoPago"
-            type="number"
-            min="0.01"
-            step="0.01"
-            name="montoPago"
-            [readonly]="nuevo.tipo === 'total'"
-            [placeholder]="nuevo.tipo === 'cuenta' ? 'Cuánto paga ahora' : ''"
-            [(ngModel)]="nuevo.monto"
-          />
-          @if (!proformaElegida()) {
-            <span class="campo-ayuda">Elija la proforma: el monto se completa con su saldo.</span>
-          } @else if (nuevo.tipo === 'total') {
-            <span class="campo-ayuda">Cancela todo el saldo: la proforma queda pagada.</span>
-          } @else if ((nuevo.monto ?? 0) > 0 && saldoQueQueda() > 0) {
-            <span class="campo-ayuda">
-              Quedará un saldo pendiente de <strong>{{ saldoQueQueda() | bs }}</strong>.
-            </span>
-          } @else if ((nuevo.monto ?? 0) > 0) {
-            <span class="campo-error">Ese monto cubre todo el saldo: elija <strong>Pago total</strong>.</span>
-          } @else {
-            <span class="campo-ayuda">Escriba cuánto paga ahora; el resto queda como saldo.</span>
-          }
+      <div class="campo">
+        <label for="montoPago">¿Cuánto paga el cliente?</label>
+        <input
+          id="montoPago"
+          class="entrada-monto monto-mono"
+          type="number"
+          min="0.01"
+          step="0.01"
+          inputmode="decimal"
+          name="montoPago"
+          [(ngModel)]="nuevo.monto"
+          (ngModelChange)="onMontoEscrito()"
+        />
+        <div class="chips-filtro">
+          <button type="button" class="chip-filtro" [class.activo]="nuevo.rapido === 'todo'" [disabled]="!proformaElegida()" (click)="elegirRapido('todo')">Todo el saldo</button>
+          <button type="button" class="chip-filtro" [class.activo]="nuevo.rapido === 'mitad'" [disabled]="!proformaElegida()" (click)="elegirRapido('mitad')">La mitad</button>
+          <button type="button" class="chip-filtro" [class.activo]="nuevo.rapido === 'otro'" [disabled]="!proformaElegida()" (click)="elegirRapido('otro')">Otro monto</button>
         </div>
+        @if (!proformaElegida()) {
+          <span class="campo-ayuda">Elija la proforma: el monto se completa con su saldo.</span>
+        } @else if ((nuevo.monto ?? 0) > (proformaElegida()?.saldoPendiente ?? 0) + 0.001) {
+          <span class="campo-error">El monto supera el saldo pendiente.</span>
+        } @else if ((nuevo.monto ?? 0) > 0 && saldoQueQueda() > 0) {
+          <span class="campo-ayuda">Queda un saldo de <span class="monto-mono">{{ saldoQueQueda() | bs }}</span>.</span>
+        } @else if ((nuevo.monto ?? 0) > 0) {
+          <span class="campo-ayuda">Cancela todo el saldo: la proforma queda pagada.</span>
+        } @else {
+          <span class="campo-ayuda">Escriba cuánto paga ahora; el resto queda como saldo.</span>
+        }
+      </div>
 
-        <div class="campo">
-          <label for="metodoPago">Método de pago</label>
-          <select id="metodoPago" name="metodoPago" [(ngModel)]="nuevo.metodoPago">
-            @for (metodo of metodos; track metodo.valor) {
-              <option [value]="metodo.valor">{{ metodo.etiqueta }}</option>
-            }
-          </select>
+      <div class="campo">
+        <span class="etiqueta-campo">Método de pago</span>
+        <div class="metodos-pago" role="radiogroup" aria-label="Método de pago">
+          @for (metodo of metodos; track metodo.valor) {
+            <button
+              type="button"
+              role="radio"
+              class="metodo-pago"
+              [class.activo]="nuevo.metodoPago == metodo.valor"
+              [attr.aria-checked]="nuevo.metodoPago == metodo.valor"
+              (click)="nuevo.metodoPago = metodo.valor"
+            >
+              {{ metodo.etiqueta }}
+            </button>
+          }
         </div>
       </div>
 
       <div class="campo">
-        <label for="referenciaPago">Referencia</label>
-        <input
-          id="referenciaPago"
-          name="referenciaPago"
-          [(ngModel)]="nuevo.referencia"
-          placeholder="N.º de transferencia, comprobante o QR"
-        />
+        <label for="referenciaPago">{{ etiquetaReferencia() }}</label>
+        <input id="referenciaPago" name="referenciaPago" class="monto-mono" [(ngModel)]="nuevo.referencia" placeholder="Número de transacción o comprobante" />
+        <span class="campo-ayuda">Opcional en efectivo.</span>
       </div>
     }
 
-    <div pie>
-      <button type="button" class="btn btn-secundario" (click)="panelNuevo.set(false)">
-        Cancelar
-      </button>
+    <div pie class="pie-pago">
       <button
         type="button"
-        class="btn btn-primario"
-        [disabled]="procesando() || proformasCobrables().length === 0"
+        class="btn btn-primario boton-cobrar"
+        [class.btn-bloqueado]="!proformaElegida() || !(nuevo.monto && nuevo.monto > 0)"
+        [disabled]="procesando() || proformasCobrables().length === 0 || !proformaElegida() || !(nuevo.monto && nuevo.monto > 0)"
         (click)="registrar()"
       >
-        {{
-          procesando()
-            ? 'Registrando…'
-            : nuevo.tipo === 'cuenta' && proformaElegida()
-              ? 'Registrar pago a cuenta'
-              : 'Registrar pago'
-        }}
+        {{ procesando() ? 'Registrando…' : 'Registrar pago de ' + ((nuevo.monto ?? 0) | bs) }}
       </button>
     </div>
-  </app-modal>
+  </app-cajon>
 }
 
 @if (porRevertir(); as pago) {

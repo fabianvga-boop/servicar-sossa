@@ -1,219 +1,194 @@
-<div class="fila-entre envuelve mb-2">
-  <div>
-    <h1>Panel</h1>
-    <p class="texto-tenue texto-sm mb-0">
-      Resumen del taller — {{ auth.nombreCompleto() }}
-    </p>
+<div class="panel-cabecera">
+  <div class="panel-titulo">
+    <span>{{ saludo() }}</span>
+    <h1>Lo que toca hoy</h1>
+  </div>
+  <div class="panel-botones">
+    @if (esAdmin) {
+      <a class="btn btn-secundario" routerLink="/ventas">Registrar venta</a>
+    }
+    <a class="btn btn-primario" [routerLink]="['/diagnosticos']" [queryParams]="{ nuevo: true }">Nuevo diagnóstico</a>
   </div>
 </div>
 
 @if (cargando()) {
-  <div class="indicadores">
-    @for (hueco of [1, 2, 3, 4]; track hueco) {
-      <div class="indicador"><app-esqueleto [filas]="2" [columnas]="1" /></div>
-    }
-  </div>
-
-  <div class="tarjeta mt-2"><app-esqueleto [filas]="6" [columnas]="5" /></div>
+  <div class="tarjeta panel-cargando"><app-esqueleto [filas]="2" [columnas]="4" /></div>
+  <div class="tarjeta panel-cargando"><app-esqueleto [filas]="6" [columnas]="4" /></div>
 } @else {
-  <div class="indicadores">
-    <div class="indicador">
-      <div class="indicador-cabecera">
-        <app-icono-menu class="indicador-icono" nombre="ordenes" />
-        <span class="indicador-etiqueta">Órdenes abiertas</span>
+  <!-- ---------------------------------------------------------- Indicadores -->
+  <section class="indicadores-panel" aria-label="Indicadores">
+    <div class="indicador-panel">
+      <span>Órdenes activas</span>
+      <span class="monto-mono indicador-valor">{{ cuentaActivas().total }}</span>
+      <span class="indicador-pie">{{ cuentaActivas().pie }}</span>
+    </div>
+    @if (esAdmin) {
+      <div class="indicador-panel">
+        <span>Listas para cobrar</span>
+        <span class="monto-mono indicador-valor">{{ porCobrar().monto | bs }}</span>
+        <span class="indicador-pie">
+          {{
+            porCobrar().cantidad === 0
+              ? 'Nada pendiente de cobrar'
+              : porCobrar().cantidad === 1
+                ? '1 orden terminada sin proforma'
+                : porCobrar().cantidad + ' órdenes terminadas sin proforma'
+          }}
+        </span>
       </div>
-      <div class="indicador-valor">{{ abiertas() }}</div>
-      @if (nuevasEstaSemana() > 0) {
-        <div class="indicador-extra">
-          <span class="delta">+{{ nuevasEstaSemana() }}</span> nueva(s) esta semana
+      <div class="indicador-panel">
+        <span>Cobrado en {{ mesActual }}</span>
+        <span class="monto-mono indicador-valor">{{ cobradoMes().monto | bs }}</span>
+        <span class="indicador-pie">
+          {{ cobradoMes().cantidad === 1 ? '1 pago registrado' : cobradoMes().cantidad + ' pagos registrados' }}
+        </span>
+      </div>
+      <div class="indicador-panel">
+        <span>Stock crítico</span>
+        <span class="monto-mono indicador-valor" [class.alerta]="stockBajoTotal() > 0">{{ stockBajoTotal() }}</span>
+        <span class="indicador-pie">repuestos en el mínimo o por debajo</span>
+      </div>
+    } @else {
+      <div class="indicador-panel">
+        <span>Presupuestos sin respuesta</span>
+        <span class="monto-mono indicador-valor">{{ presupuestosPendientes() }}</span>
+        <span class="indicador-pie">de sus diagnósticos</span>
+      </div>
+      <div class="indicador-panel">
+        <span>Comisiones por cobrar</span>
+        <span class="monto-mono indicador-valor">{{ comisiones().monto | bs }}</span>
+        <span class="indicador-pie">
+          {{ comisiones().cantidad === 1 ? '1 comisión sin liquidar' : comisiones().cantidad + ' comisiones sin liquidar' }}
+        </span>
+      </div>
+    }
+  </section>
+
+  <div class="panel-columnas">
+    <div class="panel-principal">
+      <!-- ------------------------------------------------ Pendientes de acción -->
+      <section class="tarjeta panel-bloque">
+        <div class="panel-bloque-cabecera">
+          <h2>Pendientes de acción</h2>
+          <span>{{ tareas().length === 1 ? '1 tarea' : tareas().length + ' tareas' }}</span>
         </div>
-      }
-
-      <!-- Órdenes abiertas por día, últimos 7 días: la misma lista ya
-           cargada, agrupada — no hay histórico guardado para mostrar más. -->
-      <svg class="chispa" viewBox="0 0 100 32" preserveAspectRatio="none" aria-hidden="true">
-        <path class="chispa-area" [attr.d]="sparkAperturas().area" />
-        <path class="chispa-linea" [attr.d]="sparkAperturas().linea" />
-        <circle class="chispa-punto" [attr.cx]="sparkAperturas().puntoX" [attr.cy]="sparkAperturas().puntoY" r="2.4" />
-      </svg>
-      <div class="grafico-leyenda">Aperturas por día, últimos 7 días</div>
-    </div>
-
-    <div class="indicador">
-      <div class="indicador-cabecera">
-        <app-icono-menu class="indicador-icono" nombre="catalogo" />
-        <span class="indicador-etiqueta">En proceso</span>
-      </div>
-      <div class="indicador-fila">
-        <div class="indicador-valor naranja">{{ enProceso() }}</div>
-
-        <!-- Qué parte de lo activo ya pasó de "abierta" a "en trabajo" -->
-        <svg class="anillo" viewBox="0 0 40 40" aria-hidden="true">
-          <circle class="anillo-fondo" cx="20" cy="20" r="16" />
-          <circle
-            class="anillo-progreso naranja"
-            cx="20" cy="20" r="16"
-            [attr.stroke-dasharray]="arcoRecorrido(progresoEnProceso()) + ' ' + circunferenciaAnillo"
-          />
-          <text x="20" y="23.5" class="anillo-texto">{{ progresoEnProceso() }}%</text>
-        </svg>
-      </div>
-      <div class="grafico-leyenda">% de lo activo ya en trabajo (no solo abierto)</div>
-    </div>
-
-    <div class="indicador indicador-prioridad">
-      <div class="indicador-cabecera">
-        <app-icono-menu class="indicador-icono" nombre="completado" />
-        <span class="indicador-etiqueta">Finalizadas por cerrar</span>
-      </div>
-      <div class="indicador-fila">
-        <div class="indicador-valor verde">{{ finalizadas() }}</div>
-
-        <!-- Qué parte del trabajo activo ya llegó a la meta -->
-        <svg class="anillo" viewBox="0 0 40 40" aria-hidden="true">
-          <circle class="anillo-fondo" cx="20" cy="20" r="16" />
-          <circle
-            class="anillo-progreso verde"
-            cx="20" cy="20" r="16"
-            [attr.stroke-dasharray]="arcoRecorrido(progresoFinalizadas()) + ' ' + circunferenciaAnillo"
-          />
-          <text x="20" y="23.5" class="anillo-texto">{{ progresoFinalizadas() }}%</text>
-        </svg>
-      </div>
-      <div class="grafico-leyenda">% de lo activo ya listo para entregar</div>
-    </div>
-
-    <div class="indicador">
-      <div class="indicador-cabecera">
-        <app-icono-menu class="indicador-icono" nombre="pagos" />
-        <span class="indicador-etiqueta">Trabajo en curso</span>
-      </div>
-      <div class="indicador-valor">{{ montoEnCurso() | bs }}</div>
-
-      <!-- Valor de lo abierto cada día, últimos 7 días -->
-      <svg class="chispa" viewBox="0 0 100 32" preserveAspectRatio="none" aria-hidden="true">
-        <path class="chispa-area" [attr.d]="sparkMonto().area" />
-        <path class="chispa-linea" [attr.d]="sparkMonto().linea" />
-        <circle class="chispa-punto" [attr.cx]="sparkMonto().puntoX" [attr.cy]="sparkMonto().puntoY" r="2.4" />
-      </svg>
-      <div class="grafico-leyenda">Monto de lo abierto por día, últimos 7 días</div>
-    </div>
-  </div>
-
-  <div class="panel-cols mt-2">
-    <!-- ------------------------------------------------- Columna principal -->
-    <div class="tarjeta">
-      <div class="tarjeta-encabezado">
-        <h2>Órdenes recientes</h2>
-        <a routerLink="/ordenes" class="texto-sm">Ver todas</a>
-      </div>
-
-      @if (recientes().length === 0) {
-        <div class="vacio">
-          <div class="vacio-titulo">Sin órdenes registradas</div>
-          <div class="texto-sm">Las órdenes de trabajo aparecerán aquí.</div>
-        </div>
-      } @else {
-        <div class="tabla-contenedor">
-          <table class="tabla">
-            <thead>
-              <tr>
-                <th>Orden</th>
-                <th>Cliente</th>
-                <th>Vehículo</th>
-                <th>Estado</th>
-                <th class="num">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (orden of recientes(); track orden.ordenId) {
-                <tr>
-                  <td>
-                    <a [routerLink]="['/ordenes', orden.ordenId]" class="codigo">
-                      {{ orden.ordenId }}
-                    </a>
-                  </td>
-                  <td>{{ orden.nombreCliente }}</td>
-                  <td>
-                    <div class="celda-vehiculo">
-                      <app-placa [valor]="orden.placaVehiculo" />
-                      <span class="texto-tenue texto-sm">{{ orden.descripcionVehiculo }}</span>
-                    </div>
-                  </td>
-                  <td><app-insignia-estado familia="orden" [valor]="orden.estado" /></td>
-                  <td class="num">{{ orden.total | bs }}</td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      }
-    </div>
-
-    <!-- --------------------------------------------------- Columna lateral -->
-    <div class="col-lateral">
-      @if (accesos().length > 0) {
-        <div class="tarjeta">
-          <div class="tarjeta-encabezado"><h2>Requiere atención</h2></div>
-          <div class="accesos">
-            @for (acceso of accesos(); track acceso.etiqueta) {
-              <a
-                class="acceso"
-                [class.urgente]="acceso.urgente"
-                [routerLink]="acceso.ruta"
-                [queryParams]="acceso.parametros"
-              >
-                <app-icono-menu class="acceso-icono" [nombre]="acceso.icono" />
-                <span class="acceso-texto">
-                  <span class="acceso-etiqueta">{{ acceso.etiqueta }}</span>
-                  <span class="acceso-descripcion">{{ acceso.descripcion }}</span>
-                  @if (acceso.detalle) {
-                    <span class="acceso-detalle">{{ acceso.detalle }}</span>
-                  }
-                </span>
-                <span class="acceso-cantidad">{{ acceso.cantidad }}</span>
-              </a>
-            }
-          </div>
-        </div>
-      }
-
-      @if (stockBajo().length > 0) {
-        <div class="tarjeta">
-          <div class="tarjeta-encabezado">
-            <h2>Por reponer</h2>
-            <a routerLink="/repuestos" [queryParams]="{ stockBajo: true }" class="texto-sm">
-              Ver todo
+        @for (t of tareasVisibles(); track t.clave) {
+          <div class="fila-tarea">
+            <span class="tarea-punto {{ t.tono }}" aria-hidden="true"></span>
+            <div class="tarea-textos">
+              <div class="tarea-titulo">
+                <span class="codigo">{{ t.codigo }}</span>
+                <strong>{{ t.titulo }}</strong>
+              </div>
+              <span class="tarea-detalle">{{ t.detalle }}</span>
+            </div>
+            <span class="monto-mono tarea-monto">{{ t.monto !== null ? (t.monto | bs) : '' }}</span>
+            <a
+              class="btn btn-sm"
+              [class.btn-primario]="t.principal"
+              [class.btn-secundario]="!t.principal"
+              [routerLink]="t.ruta"
+              [queryParams]="t.parametros"
+            >
+              {{ t.accion }}
             </a>
           </div>
-          <div class="reponer-lista">
-            @for (repuesto of stockBajo(); track repuesto.repuestoId) {
-              <a
-                class="reponer-item"
-                [routerLink]="['/repuestos']"
-                [queryParams]="{ buscar: repuesto.nombre }"
-              >
-                @if (repuesto.fotoUrl) {
-                  <img
-                    class="reponer-foto"
-                    [src]="urlArchivo(repuesto.fotoUrl)"
-                    [alt]="repuesto.nombre"
-                  />
-                } @else {
-                  <app-icono-menu class="reponer-foto reponer-foto-vacia" nombre="repuestos" />
-                }
-                <span class="reponer-texto">
-                  <span class="reponer-nombre">{{ repuesto.nombre }}</span>
-                  <span class="reponer-stock" [class.critico]="repuesto.stockActual === 0">
-                    {{ repuesto.stockActual === 0 ? 'Agotado' : repuesto.stockActual + ' unid.' }}
-                    <span class="texto-tenue">/ mín. {{ repuesto.stockMinimo }}</span>
-                  </span>
-                </span>
-              </a>
+        } @empty {
+          <p class="panel-vacio">Nada pendiente por ahora.</p>
+        }
+        @if (tareas().length > tareasVisibles().length) {
+          <button type="button" class="panel-mas" (click)="verTodasTareas.set(true)">
+            Ver las {{ tareas().length }} tareas
+          </button>
+        }
+      </section>
+
+      <!-- --------------------------------------------------- Órdenes recientes -->
+      <section class="tarjeta panel-bloque">
+        <div class="panel-bloque-cabecera">
+          <h2>Órdenes recientes</h2>
+          <a routerLink="/ordenes">Ver todas</a>
+        </div>
+        @if (recientes().length > 0) {
+          <div class="fila-reciente cabecera-reciente" aria-hidden="true">
+            <span>Orden</span>
+            <span>Vehículo</span>
+            <span>Cliente</span>
+            <span>Estado</span>
+            <span class="a-la-derecha">Total</span>
+          </div>
+          @for (o of recientes(); track o.ordenId) {
+            <a class="fila-reciente" [routerLink]="['/ordenes', o.ordenId]">
+              <span class="monto-mono reciente-codigo">{{ o.ordenId }}</span>
+              <span class="reciente-vehiculo">
+                <app-placa [valor]="o.placaVehiculo" />
+                <span>{{ o.descripcionVehiculo }}</span>
+              </span>
+              <span class="reciente-cliente">{{ o.nombreCliente }}</span>
+              <span><span class="insignia insignia-{{ claseEstado(o.estado) }} reciente-estado">{{ textoEstado(o.estado) }}</span></span>
+              <span class="monto-mono a-la-derecha">{{ o.total | bs }}</span>
+            </a>
+          }
+        } @else {
+          <p class="panel-vacio">Las órdenes de trabajo aparecerán aquí.</p>
+        }
+      </section>
+    </div>
+
+    <aside class="panel-lateral">
+      @if (esAdmin) {
+        <!-- ----------------------------------------------- Stock por reponer -->
+        <section class="tarjeta panel-bloque">
+          <div class="panel-bloque-cabecera">
+            <h2>Stock por reponer</h2>
+            @if (stockBajoTotal() > 0) {
+              <span class="insignia insignia-roja">{{ stockBajoTotal() }}</span>
             }
           </div>
-        </div>
+          @for (r of stockVisible(); track r.repuestoId) {
+            <a class="fila-stock" [routerLink]="['/repuestos']" [queryParams]="{ buscar: r.nombre }">
+              <span class="stock-linea">
+                <strong>{{ r.nombre }}</strong>
+                <span class="stock-estado" [class.agotado]="r.stockActual <= 0">
+                  {{ r.stockActual <= 0 ? 'Agotado' : r.stockActual + ' de mínimo ' + r.stockMinimo }}
+                </span>
+              </span>
+              <span class="stock-barra" aria-hidden="true">
+                <span [class.agotado]="r.stockActual <= 0" [style.width.%]="nivelStock(r)"></span>
+              </span>
+            </a>
+          } @empty {
+            <p class="panel-vacio">Todos los repuestos están sobre su mínimo.</p>
+          }
+          <div class="panel-bloque-pie">
+            @if (stockBajoTotal() > stockVisible().length) {
+              <a class="panel-enlace" [routerLink]="['/repuestos']" [queryParams]="{ stockBajo: true }">
+                Ver los {{ stockBajoTotal() }} repuestos
+              </a>
+            }
+            <a class="btn btn-secundario btn-sm panel-boton-ancho" [routerLink]="['/compras']" [queryParams]="{ nueva: true }">
+              Registrar compra
+            </a>
+          </div>
+        </section>
       }
-    </div>
+
+      <!-- ------------------------------------------------------- Comisiones -->
+      <section class="tarjeta panel-comisiones">
+        <h2>{{ esAdmin ? 'Comisiones por liquidar' : 'Mis comisiones por cobrar' }}</h2>
+        <div class="comisiones-fila">
+          <span class="monto-mono comisiones-monto">{{ comisiones().monto | bs }}</span>
+          <span>
+            {{ comisiones().cantidad === 1 ? '1 comisión' : comisiones().cantidad + ' comisiones' }}
+            @if (esAdmin && comisiones().mecanicos > 0) {
+              · {{ comisiones().mecanicos === 1 ? '1 mecánico' : comisiones().mecanicos + ' mecánicos' }}
+            }
+          </span>
+        </div>
+        <a class="btn btn-secundario btn-sm panel-boton-ancho" routerLink="/comisiones">
+          {{ esAdmin ? 'Liquidar' : 'Ver mis comisiones' }}
+        </a>
+      </section>
+    </aside>
   </div>
 }

@@ -1,21 +1,43 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import {
+  afterNextRender,
+  Component,
+  computed,
+  effect,
+  inject,
+  Injector,
+  signal,
+} from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
-import { EstadoCliente } from '../../core/models/enums';
-import { Cliente, Vehiculo } from '../../core/models/personas.model';
+import {
+  EstadoCliente,
+  EstadoDiag,
+  EstadoOrden,
+  EstadoProforma,
+  EstadoServicioOrden,
+  RespuestaCliente,
+} from '../../core/models/enums';
+import { Proforma } from '../../core/models/finanzas.model';
+import { Cliente, TipoCarroceria, Vehiculo, VehiculoFoto } from '../../core/models/personas.model';
+import { Diagnostico, Orden } from '../../core/models/taller.model';
+import { urlArchivo } from '../../core/services/api-base';
 import { ClientesService } from '../../core/services/clientes.service';
+import { ProformasService } from '../../core/services/finanzas.service';
 import { NotificacionService } from '../../core/services/notificacion.service';
+import { OrdenesService } from '../../core/services/ordenes.service';
 import { PreferenciasService } from '../../core/services/preferencias.service';
+import { DiagnosticosService } from '../../core/services/taller.service';
 import { VehiculosService } from '../../core/services/vehiculos.service';
 import { Confirmacion } from '../../shared/components/confirmacion';
-import { EstadoTabla } from '../../shared/components/estado-tabla';
-import { InsigniaEstado } from '../../shared/components/insignia-estado';
-import { Modal } from '../../shared/components/modal';
-import { Paginador } from '../../shared/components/paginador';
+import { Esqueleto } from '../../shared/components/esqueleto';
 import { Placa } from '../../shared/components/placa';
 import { Atajo } from '../../shared/directives/atajo';
 import { EnfocarError } from '../../shared/directives/enfocar-error';
+import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 import { unicosOrdenados } from '../../shared/sugerencias-texto';
 import {
   COLORES_RAPIDOS,
@@ -27,23 +49,60 @@ import {
 
 const CLAVE_BUSCAR = 'clientes.buscar';
 
-/** Placas que se muestran antes de resumir el resto en un "+N". */
+/** Placas que se muestran en la fila antes de resumir el resto en un "+N". */
 const MAX_PLACAS = 2;
 
-/** USU006-USU008 — gestión de clientes. */
+/** Filas que se muestran de entrada; el resto, a pedido. */
+const FILAS_POR_TANDA = 40;
+
+const MESES = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+];
+
+/** Siluetas del recuadro del vehículo, por tipo de carrocería. */
+const SILUETAS = {
+  sedan: 'M24 92V76l34-8 30-22h66l30 22 32 8v16z',
+  suv: 'M24 92V70l22-6 26-24h86l28 24 32 6v22z',
+  camioneta: 'M24 92V62h96V36h48l34 26h14v30z',
+};
+
+const ORDEN_ACTIVA = [EstadoOrden.Abierta, EstadoOrden.EnProceso, EstadoOrden.Finalizada];
+
+type Filtro = 'todos' | 'taller' | 'saldo';
+type Modo = 'ficha' | 'nuevo' | 'editar';
+
+/** Cómo está un vehículo del cliente ahora mismo. */
+interface EstadoVehiculo {
+  texto: string;
+  tono: 'naranja' | 'azul' | 'verde' | 'gris';
+}
+
+interface FilaCliente {
+  cliente: Cliente;
+  nombre: string;
+  iniciales: string;
+  saldo: number;
+  enTaller: boolean;
+}
+
+/**
+ * USU006-USU008 — clientes. A la izquierda la lista con buscador y filtros; a
+ * la derecha la ficha del elegido: sus datos, sus vehículos y cómo están, y
+ * sus últimas órdenes. El alta y la edición ocupan el lugar de la ficha.
+ */
 @Component({
   selector: 'app-clientes',
   imports: [
     ReactiveFormsModule,
     RouterLink,
-    Modal,
+    NgTemplateOutlet,
     Confirmacion,
-    EstadoTabla,
-    InsigniaEstado,
-    Paginador,
+    Esqueleto,
     Placa,
     Atajo,
     EnfocarError,
+    BolivianosPipe,
   ],
   templateUrl: './clientes.html',
   styleUrl: './clientes.css',
@@ -51,37 +110,56 @@ const MAX_PLACAS = 2;
 export class Clientes {
   private readonly servicio = inject(ClientesService);
   private readonly vehiculosService = inject(VehiculosService);
+  private readonly ordenesService = inject(OrdenesService);
+  private readonly proformasService = inject(ProformasService);
+  private readonly diagnosticosService = inject(DiagnosticosService);
   private readonly fb = inject(FormBuilder);
   private readonly notificacion = inject(NotificacionService);
   private readonly preferencias = inject(PreferenciasService);
   private readonly ruta = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly injector = inject(Injector);
 
+  protected readonly urlArchivo = urlArchivo;
+  protected readonly EstadoCliente = EstadoCliente;
+  protected readonly MAX_PLACAS = MAX_PLACAS;
+
+  // --- Datos ------------------------------------------------------------------------
   protected readonly clientes = signal<Cliente[]>([]);
-  /** Solo para el autocompletado de "Dirección": no reemplaza la tabla paginada. */
-  protected readonly direccionesSugeridas = signal<string[]>([]);
   protected readonly cargando = signal(true);
+  private readonly vehiculos = signal<Vehiculo[]>([]);
+  private readonly ordenes = signal<Orden[]>([]);
+  private readonly proformas = signal<Proforma[]>([]);
+  private readonly diagnosticos = signal<Diagnostico[]>([]);
+
+  /** Fotos y avance de servicios: se piden solo para el cliente que se mira. */
+  private readonly fotos = signal(new Map<string, VehiculoFoto[]>());
+  private readonly avances = signal(new Map<string, { hechos: number; total: number }>());
+  private readonly fotosPedidas = new Set<string>();
+  private readonly avancesPedidos = new Set<string>();
+
+  // --- Lista ------------------------------------------------------------------------
   protected readonly buscar = signal('');
-  protected readonly guardando = signal(false);
+  protected readonly filtro = signal<Filtro>('todos');
+  protected readonly limite = signal(FILAS_POR_TANDA);
+  protected readonly elegidoId = signal<string | null>(null);
 
-  protected readonly pagina = signal(1);
-  protected readonly tamanoPagina = signal(20);
-  protected readonly totalRegistros = signal(0);
-  protected readonly totalPaginas = signal(0);
+  /** En el celular se ve una cosa a la vez: la lista o la ficha. */
+  protected readonly vistaMovil = signal<'lista' | 'ficha'>('lista');
 
-  /** Cliente en edición; null significa "alta nueva". */
+  // --- Formulario -------------------------------------------------------------------
+  protected readonly modo = signal<Modo>('ficha');
+  /** El cliente que se está editando: fijo, aunque la lista cambie mientras tanto. */
   protected readonly editando = signal<Cliente | null>(null);
-  protected readonly formularioAbierto = signal(false);
+  protected readonly guardando = signal(false);
   protected readonly porCambiarEstado = signal<Cliente | null>(null);
 
   /** Solo aplica al alta nueva: registrar el primer vehículo en el mismo paso. */
   protected readonly registrarVehiculo = signal(false);
 
-  protected readonly EstadoCliente = EstadoCliente;
+  /** Cuando está activo, tras guardar se limpia el formulario en vez de cerrarlo. */
+  private crearOtro = false;
 
-  // --- Alta rápida de vehículo: escribir menos (ver vehiculo-sugerencias) ---
-  /** Vehículos ya registrados, solo para alimentar las listas de sugerencias. */
-  private readonly vehiculosExistentes = signal<Vehiculo[]>([]);
   /** Espejo reactivo de la placa: alimenta la vista previa en vivo. */
   protected readonly placaActual = signal('');
   /** Espejo reactivo de la marca: acota los modelos sugeridos a esa marca. */
@@ -90,12 +168,13 @@ export class Clientes {
   protected readonly COLORES_RAPIDOS = COLORES_RAPIDOS;
   protected readonly colorPunto = colorPunto;
 
-  protected readonly marcasSugeridas = computed(() => marcasSugeridas(this.vehiculosExistentes()));
+  protected readonly marcasSugeridas = computed(() => marcasSugeridas(this.vehiculos()));
   protected readonly modelosSugeridos = computed(() =>
-    modelosSugeridos(this.vehiculosExistentes(), this.marcaActual()),
+    modelosSugeridos(this.vehiculos(), this.marcaActual()),
   );
-  protected readonly coloresSugeridos = computed(() =>
-    coloresSugeridos(this.vehiculosExistentes()),
+  protected readonly coloresSugeridos = computed(() => coloresSugeridos(this.vehiculos()));
+  protected readonly direccionesSugeridas = computed(() =>
+    unicosOrdenados(this.clientes().map((c) => c.direccion)),
   );
 
   protected readonly formulario = this.fb.nonNullable.group({
@@ -120,60 +199,330 @@ export class Clientes {
     kilometraje: [0, Validators.min(0)],
   });
 
+  // --- Cruces -------------------------------------------------------------------------
+
+  private readonly vehiculosPorCliente = computed(() => {
+    const mapa = new Map<string, Vehiculo[]>();
+    for (const v of this.vehiculos()) mapa.set(v.clienteId, [...(mapa.get(v.clienteId) ?? []), v]);
+    return mapa;
+  });
+
+  /** La orden que tiene cada vehículo en el taller ahora (la más reciente). */
+  private readonly ordenActiva = computed(() => {
+    const mapa = new Map<string, Orden>();
+    for (const o of this.ordenes()) {
+      if (!ORDEN_ACTIVA.includes(o.estado)) continue;
+      const otra = mapa.get(o.vehiculoId);
+      if (!otra || o.fechaCreacion > otra.fechaCreacion) mapa.set(o.vehiculoId, o);
+    }
+    return mapa;
+  });
+
+  /** Diagnóstico con el presupuesto todavía sin respuesta del cliente. */
+  private readonly diagnosticoPendiente = computed(() => {
+    const mapa = new Map<string, Diagnostico>();
+    for (const d of this.diagnosticos()) {
+      if (d.estado === EstadoDiag.Anulado || d.ordenId) continue;
+      if (d.respuestaCliente !== RespuestaCliente.Pendiente) continue;
+      const otro = mapa.get(d.vehiculoId);
+      if (!otro || d.fecha > otro.fecha) mapa.set(d.vehiculoId, d);
+    }
+    return mapa;
+  });
+
+  /** Lo que se le cobró y todavía no pagó, por cliente. */
+  private readonly saldoPorCliente = computed(() => {
+    const mapa = new Map<string, number>();
+    for (const p of this.proformas()) {
+      if (p.estado !== EstadoProforma.Emitida || p.estaSaldada || p.saldoPendiente <= 0) continue;
+      mapa.set(p.clienteId, (mapa.get(p.clienteId) ?? 0) + p.saldoPendiente);
+    }
+    return mapa;
+  });
+
+  private readonly ultimaOrdenPorVehiculo = computed(() => {
+    const mapa = new Map<string, Orden>();
+    for (const o of this.ordenes()) {
+      const otra = mapa.get(o.vehiculoId);
+      if (!otra || o.fechaCreacion > otra.fechaCreacion) mapa.set(o.vehiculoId, o);
+    }
+    return mapa;
+  });
+
+  // --- Lista ------------------------------------------------------------------------
+
+  protected readonly filas = computed<FilaCliente[]>(() => {
+    const saldos = this.saldoPorCliente();
+    const porCliente = this.vehiculosPorCliente();
+    const activas = this.ordenActiva();
+
+    return this.clientes().map((cliente) => {
+      const nombre = nombreDe(cliente);
+      return {
+        cliente,
+        nombre,
+        iniciales: iniciales(nombre),
+        saldo: saldos.get(cliente.clienteId) ?? 0,
+        enTaller: (porCliente.get(cliente.clienteId) ?? []).some((v) => activas.has(v.vehiculoId)),
+      };
+    });
+  });
+
+  protected readonly cuentas = computed(() => {
+    const filas = this.filas();
+    return {
+      todos: filas.length,
+      taller: filas.filter((f) => f.enTaller).length,
+      saldo: filas.filter((f) => f.saldo > 0).length,
+    };
+  });
+
+  protected readonly filtradas = computed(() => {
+    const filtro = this.filtro();
+    const palabras = normalizar(this.buscar()).split(/\s+/).filter(Boolean);
+
+    return this.filas().filter((f) => {
+      if (filtro === 'taller' && !f.enTaller) return false;
+      if (filtro === 'saldo' && f.saldo <= 0) return false;
+      if (palabras.length === 0) return true;
+
+      const c = f.cliente;
+      const texto = normalizar(
+        [f.nombre, c.nombre, c.apellido, c.razonSocial, c.ciNit, c.telefono, c.clienteId, ...(c.placas ?? [])]
+          .filter(Boolean)
+          .join(' '),
+      );
+      return palabras.every((p) => texto.includes(p));
+    });
+  });
+
+  protected readonly visibles = computed(() => this.filtradas().slice(0, this.limite()));
+
+  /** El cliente de la ficha: el que se tocó o, si no, el primero de la lista. */
+  protected readonly elegido = computed<FilaCliente | null>(() => {
+    const id = this.elegidoId();
+    const filas = this.filas();
+    return (id ? filas.find((f) => f.cliente.clienteId === id) : null) ?? this.filtradas()[0] ?? null;
+  });
+
+  // --- Ficha ------------------------------------------------------------------------
+
+  protected readonly vehiculosElegido = computed(() => {
+    const elegido = this.elegido();
+    return elegido ? (this.vehiculosPorCliente().get(elegido.cliente.clienteId) ?? []) : [];
+  });
+
+  protected readonly ultimasOrdenes = computed(() => {
+    const elegido = this.elegido();
+    if (!elegido) return [];
+    return this.ordenes()
+      .filter((o) => o.clienteId === elegido.cliente.clienteId)
+      .sort((a, b) => b.fechaCreacion.localeCompare(a.fechaCreacion))
+      .slice(0, 5);
+  });
+
   constructor() {
-    // El buscador global enlaza aquí con ?buscar=<CI/NIT>; sin parámetro se
-    // restaura el último criterio que el usuario dejó puesto.
-    const desdeUrl = this.ruta.snapshot.queryParamMap.get('buscar');
+    const parametros = this.ruta.snapshot.queryParamMap;
+
+    // El buscador global enlaza aquí con ?buscar=<CI/NIT>; la ficha de un
+    // vehículo, con ?clienteId=. Sin parámetros se restaura la última búsqueda.
+    const desdeUrl = parametros.get('buscar');
     this.buscar.set(desdeUrl ?? this.preferencias.leer(CLAVE_BUSCAR, ''));
+    const clienteId = parametros.get('clienteId');
+    if (clienteId) {
+      this.elegidoId.set(clienteId);
+      this.vistaMovil.set('ficha');
+      // Que la búsqueda guardada no esconda al cliente que se pidió.
+      if (!desdeUrl) this.buscar.set('');
+    }
 
     this.cargar();
 
-    // Solo para las listas de sugerencias del alta rápida de vehículo.
     this.vehiculosService
       .getAll(undefined, undefined, 1, 500)
-      .subscribe((resultado) => this.vehiculosExistentes.set(resultado.items));
+      .pipe(catchError(() => of(null)))
+      .subscribe((resultado) => this.vehiculos.set(resultado?.items ?? []));
+    this.ordenesService
+      .getAll()
+      .pipe(catchError(() => of([] as Orden[])))
+      .subscribe((lista) => this.ordenes.set(lista));
+    this.proformasService
+      .getAll({ estado: EstadoProforma.Emitida, tamanoPagina: 500 })
+      .pipe(catchError(() => of(null)))
+      .subscribe((resultado) => this.proformas.set(resultado?.items ?? []));
+    this.diagnosticosService
+      .getAll({ tamanoPagina: 500 })
+      .pipe(catchError(() => of(null)))
+      .subscribe((resultado) => this.diagnosticos.set(resultado?.items ?? []));
 
-    // Solo para el autocompletado de "Dirección": no reemplaza la tabla paginada.
-    this.servicio
-      .getAll(undefined, 1, 500)
-      .subscribe((resultado) =>
-        this.direccionesSugeridas.set(unicosOrdenados(resultado.items.map((c) => c.direccion))),
-      );
+    // Las fotos de cada vehículo y el avance de la orden en curso se piden
+    // recién cuando se abre la ficha de ese cliente, una sola vez.
+    effect(() => {
+      const activas = this.ordenActiva();
+      for (const v of this.vehiculosElegido()) {
+        this.pedirFotos(v.vehiculoId);
+        const orden = activas.get(v.vehiculoId);
+        if (orden?.estado === EstadoOrden.EnProceso) this.pedirAvance(orden.ordenId);
+      }
+    });
   }
 
   protected cargar(): void {
     this.cargando.set(true);
 
-    this.servicio
-      .getAll(this.buscar() || undefined, this.pagina(), this.tamanoPagina())
-      .subscribe({
-        next: (resultado) => {
-          this.clientes.set(resultado.items);
-          this.totalRegistros.set(resultado.totalRegistros);
-          this.totalPaginas.set(resultado.totalPaginas);
-          this.cargando.set(false);
-        },
-        error: () => this.cargando.set(false),
+    this.servicio.getAll(undefined, 1, 500).subscribe({
+      next: (resultado) => {
+        this.clientes.set(resultado.items);
+        this.cargando.set(false);
+      },
+      error: () => this.cargando.set(false),
+    });
+  }
+
+  private pedirFotos(vehiculoId: string): void {
+    if (this.fotosPedidas.has(vehiculoId)) return;
+    this.fotosPedidas.add(vehiculoId);
+
+    this.vehiculosService
+      .getFotos(vehiculoId)
+      .pipe(catchError(() => of([] as VehiculoFoto[])))
+      .subscribe((lista) => this.fotos.update((mapa) => new Map(mapa).set(vehiculoId, lista)));
+  }
+
+  private pedirAvance(ordenId: string): void {
+    if (this.avancesPedidos.has(ordenId)) return;
+    this.avancesPedidos.add(ordenId);
+
+    this.ordenesService
+      .getById(ordenId)
+      .pipe(catchError(() => of(null)))
+      .subscribe((detalle) => {
+        if (!detalle) return;
+        const hechos = detalle.servicios.filter((s) => s.estado === EstadoServicioOrden.Completado).length;
+        this.avances.update((mapa) =>
+          new Map(mapa).set(ordenId, { hechos, total: detalle.servicios.length }),
+        );
       });
   }
+
+  // --- Lista: buscar, filtrar, elegir --------------------------------------------------
 
   protected onBuscar(valor: string): void {
     this.buscar.set(valor);
     this.preferencias.guardar(CLAVE_BUSCAR, valor);
-    this.pagina.set(1);
-    this.cargar();
+    this.limite.set(FILAS_POR_TANDA);
   }
 
-  protected cambiarPagina(pagina: number): void {
-    this.pagina.set(pagina);
-    this.cargar();
+  protected elegirFiltro(filtro: Filtro): void {
+    this.filtro.set(filtro);
+    this.limite.set(FILAS_POR_TANDA);
   }
 
-  protected cambiarTamano(tamano: number): void {
-    this.tamanoPagina.set(tamano);
-    this.pagina.set(1);
-    this.cargar();
+  protected mostrarMas(): void {
+    this.limite.update((n) => n + FILAS_POR_TANDA);
   }
+
+  protected elegir(cliente: Cliente): void {
+    this.elegidoId.set(cliente.clienteId);
+    this.modo.set('ficha');
+    this.editando.set(null);
+    this.vistaMovil.set('ficha');
+  }
+
+  protected volverALista(): void {
+    this.vistaMovil.set('lista');
+    this.modo.set('ficha');
+    this.editando.set(null);
+  }
+
+  // --- Lo que muestra la fila y la ficha ------------------------------------------------
+
+  protected placasVisibles(cliente: Cliente): string[] {
+    // `?? []` cubre la ventana de un despliegue: el frontend puede quedar
+    // arriba antes que la API y recibir todavía respuestas sin `placas`.
+    return (cliente.placas ?? []).slice(0, MAX_PLACAS);
+  }
+
+  protected placasRestantes(cliente: Cliente): number {
+    return Math.max(0, (cliente.placas ?? []).length - MAX_PLACAS);
+  }
+
+  protected clienteDesde(cliente: Cliente): string {
+    const fecha = new Date(cliente.fechaRegistro);
+    return `${MESES[fecha.getMonth()]} ${fecha.getFullYear()}`;
+  }
+
+  /**
+   * Enlace directo a un chat de WhatsApp. El teléfono se guarda como texto
+   * libre: acá solo se limpia para armar la URL; si no trae código de país se
+   * asume Bolivia (+591). El dato guardado no se toca.
+   */
+  protected enlaceWhatsapp(telefono: string): string {
+    const digitos = telefono.replace(/\D/g, '');
+    const conCodigo = digitos.startsWith('591') ? digitos : `591${digitos}`;
+    return `https://wa.me/${conCodigo}`;
+  }
+
+  protected enlaceLlamada(telefono: string): string {
+    return `tel:${telefono.replace(/[^\d+]/g, '')}`;
+  }
+
+  protected silueta(tipo: TipoCarroceria): string {
+    if (tipo === 'Suv') return SILUETAS.suv;
+    if (tipo === 'Pickup' || tipo === 'Camion' || tipo === 'Furgon') return SILUETAS.camioneta;
+    return SILUETAS.sedan;
+  }
+
+  protected fotosDe(vehiculo: Vehiculo): VehiculoFoto[] {
+    return this.fotos().get(vehiculo.vehiculoId) ?? [];
+  }
+
+  /** En el taller, listo para entregar, esperando respuesta o cuándo vino por última vez. */
+  protected estadoVehiculo(vehiculo: Vehiculo): EstadoVehiculo {
+    const orden = this.ordenActiva().get(vehiculo.vehiculoId);
+
+    if (orden?.estado === EstadoOrden.Finalizada) {
+      return { texto: `Listo para entregar · ${orden.ordenId} finalizada`, tono: 'verde' };
+    }
+    if (orden?.estado === EstadoOrden.EnProceso) {
+      const avance = this.avances().get(orden.ordenId);
+      const detalle =
+        avance && avance.total > 0
+          ? `, ${avance.hechos} de ${avance.total} ${avance.total === 1 ? 'servicio' : 'servicios'}`
+          : '';
+      return { texto: `En el taller · ${orden.ordenId} en proceso${detalle}`, tono: 'naranja' };
+    }
+    if (orden) return { texto: `En el taller · ${orden.ordenId} en espera`, tono: 'naranja' };
+
+    const diagnostico = this.diagnosticoPendiente().get(vehiculo.vehiculoId);
+    if (diagnostico) {
+      return { texto: `Presupuesto esperando su respuesta · ${diagnostico.diagnosticoId}`, tono: 'azul' };
+    }
+
+    const ultima = this.ultimaOrdenPorVehiculo().get(vehiculo.vehiculoId);
+    if (ultima) {
+      return { texto: `Última visita el ${fechaCorta(ultima.fechaCierre ?? ultima.fechaCreacion)}`, tono: 'gris' };
+    }
+    return { texto: 'Todavía no vino al taller', tono: 'gris' };
+  }
+
+  /** Columna de la fecha: la orden en curso dice en qué está; la cerrada, cuándo. */
+  protected cuandoOrden(orden: Orden): string {
+    switch (orden.estado) {
+      case EstadoOrden.Abierta:
+        return 'En espera';
+      case EstadoOrden.EnProceso:
+        return 'En proceso';
+      case EstadoOrden.Finalizada:
+        return 'Finalizada';
+      case EstadoOrden.Cancelada:
+        return 'Cancelada';
+      default:
+        return fechaCorta(orden.fechaCierre ?? orden.fechaCreacion);
+    }
+  }
+
+  // --- Alta y edición -----------------------------------------------------------------
 
   protected invalido(control: string): boolean {
     const campo = this.formulario.get(control);
@@ -197,37 +546,8 @@ export class Clientes {
     return 'Revise el valor ingresado.';
   }
 
-  /**
-   * Se muestran las primeras placas y el resto se resume en un "+N": con
-   * varias, la celda crecería más que la fila y rompería el ritmo de la tabla.
-   */
-  protected placasVisibles(cliente: Cliente): string[] {
-    // `?? []` cubre la ventana de un despliegue: el frontend puede quedar
-    // arriba antes que la API y recibir todavía respuestas sin `placas`.
-    return (cliente.placas ?? []).slice(0, MAX_PLACAS);
-  }
-
-  protected placasRestantes(cliente: Cliente): number {
-    return Math.max(0, (cliente.placas ?? []).length - MAX_PLACAS);
-  }
-
-  /**
-   * Enlace directo a un chat de WhatsApp. El teléfono se guarda como texto
-   * libre en el sistema: acá solo se limpia para armar la URL — si no trae
-   * código de país se asume Bolivia (+591). El dato guardado no se toca.
-   */
-  protected linkWhatsapp(telefono: string): string {
-    const digitos = telefono.replace(/\D/g, '');
-    const conCodigo = digitos.startsWith('591') ? digitos : `591${digitos}`;
-    return `https://wa.me/${conCodigo}`;
-  }
-
-  /** Cuando está activo, tras guardar se limpia el formulario en vez de cerrarlo. */
-  private crearOtro = false;
-
-  /** Deja el formulario listo para un alta nueva, sin abrir ni cerrar el modal. */
+  /** Deja el formulario listo para un alta nueva. */
   private reiniciarFormulario(): void {
-    this.editando.set(null);
     this.formulario.reset();
     this.registrarVehiculo.set(false);
     // El año casi siempre es el actual: se ofrece hecho y solo se corrige si no.
@@ -238,28 +558,50 @@ export class Clientes {
 
   protected abrirNuevo(): void {
     this.reiniciarFormulario();
-    this.formularioAbierto.set(true);
+    this.editando.set(null);
+    this.modo.set('nuevo');
+    this.vistaMovil.set('ficha');
+    this.enfocarFormulario();
   }
 
-  /** Marca que, al guardar, el modal siga abierto para cargar otro cliente. */
+  /** Al abrir el formulario, el cursor queda en el nombre, listo para escribir. */
+  private enfocarFormulario(): void {
+    afterNextRender(
+      () => {
+        const campo = document.getElementById('nombre') as HTMLInputElement | null;
+        campo?.focus();
+        campo?.scrollIntoView({ block: 'nearest' });
+      },
+      { injector: this.injector },
+    );
+  }
+
+  protected abrirEditar(cliente: Cliente): void {
+    this.editando.set(cliente);
+    this.elegidoId.set(cliente.clienteId);
+    this.registrarVehiculo.set(false);
+    this.formulario.reset({
+      nombre: cliente.nombre,
+      apellido: cliente.apellido ?? '',
+      razonSocial: cliente.razonSocial ?? '',
+      ciNit: cliente.ciNit,
+      telefono: cliente.telefono ?? '',
+      email: cliente.email ?? '',
+      direccion: cliente.direccion ?? '',
+    });
+    this.modo.set('editar');
+    this.enfocarFormulario();
+  }
+
+  protected cerrarFormulario(): void {
+    this.modo.set('ficha');
+    this.editando.set(null);
+    if (!this.elegido()) this.vistaMovil.set('lista');
+  }
+
+  /** Marca que, al guardar, el formulario siga abierto para cargar otro cliente. */
   protected marcarCrearOtro(): void {
     this.crearOtro = true;
-  }
-
-  /** Cierra el modal, o lo reinicia si se pidió "crear otro" (solo en alta). */
-  private finalizarExito(mensaje: string): void {
-    const seguir = this.crearOtro && !this.editando();
-    this.crearOtro = false;
-    this.notificacion.exito(mensaje);
-    this.guardando.set(false);
-    // El nuevo queda primero en la lista: volver a la página 1 para verlo.
-    if (!this.editando()) this.pagina.set(1);
-    if (seguir) {
-      this.reiniciarFormulario();
-    } else {
-      this.cerrarFormulario();
-    }
-    this.cargar();
   }
 
   /** Las placas bolivianas van en mayúsculas: se normaliza al escribir. */
@@ -281,26 +623,6 @@ export class Clientes {
     control.markAsDirty();
   }
 
-  protected abrirEditar(cliente: Cliente): void {
-    this.editando.set(cliente);
-    this.registrarVehiculo.set(false);
-    this.formulario.patchValue({
-      nombre: cliente.nombre,
-      apellido: cliente.apellido ?? '',
-      razonSocial: cliente.razonSocial ?? '',
-      ciNit: cliente.ciNit,
-      telefono: cliente.telefono ?? '',
-      email: cliente.email ?? '',
-      direccion: cliente.direccion ?? '',
-    });
-    this.formularioAbierto.set(true);
-  }
-
-  protected cerrarFormulario(): void {
-    this.formularioAbierto.set(false);
-    this.editando.set(null);
-  }
-
   /** Ir directo a registrar otro vehículo de este cliente, sin volver a buscarlo. */
   protected agregarVehiculo(cliente: Cliente): void {
     void this.router.navigate(['/vehiculos'], {
@@ -315,9 +637,11 @@ export class Clientes {
       return;
     }
 
-    // Solo se pide completo cuando el checkbox "Registrar vehículo ahora" está
-    // marcado: en la edición, o si no se tildó, el vehículo ni se toca.
-    const conVehiculo = this.registrarVehiculo() && !this.editando();
+    const enEdicion = this.modo() === 'editar' ? this.editando() : null;
+
+    // Solo se pide completo cuando "Registrar un vehículo ahora" está marcado:
+    // en la edición, o si no se marcó, el vehículo ni se toca.
+    const conVehiculo = this.registrarVehiculo() && !enEdicion;
     const datosVehiculo = this.formularioVehiculo.getRawValue();
 
     if (conVehiculo && (!datosVehiculo.placa || !datosVehiculo.marca || !datosVehiculo.modelo)) {
@@ -329,7 +653,6 @@ export class Clientes {
 
     this.guardando.set(true);
     const datos = this.formulario.getRawValue();
-    const enEdicion = this.editando();
 
     const peticion = enEdicion
       ? this.servicio.actualizar(enEdicion.clienteId, datos)
@@ -338,25 +661,25 @@ export class Clientes {
     peticion.subscribe({
       next: (cliente) => {
         if (!conVehiculo) {
-          this.finalizarExito(
-            enEdicion ? 'Cliente actualizado.' : 'Cliente registrado correctamente.',
-          );
+          this.finalizarExito(cliente, enEdicion ? 'Cliente actualizado.' : 'Cliente registrado correctamente.');
           return;
         }
 
         // Encadenado: el vehículo se crea recién con el ID que acaba de asignar el backend.
         this.vehiculosService.crear({ clienteId: cliente.clienteId, ...datosVehiculo }).subscribe({
           next: () => {
-            this.finalizarExito('Cliente y vehículo registrados correctamente.');
+            this.recargarVehiculos();
+            this.finalizarExito(cliente, 'Cliente y vehículo registrados correctamente.');
           },
           error: () => {
             // El cliente sí quedó creado: avisar para que complete el vehículo aparte.
             this.crearOtro = false;
             this.notificacion.advertencia(
-              `Cliente ${cliente.clienteId} registrado, pero el vehículo no se pudo guardar. Agréguelo desde Vehículos.`,
+              `Cliente ${cliente.clienteId} registrado, pero el vehículo no se pudo guardar. Agréguelo desde su ficha.`,
             );
             this.guardando.set(false);
-            this.cerrarFormulario();
+            this.elegidoId.set(cliente.clienteId);
+            this.modo.set('ficha');
             this.cargar();
           },
         });
@@ -366,6 +689,35 @@ export class Clientes {
         this.guardando.set(false);
       },
     });
+  }
+
+  /** Muestra la ficha del cliente guardado, o deja el alta lista para otro. */
+  private finalizarExito(cliente: Cliente, mensaje: string): void {
+    const seguir = this.crearOtro && this.modo() === 'nuevo';
+    this.crearOtro = false;
+    this.notificacion.exito(mensaje);
+    this.guardando.set(false);
+
+    if (seguir) {
+      this.reiniciarFormulario();
+    } else {
+      this.elegidoId.set(cliente.clienteId);
+      this.modo.set('ficha');
+      this.editando.set(null);
+      // Que el filtro o la búsqueda no escondan al que se acaba de guardar.
+      this.filtro.set('todos');
+      this.buscar.set('');
+    }
+    this.cargar();
+  }
+
+  private recargarVehiculos(): void {
+    this.vehiculosService
+      .getAll(undefined, undefined, 1, 500)
+      .pipe(catchError(() => of(null)))
+      .subscribe((resultado) => {
+        if (resultado) this.vehiculos.set(resultado.items);
+      });
   }
 
   protected confirmarCambioEstado(cliente: Cliente): void {
@@ -388,6 +740,8 @@ export class Clientes {
         );
         this.guardando.set(false);
         this.porCambiarEstado.set(null);
+        this.modo.set('ficha');
+        this.editando.set(null);
         this.cargar();
       },
       error: () => {
@@ -396,4 +750,28 @@ export class Clientes {
       },
     });
   }
+}
+
+/** Empresa por su razón social; persona por nombre y apellido. */
+function nombreDe(cliente: Cliente): string {
+  return cliente.razonSocial?.trim() || `${cliente.nombre} ${cliente.apellido ?? ''}`.trim();
+}
+
+/** Dos iniciales de las primeras palabras con sentido ("María Fernanda Flores" → MF). */
+function iniciales(nombre: string): string {
+  const palabras = nombre.split(/\s+/).filter((p) => p.length > 2);
+  const letras = (palabras.length ? palabras : [nombre]).slice(0, 2).map((p) => p[0] ?? '');
+  return letras.join('').toUpperCase();
+}
+
+/** Minúsculas y sin tildes, para buscar "jesus" y encontrar "Jesús". */
+function normalizar(texto: string): string {
+  return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+}
+
+function fechaCorta(iso: string): string {
+  const fecha = new Date(iso);
+  const dia = String(fecha.getDate()).padStart(2, '0');
+  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+  return `${dia}/${mes}/${fecha.getFullYear()}`;
 }

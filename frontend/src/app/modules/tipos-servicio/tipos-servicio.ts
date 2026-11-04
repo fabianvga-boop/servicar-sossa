@@ -4,15 +4,14 @@ import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angu
 import { EstadoServicio } from '../../core/models/enums';
 import { CategoriaRepuesto, CategoriaResumen } from '../../core/models/inventario.model';
 import { TipoServicio as TipoServicioModel } from '../../core/models/taller.model';
+import { AuthService } from '../../core/services/auth.service';
 import { CategoriasRepuestoService } from '../../core/services/inventario.service';
 import { NotificacionService } from '../../core/services/notificacion.service';
 import { TiposServicioService } from '../../core/services/taller.service';
+import { coincidePorPalabras } from '../../shared/busqueda';
 import { sugerirCategoriasServicio } from '../../shared/categorias-repuesto';
-import { Confirmacion } from '../../shared/components/confirmacion';
+import { Cajon } from '../../shared/components/cajon';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
-import { InsigniaEstado } from '../../shared/components/insignia-estado';
-import { Modal } from '../../shared/components/modal';
-import { Paginador } from '../../shared/components/paginador';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
 import { Atajo } from '../../shared/directives/atajo';
 import { EnfocarError } from '../../shared/directives/enfocar-error';
@@ -47,17 +46,24 @@ const SERVICIOS_COMUNES = [
   'Cambio de banda de accesorios',
 ];
 
-/** USU013 — catálogo de tipos de servicio y sus precios base. */
+/** Las pestañas del catálogo: todo, lo que lleva repuestos o solo mano de obra. */
+type Vista = 'todos' | 'repuestos' | 'mano';
+
+/**
+ * USU013 — catálogo de tipos de servicio y sus precios base.
+ *
+ * El catálogo de un taller es corto: se trae entero y se filtra en pantalla,
+ * así las pestañas muestran sus cantidades y la búsqueda responde al tipear.
+ * Los dados de baja siguen en la lista, apagados, para volver a encenderlos
+ * con el interruptor sin buscarlos aparte.
+ */
 @Component({
   selector: 'app-tipos-servicio',
   imports: [
     ReactiveFormsModule,
     FormsModule,
-    Modal,
-    Confirmacion,
+    Cajon,
     EstadoTabla,
-    InsigniaEstado,
-    Paginador,
     SelectorBusqueda,
     Atajo,
     EnfocarError,
@@ -72,22 +78,20 @@ export class TiposServicio {
   private readonly fb = inject(FormBuilder);
   private readonly notificacion = inject(NotificacionService);
   private readonly categoriasService = inject(CategoriasRepuestoService);
+  protected readonly auth = inject(AuthService);
 
   protected readonly servicios = signal<TipoServicioModel[]>([]);
   protected readonly serviciosComunes = SERVICIOS_COMUNES;
   protected readonly cargando = signal(true);
   protected readonly buscar = signal('');
-  protected readonly soloActivos = signal(true);
+  protected readonly vista = signal<Vista>('todos');
   protected readonly guardando = signal(false);
 
-  protected readonly pagina = signal(1);
-  protected readonly tamanoPagina = signal(20);
-  protected readonly totalRegistros = signal(0);
-  protected readonly totalPaginas = signal(0);
+  /** Servicio cuyo interruptor se está cambiando, para no tocarlo dos veces. */
+  protected readonly cambiandoEstado = signal<string | null>(null);
 
   protected readonly editando = signal<TipoServicioModel | null>(null);
   protected readonly formularioAbierto = signal(false);
-  protected readonly porCambiarEstado = signal<TipoServicioModel | null>(null);
 
   protected readonly EstadoServicio = EstadoServicio;
 
@@ -95,6 +99,8 @@ export class TiposServicio {
   protected readonly categorias = signal<CategoriaRepuesto[]>([]);
   /** Categorías elegidas en el formulario: en la orden solo se aceptan esas. */
   protected readonly categoriasElegidas = signal<CategoriaResumen[]>([]);
+  /** "+ Agregar categoría" muestra el buscador de categorías. */
+  protected readonly agregandoCategoria = signal(false);
   /** Cambia en cada alta: recrea el selector para dejarlo vacío otra vez. */
   protected readonly reinicioSelector = signal(0);
 
@@ -107,6 +113,34 @@ export class TiposServicio {
         etiqueta: c.nombre,
         detalle: `${c.cantidadRepuestos} repuesto(s) en inventario`,
       }));
+  });
+
+  // --- Lista ------------------------------------------------------------------
+
+  /** Los activos primero y después por código, como se los nombra en el taller. */
+  private readonly ordenados = computed(() =>
+    [...this.servicios()].sort(
+      (a, b) =>
+        Number(a.estado !== EstadoServicio.Activo) - Number(b.estado !== EstadoServicio.Activo) ||
+        a.servicioId.localeCompare(b.servicioId),
+    ),
+  );
+
+  protected readonly cuentas = computed(() => {
+    const lista = this.servicios();
+    const repuestos = lista.filter((s) => s.requiereRepuesto).length;
+    return { todos: lista.length, repuestos, mano: lista.length - repuestos };
+  });
+
+  protected readonly filtrados = computed(() => {
+    const texto = this.buscar();
+    const vista = this.vista();
+
+    return this.ordenados().filter(
+      (s) =>
+        (vista === 'todos' || (vista === 'repuestos') === s.requiereRepuesto) &&
+        coincidePorPalabras(texto, s.servicioId, s.nombre, s.descripcion ?? ''),
+    );
   });
 
   protected readonly formulario = this.fb.nonNullable.group({
@@ -124,40 +158,14 @@ export class TiposServicio {
   protected cargar(): void {
     this.cargando.set(true);
 
-    this.servicio
-      .getAll(this.buscar() || undefined, this.soloActivos(), this.pagina(), this.tamanoPagina())
-      .subscribe({
-        next: (resultado) => {
-          this.servicios.set(resultado.items);
-          this.totalRegistros.set(resultado.totalRegistros);
-          this.totalPaginas.set(resultado.totalPaginas);
-          this.cargando.set(false);
-        },
-        error: () => this.cargando.set(false),
-      });
-  }
-
-  protected onBuscar(valor: string): void {
-    this.buscar.set(valor);
-    this.pagina.set(1);
-    this.cargar();
-  }
-
-  protected alternarInactivos(): void {
-    this.soloActivos.update((v) => !v);
-    this.pagina.set(1);
-    this.cargar();
-  }
-
-  protected cambiarPagina(pagina: number): void {
-    this.pagina.set(pagina);
-    this.cargar();
-  }
-
-  protected cambiarTamano(tamano: number): void {
-    this.tamanoPagina.set(tamano);
-    this.pagina.set(1);
-    this.cargar();
+    // Todos de una vez, también los dados de baja (soloActivos = false).
+    this.servicio.getAll(undefined, false, 1, 500).subscribe({
+      next: (resultado) => {
+        this.servicios.set(resultado.items);
+        this.cargando.set(false);
+      },
+      error: () => this.cargando.set(false),
+    });
   }
 
   protected invalido(control: string): boolean {
@@ -173,10 +181,6 @@ export class TiposServicio {
     if (campo.hasError('required')) return 'Este campo es obligatorio.';
     if (campo.hasError('min')) return `El valor mínimo es ${campo.getError('min').min}.`;
     if (campo.hasError('max')) return `El valor máximo es ${campo.getError('max').max}.`;
-    if (campo.hasError('minlength')) {
-      const { requiredLength } = campo.getError('minlength');
-      return `Mínimo ${requiredLength} caracteres.`;
-    }
     if (campo.hasError('maxlength')) {
       const { requiredLength } = campo.getError('maxlength');
       return `Máximo ${requiredLength} caracteres.`;
@@ -185,22 +189,27 @@ export class TiposServicio {
     return 'Revise el valor ingresado.';
   }
 
+  // --- Formulario en el panel lateral ----------------------------------------
+
   protected abrirNuevo(): void {
     this.editando.set(null);
-    this.formulario.reset({ nombre: '', descripcion: '', precioBase: 0, requiereRepuesto: false });
+    // Un servicio nuevo casi siempre lleva repuestos: queda elegido y se cambia con un clic.
+    this.formulario.reset({ nombre: '', descripcion: '', precioBase: 0, requiereRepuesto: true });
     this.categoriasElegidas.set([]);
+    this.agregandoCategoria.set(false);
     this.formularioAbierto.set(true);
   }
 
   protected abrirEditar(servicio: TipoServicioModel): void {
     this.editando.set(servicio);
-    this.formulario.patchValue({
+    this.formulario.reset({
       nombre: servicio.nombre,
       descripcion: servicio.descripcion ?? '',
       precioBase: servicio.precioBase,
       requiereRepuesto: servicio.requiereRepuesto,
     });
     this.categoriasElegidas.set([...(servicio.categorias ?? [])]);
+    this.agregandoCategoria.set(false);
     this.formularioAbierto.set(true);
   }
 
@@ -217,6 +226,12 @@ export class TiposServicio {
     );
   }
 
+  protected mostrarAgregarCategoria(): void {
+    this.agregandoCategoria.set(true);
+    // Recién dibujado el buscador se le puede pasar el foco.
+    setTimeout(() => document.getElementById('categoriaServicio')?.focus());
+  }
+
   /**
    * Agrega la categoría elegida. Si es un nombre nuevo escrito a mano
    * (“+ Escobillas”), primero se crea y después se agrega.
@@ -224,6 +239,7 @@ export class TiposServicio {
   protected agregarCategoria(valor: string | null): void {
     if (!valor) return;
     this.reinicioSelector.update((n) => n + 1);
+    this.agregandoCategoria.set(false);
 
     const existente = this.categorias().find((c) => c.categoriaId === valor);
     if (existente) {
@@ -250,11 +266,6 @@ export class TiposServicio {
 
   protected quitarCategoria(categoriaId: string): void {
     this.categoriasElegidas.update((lista) => lista.filter((c) => c.categoriaId !== categoriaId));
-  }
-
-  /** "Bujías" o "Aceite de motor, Filtro de aceite": para la tabla. */
-  protected nombresCategorias(servicio: TipoServicioModel): string {
-    return (servicio.categorias ?? []).map((c) => c.nombre).join(', ');
   }
 
   protected cerrarFormulario(): void {
@@ -296,30 +307,36 @@ export class TiposServicio {
     });
   }
 
-  protected cambiarEstado(): void {
-    const servicio = this.porCambiarEstado();
-    if (!servicio) return;
+  // --- Interruptor "Activo" ----------------------------------------------------
+
+  /**
+   * Encender o apagar un servicio es reversible, así que el interruptor actúa
+   * en el acto, sin pedir confirmación: apagado, no se ofrece en órdenes
+   * nuevas; las que ya lo tienen no cambian.
+   */
+  protected alternarActivo(servicio: TipoServicioModel): void {
+    if (this.cambiandoEstado()) return;
 
     const nuevo =
-      servicio.estado === EstadoServicio.Activo
-        ? EstadoServicio.Inactivo
-        : EstadoServicio.Activo;
+      servicio.estado === EstadoServicio.Activo ? EstadoServicio.Inactivo : EstadoServicio.Activo;
 
-    this.guardando.set(true);
+    this.cambiandoEstado.set(servicio.servicioId);
 
     this.servicio.cambiarEstado(servicio.servicioId, nuevo).subscribe({
-      next: () => {
-        this.notificacion.exito(
-          nuevo === EstadoServicio.Activo ? 'Servicio reactivado.' : 'Servicio dado de baja.',
+      next: (actualizado) => {
+        this.servicios.update((lista) =>
+          lista.map((s) => (s.servicioId === actualizado.servicioId ? actualizado : s)),
         );
-        this.guardando.set(false);
-        this.porCambiarEstado.set(null);
-        this.cargar();
+        if (this.editando()?.servicioId === actualizado.servicioId) this.editando.set(actualizado);
+
+        this.notificacion.exito(
+          nuevo === EstadoServicio.Activo
+            ? `${actualizado.nombre}: activo otra vez.`
+            : `${actualizado.nombre}: apagado, ya no se ofrece en órdenes nuevas.`,
+        );
+        this.cambiandoEstado.set(null);
       },
-      error: () => {
-        this.guardando.set(false);
-        this.porCambiarEstado.set(null);
-      },
+      error: () => this.cambiandoEstado.set(null),
     });
   }
 }

@@ -2,7 +2,7 @@
   <div>
     <h1>Catálogo de servicios</h1>
     <p class="texto-tenue texto-sm mb-0">
-      Servicios que ofrece el taller y su precio de referencia
+      Lo que el taller ofrece: qué incluye cada servicio, su precio base y los repuestos que lleva.
     </p>
   </div>
   <button
@@ -19,146 +19,138 @@
   </button>
 </div>
 
-<div class="tarjeta">
-  <div class="tarjeta-encabezado">
-    <div class="fila envuelve">
-      <input
-        type="search"
-        class="filtro-ancho-md"
-        maxlength="100"
-        placeholder="Buscar servicio…"
-        [value]="buscar()"
-        (input)="onBuscar($any($event.target).value)"
-      />
-      <label class="fila texto-sm" style="gap: 6px">
-        <input
-          type="checkbox"
-          style="width: auto"
-          [checked]="!soloActivos()"
-          (change)="alternarInactivos()"
-        />
-        Mostrar dados de baja
-      </label>
-    </div>
-    <span class="texto-tenue texto-sm">{{ totalRegistros() }} servicio(s)</span>
+<!-- ------------------------------------------------------ Pestañas y búsqueda -->
+<div class="filtros-catalogo mb-2">
+  <div class="segmentos en-linea" role="tablist" aria-label="Tipo de servicio">
+    <button
+      type="button"
+      role="tab"
+      class="segmento"
+      [class.activo]="vista() === 'todos'"
+      [attr.aria-selected]="vista() === 'todos'"
+      (click)="vista.set('todos')"
+    >
+      Todos <span class="vista-cuenta">{{ cuentas().todos }}</span>
+    </button>
+    <button
+      type="button"
+      role="tab"
+      class="segmento"
+      [class.activo]="vista() === 'repuestos'"
+      [attr.aria-selected]="vista() === 'repuestos'"
+      (click)="vista.set('repuestos')"
+    >
+      Lleva repuestos <span class="vista-cuenta">{{ cuentas().repuestos }}</span>
+    </button>
+    <button
+      type="button"
+      role="tab"
+      class="segmento"
+      [class.activo]="vista() === 'mano'"
+      [attr.aria-selected]="vista() === 'mano'"
+      (click)="vista.set('mano')"
+    >
+      Solo mano de obra <span class="vista-cuenta">{{ cuentas().mano }}</span>
+    </button>
   </div>
 
-  @if (cargando() || servicios().length === 0) {
+  <label class="buscador-catalogo">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+    </svg>
+    <input
+      type="search"
+      maxlength="100"
+      placeholder="Nombre o descripción"
+      aria-label="Buscar servicio"
+      [value]="buscar()"
+      (input)="buscar.set($any($event.target).value)"
+    />
+  </label>
+</div>
+
+<!-- ------------------------------------------------------------------- Lista -->
+<section class="lista-catalogo">
+  @if (cargando() || filtrados().length === 0) {
     <app-estado-tabla
       [cargando]="cargando()"
-      [hayFiltro]="buscar().length > 0"
+      [hayFiltro]="buscar().length > 0 || vista() !== 'todos'"
       titulo="Sin servicios en el catálogo"
       descripcion="Registre los servicios que ofrece el taller para poder cargarlos en las órdenes."
     />
   } @else {
-    <div class="tabla-contenedor">
-      <table class="tabla">
-        <thead>
-          <tr>
-            <th>Código</th>
-            <th>Servicio</th>
-            <th>Descripción</th>
-            <th class="num">Precio base</th>
-            <th>Estado</th>
-            <th *appSiRol="['Administrador']" class="th-acciones">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (servicio of servicios(); track servicio.servicioId) {
-            <tr>
-              <td class="codigo">{{ servicio.servicioId }}</td>
-              <td>
-                <div class="texto-fuerte">{{ servicio.nombre }}</div>
-                @if (servicio.requiereRepuesto) {
-                  <span
-                    class="insignia insignia-azul mt-1"
-                    title="En la orden no se completa sin registrar el repuesto usado"
-                  >
-                    Lleva repuestos
-                  </span>
-                  @if (nombresCategorias(servicio); as nombres) {
-                    <div class="texto-tenue texto-sm mt-1">{{ nombres }}</div>
-                  } @else {
-                    <div class="texto-tenue texto-sm mt-1">Cualquier repuesto</div>
-                  }
-                }
-              </td>
-              <td>
-                <!-- Truncada a 2 líneas: una descripción larga no debe deformar
-                     el alto de la fila. El texto completo queda en el title. -->
-                <span class="descripcion-recorte" [title]="servicio.descripcion || ''">
-                  {{ servicio.descripcion || '—' }}
-                </span>
-              </td>
-              <td class="num">{{ servicio.precioBase | bs }}</td>
-              <td><app-insignia-estado familia="activo" [valor]="servicio.estado" /></td>
-              <!-- *appSiRol quita la celda entera del DOM para quien no sea
-                   Administrador: no es un `disabled`, el mecánico ni la ve. -->
-              <td *appSiRol="['Administrador']">
-                <!-- Una sola fila de botones de ícono compactos, sin apilarse -->
-                <div class="acciones-iconos">
-                  <button
-                    type="button"
-                    class="btn-icono"
-                    title="Editar"
-                    aria-label="Editar servicio"
-                    (click)="abrirEditar(servicio)"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                    </svg>
-                  </button>
-
-                  @if (servicio.estado === EstadoServicio.Activo) {
-                    <button
-                      type="button"
-                      class="btn-icono btn-icono-peligro"
-                      title="Dar de baja"
-                      aria-label="Dar de baja el servicio"
-                      (click)="porCambiarEstado.set(servicio)"
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
-                      </svg>
-                    </button>
-                  } @else {
-                    <button
-                      type="button"
-                      class="btn-icono btn-icono-exito"
-                      title="Reactivar"
-                      aria-label="Reactivar servicio"
-                      (click)="porCambiarEstado.set(servicio)"
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 7.4-2" />
-                      </svg>
-                    </button>
-                  }
-                </div>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
+    <div class="fila-catalogo cabecera-catalogo" aria-hidden="true">
+      <span>Código</span>
+      <span>Servicio y qué incluye</span>
+      <span>Lleva</span>
+      <span class="a-la-derecha">Precio base</span>
+      <span>Activo</span>
+      <span></span>
     </div>
 
-    <app-paginador
-      [pagina]="pagina()"
-      [totalPaginas]="totalPaginas()"
-      [totalRegistros]="totalRegistros()"
-      [tamanoPagina]="tamanoPagina()"
-      (cambiarPagina)="cambiarPagina($event)"
-      (cambiarTamano)="cambiarTamano($event)"
-    />
-  }
-</div>
+    @for (servicio of filtrados(); track servicio.servicioId) {
+      <div
+        class="fila-catalogo"
+        [class.elegida]="formularioAbierto() && editando()?.servicioId === servicio.servicioId"
+        [class.inactiva]="servicio.estado !== EstadoServicio.Activo"
+      >
+        <span class="codigo">{{ servicio.servicioId }}</span>
 
+        <span class="servicio-textos">
+          <strong class="servicio-nombre">{{ servicio.nombre }}</strong>
+          @if (servicio.descripcion) {
+            <span class="servicio-descripcion">{{ servicio.descripcion }}</span>
+          } @else {
+            <span class="servicio-descripcion sin-descripcion">Sin descripción de lo que incluye</span>
+          }
+        </span>
+
+        <span class="servicio-lleva">
+          @if (!servicio.requiereRepuesto) {
+            <span class="etiqueta-lleva mano">Solo mano de obra</span>
+          } @else {
+            @for (categoria of servicio.categorias; track categoria.categoriaId) {
+              <span class="etiqueta-lleva">{{ categoria.nombre }}</span>
+            } @empty {
+              <span class="etiqueta-lleva">Cualquier repuesto</span>
+            }
+          }
+        </span>
+
+        <span class="servicio-precio">{{ servicio.precioBase | bs }}</span>
+
+        <span class="servicio-activo">
+          <button
+            type="button"
+            class="interruptor"
+            role="switch"
+            [attr.aria-checked]="servicio.estado === EstadoServicio.Activo"
+            [attr.aria-label]="'Servicio activo: ' + servicio.nombre"
+            [disabled]="!auth.esAdministrador() || cambiandoEstado() === servicio.servicioId"
+            (click)="alternarActivo(servicio)"
+          ></button>
+        </span>
+
+        <span class="servicio-acciones">
+          @if (auth.esAdministrador()) {
+            <button type="button" class="btn btn-secundario btn-sm" (click)="abrirEditar(servicio)">
+              Editar
+            </button>
+          }
+        </span>
+      </div>
+    }
+  }
+</section>
+
+<!-- ------------------------------------------------ Panel lateral: alta y edición -->
 @if (formularioAbierto()) {
-  <app-modal
+  <app-cajon
     [titulo]="editando() ? 'Editar servicio' : 'Nuevo servicio'"
+    [etiqueta]="editando()?.servicioId ?? 'El código se asigna al guardar'"
     (cerrar)="cerrarFormulario()"
   >
-    <form [formGroup]="formulario" id="form-servicio" (ngSubmit)="guardar()">
+    <form [formGroup]="formulario" id="form-servicio" class="form-servicio" (ngSubmit)="guardar()">
       <div class="campo">
         <label for="nombre">Nombre del servicio <span class="obligatorio">*</span></label>
         <input
@@ -166,7 +158,7 @@
           formControlName="nombre"
           list="lista-servicios-comunes"
           autocomplete="off"
-          placeholder="Ej. Cambio de aceite"
+          placeholder="Ej. Cambio de amortiguadores"
           [class.invalido]="invalido('nombre')"
         />
         <datalist id="lista-servicios-comunes">
@@ -180,148 +172,158 @@
       </div>
 
       <div class="campo">
-        <label for="descripcion">Descripción</label>
-        <textarea id="descripcion" formControlName="descripcion" rows="3"></textarea>
+        <label for="descripcion">Qué incluye</label>
+        <textarea
+          id="descripcion"
+          formControlName="descripcion"
+          rows="4"
+          placeholder="Qué se hace y qué no incluye."
+          [class.invalido]="invalido('descripcion')"
+        ></textarea>
+        @if (invalido('descripcion')) {
+          <span class="campo-error">{{ error('descripcion') }}</span>
+        } @else {
+          <span class="campo-ayuda">
+            Qué se hace y qué no incluye. Aparece al elegir el servicio en la orden.
+          </span>
+        }
       </div>
 
       <div class="campo">
-        <label for="precioBase">Precio base (Bs) <span class="obligatorio">*</span></label>
+        <label for="precioBase">Precio base <span class="obligatorio">*</span></label>
         <input
           id="precioBase"
+          class="entrada-monto"
           type="number"
           min="0"
           step="0.01"
+          inputmode="decimal"
           formControlName="precioBase"
           [class.invalido]="invalido('precioBase')"
         />
-        <span class="campo-ayuda">
-          Es solo referencia: al cargar el servicio en una orden se puede ajustar.
-        </span>
+        @if (invalido('precioBase')) {
+          <span class="campo-error">{{ error('precioBase') }}</span>
+        } @else {
+          <span class="campo-ayuda">Se puede ajustar en cada orden.</span>
+        }
       </div>
 
-      <div class="campo" [class.mb-0]="!formulario.controls.requiereRepuesto.value">
-        <label>¿Este servicio lleva repuestos? <span class="obligatorio">*</span></label>
-        <div class="selector-aplicacion" role="radiogroup" aria-label="Si el servicio lleva repuestos">
+      <div class="campo">
+        <span class="etiqueta-campo">¿Lleva repuestos?</span>
+        <div class="tipos-servicio" role="radiogroup" aria-label="¿Lleva repuestos?">
           <button
             type="button"
             role="radio"
-            [attr.aria-checked]="!formulario.controls.requiereRepuesto.value"
+            class="tipo-servicio"
             [class.activo]="!formulario.controls.requiereRepuesto.value"
+            [attr.aria-checked]="!formulario.controls.requiereRepuesto.value"
             (click)="elegirRequiereRepuesto(false)"
           >
             <strong>Solo mano de obra</strong>
-            <span>Alineación, balanceo, revisión, diagnóstico, limpieza.</span>
+            <span>No se carga ningún repuesto.</span>
           </button>
           <button
             type="button"
             role="radio"
-            [attr.aria-checked]="formulario.controls.requiereRepuesto.value"
+            class="tipo-servicio"
             [class.activo]="formulario.controls.requiereRepuesto.value"
+            [attr.aria-checked]="formulario.controls.requiereRepuesto.value"
             (click)="elegirRequiereRepuesto(true)"
           >
             <strong>Lleva repuestos</strong>
-            <span>
-              Cambio de aceite, de batería, de pastillas… En la orden no se completa sin
-              registrar el repuesto usado.
-            </span>
+            <span>En la orden solo se aceptan los de su categoría.</span>
           </button>
         </div>
       </div>
 
       @if (formulario.controls.requiereRepuesto.value) {
-        <div class="campo mb-0">
-          <label for="categoriaServicio">¿Qué repuestos lleva?</label>
+        <div class="campo">
+          <span class="etiqueta-campo">¿Qué repuestos lleva?</span>
+          <div class="caja-categorias">
+            @for (categoria of categoriasElegidas(); track categoria.categoriaId) {
+              <span class="etiqueta-lleva con-quitar">
+                {{ categoria.nombre }}
+                <button
+                  type="button"
+                  class="quitar-categoria"
+                  [attr.aria-label]="'Quitar ' + categoria.nombre"
+                  (click)="quitarCategoria(categoria.categoriaId)"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true">
+                    <path d="M18 6 6 18M6 6l12 12" />
+                  </svg>
+                </button>
+              </span>
+            }
+            @if (!agregandoCategoria()) {
+              <button type="button" class="agregar-categoria" (click)="mostrarAgregarCategoria()">
+                + Agregar categoría
+              </button>
+            }
+          </div>
 
-          @if (categoriasElegidas().length > 0) {
-            <div class="chips-categorias mb-1">
-              @for (categoria of categoriasElegidas(); track categoria.categoriaId) {
-                <span class="chip-categoria">
-                  {{ categoria.nombre }}
-                  <button
-                    type="button"
-                    [attr.aria-label]="'Quitar ' + categoria.nombre"
-                    (click)="quitarCategoria(categoria.categoriaId)"
-                  >
-                    ×
-                  </button>
-                </span>
-              }
-            </div>
-          }
-
-          @for (clave of [reinicioSelector()]; track clave) {
-            <app-selector-busqueda
-              idCampo="categoriaServicio"
-              name="categoriaServicio"
-              marcador="Agregar una categoría: Aceite de motor, Bujías…"
-              permitirNuevo="categoría nueva"
-              [opciones]="opcionesCategoria()"
-              [ngModel]="''"
-              [ngModelOptions]="{ standalone: true }"
-              (seleccion)="agregarCategoria($event)"
-            />
+          @if (agregandoCategoria()) {
+            @for (clave of [reinicioSelector()]; track clave) {
+              <app-selector-busqueda
+                idCampo="categoriaServicio"
+                name="categoriaServicio"
+                marcador="Escriba o elija la categoría: Aceite de motor, Bujías…"
+                permitirNuevo="categoría nueva"
+                [opciones]="opcionesCategoria()"
+                [ngModel]="''"
+                [ngModelOptions]="{ standalone: true }"
+                (seleccion)="agregarCategoria($event)"
+              />
+            }
           }
 
           @if (sugeridas(); as sugeridas) {
             @if (sugeridas.length > 0) {
-              <div class="chips-sugeridos">
-                <span class="texto-tenue texto-sm">Por el nombre:</span>
-                @for (categoria of sugeridas; track categoria.categoriaId) {
-                  <button type="button" class="chip-sugerido" (click)="sumarCategoria(categoria)">
-                    + {{ categoria.nombre }}
-                  </button>
+              <span class="sugerencia-categorias">
+                Por el nombre también podría llevar:
+                @for (categoria of sugeridas; track categoria.categoriaId; let ultima = $last) {
+                  <button type="button" class="btn-enlace" (click)="sumarCategoria(categoria)">
+                    {{ categoria.nombre }}</button
+                  >{{ ultima ? '' : ',' }}
                 }
-              </div>
+              </span>
             }
           }
 
-          <span class="campo-ayuda">
-            @if (categoriasElegidas().length > 0) {
-              En la orden, a este servicio solo se le podrán registrar repuestos del inventario
-              de estas categorías. Uno de otra categoría lo registra solo el Administrador,
-              escribiendo el motivo.
-            } @else {
-              Sin categorías, el servicio acepta cualquier repuesto. Elíjalas para que en la
-              orden no se registre, por ejemplo, un aceite en un cambio de bujías.
-            }
+          @if (categoriasElegidas().length === 0) {
+            <span class="campo-ayuda">Sin categorías, el servicio acepta cualquier repuesto.</span>
+          }
+        </div>
+      }
+
+      @if (editando(); as servicio) {
+        <div class="fila-activo">
+          <span class="fila-activo-textos">
+            <strong>Servicio activo</strong>
+            <span>Si está apagado, no se ofrece en órdenes nuevas.</span>
           </span>
+          <button
+            type="button"
+            class="interruptor"
+            role="switch"
+            [attr.aria-checked]="servicio.estado === EstadoServicio.Activo"
+            aria-label="Servicio activo"
+            [disabled]="cambiandoEstado() === servicio.servicioId"
+            (click)="alternarActivo(servicio)"
+          ></button>
         </div>
       }
     </form>
 
     <div pie>
-      <button type="button" class="btn btn-secundario" (click)="cerrarFormulario()">
-        Cancelar
-      </button>
-      <button
-        type="submit"
-        form="form-servicio"
-        class="btn btn-primario"
-        [disabled]="guardando()"
-      >
-        {{ guardando() ? 'Guardando…' : 'Guardar' }}
+      <button type="button" class="btn btn-secundario" (click)="cerrarFormulario()">Cancelar</button>
+      <button type="submit" form="form-servicio" class="btn btn-primario" [disabled]="guardando()">
+        @if (guardando()) {
+          Guardando…
+        } @else {
+          {{ editando() ? 'Guardar cambios' : 'Crear servicio' }}
+        }
       </button>
     </div>
-  </app-modal>
-}
-
-@if (porCambiarEstado(); as servicio) {
-  <app-confirmacion
-    [titulo]="servicio.estado === EstadoServicio.Activo ? 'Dar de baja el servicio' : 'Reactivar servicio'"
-    [mensaje]="
-      servicio.estado === EstadoServicio.Activo
-        ? '¿Dar de baja el servicio ' + servicio.nombre + '?'
-        : '¿Reactivar el servicio ' + servicio.nombre + '?'
-    "
-    [advertencia]="
-      servicio.estado === EstadoServicio.Activo
-        ? 'No se podrá cargar en nuevas órdenes mientras esté dado de baja.'
-        : null
-    "
-    [textoConfirmar]="servicio.estado === EstadoServicio.Activo ? 'Dar de baja' : 'Reactivar'"
-    [peligroso]="servicio.estado === EstadoServicio.Activo"
-    [procesando]="guardando()"
-    (confirmar)="cambiarEstado()"
-    (cancelar)="porCambiarEstado.set(null)"
-  />
+  </app-cajon>
 }

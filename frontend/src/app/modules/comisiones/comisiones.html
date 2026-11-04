@@ -1,475 +1,276 @@
-<div class="fila-entre envuelve mb-2">
+<div class="fila-entre envuelve mb-2 encabezado-pagina">
   <div>
-    @if (esAdmin()) {
-      <h1>Comisiones</h1>
-      <p class="texto-tenue texto-sm mb-0">
-        Se generan solas al cerrar una orden de trabajo
-      </p>
-    } @else {
-      <h1>Mis comisiones</h1>
-      <p class="texto-tenue texto-sm mb-0">
-        Se generan al cerrar cada orden en la que usted ejecutó servicios
-        @if (miPorcentaje() !== null) {
-          · su porcentaje: {{ miPorcentaje() }}%
-        }
-      </p>
-    }
+    <h1>{{ esAdmin() ? 'Comisiones' : 'Mis comisiones' }}</h1>
+    <p class="texto-tenue texto-sm mb-0">
+      @if (esAdmin()) {
+        Se calculan solas al cerrar cada orden, según el porcentaje del mecánico.
+      } @else {
+        Se calculan al cerrar cada orden en la que usted hizo servicios.
+      }
+    </p>
   </div>
-  @if (pestania() === 'config') {
-    <button type="button" class="btn btn-primario" (click)="abrirConfig()">
-      + Configurar porcentaje
-    </button>
+  @if (esAdmin()) {
+    <button type="button" class="btn btn-secundario" (click)="abrirPorcentajes()">Porcentajes</button>
   }
 </div>
 
-@if (esAdmin()) {
-  <div class="pestanias mb-2">
-    <button
-      type="button"
-      [class.activa]="pestania() === 'comisiones'"
-      (click)="cambiarPestania('comisiones')"
-    >
-      Comisiones
-    </button>
-    <button
-      type="button"
-      [class.activa]="pestania() === 'resumen'"
-      (click)="cambiarPestania('resumen')"
-    >
-      Resumen por mecánico
-    </button>
-    <button
-      type="button"
-      [class.activa]="pestania() === 'config'"
-      (click)="cambiarPestania('config')"
-    >
-      Porcentajes
-    </button>
+@if (cargando() || tarjetas().length === 0) {
+  <div class="tarjeta">
+    <app-estado-tabla
+      [cargando]="cargando()"
+      titulo="Sin comisiones generadas"
+      descripcion="Las comisiones se calculan al cerrar una orden de trabajo, según el porcentaje de cada mecánico."
+    />
   </div>
-}
+} @else {
+  <!-- ------------------------------------------------------------ Mecánicos -->
+  <div class="tarjetas-mecanico">
+    @for (m of tarjetas(); track m.mecanicoId) {
+      <section class="tarjeta-mecanico" [class.elegida]="mecanicoAbierto() === m.mecanicoId">
+        <div class="mecanico-cabecera">
+          <span class="mecanico-avatar" aria-hidden="true">{{ m.iniciales }}</span>
+          <span class="mecanico-textos">
+            <strong>{{ m.nombre }}</strong>
+            <span>
+              {{ m.porcentaje !== null ? m.porcentaje + ' % de cada servicio que realiza' : 'Sin porcentaje configurado' }}
+            </span>
+          </span>
+        </div>
 
-@switch (pestania()) {
-  <!-- ================================================== Listado detallado -->
-  @case ('comisiones') {
-    <!-- KPIs financieros: montos globales (salen de `resumen`, sin el filtro) -->
-    <div class="kpis-comisiones mb-2">
-      <div class="kpi-comision kpi-pendiente">
-        <span class="kpi-etiqueta">Total pendiente</span>
-        <span class="kpi-valor">{{ kpiTotalPendiente() | bs }}</span>
-        <span class="kpi-pie">{{ esAdmin() ? 'Por liquidar a los mecánicos' : 'Por cobrar' }}</span>
-      </div>
-      <div class="kpi-comision kpi-pagado">
-        <span class="kpi-etiqueta">Total pagado</span>
-        <span class="kpi-valor">{{ kpiTotalPagado() | bs }}</span>
-        <span class="kpi-pie">{{ esAdmin() ? 'Comisiones ya liquidadas' : 'Ya cobradas' }}</span>
-      </div>
-      <div class="kpi-comision">
-        <span class="kpi-etiqueta">Cantidad pendiente</span>
-        <span class="kpi-valor">{{ kpiCantidadPendiente() }}</span>
-        <span class="kpi-pie">Comisión(es) sin pagar en la vista</span>
-      </div>
-    </div>
+        <div class="mecanico-montos">
+          <div class="monto-caja por-pagar">
+            <span>Por pagar</span>
+            <span class="monto-mono monto-grande">{{ m.pendiente | bs }}</span>
+            <span>{{ m.cantidadPendiente === 1 ? '1 comisión' : m.cantidadPendiente + ' comisiones' }}</span>
+          </div>
+          <div class="monto-caja pagado">
+            <span>Ya pagado</span>
+            <span class="monto-mono monto-grande">{{ m.pagado | bs }}</span>
+            <span>{{ m.desde }}</span>
+          </div>
+        </div>
 
-    <div class="tarjeta">
-      <div class="tarjeta-encabezado">
-        <div class="fila envuelve">
-          <select
-            style="max-width: 200px"
-            [value]="estadoFiltro()"
-            (change)="onFiltrarEstado($any($event.target).value)"
-          >
-            <option value="">Todas</option>
-            <option value="0">Pendientes</option>
-            <option value="1">Pagadas</option>
-          </select>
-
-          @if (esAdmin() && pendientes().length > 0) {
+        <div class="mecanico-botones">
+          <button type="button" class="btn btn-secundario" (click)="abrirMecanico(m.mecanicoId)">
+            Ver servicios
+          </button>
+          @if (esAdmin()) {
             <button
               type="button"
-              class="btn btn-secundario btn-sm"
-              (click)="seleccionarTodasPendientes()"
+              class="btn btn-primario"
+              [disabled]="m.cantidadPendiente === 0"
+              (click)="abrirMecanico(m.mecanicoId)"
             >
-              {{ seleccionadas().size === pendientes().length ? 'Quitar selección' : 'Seleccionar pendientes' }}
+              Liquidar
             </button>
           }
         </div>
-        <span class="texto-tenue texto-sm">{{ totalRegistros() }} comisión(es)</span>
-      </div>
-
-      @if (cargando() || comisiones().length === 0) {
-        <app-estado-tabla
-          [cargando]="cargando()"
-          [hayFiltro]="estadoFiltro().length > 0"
-          titulo="Sin comisiones generadas"
-          descripcion="Las comisiones se calculan al cerrar una orden de trabajo."
-        />
-      } @else {
-        <div class="tabla-contenedor">
-          <table class="tabla">
-            <thead>
-              <tr>
-                @if (esAdmin()) {
-                  <th style="width: 34px"></th>
-                }
-                <th>Código</th>
-                <th>Cálculo</th>
-                <th>Orden</th>
-                @if (esAdmin()) {
-                  <th>Mecánico</th>
-                }
-                <th class="num">Monto</th>
-                <th>Estado</th>
-                <th class="th-acciones">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (comision of comisiones(); track comision.comisionId) {
-                <tr>
-                  @if (esAdmin()) {
-                    <td>
-                      @if (comision.estadoPago === EstadoPago.Pendiente) {
-                        <input
-                          type="checkbox"
-                          style="width: auto"
-                          [checked]="estaSeleccionada(comision.comisionId)"
-                          (change)="alternarSeleccion(comision.comisionId)"
-                        />
-                      }
-                    </td>
-                  }
-                  <td class="codigo">{{ comision.comisionId }}</td>
-                  <td class="texto-sm">{{ comision.fechaCalculo | date: 'dd/MM/yyyy' }}</td>
-                  <td>
-                    <a class="enlace-orden" [routerLink]="['/ordenes', comision.ordenId]">
-                      {{ comision.ordenId }}
-                    </a>
-                    <div class="texto-tenue texto-sm">{{ comision.placaVehiculo }}</div>
-                  </td>
-                  @if (esAdmin()) {
-                    <td>
-                      <span class="celda-mecanico">
-                        <span class="avatar-ini" aria-hidden="true">{{ iniciales(comision.nombreMecanico) }}</span>
-                        <span>{{ comision.nombreMecanico }}</span>
-                      </span>
-                    </td>
-                  }
-                  <td class="num texto-fuerte">{{ comision.monto | bs }}</td>
-                  <td>
-                    <app-insignia-estado familia="pago" [valor]="comision.estadoPago" />
-                    @if (comision.fechaPago) {
-                      <div class="texto-tenue texto-sm">
-                        {{ comision.fechaPago | date: 'dd/MM/yyyy' }}
-                      </div>
-                    }
-                  </td>
-                  <td>
-                    <div class="acciones">
-                      <!-- Detalle: acción secundaria, botón de ícono discreto -->
-                      <button
-                        type="button"
-                        class="btn-icono"
-                        [class.abierto]="expandida() === comision.comisionId"
-                        [title]="expandida() === comision.comisionId ? 'Ocultar detalle' : 'Ver detalle'"
-                        [attr.aria-label]="expandida() === comision.comisionId ? 'Ocultar detalle' : 'Ver detalle'"
-                        (click)="alternarDetalle(comision.comisionId)"
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                          <path d="m6 9 6 6 6-6" />
-                        </svg>
-                      </button>
-                      <!-- Pagar: acción principal cuando está pendiente, botón sólido -->
-                      @if (esAdmin() && comision.estadoPago === EstadoPago.Pendiente) {
-                        <button type="button" class="btn btn-exito btn-sm" (click)="porPagar.set(comision)">
-                          Pagar
-                        </button>
-                      }
-                    </div>
-                  </td>
-                </tr>
-                @if (expandida() === comision.comisionId) {
-                  <tr>
-                    @if (esAdmin()) {
-                      <td></td>
-                    }
-                    <td [attr.colspan]="esAdmin() ? 7 : 6">
-                      @if (comision.detalle.length === 0) {
-                        <p class="texto-tenue texto-sm mb-0">
-                          Sin servicios registrados para este mecánico en la orden.
-                        </p>
-                      } @else {
-                        <table class="tabla">
-                          <thead>
-                            <tr>
-                              <th>Servicio</th>
-                              <th>Detalle</th>
-                              <th class="num">Precio</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            @for (item of comision.detalle; track item.ordenServicioId) {
-                              <tr>
-                                <td class="texto-sm">{{ item.nombreServicio }}</td>
-                                <td class="texto-tenue texto-sm">{{ item.descripcion || '—' }}</td>
-                                <td class="num texto-sm">{{ item.precio | bs }}</td>
-                              </tr>
-                            }
-                          </tbody>
-                        </table>
-                      }
-                    </td>
-                  </tr>
-                }
-              }
-            </tbody>
-          </table>
-        </div>
-
-        <app-paginador
-          [pagina]="pagina()"
-          [totalPaginas]="totalPaginas()"
-          [totalRegistros]="totalRegistros()"
-          [tamanoPagina]="tamanoPagina()"
-          (cambiarPagina)="cambiarPagina($event)"
-          (cambiarTamano)="cambiarTamano($event)"
-        />
-      }
-    </div>
-
-    <!-- Barra de acción en lote: solo aparece con al menos una seleccionada -->
-    @if (seleccionadas().size > 0) {
-      <div class="barra-lote">
-        <div class="barra-lote-info">
-          <span class="barra-lote-cuenta">{{ seleccionadas().size }}</span>
-          <div>
-            <div class="barra-lote-titulo">seleccionada(s)</div>
-            <div class="barra-lote-total">{{ totalSeleccionado() | bs }}</div>
-          </div>
-        </div>
-        <div class="barra-lote-acciones">
-          <button type="button" class="btn-vaciar-sel" (click)="limpiarSeleccion()">
-            Limpiar
-          </button>
-          <button type="button" class="btn btn-exito" (click)="abrirPagarLote()">
-            Pagar seleccionadas
-          </button>
-        </div>
-      </div>
+      </section>
     }
-  }
+  </div>
 
-  <!-- ======================================================== Resumen -->
-  @case ('resumen') {
-    <div class="tarjeta">
-      <div class="tarjeta-encabezado"><h2>Totales por mecánico</h2></div>
-
-      @if (resumen().length === 0) {
-        <div class="vacio">
-          <div class="vacio-titulo">Sin datos</div>
-          <div class="texto-sm">Aún no se generaron comisiones.</div>
-        </div>
-      } @else {
-        <div class="tabla-contenedor">
-          <table class="tabla">
-            <thead>
-              <tr>
-                <th>Mecánico</th>
-                <th class="num">Porcentaje</th>
-                <th class="num">Comisiones</th>
-                <th class="num">Pendiente</th>
-                <th class="num">Pagado</th>
-                <th class="num">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (fila of resumen(); track fila.mecanicoId) {
-                <tr>
-                  <td class="texto-fuerte">{{ fila.nombreMecanico }}</td>
-                  <td class="num">
-                    {{ fila.porcentajeConfigurado !== null ? fila.porcentajeConfigurado + '%' : '—' }}
-                  </td>
-                  <td class="num">{{ fila.cantidadComisiones }}</td>
-                  <td class="num texto-rojo">{{ fila.totalPendiente | bs }}</td>
-                  <td class="num texto-verde">{{ fila.totalPagado | bs }}</td>
-                  <td class="num texto-fuerte">{{ fila.totalGeneral | bs }}</td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      }
-    </div>
-  }
-
-  <!-- ================================================== Configuración -->
-  @case ('config') {
-    <div class="tarjeta">
-      <div class="tarjeta-encabezado">
-        <h2>Porcentajes configurados</h2>
-        <span class="texto-tenue texto-sm">
-          Solo afecta a las órdenes que se cierren de aquí en adelante
-        </span>
+  <!-- ------------------------------------------------- Últimas liquidaciones -->
+  <section class="liquidaciones">
+    <h2>Últimas liquidaciones</h2>
+    @for (l of liquidaciones(); track l.clave) {
+      <div class="fila-liquidacion">
+        <span class="liquidacion-fecha">{{ l.fecha | date: 'dd/MM/yyyy' }}</span>
+        <span>{{ l.mecanico }}</span>
+        <span class="liquidacion-detalle">{{ l.cantidad === 1 ? '1 comisión' : l.cantidad + ' comisiones' }}</span>
+        <span class="monto-mono a-la-derecha">{{ l.monto | bs }}</span>
       </div>
-
-      @if (configuraciones().length === 0) {
-        <div class="vacio">
-          <div class="vacio-titulo">Sin porcentajes configurados</div>
-          <div class="texto-sm">
-            Sin porcentaje configurado, al cerrar una orden no se genera comisión para el mecánico.
-          </div>
-        </div>
-      } @else {
-        <div class="tabla-contenedor">
-          <table class="tabla">
-            <thead>
-              <tr>
-                <th>Código</th>
-                <th>Mecánico</th>
-                <th class="num">Porcentaje</th>
-                <th>Actualizado</th>
-                <th class="th-acciones">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (cfg of configuraciones(); track cfg.configId) {
-                <tr>
-                  <td class="codigo">{{ cfg.configId }}</td>
-                  <td class="texto-fuerte">{{ cfg.nombreMecanico }}</td>
-                  <td class="num">{{ cfg.porcentaje }}%</td>
-                  <td class="texto-sm">{{ cfg.fechaActualizacion | date: 'dd/MM/yyyy' }}</td>
-                  <td>
-                    <div class="acciones">
-                      <button
-                        type="button"
-                        class="btn-enlace"
-                        (click)="abrirConfig(cfg.mecanicoId, cfg.porcentaje)"
-                      >
-                        Cambiar
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      }
-    </div>
-  }
+    } @empty {
+      <p class="liquidaciones-vacio">Todavía no se liquidó ninguna comisión.</p>
+    }
+  </section>
 }
 
-@if (panelConfig()) {
-  <app-modal titulo="Porcentaje de comisión" [ancho]="560" (cerrar)="panelConfig.set(false)">
-    <div class="campo">
-      <label for="mecanicoConfig">Mecánico</label>
-      <app-selector-busqueda
-        idCampo="mecanicoConfig"
-        name="mecanicoConfig"
-        marcador="Escriba el nombre del mecánico…"
-        [opciones]="opcionesMecanico()"
-        [(ngModel)]="config.mecanicoId"
-      />
-    </div>
-
-    <div class="campo">
-      <label for="porcentajeConfig">Porcentaje (%)</label>
-      <input
-        id="porcentajeConfig"
-        type="number"
-        min="0"
-        max="100"
-        step="0.01"
-        name="porcentajeConfig"
-        [(ngModel)]="config.porcentaje"
-      />
-      <span class="campo-ayuda">
-        Se aplica sobre la suma de los servicios que ejecutó en cada orden.
-        El administrador suele configurarse en 100% (se queda con todo el servicio que trabaja).
-      </span>
-    </div>
-
-    <div pie>
-      <button type="button" class="btn btn-secundario" (click)="panelConfig.set(false)">
-        Cancelar
+<!-- --------------------------------------------- Panel: servicios del mecánico -->
+@if (seleccion(); as m) {
+  <app-cajon
+    [titulo]="'Servicios de ' + m.nombre"
+    [subtitulo]="m.porcentaje !== null ? m.porcentaje + ' % de cada servicio' : 'Sin porcentaje configurado'"
+    [ancho]="480"
+    (cerrar)="cerrarMecanico()"
+  >
+    <div class="chips-filtro" role="group" aria-label="Mostrar">
+      <button
+        type="button"
+        class="chip-filtro"
+        [class.activo]="vistaPanel() === 'pendientes'"
+        [attr.aria-pressed]="vistaPanel() === 'pendientes'"
+        (click)="vistaPanel.set('pendientes')"
+      >
+        Por pagar
       </button>
       <button
         type="button"
-        class="btn btn-primario"
-        [disabled]="procesando()"
-        (click)="guardarConfig()"
+        class="chip-filtro"
+        [class.activo]="vistaPanel() === 'pagadas'"
+        [attr.aria-pressed]="vistaPanel() === 'pagadas'"
+        (click)="vistaPanel.set('pagadas')"
       >
-        Guardar
+        Pagadas
+      </button>
+      <button
+        type="button"
+        class="chip-filtro"
+        [class.activo]="vistaPanel() === 'todas'"
+        [attr.aria-pressed]="vistaPanel() === 'todas'"
+        (click)="vistaPanel.set('todas')"
+      >
+        Todas
       </button>
     </div>
-  </app-modal>
-}
 
-@if (porPagar(); as comision) {
-  <app-confirmacion
-    titulo="Pagar comisión"
-    [mensaje]="
-      '¿Marcar como pagada la comisión de ' + comision.nombreMecanico +
-      ' por ' + (comision.monto | bs) + '?'
-    "
-    advertencia="El pago es irreversible: no se puede revertir una vez registrado."
-    textoConfirmar="Marcar como pagada"
-    [procesando]="procesando()"
-    (confirmar)="pagar()"
-    (cancelar)="porPagar.set(null)"
-  />
-}
+    @for (c of comisionesPanel(); track c.comisionId) {
+      @let elegible = esAdmin() && c.estadoPago === EstadoPago.Pendiente && vistaPanel() === 'pendientes';
+      <article class="orden-comision" [class.fuera]="elegible && !elegidas().has(c.comisionId)">
+        <div class="orden-comision-cabecera">
+          @if (elegible) {
+            <input
+              type="checkbox"
+              class="orden-comision-check"
+              [checked]="elegidas().has(c.comisionId)"
+              [attr.aria-label]="'Liquidar la comisión de la orden ' + c.ordenId"
+              (change)="alternarElegida(c.comisionId)"
+            />
+          }
+          <span class="orden-comision-textos">
+            <span class="orden-comision-titulo">
+              <a class="codigo" [routerLink]="['/ordenes', c.ordenId]">{{ c.ordenId }}</a>
+              <strong>{{ vehiculoDe(c) }}</strong>
+            </span>
+            <span class="orden-comision-detalle">{{ detalleDe(c) }}</span>
+          </span>
+          <span class="orden-comision-monto">
+            <span>Comisión</span>
+            <span class="monto-mono">{{ c.monto | bs }}</span>
+          </span>
+        </div>
 
-@if (porPagarLote()) {
-  <app-modal titulo="Liquidar comisiones" [ancho]="560" (cerrar)="porPagarLote.set(false)">
-    <p class="texto-sm">
-      Se liquidarán <strong>{{ seleccionadas().size }}</strong> comisión(es).
-      La liquidación es todo o nada, y el pago no se puede revertir.
-    </p>
-
-    @if (mecanicoUnicoSeleccionado(); as mecanico) {
-      <div class="campo">
-        <label for="adelanto">Adelanto entregado a {{ mecanico }} (Bs)</label>
-        <input
-          id="adelanto"
-          type="number"
-          min="0"
-          step="0.01"
-          name="adelanto"
-          placeholder="0.00"
-          [(ngModel)]="adelanto"
-        />
-        <span class="texto-tenue texto-sm">
-          Monto que ya recibió durante la semana; se descuenta del pago.
-        </span>
-      </div>
-    } @else {
-      <p class="texto-tenue texto-sm">
-        La planilla incluye varios mecánicos: para descontar un adelanto, liquide de a un mecánico.
+        @for (s of c.detalle; track s.ordenServicioId) {
+          <div class="servicio-comision">
+            <span>{{ s.nombreServicio }}</span>
+            <span class="monto-mono servicio-precio">{{ s.precio | bs }}</span>
+            <span class="monto-mono">{{ comisionServicio(c, s.precio) | bs }}</span>
+          </div>
+        } @empty {
+          <div class="servicio-comision servicio-vacio">Sin servicios registrados para este mecánico en la orden.</div>
+        }
+      </article>
+    } @empty {
+      <p class="panel-vacio">
+        {{ vistaPanel() === 'pendientes' ? 'No le queda nada por pagar.' : 'Sin comisiones para mostrar.' }}
       </p>
     }
 
-    <dl class="datos">
-      <dt>Total bruto</dt>
-      <dd>{{ totalSeleccionado() | bs }}</dd>
-      @if (mecanicoUnicoSeleccionado() && adelanto > 0) {
-        <dt>Adelanto</dt>
-        <dd class="texto-rojo">− {{ adelanto | bs }}</dd>
-        <dt class="texto-fuerte">Neto a pagar</dt>
-        <dd class="texto-fuerte">{{ totalSeleccionado() - adelanto | bs }}</dd>
-      }
-    </dl>
+    @if (esAdmin() && vistaPanel() === 'pendientes' && pendientesDelMecanico().length > 0) {
+      <div pie class="pie-liquidar">
+        <div class="liquidar-fila">
+          <span>Comisiones a liquidar ({{ elegidas().size }})</span>
+          <span class="monto-mono">{{ totalElegido() | bs }}</span>
+        </div>
+        <div class="liquidar-fila">
+          <label for="adelanto">Adelanto ya entregado (Bs)</label>
+          <input
+            id="adelanto"
+            class="entrada-adelanto"
+            type="number"
+            min="0"
+            step="0.01"
+            inputmode="decimal"
+            [ngModel]="adelanto()"
+            (ngModelChange)="onAdelanto($event)"
+          />
+        </div>
+        <div class="liquidar-total">
+          <strong>A pagar ahora</strong>
+          <span class="monto-mono">{{ aPagar() | bs }}</span>
+        </div>
+        <button
+          type="button"
+          class="btn btn-primario boton-liquidar"
+          [disabled]="elegidas().size === 0 || procesando()"
+          (click)="pedirLiquidacion()"
+        >
+          Liquidar y pagar {{ aPagar() | bs }}
+        </button>
+      </div>
+    }
+  </app-cajon>
+}
 
-    <div pie>
-      <button type="button" class="btn btn-secundario" (click)="porPagarLote.set(false)">
-        Cancelar
-      </button>
-      <button
-        type="button"
-        class="btn btn-exito"
-        [disabled]="procesando()"
-        (click)="pagarLote()"
-      >
-        Liquidar
-      </button>
+<!-- ------------------------------------------------------ Panel: porcentajes -->
+@if (panelPorcentajes()) {
+  <app-cajon
+    titulo="Porcentajes de comisión"
+    subtitulo="Se aplican a las órdenes que se cierren desde ahora."
+    (cerrar)="panelPorcentajes.set(false)"
+  >
+    <form class="form-porcentaje" (ngSubmit)="guardarConfig()">
+      <div class="campo">
+        <label for="mecanicoConfig">Mecánico</label>
+        <app-selector-busqueda
+          idCampo="mecanicoConfig"
+          name="mecanicoConfig"
+          marcador="Escriba el nombre del mecánico…"
+          [opciones]="opcionesMecanico()"
+          [(ngModel)]="config.mecanicoId"
+        />
+      </div>
+
+      <div class="campo">
+        <label for="porcentajeConfig">Porcentaje (%)</label>
+        <input
+          id="porcentajeConfig"
+          type="number"
+          min="0"
+          max="100"
+          step="0.01"
+          name="porcentajeConfig"
+          [(ngModel)]="config.porcentaje"
+        />
+        <span class="campo-ayuda">
+          Se aplica sobre la suma de los servicios que hizo en cada orden. El administrador suele
+          tener 100 %: se queda con todo el servicio que trabaja.
+        </span>
+      </div>
+
+      <button type="submit" class="btn btn-primario" [disabled]="procesando()">Guardar porcentaje</button>
+    </form>
+
+    <div class="lista-porcentajes">
+      <span class="etiqueta-campo">Configurados</span>
+      @for (cfg of configuraciones(); track cfg.configId) {
+        <div class="fila-porcentaje">
+          <span class="porcentaje-nombre">
+            <strong>{{ cfg.nombreMecanico }}</strong>
+            <span>Actualizado el {{ cfg.fechaActualizacion | date: 'dd/MM/yyyy' }}</span>
+          </span>
+          <span class="monto-mono">{{ cfg.porcentaje }} %</span>
+          <button type="button" class="btn btn-secundario btn-sm" (click)="cambiarPorcentaje(cfg)">Cambiar</button>
+        </div>
+      } @empty {
+        <p class="panel-vacio">
+          Sin porcentaje configurado, al cerrar una orden no se genera comisión para el mecánico.
+        </p>
+      }
     </div>
-  </app-modal>
+  </app-cajon>
+}
+
+@if (porLiquidar()) {
+  <app-confirmacion
+    titulo="Liquidar comisiones"
+    [mensaje]="
+      '¿Pagar ' + elegidas().size + (elegidas().size === 1 ? ' comisión' : ' comisiones') +
+      ' de ' + (seleccion()?.nombre ?? '') + ' por ' + (aPagar() | bs) + '?'
+    "
+    advertencia="El pago no se puede revertir una vez registrado."
+    textoConfirmar="Liquidar y pagar"
+    [procesando]="procesando()"
+    (confirmar)="liquidar()"
+    (cancelar)="porLiquidar.set(false)"
+  />
 }

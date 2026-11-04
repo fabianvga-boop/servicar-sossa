@@ -11,49 +11,53 @@
 }
 
 /* ============================================ KPIs de abastecimiento */
+/* Un solo panel con tres celdas divididas por una línea, en vez de tres
+   tarjetas con borde rojo: el rojo queda para la acción principal. */
 .kpis-compras {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  background: var(--blanco);
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio);
 }
 
 .kpi-compra {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 14px 16px;
-  background: var(--blanco);
-  border: 1px solid var(--gris-200);
-  border-left: 4px solid var(--brand);
-  border-radius: var(--radio);
+  gap: 4px;
+  padding: 16px 20px;
 }
 
+.kpi-compra + .kpi-compra { border-left: 1px solid var(--gris-100); }
+
 .kpi-etiqueta {
-  font-size: 10.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: 13px;
   color: var(--gris-500);
 }
 
 .kpi-valor {
-  font-size: 24px;
-  font-weight: 800;
+  font-family: var(--fuente-mono);
+  font-size: 22px;
+  font-weight: 500;
   color: var(--ink);
-  font-variant-numeric: tabular-nums;
-  line-height: 1.1;
+  line-height: 1.2;
 }
 
 .kpi-pie {
-  font-size: 11.5px;
-  color: var(--gris-500);
+  font-size: 12px;
+  color: var(--gris-400);
 }
 
 @media (max-width: 720px) {
   .kpis-compras { grid-template-columns: 1fr; }
+
+  .kpi-compra + .kpi-compra {
+    border-left: none;
+    border-top: 1px solid var(--gris-100);
+  }
 }
 
-/* -------------------------------------------------------- Fila de filtros */
+/* ================================================================ Filtros */
 .filtros-compras {
   display: flex;
   align-items: center;
@@ -61,41 +65,266 @@
   flex-wrap: wrap;
 }
 
-/* -------------------------------------------------- Chips de rango rápido */
-.chips-rango-compras {
+.filtro-proveedor { width: auto; min-width: 200px; }
+
+/* Las dos fechas se leen como un solo control de rango */
+.rango-fechas-compras {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--gris-100);
+  border: 1px solid var(--gris-300);
+  border-radius: var(--radio-sm);
+  background: var(--blanco);
+  overflow: hidden;
 }
 
-.rangos-etiqueta {
-  font-size: 11.5px;
+.rango-fechas-compras input {
+  width: auto;
+  padding: 9px 11px;
+  border: none;
+  background: none;
+  font-size: 13px;
+}
+
+.rango-fechas-compras input:focus {
+  outline: 2px solid var(--brand);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+.rango-fechas-compras .separador {
+  width: 1px;
+  align-self: stretch;
+  background: var(--gris-200);
+}
+
+.limpiar-fechas {
+  width: 28px;
+  height: 28px;
+  margin-right: 3px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: var(--radio-sm);
+  background: none;
+  color: var(--gris-400);
+  cursor: pointer;
+}
+
+.limpiar-fechas:hover { background: var(--gris-100); color: var(--ink-soft); }
+
+/* ================================================================== Lista */
+.fila-compra {
+  grid-template-columns: 84px 128px minmax(0, 1.3fr) minmax(0, 1fr) 110px 112px;
+}
+
+.compra-fecha {
+  font-size: 13px;
+  color: var(--gris-500);
+}
+
+.compra-origen {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 0;
+}
+
+.compra-origen-texto,
+.compra-repuestos {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compra-repuestos {
+  font-size: 13px;
+  color: var(--gris-500);
+}
+
+.insignia-ocasional {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--naranja-100);
+  color: var(--naranja-700);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* ===================================================== Detalle de una compra */
+.detalle-compra-sub {
+  margin: -6px 0 0;
+  font-size: 13px;
+  color: var(--gris-500);
+}
+
+.detalle-compra-origen {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--fondo-app);
+}
+
+.detalle-compra-icono {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--gris-200);
+  border-radius: 10px;
+  background: var(--blanco);
+  color: var(--gris-500);
+}
+
+.detalle-compra-origen-textos {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  color: var(--gris-500);
+}
+
+.detalle-compra-origen-textos strong {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.detalle-compra-enlace {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.detalle-compra-bloque {
+  display: flex;
+  flex-direction: column;
+}
+
+.detalle-compra-bloque .etiqueta-campo { padding-bottom: 8px; }
+
+.detalle-compra-linea {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--gris-100);
+}
+
+.detalle-compra-ini {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--gris-100);
+  font-size: 12px;
   font-weight: 600;
   color: var(--gris-500);
 }
 
-.chip-rango {
-  padding: 5px 13px;
-  border: 1px solid var(--gris-200);
-  border-radius: 20px;
-  background: var(--blanco);
-  font: inherit;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--ink-soft);
-  cursor: pointer;
-  transition: background 0.12s, color 0.12s, border-color 0.12s;
+.detalle-compra-nombre {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
 }
 
-.chip-rango:hover { border-color: var(--gris-400); color: var(--ink); }
+.detalle-compra-nombre strong {
+  font-size: 14px;
+  font-weight: 500;
+}
 
-.chip-rango.activo {
-  background: var(--brand);
-  border-color: var(--brand);
-  color: var(--blanco);
+.detalle-compra-cantidad {
+  font-size: 12px;
+  color: var(--gris-500);
+}
+
+.detalle-compra-derecha {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  font-size: 14px;
+}
+
+.detalle-compra-derecha a { font-size: 12px; }
+
+.detalle-compra-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--gris-200);
+}
+
+.detalle-compra-total strong { font-size: 15px; }
+
+.detalle-compra-total .monto-mono { font-size: 22px; }
+
+.detalle-compra-ok {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--verde-100);
+  color: var(--verde-700);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.detalle-compra-ok svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.detalle-compra-nota {
+  margin: -6px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--gris-400);
+}
+
+/* Con el panel abierto la lista se angosta: sin fecha ni repuestos */
+@media (max-width: 1700px) {
+  :host-context(body.con-cajon) .fila-compra {
+    grid-template-columns: 84px minmax(0, 1fr) 110px 112px;
+  }
+
+  :host-context(body.con-cajon) .compra-fecha,
+  :host-context(body.con-cajon) .compra-repuestos,
+  :host-context(body.con-cajon) .cabecera-lista span:nth-child(2),
+  :host-context(body.con-cajon) .cabecera-lista span:nth-child(4) { display: none; }
+}
+
+@media (max-width: 900px) {
+  .cabecera-lista { display: none; }
+
+  .fila-compra {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 12px;
+    padding: 14px 16px;
+  }
+
+  .fila-compra .codigo { grid-row: 1; grid-column: 1; }
+  .compra-fecha { grid-row: 1; grid-column: 2; justify-self: end; }
+  .compra-origen { grid-row: 2; grid-column: 1 / -1; }
+  .compra-repuestos { grid-row: 3; grid-column: 1 / -1; }
+  .fila-compra .monto-mono { grid-row: 4; grid-column: 1; text-align: left; }
+  .fila-compra > span:last-child { grid-row: 4; grid-column: 2; }
+
+  .filtro-proveedor { flex: 1 1 100%; }
 }
 
 /* Explicación de la compra ocasional, arriba del formulario. */

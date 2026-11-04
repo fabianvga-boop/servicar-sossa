@@ -1,7 +1,7 @@
 <div class="fila-entre envuelve mb-2 encabezado-pagina">
   <div>
     <h1>Diagnósticos</h1>
-    <p class="texto-tenue texto-sm mb-0">Fallas detectadas en los vehículos</p>
+    <p class="texto-tenue texto-sm mb-0">Recepción del vehículo, presupuesto y respuesta del cliente.</p>
   </div>
   <button
     type="button"
@@ -29,189 +29,332 @@
   </div>
 }
 
-<div class="tarjeta">
-  <div class="tarjeta-encabezado">
-    <div class="filtros-diagnosticos">
-      <select
-        class="filtro-ancho-md"
-        [value]="estadoFiltro()"
-        (change)="onFiltrarEstado($any($event.target).value)"
-      >
-        <option value="">Todos los estados</option>
-        <option value="0">Registrado</option>
-        <option value="1">Revisado</option>
-        <option value="2">Anulado</option>
-      </select>
-
-      <div class="buscador-con-icono">
-        <svg class="buscador-con-icono-lupa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="10.5" cy="10.5" r="6.5" /><path d="m20 20-4.4-4.4" />
-        </svg>
-        <input
-          type="search"
-          maxlength="100"
-          placeholder="Buscar por placa, falla u observaciones…"
-          aria-label="Buscar por placa, falla u observaciones"
-          [value]="buscar()"
-          (input)="onBuscar($any($event.target).value)"
-        />
-      </div>
-    </div>
-    <span class="texto-tenue texto-sm">{{ totalRegistros() }} diagnóstico(s)</span>
+<!-- ---------------------------------------------------------- Filtros por respuesta -->
+<div class="filtros-diag mb-2">
+  <div class="chips-filtro" role="group" aria-label="Filtrar por respuesta del cliente">
+    <button
+      type="button"
+      class="chip-filtro"
+      [class.activo]="filtro() === 'todos'"
+      [attr.aria-pressed]="filtro() === 'todos'"
+      (click)="elegirFiltro('todos')"
+    >
+      Todos <span class="chip-cuenta">{{ cuentas().todos }}</span>
+    </button>
+    <button
+      type="button"
+      class="chip-filtro"
+      [class.activo]="filtro() === 'esperando'"
+      [attr.aria-pressed]="filtro() === 'esperando'"
+      (click)="elegirFiltro('esperando')"
+    >
+      <span class="chip-punto naranja" aria-hidden="true"></span>
+      Esperando respuesta <span class="chip-cuenta">{{ cuentas().esperando }}</span>
+    </button>
+    <button
+      type="button"
+      class="chip-filtro"
+      [class.activo]="filtro() === 'aprobados'"
+      [attr.aria-pressed]="filtro() === 'aprobados'"
+      (click)="elegirFiltro('aprobados')"
+    >
+      Aprobados <span class="chip-cuenta">{{ cuentas().aprobados }}</span>
+    </button>
+    <button
+      type="button"
+      class="chip-filtro"
+      [class.activo]="filtro() === 'rechazados'"
+      [attr.aria-pressed]="filtro() === 'rechazados'"
+      (click)="elegirFiltro('rechazados')"
+    >
+      Rechazados <span class="chip-cuenta">{{ cuentas().rechazados }}</span>
+    </button>
   </div>
 
-  @if (cargando() || diagnosticos().length === 0) {
+  <label class="buscador-lista">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+    </svg>
+    <input
+      type="search"
+      maxlength="100"
+      placeholder="Placa, cliente o falla"
+      aria-label="Buscar diagnóstico por placa, cliente o falla"
+      [value]="buscar()"
+      (input)="onBuscar($any($event.target).value)"
+    />
+  </label>
+</div>
+
+<!-- --------------------------------------------------------------------- Lista -->
+<section class="lista-filas lista-diag">
+  @if (cargando() || visibles().length === 0) {
     <app-estado-tabla
       [cargando]="cargando()"
-      [hayFiltro]="estadoFiltro().length > 0 || buscar().length > 0"
+      [hayFiltro]="filtro() !== 'todos' || buscar().length > 0"
       titulo="Sin diagnósticos registrados"
       descripcion="Registre el diagnóstico de un vehículo para dejar constancia de la falla."
     />
   } @else {
-    <div class="tabla-contenedor">
-      <table class="tabla">
-        <thead>
-          <tr>
-            <th>Código</th>
-            <th>Fecha</th>
-            <th>Vehículo</th>
-            <th>Falla</th>
-            <th>Mecánico</th>
-            <th>Presupuesto</th>
-            <th>Estado</th>
-            <th class="th-acciones">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (diagnostico of diagnosticos(); track diagnostico.diagnosticoId) {
-            <tr>
-              <td>
-                <div class="codigo">{{ diagnostico.diagnosticoId }}</div>
-                @if (diagnostico.ordenId) {
-                  <a
-                    [routerLink]="['/ordenes', diagnostico.ordenId]"
-                    class="chip-orden"
-                    [title]="'Ver orden de trabajo ' + diagnostico.ordenId"
-                  >
-                    {{ diagnostico.ordenId }}
-                    <svg class="chip-orden-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <path d="M7 17 17 7" /><path d="M8 7h9v9" />
-                    </svg>
-                  </a>
-                }
-              </td>
-              <td class="texto-sm">{{ diagnostico.fecha | date: 'dd/MM/yyyy HH:mm' }}</td>
-              <td>
-                <app-placa [valor]="diagnostico.placaVehiculo" />
-                <div class="texto-tenue texto-sm mt-1">{{ diagnostico.nombreCliente }}</div>
-              </td>
-              <td class="recorte">{{ diagnostico.descripcionFalla }}</td>
-              <td class="texto-sm">{{ diagnostico.nombreMecanico }}</td>
-              <td>
-                @if (diagnostico.montoEstimado != null) {
-                  <div class="presupuesto-caja">
-                    <span class="texto-fuerte">{{ diagnostico.montoEstimado | bs }}</span>
-                    <app-insignia-estado
-                      familia="respuestaCliente"
-                      [valor]="diagnostico.respuestaCliente"
-                    />
-                  </div>
-                } @else {
-                  <span class="texto-placeholder">Sin estimar</span>
-                }
-              </td>
-              <td><app-insignia-estado familia="diagnostico" [valor]="diagnostico.estado" /></td>
-              <td>
-                <!-- Menú contextual sin JS de componente: <details> nativo maneja el
-                     abrir/cerrar solo, y `name` agrupa todas las filas para que abrir
-                     una cierre cualquier otra que hubiera quedado abierta. -->
-                <details class="menu-contextual" name="menu-diagnostico" (toggle)="posicionarMenu($event)">
-                  <summary class="btn-icono" title="Más acciones" aria-label="Más acciones">
-                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                      <circle cx="12" cy="5" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="12" cy="19" r="1.8" />
-                    </svg>
-                  </summary>
-                  <div class="menu-contextual-panel">
-                    <button type="button" (click)="detalle.set(diagnostico)">
-                      Ver detalle
-                    </button>
-
-                    @if (diagnostico.montoEstimado != null) {
-                      <button
-                        type="button"
-                        [disabled]="descargando() === diagnostico.diagnosticoId"
-                        (click)="descargarPdf(diagnostico)"
-                      >
-                        {{ descargando() === diagnostico.diagnosticoId ? 'Generando…' : 'Descargar PDF' }}
-                      </button>
-                    }
-
-                    @if (
-                      puedeResponder(diagnostico) &&
-                      (auth.esAdministrador() || diagnostico.mecanicoId === auth.sesion()?.usuarioId)
-                    ) {
-                      <button type="button" class="texto-verde" (click)="abrirResponder(diagnostico)">
-                        Respuesta cliente
-                      </button>
-                    }
-
-                    @if (!diagnostico.ordenId && puedeGenerarOrden(diagnostico) && auth.esAdministrador()) {
-                      <button
-                        type="button"
-                        class="texto-verde"
-                        [disabled]="guardandoOrden()"
-                        title="La orden no se creó sola al aprobar; puede reintentarlo aquí."
-                        (click)="generarOrdenManual(diagnostico)"
-                      >
-                        {{ guardandoOrden() ? 'Creando…' : 'Generar orden' }}
-                      </button>
-                    }
-
-                    @if (puedeEditar(diagnostico)) {
-                      <button type="button" (click)="abrirEditar(diagnostico)">
-                        Editar
-                      </button>
-                      @if (diagnostico.estado === EstadoDiag.Registrado) {
-                        <button type="button" (click)="marcarRevisado(diagnostico)">
-                          Marcar revisado
-                        </button>
-                      }
-                      <hr class="menu-separador" />
-                      <button type="button" class="texto-rojo" (click)="porAnular.set(diagnostico)">
-                        Anular
-                      </button>
-                    }
-                  </div>
-                </details>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
+    <div class="fila-lista fila-diag cabecera-lista" aria-hidden="true">
+      <span>Código</span>
+      <span>Vehículo</span>
+      <span>Falla reportada</span>
+      <span class="a-la-derecha">Presupuesto</span>
+      <span>Respuesta</span>
+      <span class="a-la-derecha">Acción</span>
     </div>
 
-    <app-paginador
-      [pagina]="pagina()"
-      [totalPaginas]="totalPaginas()"
-      [totalRegistros]="totalRegistros()"
-      [tamanoPagina]="tamanoPagina()"
-      (cambiarPagina)="cambiarPagina($event)"
-      (cambiarTamano)="cambiarTamano($event)"
-    />
-  }
-</div>
+    @for (d of visibles(); track d.diagnosticoId) {
+      <div class="fila-lista fila-diag" [class.elegida]="filaElegida() === d.diagnosticoId">
+        <span class="codigo">{{ d.diagnosticoId }}</span>
 
+        <span class="diag-vehiculo">
+          <app-placa [valor]="d.placaVehiculo" />
+          <span class="diag-vehiculo-texto">{{ d.descripcionVehiculo }} · {{ d.nombreCliente }}</span>
+        </span>
+
+        <span class="diag-falla" [title]="d.descripcionFalla">{{ d.descripcionFalla }}</span>
+
+        <span class="diag-monto">{{ d.montoEstimado != null ? (d.montoEstimado | bs) : '—' }}</span>
+
+        <span>
+          <span class="insignia-respuesta {{ claseRespuesta(d) }}">{{ textoRespuesta(d) }}</span>
+        </span>
+
+        <span class="diag-accion">
+          @if (puedeResponder(d) && esSuyoOAdmin(d)) {
+            <button type="button" class="btn btn-secundario btn-sm" (click)="abrirResponder(d)">
+              Registrar respuesta
+            </button>
+          } @else if (d.ordenId) {
+            <a class="enlace-orden-diag" [routerLink]="['/ordenes', d.ordenId]">Ver {{ d.ordenId }}</a>
+          } @else if (d.respuestaCliente === RespuestaCliente.Rechazado) {
+            <button type="button" class="btn-enlace enlace-gris" (click)="verDetalle(d)">Ver motivo</button>
+          } @else if (d.montoEstimado == null && puedeEditar(d)) {
+            <button type="button" class="btn btn-secundario btn-sm" (click)="abrirEditar(d)">
+              Poner presupuesto
+            </button>
+          }
+
+          <!-- Lo demás, a mano pero sin ocupar lugar: <details> nativo, uno abierto a la vez -->
+          <details class="menu-contextual" name="menu-diagnostico" (toggle)="posicionarMenu($event)">
+            <summary class="btn-icono" title="Más acciones" aria-label="Más acciones">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <circle cx="12" cy="5" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="12" cy="19" r="1.8" />
+              </svg>
+            </summary>
+            <div class="menu-contextual-panel">
+              @if (puedeResponder(d) && esSuyoOAdmin(d)) {
+                <button type="button" class="texto-verde" (click)="abrirResponder(d)">Registrar respuesta</button>
+              }
+              <button type="button" (click)="verDetalle(d)">Ver detalle</button>
+
+              @if (d.montoEstimado != null) {
+                <button
+                  type="button"
+                  [disabled]="descargando() === d.diagnosticoId"
+                  (click)="descargarPdf(d)"
+                >
+                  {{ descargando() === d.diagnosticoId ? 'Generando…' : 'Descargar PDF' }}
+                </button>
+              }
+
+              @if (!d.ordenId && puedeGenerarOrden(d) && auth.esAdministrador()) {
+                <button
+                  type="button"
+                  class="texto-verde"
+                  [disabled]="guardandoOrden()"
+                  title="La orden no se creó sola al aprobar; puede reintentarlo aquí."
+                  (click)="generarOrdenManual(d)"
+                >
+                  {{ guardandoOrden() ? 'Creando…' : 'Generar orden' }}
+                </button>
+              }
+
+              @if (puedeEditar(d)) {
+                <button type="button" (click)="abrirEditar(d)">Editar</button>
+                @if (d.estado === EstadoDiag.Registrado) {
+                  <button type="button" (click)="marcarRevisado(d)">Marcar revisado</button>
+                }
+                <hr class="menu-separador" />
+                <button type="button" class="texto-rojo" (click)="porAnular.set(d)">Anular</button>
+              }
+            </div>
+          </details>
+        </span>
+      </div>
+    }
+
+    @if (totalPaginas() > 1) {
+      <app-paginador
+        [pagina]="pagina()"
+        [totalPaginas]="totalPaginas()"
+        [totalRegistros]="filtrados().length"
+        [tamanoPagina]="tamanoPagina()"
+        (cambiarPagina)="pagina.set($event)"
+        (cambiarTamano)="cambiarTamano($event)"
+      />
+    }
+  }
+</section>
+
+<!-- ------------------------------------------------ Panel: respuesta del cliente -->
+@if (respondiendo(); as d) {
+  <app-cajon titulo="Respuesta del cliente" [etiqueta]="d.diagnosticoId" [ancho]="460" (cerrar)="respondiendo.set(null)">
+    <div class="resp-cliente">
+      <app-placa [valor]="d.placaVehiculo" />
+      <span class="resp-cliente-textos">
+        <strong>{{ d.descripcionVehiculo }} · {{ d.nombreCliente }}</strong>
+        @if (telefonoCliente(); as telefono) {
+          <span class="resp-telefono">{{ telefono }}</span>
+        }
+      </span>
+      @if (telefonoCliente(); as telefono) {
+        <span class="resp-contacto">
+          <a class="btn btn-secundario btn-sm" [href]="'tel:' + telefono">Llamar</a>
+          <a class="btn btn-secundario btn-sm" [href]="enlaceWhatsapp(telefono)" target="_blank" rel="noopener">WhatsApp</a>
+        </span>
+      }
+    </div>
+
+    <div class="resp-presupuesto">
+      <div class="resp-presupuesto-cabecera">
+        <span>Presupuesto del {{ d.fecha | date: 'dd/MM' }} · {{ haceCuanto(d.fecha) }}</span>
+        <button
+          type="button"
+          class="btn-enlace"
+          [disabled]="descargando() === d.diagnosticoId"
+          (click)="descargarPdf(d)"
+        >
+          {{ descargando() === d.diagnosticoId ? 'Generando…' : 'Ver PDF' }}
+        </button>
+      </div>
+      <div class="resp-linea">{{ d.descripcionFalla }}</div>
+      @if (d.observacionesTecnicas) {
+        <div class="resp-linea resp-linea-tenue">{{ d.observacionesTecnicas }}</div>
+      }
+      <div class="resp-total">
+        <strong>Total del presupuesto</strong>
+        <span class="resp-monto">{{ d.montoEstimado | bs }}</span>
+      </div>
+    </div>
+
+    <div class="campo">
+      <span class="etiqueta-campo">¿Qué respondió el cliente?</span>
+      <div class="respuesta-opciones" role="radiogroup" aria-label="Respuesta del cliente">
+        <button
+          type="button"
+          role="radio"
+          class="respuesta-opcion si"
+          [class.elegida]="decision() === RespuestaCliente.Aprobado"
+          [attr.aria-checked]="decision() === RespuestaCliente.Aprobado"
+          (click)="decision.set(RespuestaCliente.Aprobado)"
+        >
+          <span class="respuesta-icono" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10" /></svg>
+          </span>
+          <strong>Aprobó</strong>
+          <span>Se crea la orden de trabajo con estos servicios.</span>
+        </button>
+        <button
+          type="button"
+          role="radio"
+          class="respuesta-opcion no"
+          [class.elegida]="decision() === RespuestaCliente.Rechazado"
+          [attr.aria-checked]="decision() === RespuestaCliente.Rechazado"
+          (click)="decision.set(RespuestaCliente.Rechazado)"
+        >
+          <span class="respuesta-icono" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M17 7 7 17M7 7l10 10" /></svg>
+          </span>
+          <strong>Rechazó</strong>
+          <span>No se crea la orden. Queda registrado con su motivo.</span>
+        </button>
+      </div>
+    </div>
+
+    @if (decision() === RespuestaCliente.Aprobado && auth.esAdministrador()) {
+      <div class="campo">
+        <label for="fechaEntrega">Fecha estimada de entrega (opcional)</label>
+        <input id="fechaEntrega" type="date" name="fechaEntrega" [min]="hoy()" [(ngModel)]="fechaEntrega" />
+        <span class="campo-ayuda">Se avisa en el tablero si la orden se atrasa.</span>
+      </div>
+    }
+
+    @if (decision() === RespuestaCliente.Rechazado) {
+      <div class="campo">
+        <span class="etiqueta-campo">¿Por qué no lo aprobó? (opcional)</span>
+        <div class="motivos" role="group" aria-label="Motivo del rechazo">
+          @for (opcion of MOTIVOS_RECHAZO; track opcion) {
+            <button
+              type="button"
+              class="chip-filtro"
+              [class.activo]="motivo() === opcion"
+              [attr.aria-pressed]="motivo() === opcion"
+              (click)="elegirMotivo(opcion)"
+            >
+              {{ opcion }}
+            </button>
+          }
+        </div>
+        <span class="campo-ayuda">La revisión técnica no se cobra.</span>
+      </div>
+    }
+
+    <div class="campo">
+      <label for="comentarioCliente">Comentario del cliente (opcional)</label>
+      <textarea
+        id="comentarioCliente"
+        name="comentarioCliente"
+        rows="2"
+        placeholder="Lo que dijo el cliente, con sus palabras"
+        [(ngModel)]="comentarioCliente"
+      ></textarea>
+    </div>
+
+    <div pie>
+      <button type="button" class="btn btn-secundario" (click)="respondiendo.set(null)">Cancelar</button>
+      @switch (decision()) {
+        @case (RespuestaCliente.Aprobado) {
+          <button type="button" class="btn btn-primario" [disabled]="guardando()" (click)="confirmarRespuesta()">
+            {{ guardando() ? 'Guardando…' : 'Confirmar y crear la orden' }}
+          </button>
+        }
+        @case (RespuestaCliente.Rechazado) {
+          <button type="button" class="btn btn-peligro" [disabled]="guardando()" (click)="confirmarRespuesta()">
+            {{ guardando() ? 'Guardando…' : 'Confirmar el rechazo' }}
+          </button>
+        }
+        @default {
+          <button type="button" class="btn btn-bloqueado" disabled>Elija la respuesta</button>
+        }
+      }
+    </div>
+  </app-cajon>
+}
+
+<!-- ---------------------------------------------- Panel: nuevo diagnóstico y edición -->
 @if (formularioAbierto()) {
-  <app-modal
+  <app-cajon
     [titulo]="editando() ? 'Editar diagnóstico' : 'Nuevo diagnóstico'"
-    [ancho]="720"
+    [etiqueta]="editando()?.diagnosticoId ?? ''"
     (cerrar)="cerrarFormulario()"
   >
+    @if (!editando()) {
+      <ol class="pasos-diag" aria-label="Pasos">
+        @for (p of PASOS; track p.numero) {
+          <li [class.hecho]="p.numero < paso()" [class.actual]="p.numero === paso()" [attr.aria-current]="p.numero === paso() ? 'step' : null">
+            <span class="paso-barra" aria-hidden="true"></span>
+            <span class="paso-nombre">{{ p.numero }}. {{ p.nombre }}</span>
+          </li>
+        }
+      </ol>
+    }
+
     @if (borradorPendiente(); as borrador) {
-      <div class="aviso-borrador mb-2">
-        <span>
-          Quedó un borrador sin guardar del {{ borrador.fecha | date: 'dd/MM HH:mm' }}. ¿Lo recupera?
-        </span>
+      <div class="aviso-borrador">
+        <span>Quedó un borrador sin guardar del {{ borrador.fecha | date: 'dd/MM HH:mm' }}. ¿Lo recupera?</span>
         <span class="fila" style="gap: 6px">
           <button type="button" class="btn btn-primario btn-sm" (click)="recuperarBorrador()">Recuperar</button>
           <button type="button" class="btn-enlace" (click)="descartarBorrador()">Descartar</button>
@@ -219,247 +362,199 @@
       </div>
     }
 
-    <form [formGroup]="formulario" id="form-diagnostico" (ngSubmit)="guardar()">
-      <div class="campo">
-        <label for="vehiculoId">Vehículo <span class="obligatorio">*</span></label>
-        <app-selector-busqueda
-          idCampo="vehiculoId"
-          formControlName="vehiculoId"
-          marcador="Escriba la placa, marca o cliente…"
-          [opciones]="opcionesVehiculo()"
-          [invalido]="invalido('vehiculoId')"
-        />
-        @if (editando()) {
-          <span class="campo-ayuda">El vehículo no se puede cambiar.</span>
-        } @else if (invalido('vehiculoId')) {
-          <span class="campo-error">Seleccione el vehículo diagnosticado.</span>
-        }
-      </div>
+    <form [formGroup]="formulario" id="form-diagnostico" class="form-diag" (ngSubmit)="siguiente()">
+      @if (editando(); as d) {
+        <div class="campo">
+          <span class="etiqueta-campo">Vehículo</span>
+          <span class="dato-fijo-diag">
+            <app-placa [valor]="d.placaVehiculo" />
+            {{ d.descripcionVehiculo }} · {{ d.nombreCliente }}
+          </span>
+        </div>
+      } @else if (paso() === 1) {
+        <div class="campo">
+          <label for="vehiculoId">Placa o propietario <span class="obligatorio">*</span></label>
+          <app-selector-busqueda
+            idCampo="vehiculoId"
+            formControlName="vehiculoId"
+            marcador="Escriba la placa, la marca o el cliente…"
+            [opciones]="opcionesVehiculo()"
+            [invalido]="invalido('vehiculoId')"
+          />
+          @if (invalido('vehiculoId')) {
+            <span class="campo-error">Elija el vehículo que se recibe.</span>
+          } @else {
+            <span class="campo-ayuda">Si el vehículo es nuevo, regístrelo primero en Vehículos.</span>
+          }
+        </div>
+      }
 
-      <div class="campo">
-        <label for="descripcionFalla">Descripción de la falla <span class="obligatorio">*</span></label>
-        @if (fallasSugeridas().length > 0 && !formulario.controls.descripcionFalla.value) {
-          <div class="chips-sugerencia mb-1">
-            @for (f of fallasSugeridas().slice(0, 8); track f) {
-              <button type="button" class="chip-sugerido" (click)="usarFallaSugerida(f)">{{ f }}</button>
-            }
-          </div>
-        }
-        <textarea
-          id="descripcionFalla"
-          formControlName="descripcionFalla"
-          rows="4"
-          placeholder="Síntomas reportados y falla detectada…"
-          [class.invalido]="invalido('descripcionFalla')"
-        ></textarea>
-        @if (invalido('descripcionFalla')) {
-          <span class="campo-error">Describa la falla detectada.</span>
-        }
+      @if (editando() || paso() === 2) {
+        <div class="campo">
+          <label for="descripcionFalla">¿Qué reporta el cliente? <span class="obligatorio">*</span></label>
+          <textarea
+            id="descripcionFalla"
+            formControlName="descripcionFalla"
+            rows="3"
+            placeholder="Síntomas que cuenta el cliente y la falla que se ve…"
+            [class.invalido]="invalido('descripcionFalla')"
+          ></textarea>
+          @if (invalido('descripcionFalla')) {
+            <span class="campo-error">Describa la falla detectada.</span>
+          }
+          @if (fallasSugeridas().length > 0 && !formulario.controls.descripcionFalla.value) {
+            <div class="chips-sugerencia">
+              @for (f of fallasSugeridas().slice(0, 6); track f) {
+                <button type="button" class="chip-sugerido" (click)="usarFallaSugerida(f)">{{ f }}</button>
+              }
+            </div>
+          }
+        </div>
 
         @if (cargandoSugerencia()) {
-          <p class="texto-tenue texto-sm mb-0 mt-1">Buscando casos similares…</p>
+          <p class="texto-tenue texto-sm mb-0">Buscando casos parecidos…</p>
         } @else if (sugerencia(); as s) {
-          <div class="panel-sugerencia mt-1">
-            <div class="panel-sugerencia-titulo">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M9.5 2A5.5 5.5 0 0 0 4 7.5c0 2 1 3.5 2.5 4.7V15a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-2.8C13.9 11 15 9.5 15 7.5A5.5 5.5 0 0 0 9.5 2Z" />
-                <path d="M7.5 19h4M8 22h3" />
-              </svg>
-              Diagnóstico asistido: lo que se hizo en {{ s.basadoEnCasos }} {{ s.basadoEnCasos === 1 ? 'caso parecido' : 'casos parecidos' }}
-            </div>
-
-            @if (s.servicios.length > 0) {
-              <div class="panel-sugerencia-fila">
-                <span class="panel-sugerencia-etq">Servicios probables</span>
-                <div class="chips-sugerencia">
-                  @for (sv of s.servicios; track sv.nombre) {
-                    <span class="chip-badge">{{ sv.nombre }} <strong>· {{ sv.frecuencia }} de {{ s.basadoEnCasos }}</strong></span>
-                  }
-                </div>
+          <div class="casos-parecidos">
+            <span class="etiqueta-campo">Casos parecidos en el taller ({{ s.basadoEnCasos }})</span>
+            @for (sv of s.servicios; track sv.nombre) {
+              <div class="caso-parecido">
+                <span>{{ sv.nombre }}</span>
+                <span class="texto-tenue texto-sm">{{ sv.frecuencia }} {{ sv.frecuencia === 1 ? 'vez' : 'veces' }}</span>
               </div>
             }
-
-            @if (s.repuestos.length > 0) {
-              <div class="panel-sugerencia-fila">
-                <span class="panel-sugerencia-etq">Repuestos probables</span>
-                <div class="chips-sugerencia">
-                  @for (rp of s.repuestos; track rp.nombre) {
-                    <span class="chip-badge">{{ rp.nombre }} <strong>· {{ rp.frecuencia }} de {{ s.basadoEnCasos }}</strong></span>
-                  }
-                </div>
-              </div>
-            }
-
-            @if (s.precioMinimo != null) {
-              <div class="panel-sugerencia-fila panel-sugerencia-precio">
-                <span class="panel-sugerencia-etq">Precio en casos similares</span>
-                <span>
-                  {{ s.precioMinimo | bs }} – {{ s.precioMaximo | bs }}
-                  <span class="texto-tenue">(prom. {{ s.precioPromedio | bs }})</span>
-                </span>
-                <button type="button" class="btn-enlace" (click)="usarPrecioSugerido()">
-                  Usar Bs {{ s.precioPromedio }}
-                </button>
+            @for (rp of s.repuestos; track rp.nombre) {
+              <div class="caso-parecido">
+                <span>{{ rp.nombre }} <span class="texto-tenue">(repuesto)</span></span>
+                <span class="texto-tenue texto-sm">{{ rp.frecuencia }} {{ rp.frecuencia === 1 ? 'vez' : 'veces' }}</span>
               </div>
             }
           </div>
         }
-      </div>
 
-      <div class="campo">
-        <label for="observacionesTecnicas">Observaciones técnicas</label>
-        <textarea
-          id="observacionesTecnicas"
-          formControlName="observacionesTecnicas"
-          rows="3"
-          placeholder="Detalles técnicos, mediciones, recomendaciones…"
-        ></textarea>
-      </div>
+        <div class="campo">
+          <label for="observacionesTecnicas">Observaciones técnicas (opcional)</label>
+          <textarea
+            id="observacionesTecnicas"
+            formControlName="observacionesTecnicas"
+            rows="2"
+            placeholder="Mediciones, piezas a revisar, recomendaciones…"
+          ></textarea>
+        </div>
+      }
 
-      <div class="campo">
-        <label for="montoEstimado">Monto estimado de la reparación (Bs)</label>
-        <input
-          id="montoEstimado"
-          type="number"
-          min="0"
-          step="0.01"
-          formControlName="montoEstimado"
-          placeholder="Presupuesto aproximado para el cliente"
-        />
-        <span class="campo-ayuda">
-          Aproximado. Es el número que se le presenta al cliente para que apruebe o rechace;
-          el cliente debe aprobarlo antes de poder generar la orden.
-        </span>
-      </div>
+      @if (editando() || paso() === 3) {
+        <div class="campo">
+          <label for="montoEstimado">Presupuesto estimado (Bs)</label>
+          <input
+            id="montoEstimado"
+            class="entrada-monto-diag"
+            type="number"
+            min="0"
+            step="0.01"
+            inputmode="decimal"
+            formControlName="montoEstimado"
+            placeholder="0,00"
+          />
+          @if (sugerencia()?.precioMinimo != null) {
+            <span class="campo-ayuda">
+              En casos parecidos: {{ sugerencia()!.precioMinimo! | bs }} a {{ sugerencia()!.precioMaximo! | bs }}.
+              <button type="button" class="btn-enlace" (click)="usarPrecioSugerido()">
+                Usar Bs {{ sugerencia()!.precioPromedio }}
+              </button>
+            </span>
+          }
+        </div>
 
-      @if (!editando()) {
         <p class="texto-tenue texto-sm mb-0">
-          El diagnóstico quedará registrado a su nombre: {{ auth.nombreCompleto() }}.
+          Con el presupuesto se genera el PDF para el cliente. Cuando responda, se registra aquí si lo
+          aprobó o lo rechazó.
+          @if (!editando()) {
+            Queda a nombre de {{ auth.nombreCompleto() }}.
+          }
         </p>
       }
     </form>
 
-    <div pie>
-      <button type="button" class="btn btn-secundario" (click)="cerrarFormulario()">Cancelar</button>
+    <div pie class="pie-diag">
+      <button type="button" class="btn btn-secundario" (click)="atras()">
+        {{ editando() || paso() === 1 ? 'Cancelar' : 'Atrás' }}
+      </button>
       <button type="submit" form="form-diagnostico" class="btn btn-primario" [disabled]="guardando()">
-        {{ guardando() ? 'Guardando…' : 'Guardar' }}
+        {{ textoSiguiente() }}
       </button>
     </div>
-  </app-modal>
+  </app-cajon>
 }
 
-@if (detalle(); as diagnostico) {
-  <app-modal titulo="Diagnóstico {{ diagnostico.diagnosticoId }}" (cerrar)="detalle.set(null)">
+<!-- --------------------------------------------------------- Panel: detalle -->
+@if (detalle(); as d) {
+  <app-cajon [titulo]="'Diagnóstico ' + d.diagnosticoId" [etiqueta]="d.placaVehiculo" (cerrar)="detalle.set(null)">
     <dl class="datos">
       <dt>Vehículo</dt>
-      <dd>{{ diagnostico.placaVehiculo }} — {{ diagnostico.descripcionVehiculo }}</dd>
+      <dd>{{ d.placaVehiculo }} — {{ d.descripcionVehiculo }}</dd>
       <dt>Cliente</dt>
-      <dd>{{ diagnostico.nombreCliente }}</dd>
+      <dd>{{ d.nombreCliente }}</dd>
       <dt>Mecánico</dt>
-      <dd>{{ diagnostico.nombreMecanico }}</dd>
+      <dd>{{ d.nombreMecanico }}</dd>
       <dt>Fecha</dt>
-      <dd>{{ diagnostico.fecha | date: 'dd/MM/yyyy HH:mm' }}</dd>
-      @if (diagnostico.fechaModificacion) {
+      <dd>{{ d.fecha | date: 'dd/MM/yyyy HH:mm' }}</dd>
+      @if (d.fechaModificacion) {
         <dt>Modificado</dt>
-        <dd>{{ diagnostico.fechaModificacion | date: 'dd/MM/yyyy HH:mm' }}</dd>
+        <dd>{{ d.fechaModificacion | date: 'dd/MM/yyyy HH:mm' }}</dd>
       }
     </dl>
 
-    <h3 class="mt-2 mb-1">Falla reportada</h3>
-    <p class="parrafo">{{ diagnostico.descripcionFalla }}</p>
+    <div class="detalle-bloque">
+      <span class="etiqueta-campo">Falla reportada</span>
+      <p class="parrafo">{{ d.descripcionFalla }}</p>
+    </div>
 
-    @if (diagnostico.observacionesTecnicas) {
-      <h3 class="mt-2 mb-1">Observaciones técnicas</h3>
-      <p class="parrafo">{{ diagnostico.observacionesTecnicas }}</p>
+    @if (d.observacionesTecnicas) {
+      <div class="detalle-bloque">
+        <span class="etiqueta-campo">Observaciones técnicas</span>
+        <p class="parrafo">{{ d.observacionesTecnicas }}</p>
+      </div>
     }
 
-    <h3 class="mt-2 mb-1">Presupuesto preliminar</h3>
     <dl class="datos">
-      <dt>Monto estimado</dt>
-      <dd>
-        {{ diagnostico.montoEstimado != null ? (diagnostico.montoEstimado | bs) : 'Sin estimar' }}
-      </dd>
-      <dt>Respuesta del cliente</dt>
-      <dd><app-insignia-estado familia="respuestaCliente" [valor]="diagnostico.respuestaCliente" /></dd>
-      @if (diagnostico.fechaRespuestaCliente) {
-        <dt>Fecha de respuesta</dt>
-        <dd>{{ diagnostico.fechaRespuestaCliente | date: 'dd/MM/yyyy HH:mm' }}</dd>
+      <dt>Presupuesto</dt>
+      <dd>{{ d.montoEstimado != null ? (d.montoEstimado | bs) : 'Sin estimar' }}</dd>
+      <dt>Respuesta</dt>
+      <dd><span class="insignia-respuesta {{ claseRespuesta(d) }}">{{ textoRespuesta(d) }}</span></dd>
+      @if (d.fechaRespuestaCliente) {
+        <dt>Respondió el</dt>
+        <dd>{{ d.fechaRespuestaCliente | date: 'dd/MM/yyyy HH:mm' }}</dd>
       }
-      @if (diagnostico.comentarioCliente) {
-        <dt>Comentario</dt>
-        <dd>{{ diagnostico.comentarioCliente }}</dd>
+      @if (d.comentarioCliente) {
+        <dt>{{ d.respuestaCliente === RespuestaCliente.Rechazado ? 'Motivo' : 'Comentario' }}</dt>
+        <dd>{{ d.comentarioCliente }}</dd>
+      }
+      @if (d.ordenId) {
+        <dt>Orden</dt>
+        <dd><a [routerLink]="['/ordenes', d.ordenId]">{{ d.ordenId }}</a></dd>
       }
     </dl>
 
     <div pie>
-      @if (diagnostico.montoEstimado != null) {
+      @if (d.montoEstimado != null) {
         <button
           type="button"
           class="btn btn-secundario"
-          [disabled]="descargando() === diagnostico.diagnosticoId"
-          (click)="descargarPdf(diagnostico)"
+          [disabled]="descargando() === d.diagnosticoId"
+          (click)="descargarPdf(d)"
         >
-          {{ descargando() === diagnostico.diagnosticoId ? 'Generando…' : 'Descargar PDF' }}
+          {{ descargando() === d.diagnosticoId ? 'Generando…' : 'Descargar PDF' }}
         </button>
       }
       <button type="button" class="btn btn-secundario" (click)="detalle.set(null)">Cerrar</button>
     </div>
-  </app-modal>
+  </app-cajon>
 }
 
-@if (respondiendo(); as diagnostico) {
-  <app-modal titulo="Respuesta del cliente" [ancho]="560" (cerrar)="respondiendo.set(null)">
-    <p class="texto-sm">
-      Presupuesto de <strong>{{ diagnostico.montoEstimado | bs }}</strong> para
-      <strong>{{ diagnostico.placaVehiculo }}</strong> ({{ diagnostico.nombreCliente }}).
-      Registre la decisión del cliente.
-    </p>
-
-    <div class="campo">
-      <label for="comentarioCliente">Comentario del cliente (opcional)</label>
-      <textarea
-        id="comentarioCliente"
-        [(ngModel)]="comentarioCliente"
-        name="comentarioCliente"
-        rows="2"
-        placeholder="Observaciones, condiciones acordadas…"
-      ></textarea>
-    </div>
-
-    <p class="texto-tenue texto-sm mb-0">
-      Si aprueba, la orden de trabajo se crea de inmediato (sin pedir fecha de entrega: suelen
-      surgir imprevistos que la retrasan). Si rechaza, retira el vehículo y no se crea la orden.
-      La decisión se registra una sola vez.
-    </p>
-
-    <div pie>
-      <button type="button" class="btn btn-secundario" (click)="respondiendo.set(null)">
-        Cancelar
-      </button>
-      <button
-        type="button"
-        class="btn btn-peligro"
-        [disabled]="guardando()"
-        (click)="confirmarRespuesta(RespuestaCliente.Rechazado)"
-      >
-        Rechazó
-      </button>
-      <button
-        type="button"
-        class="btn btn-exito"
-        [disabled]="guardando()"
-        (click)="confirmarRespuesta(RespuestaCliente.Aprobado)"
-      >
-        Aprobó
-      </button>
-    </div>
-  </app-modal>
-}
-
-@if (porAnular(); as diagnostico) {
+@if (porAnular(); as d) {
   <app-confirmacion
     titulo="Anular diagnóstico"
-    [mensaje]="'¿Anular el diagnóstico ' + diagnostico.diagnosticoId + '?'"
+    [mensaje]="'¿Anular el diagnóstico ' + d.diagnosticoId + '?'"
     advertencia="Un diagnóstico anulado no se puede editar ni reabrir: queda como constancia histórica."
     textoConfirmar="Anular"
     [peligroso]="true"

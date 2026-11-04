@@ -1,6 +1,9 @@
 import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
 import {
   CategoriaRepuesto,
@@ -17,6 +20,7 @@ import {
 } from '../../core/services/inventario.service';
 import { ContadoresService } from '../../core/services/contadores.service';
 import { NotificacionService } from '../../core/services/notificacion.service';
+import { Cajon } from '../../shared/components/cajon';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { Modal } from '../../shared/components/modal';
 import { Paginador } from '../../shared/components/paginador';
@@ -32,7 +36,9 @@ import { sugerirCategoriaRepuesto } from '../../shared/categorias-repuesto';
   selector: 'app-compras',
   imports: [
     ReactiveFormsModule,
+    RouterLink,
     DatePipe,
+    Cajon,
     Modal,
     EstadoTabla,
     Paginador,
@@ -83,6 +89,15 @@ export class Compras {
   protected readonly ocasional = signal(false);
   protected readonly detalle = signal<CompraDetalle | null>(null);
 
+  /**
+   * Detalle de cada compra ya consultada: alimenta la columna "Repuestos", la
+   * búsqueda por repuesto y las unidades del mes. Se pide solo lo que falta.
+   */
+  protected readonly detallesCompra = signal<ReadonlyMap<string, CompraDetalle>>(new Map());
+
+  /** Nombre del mes en curso, para el indicador "Comprado en …". */
+  protected readonly nombreMes = new Date().toLocaleDateString('es-BO', { month: 'long' });
+
   // --- Repuesto nuevo desde la compra -----------------------------------------
   // Lo que se compra por primera vez no está en el inventario. Se pide solo el
   // nombre y la categoría (ya sugerida); los precios van en la fila, como en
@@ -117,11 +132,18 @@ export class Compras {
     this.lineas().reduce((suma, l) => suma + (l.cantidad || 0) * (l.precioUnitario || 0), 0),
   );
 
-  /** Filtro de texto local, por palabras: código de compra y nombre del proveedor. */
+  /** Filtro de texto local, por palabras: código, proveedor y los repuestos comprados. */
   protected readonly comprasFiltradas = computed(() => {
     const filtro = this.buscarTexto();
+    const detalles = this.detallesCompra();
     return this.compras().filter((c) =>
-      coincidePorPalabras(filtro, c.compraId, c.nombreProveedor, c.referencia ?? ''),
+      coincidePorPalabras(
+        filtro,
+        c.compraId,
+        c.nombreProveedor,
+        c.referencia ?? '',
+        ...(detalles.get(c.compraId)?.detalles.map((l) => l.nombreRepuesto) ?? []),
+      ),
     );
   });
 
@@ -133,14 +155,21 @@ export class Compras {
     this.comprasDelMes().reduce((suma, c) => suma + c.total, 0),
   );
 
-  protected readonly kpiRepuestosIngresados = computed(() =>
-    this.comprasDelMes().reduce((suma, c) => suma + c.cantidadLineas, 0),
-  );
+  /** Unidades que entraron este mes (del detalle de cada compra del mes). */
+  protected readonly kpiUnidadesMes = computed(() => {
+    const detalles = this.detallesCompra();
+    return this.comprasDelMes().reduce(
+      (suma, c) =>
+        suma +
+        (detalles.get(c.compraId)?.detalles.reduce((total, l) => total + l.cantidad, 0) ?? 0),
+      0,
+    );
+  });
 
-  // Las ocasionales no tienen proveedor: no cuentan como proveedor activo.
-  protected readonly kpiProveedoresActivos = computed(
-    () => new Set(this.comprasDelMes().filter((c) => c.proveedorId).map((c) => c.proveedorId)).size,
-  );
+  protected readonly kpiOcasionales = computed(() => {
+    const delMes = this.comprasDelMes();
+    return { ocasionales: delMes.filter((c) => c.ocasional).length, total: delMes.length };
+  });
 
   private comprasDelMes(): Compra[] {
     const ahora = new Date();
@@ -187,6 +216,18 @@ export class Compras {
       .getAll({ tamanoPagina: 500 })
       .subscribe((resultado) => this.repuestos.set(resultado.items));
     this.categoriasService.getAll().subscribe((lista) => this.categorias.set(lista));
+
+    // "Registrar compra" desde el Panel enlaza con ?nueva=true: abre el formulario.
+    const ruta = inject(ActivatedRoute);
+    if (ruta.snapshot.queryParamMap.get('nueva') === 'true') {
+      this.abrirNuevo();
+      void inject(Router).navigate([], {
+        relativeTo: ruta,
+        queryParams: { nueva: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
+    }
   }
 
   protected get detalles(): FormArray {
@@ -210,6 +251,7 @@ export class Compras {
           this.totalRegistros.set(resultado.totalRegistros);
           this.totalPaginas.set(resultado.totalPaginas);
           this.cargando.set(false);
+          this.traerDetalles(resultado.items);
         },
         error: () => this.cargando.set(false),
       });
@@ -217,9 +259,38 @@ export class Compras {
     // KPIs del mes: siempre sobre el universo completo, no la vista filtrada.
     // Ordenado por fecha descendente, así que el mes en curso siempre entra
     // en las primeras páginas aunque el histórico completo sea más grande.
-    this.servicio
-      .getAll({ tamanoPagina: 500 })
-      .subscribe((resultado) => this.comprasTodas.set(resultado.items));
+    this.servicio.getAll({ tamanoPagina: 500 }).subscribe((resultado) => {
+      this.comprasTodas.set(resultado.items);
+      this.traerDetalles(this.comprasDelMes());
+    });
+  }
+
+  /**
+   * Pide el detalle de las compras que todavía no se consultaron (la página
+   * visible y las del mes): una consulta por compra, todas a la vez. Si una
+   * falla, su fila muestra la cantidad de ítems en vez de los nombres.
+   */
+  private traerDetalles(compras: Compra[]): void {
+    const faltan = compras.filter((c) => !this.detallesCompra().has(c.compraId));
+    if (faltan.length === 0) return;
+
+    forkJoin(
+      faltan.map((c) => this.servicio.getById(c.compraId).pipe(catchError(() => of(null)))),
+    ).subscribe((lista) => {
+      const mapa = new Map(this.detallesCompra());
+      for (const detalle of lista) if (detalle) mapa.set(detalle.compraId, detalle);
+      this.detallesCompra.set(mapa);
+    });
+  }
+
+  /** "Aceite 10w40 ×20, Filtro de aceite": lo que se compró, en una línea. */
+  protected resumenRepuestos(compra: Compra): string {
+    const detalle = this.detallesCompra().get(compra.compraId);
+    if (!detalle) return this.etiquetaLineas(compra.cantidadLineas);
+
+    return detalle.detalles
+      .map((l) => (l.cantidad > 1 ? `${l.nombreRepuesto} ×${l.cantidad}` : l.nombreRepuesto))
+      .join(', ');
   }
 
   protected onFiltrarProveedor(valor: string): void {
@@ -553,6 +624,47 @@ export class Compras {
   }
 
   protected verDetalle(compra: Compra): void {
+    const conocido = this.detallesCompra().get(compra.compraId);
+    if (conocido) {
+      this.detalle.set(conocido);
+      return;
+    }
     this.servicio.getById(compra.compraId).subscribe((completa) => this.detalle.set(completa));
+  }
+
+  /** Contacto del proveedor de la compra, o de dónde salió una ocasional. */
+  protected contactoDe(compra: CompraDetalle): string {
+    if (compra.ocasional) return 'Compra ocasional, sin proveedor registrado';
+
+    const proveedor = this.proveedores().find((p) => p.proveedorId === compra.proveedorId);
+    return [proveedor?.contacto, proveedor?.telefono].filter(Boolean).join(' · ') || 'Proveedor registrado';
+  }
+
+  /** Precio de venta actual del repuesto, para ver la ganancia de lo comprado. */
+  protected ventaDe(repuestoId: string): number | null {
+    return this.repuestos().find((r) => r.repuestoId === repuestoId)?.precioVenta ?? null;
+  }
+
+  /** "+60 %": cuánto se gana sobre lo que costó. */
+  protected ganancia(compra: number, venta: number): string {
+    if (compra <= 0) return '';
+    const porcentaje = Math.round(((venta - compra) / compra) * 100);
+    return `${porcentaje >= 0 ? '+' : ''}${porcentaje} %`;
+  }
+
+  /** "Aceite 10w40" → "AC"; las dos primeras palabras con sustancia. */
+  protected iniciales(nombre: string): string {
+    const palabras = nombre.split(/\s+/).filter((p) => p.length > 2);
+    return (palabras.length ? palabras : [nombre])
+      .slice(0, 2)
+      .map((p) => p[0])
+      .join('')
+      .toUpperCase();
+  }
+
+  /** "1 unidad" o "N unidades": lo que la compra sumó al stock. */
+  protected unidades(compra: CompraDetalle): string {
+    const total = compra.detalles.reduce((suma, linea) => suma + linea.cantidad, 0);
+    return total === 1 ? '1 unidad' : `${total} unidades`;
   }
 }

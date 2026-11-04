@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { Component, ElementRef, afterNextRender, computed, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
@@ -29,17 +29,28 @@ interface LineaCarrito {
 }
 
 /**
+ * Color del cuadro de un repuesto sin foto, según su categoría: el mismo para
+ * todos los de la misma, así se reconocen de un vistazo. Sin rojos: el rojo
+ * queda para el botón de cobrar.
+ */
+const TONOS = ['naranja', 'azul', 'verde', 'gris'] as const;
+
+/**
  * Punto de venta — venta de repuestos en mostrador.
  *
  * Es un flujo distinto al del taller: no hay orden de trabajo ni vehículo, se
  * cobra completo en el acto y el stock baja al confirmar. El carrito se arma en
  * memoria y recién al cobrar se manda una sola petición al backend.
+ *
+ * Letra y botones grandes a propósito: se usa de pie, en el mostrador, a veces
+ * desde una pantalla táctil.
  */
 @Component({
   selector: 'app-ventas',
   imports: [
     FormsModule,
     DatePipe,
+    NgTemplateOutlet,
     Modal,
     Confirmacion,
     EstadoTabla,
@@ -76,65 +87,38 @@ export class Ventas implements ConfirmarSalida {
   /** Carrito de la venta en curso. */
   protected readonly carrito = signal<LineaCarrito[]>([]);
 
-  protected readonly panelCobro = signal(false);
   protected readonly detalleDe = signal<Venta | null>(null);
   protected readonly porAnular = signal<Venta | null>(null);
 
   /** Filtro de texto sobre la grilla de productos. */
   protected readonly buscarProducto = signal('');
 
+  /** Categoría elegida en las píldoras; vacía = todas. */
+  protected readonly categoriaActiva = signal('');
+
   /** Pestaña activa del terminal: solo presentación, no toca la venta ni la API. */
   protected readonly pestania = signal<'terminal' | 'historial'>('terminal');
-
-  /**
-   * Chips de categoría rápida. El modelo de repuesto no tiene un campo
-   * "categoría", así que estos son accesos directos al buscador que ya existe:
-   * cada chip llena el filtro de texto con un término de ejemplo y reutiliza
-   * `productosFiltrados`, sin inventar un dato que el sistema no guarda.
-   */
-  protected readonly categoriasRapidas = [
-    { etiqueta: 'Todos', termino: '' },
-    { etiqueta: 'Aceites', termino: 'aceite' },
-    { etiqueta: 'Filtros', termino: 'filtro' },
-    { etiqueta: 'Frenos', termino: 'freno' },
-  ];
-  protected readonly categoriaActiva = signal('Todos');
-
-  protected filtrarPorCategoria(categoria: { etiqueta: string; termino: string }): void {
-    this.categoriaActiva.set(categoria.etiqueta);
-    this.buscarProducto.set(categoria.termino);
-  }
-
-  /**
-   * Color del badge de stock, según cuánto queda disponible: verde con holgura,
-   * naranja cuando conviene reponer, rojo cuando casi no hay. Es solo el mapeo
-   * visual del stock real que ya se muestra.
-   */
-  protected nivelStock(disponible: number): 'alto' | 'medio' | 'bajo' {
-    if (disponible < 5) return 'bajo';
-    if (disponible <= 10) return 'medio';
-    return 'alto';
-  }
 
   /** El buscador es el punto de partida del flujo: recibe el foco al entrar. */
   private readonly campoBusqueda = viewChild<ElementRef<HTMLInputElement>>('campoBusqueda');
 
-  protected cobro = {
-    clienteId: '',
-    metodoPago: MetodoPago.Efectivo,
-    observaciones: '',
-  };
+  // --- Cobro ------------------------------------------------------------------
+  protected readonly metodoPago = signal<MetodoPago>(MetodoPago.Efectivo);
+  /** Cliente y observación son opcionales: quedan plegados hasta que se piden. */
+  protected readonly extrasAbiertos = signal(false);
+  protected cobro = { clienteId: '', observaciones: '' };
 
   protected readonly MetodoPago = MetodoPago;
   protected readonly EstadoVenta = EstadoVenta;
   protected readonly ETIQUETAS = ETIQUETAS;
   protected readonly urlArchivo = urlArchivo;
 
+  /** Los cuatro de todos los días primero; "Otro" al final. */
   protected readonly metodosPago = [
     MetodoPago.Efectivo,
+    MetodoPago.QR,
     MetodoPago.Transferencia,
     MetodoPago.Tarjeta,
-    MetodoPago.QR,
     MetodoPago.Otro,
   ];
 
@@ -147,22 +131,41 @@ export class Ventas implements ConfirmarSalida {
   );
 
   /**
-   * Grilla de productos para vender, filtrada por texto y ordenada
-   * alfabéticamente. El filtro busca por nombre y también por el código
-   * interno (REP-012): en mostrador el código suele estar en la etiqueta
-   * del repuesto y es más rápido de tipear que el nombre completo.
+   * Las categorías del inventario con más repuestos, como píldoras para
+   * filtrar con un toque. Salen de los repuestos cargados: una categoría sin
+   * repuestos no aparece.
+   */
+  protected readonly categoriasVenta = computed(() => {
+    const conteo = new Map<string, number>();
+    for (const r of this.repuestos()) {
+      const nombre = r.nombreCategoria?.trim();
+      if (nombre) conteo.set(nombre, (conteo.get(nombre) ?? 0) + 1);
+    }
+
+    return [...conteo.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, 8)
+      .map(([nombre]) => nombre);
+  });
+
+  /**
+   * Grilla de productos para vender, filtrada por texto y categoría y
+   * ordenada alfabéticamente. El filtro busca por nombre y también por el
+   * código interno (REP-012): en mostrador el código suele estar en la
+   * etiqueta del repuesto y es más rápido de tipear que el nombre completo.
    */
   protected readonly productosFiltrados = computed<Repuesto[]>(() => {
     const filtro = this.buscarProducto();
-    const lista = this.repuestos();
+    const categoria = this.categoriaActiva();
 
     // Por palabras: "filtro aceite" encuentra "Filtro de aceite", y "Corolla"
     // las piezas indicadas para ese modelo.
-    const coincide = (r: Repuesto) => coincideRepuesto(filtro, r);
-
-    return [...lista.filter(coincide)].sort((a, b) =>
-      a.nombre.localeCompare(b.nombre),
-    );
+    return this.repuestos()
+      .filter(
+        (r) =>
+          (!categoria || r.nombreCategoria?.trim() === categoria) && coincideRepuesto(filtro, r),
+      )
+      .sort((a, b) => a.nombre.localeCompare(b.nombre));
   });
 
   protected readonly opcionesCliente = computed<OpcionSelector[]>(() =>
@@ -220,18 +223,39 @@ export class Ventas implements ConfirmarSalida {
       .subscribe((resultado) => this.repuestos.set(resultado.items));
   }
 
+  // --- Tarjeta de producto -------------------------------------------------------
+
+  protected tono(repuesto: Repuesto): (typeof TONOS)[number] {
+    const nombre = repuesto.nombreCategoria?.trim();
+    if (!nombre) return 'gris';
+
+    let suma = 0;
+    for (const letra of nombre) suma = (suma * 31 + letra.charCodeAt(0)) >>> 0;
+    return TONOS[suma % TONOS.length];
+  }
+
+  /** "Aceite 10w40" → "A1"; "Pastillas de freno" → "PF". */
+  protected iniciales(nombre: string): string {
+    const palabras = nombre.split(/\s+/).filter((p) => p.length > 2);
+    return (palabras.length ? palabras : [nombre])
+      .slice(0, 2)
+      .map((p) => p[0])
+      .join('')
+      .toUpperCase();
+  }
+
+  protected cantidadEnCarrito(repuesto: Repuesto): number {
+    return this.carrito().find((l) => l.repuesto.repuestoId === repuesto.repuestoId)?.cantidad ?? 0;
+  }
+
   // --- Carrito ---------------------------------------------------------------
 
   /** Stock disponible descontando lo que ya está en el carrito. */
   protected disponible(repuesto: Repuesto): number {
-    const enCarrito = this.carrito()
-      .filter((l) => l.repuesto.repuestoId === repuesto.repuestoId)
-      .reduce((suma, l) => suma + l.cantidad, 0);
-
-    return repuesto.stockActual - enCarrito;
+    return repuesto.stockActual - this.cantidadEnCarrito(repuesto);
   }
 
-  /** Click en una tarjeta del catálogo: suma una unidad al carrito. */
+  /** Toque en una tarjeta del catálogo: suma una unidad al carrito. */
   protected agregarProducto(repuesto: Repuesto): void {
     if (this.disponible(repuesto) < 1) {
       this.notificacion.advertencia(`No quedan más unidades de '${repuesto.nombre}' disponibles.`);
@@ -250,12 +274,21 @@ export class Ventas implements ConfirmarSalida {
     });
   }
 
+  /** "−" en la línea: con una sola unidad, la quita de la venta. */
+  protected restarUno(linea: LineaCarrito): void {
+    if (linea.cantidad <= 1) {
+      this.quitarDelCarrito(linea.repuesto.repuestoId);
+      return;
+    }
+    this.cambiarCantidad(linea.repuesto.repuestoId, linea.cantidad - 1);
+  }
+
   protected quitarDelCarrito(repuestoId: string): void {
     this.carrito.update((lineas) => lineas.filter((l) => l.repuesto.repuestoId !== repuestoId));
   }
 
   protected cambiarCantidad(repuestoId: string, cantidad: number): void {
-    if (cantidad < 1) return;
+    if (!Number.isFinite(cantidad) || cantidad < 1) return;
 
     const repuesto = this.repuestos().find((r) => r.repuestoId === repuestoId);
     if (repuesto && cantidad > repuesto.stockActual) {
@@ -271,7 +304,7 @@ export class Ventas implements ConfirmarSalida {
   }
 
   protected cambiarPrecio(repuestoId: string, precio: number): void {
-    if (precio < 0) return;
+    if (!Number.isFinite(precio) || precio < 0) return;
 
     this.carrito.update((lineas) =>
       lineas.map((l) =>
@@ -330,24 +363,25 @@ export class Ventas implements ConfirmarSalida {
 
   // --- Cobro -----------------------------------------------------------------
 
-  protected abrirCobro(): void {
+  /**
+   * Cobrar registra la venta en el acto, con el método de pago elegido en el
+   * panel: el total y el método ya están a la vista, no hace falta otra
+   * ventana. Si fue un error, la venta se anula desde el historial y el stock
+   * vuelve al inventario.
+   */
+  protected cobrar(): void {
     if (this.carrito().length === 0) {
-      this.notificacion.advertencia('Agregue al menos un repuesto al carrito.');
+      this.notificacion.advertencia('Agregue al menos un repuesto a la venta.');
       return;
     }
 
-    this.cobro = { clienteId: '', metodoPago: MetodoPago.Efectivo, observaciones: '' };
-    this.panelCobro.set(true);
-  }
-
-  protected confirmarVenta(): void {
     this.procesando.set(true);
 
     this.servicio
       .crear({
         clienteId: this.cobro.clienteId || null,
-        metodoPago: Number(this.cobro.metodoPago) as MetodoPago,
-        observaciones: this.cobro.observaciones || null,
+        metodoPago: this.metodoPago(),
+        observaciones: this.cobro.observaciones.trim() || null,
         detalles: this.carrito().map((l) => ({
           repuestoId: l.repuesto.repuestoId,
           cantidad: l.cantidad,
@@ -357,10 +391,12 @@ export class Ventas implements ConfirmarSalida {
       .subscribe({
         next: (venta) => {
           this.notificacion.exito(
-            `Venta ${venta.ventaId} registrada por ${venta.total.toFixed(2)} Bs.`,
+            `Venta ${venta.ventaId} registrada: ${new BolivianosPipe().transform(venta.total)}.`,
           );
           this.procesando.set(false);
-          this.panelCobro.set(false);
+          this.cobro = { clienteId: '', observaciones: '' };
+          this.extrasAbiertos.set(false);
+          this.metodoPago.set(MetodoPago.Efectivo);
           this.vaciarCarrito();
           this.cargar();
           // El stock bajó: la lista y el badge de stock bajo deben seguirlo.

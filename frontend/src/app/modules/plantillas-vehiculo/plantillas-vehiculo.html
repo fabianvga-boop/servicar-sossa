@@ -1,24 +1,70 @@
-<div class="fila-entre envuelve mb-2">
-  <div>
-    <h1>Plantillas de vehículo</h1>
-    <p class="texto-tenue texto-sm mb-0">
-      Biblioteca de diagramas vectoriales fieles a un vehículo real (Marca+Modelo). Cuando existe
-      una plantilla, el diagrama de zonas usa ese SVG en vez de la silueta genérica.
-    </p>
-  </div>
+<div class="encabezado-pagina encabezado-plantillas mb-2">
+  <h1>Plantillas de vehículo</h1>
+  <p class="texto-tenue texto-sm mb-0">
+    El dibujo sobre el que se marcan golpes y rayones al recibir cada vehículo, en todas las órdenes. Si el
+    modelo no tiene plantilla, se usa la silueta genérica.
+  </p>
 </div>
 
-<div class="tarjeta mb-2">
-  <div class="tarjeta-encabezado"><h2>Agregar plantilla</h2></div>
-  <div class="tarjeta-cuerpo">
-    <p class="texto-tenue texto-sm mb-2">
-      El SVG debe marcar cada zona clicable con <code>data-zona="codigo"</code> y, opcionalmente,
-      <code>data-etiqueta="Nombre legible"</code> (por ejemplo <code>capo</code>,
-      <code>puerta_izquierda</code>). Máximo 512 KB. Si ya existe una plantilla para esa
-      marca+modelo, se reemplaza.
-    </p>
+<div class="rejilla-plantillas">
+  <button type="button" class="subir-plantilla" (click)="abrirSubir()">
+    <span class="subir-icono" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M5 20h14" /></svg>
+    </span>
+    <strong>Subir plantilla</strong>
+    <span>Archivo SVG del vehículo. Indique la marca y el modelo al subirlo.</span>
+  </button>
 
-    <form class="rejilla" [formGroup]="formulario" (ngSubmit)="subir()">
+  @if (cargando() && plantillas().length === 0) {
+    <div class="plantilla"><app-estado-tabla [cargando]="true" titulo="" descripcion="" [filas]="2" [columnas]="1" /></div>
+  }
+
+  @for (p of plantillas(); track p.plantillaId) {
+    <article class="plantilla">
+      <div class="plantilla-vista">
+        @if (vistaPrevia()[p.plantillaId]; as previa) {
+          <img [src]="previa" [alt]="p.marca + ' ' + p.modelo" />
+        } @else {
+          <span class="plantilla-cargando" aria-hidden="true"></span>
+        }
+      </div>
+      <div class="plantilla-textos">
+        <strong>{{ p.marca }} {{ p.modelo }}</strong>
+        <span>
+          Subida el {{ p.fechaSubida | date: 'dd/MM/yyyy' }} ·
+          {{ usos(p) === 1 ? 'la usa 1 vehículo' : 'la usan ' + usos(p) + ' vehículos' }}
+        </span>
+      </div>
+      <div class="plantilla-botones">
+        <a class="btn btn-fantasma btn-sm" [href]="urlArchivo(p.url)" target="_blank" rel="noopener">Ver</a>
+        <button type="button" class="btn btn-fantasma btn-sm" (click)="abrirReemplazar(p)">Reemplazar</button>
+        <button type="button" class="btn btn-fantasma btn-sm peligro" (click)="confirmarEliminar(p)">Eliminar</button>
+      </div>
+    </article>
+  }
+
+  <article class="plantilla generica">
+    <div class="plantilla-vista">
+      <svg width="200" height="90" viewBox="0 0 200 90" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true">
+        <path d="M10 66V50l30-6 26-20h56l26 20 32 6v16h-20M64 68h74M10 66h30" />
+        <circle cx="52" cy="68" r="12" />
+        <circle cx="150" cy="68" r="12" />
+      </svg>
+    </div>
+    <div class="plantilla-textos">
+      <strong>Silueta genérica</strong>
+      <span>Para marcas y modelos sin plantilla propia</span>
+    </div>
+  </article>
+</div>
+
+@if (panelSubir()) {
+  <app-cajon
+    [titulo]="reemplazando() ? 'Reemplazar plantilla' : 'Subir plantilla'"
+    [subtitulo]="reemplazando() ? 'El archivo nuevo reemplaza al actual para ' + reemplazando()!.marca + ' ' + reemplazando()!.modelo + '.' : ''"
+    (cerrar)="cerrarSubir()"
+  >
+    <form class="form-plantilla" [formGroup]="formulario" id="form-plantilla" (ngSubmit)="subir()">
       <div class="campo">
         <label for="marca">Marca <span class="obligatorio">*</span></label>
         <input
@@ -52,77 +98,27 @@
             <option [value]="m"></option>
           }
         </datalist>
-        <span class="campo-ayuda">Debe coincidir exactamente con la marca+modelo del vehículo.</span>
+        <span class="campo-ayuda">Igual que en la ficha del vehículo: así se usa en sus órdenes.</span>
       </div>
 
       <div class="campo">
         <label for="archivoSvg">Archivo SVG <span class="obligatorio">*</span></label>
         <input id="archivoSvg" type="file" accept=".svg,image/svg+xml" (change)="onArchivoSeleccionado($event)" />
-      </div>
-
-      <div style="display: flex; align-items: flex-end">
-        <button type="submit" class="btn btn-primario" [disabled]="subiendo()">
-          {{ subiendo() ? 'Guardando…' : '+ Guardar plantilla' }}
-        </button>
+        <span class="campo-ayuda">
+          Hasta 512 KB. Cada zona que se pueda tocar lleva <code>data-zona="codigo"</code> y, si quiere,
+          <code>data-etiqueta="Nombre"</code> (por ejemplo <code>capo</code>, <code>puerta_izquierda</code>).
+        </span>
       </div>
     </form>
-  </div>
-</div>
 
-<div class="tarjeta">
-  @if (cargando() || plantillas().length === 0) {
-    <app-estado-tabla
-      [cargando]="cargando()"
-      titulo="Sin plantillas todavía"
-      descripcion="Los vehículos usan la silueta genérica hasta que cargue una plantilla para su marca y modelo."
-      [filas]="3"
-      [columnas]="4"
-    />
-  } @else {
-    <div class="tabla-contenedor">
-      <table class="tabla">
-        <thead>
-          <tr>
-            <th>Vista previa</th>
-            <th>Marca</th>
-            <th>Modelo</th>
-            <th>Subida</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (p of plantillas(); track p.plantillaId) {
-            <tr>
-              <td>
-                @if (vistaPrevia()[p.plantillaId]; as previa) {
-                  <img class="vista-previa-svg" [src]="previa" [alt]="p.marca + ' ' + p.modelo" />
-                } @else {
-                  <div class="vista-previa-svg vista-previa-cargando" aria-hidden="true"></div>
-                }
-              </td>
-              <td>{{ p.marca }}</td>
-              <td>{{ p.modelo }}</td>
-              <td>{{ p.fechaSubida | date: 'dd/MM/yyyy' }}</td>
-              <td>
-                <button
-                  type="button"
-                  class="btn-icono"
-                  title="Eliminar plantilla"
-                  aria-label="Eliminar plantilla"
-                  (click)="confirmarEliminar(p)"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6" />
-                  </svg>
-                </button>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
+    <div pie>
+      <button type="button" class="btn btn-secundario" (click)="cerrarSubir()">Cancelar</button>
+      <button type="submit" form="form-plantilla" class="btn btn-primario" [disabled]="subiendo()">
+        {{ subiendo() ? 'Guardando…' : 'Guardar plantilla' }}
+      </button>
     </div>
-  }
-</div>
+  </app-cajon>
+}
 
 @if (porEliminar(); as plantilla) {
   <app-confirmacion

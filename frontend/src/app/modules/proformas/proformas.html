@@ -1,7 +1,7 @@
 <div class="fila-entre envuelve mb-2 encabezado-pagina">
   <div>
     <h1>Proformas</h1>
-    <p class="texto-tenue texto-sm mb-0">Cobro de órdenes finalizadas</p>
+    <p class="texto-tenue texto-sm mb-0">El documento de cobro de cada orden terminada.</p>
   </div>
   <button
     type="button"
@@ -16,150 +16,301 @@
   </button>
 </div>
 
-<div class="tarjeta">
-  <div class="tarjeta-encabezado">
-    <select
-      class="filtro-ancho-md"
-      [value]="estadoFiltro()"
-      (change)="onFiltrarEstado($any($event.target).value)"
-    >
-      <option value="">Todas</option>
-      <option value="0">Emitidas</option>
-      <option value="1">Anuladas</option>
-    </select>
-    <span class="texto-tenue texto-sm">{{ totalRegistros() }} proforma(s)</span>
+<!-- Lo que falta cobrar en todo el taller, sin buscarlo en la lista -->
+@if (resumenCobro(); as r) {
+  <div class="aviso-cobro mb-2" role="status">
+    <span class="aviso-cobro-punto" aria-hidden="true"></span>
+    <span class="aviso-cobro-texto">
+      @if (r.conSaldo > 0) {
+        <strong>{{ r.saldo | bs }} por cobrar</strong>
+        <span class="texto-tenue">
+          en {{ r.conSaldo }} {{ r.conSaldo === 1 ? 'proforma con saldo' : 'proformas con saldo' }}</span
+        >
+      }
+      @if (r.ordenes > 0 && r.conSaldo > 0) {
+        <span class="texto-tenue"> · </span>
+      }
+      @if (r.ordenes > 0) {
+        <strong>{{ r.ordenes }} {{ r.ordenes === 1 ? 'orden terminada' : 'órdenes terminadas' }} sin proforma</strong>
+      }
+    </span>
+    @if (r.conSaldo > 0) {
+      <button type="button" class="btn btn-secundario btn-sm" (click)="elegirVista('saldo')">Ver con saldo</button>
+    }
+    @if (r.ordenes > 0) {
+      <button type="button" class="btn btn-secundario btn-sm" (click)="abrirNueva()">Emitir la que falta</button>
+    }
   </div>
+}
 
-  @if (cargando() || proformas().length === 0) {
+<!-- ------------------------------------------------------------------ Pestañas -->
+<div class="segmentos en-linea mb-2" role="tablist" aria-label="Estado de las proformas">
+  <button
+    type="button"
+    role="tab"
+    class="segmento"
+    [class.activo]="vista() === 'todas'"
+    [attr.aria-selected]="vista() === 'todas'"
+    (click)="elegirVista('todas')"
+  >
+    Todas <span class="vista-cuenta">{{ cuentas().todas }}</span>
+  </button>
+  <button
+    type="button"
+    role="tab"
+    class="segmento"
+    [class.activo]="vista() === 'saldo'"
+    [attr.aria-selected]="vista() === 'saldo'"
+    (click)="elegirVista('saldo')"
+  >
+    Con saldo <span class="vista-cuenta" [class.alerta]="cuentas().saldo > 0">{{ cuentas().saldo }}</span>
+  </button>
+  <button
+    type="button"
+    role="tab"
+    class="segmento"
+    [class.activo]="vista() === 'saldadas'"
+    [attr.aria-selected]="vista() === 'saldadas'"
+    (click)="elegirVista('saldadas')"
+  >
+    Saldadas <span class="vista-cuenta">{{ cuentas().saldadas }}</span>
+  </button>
+  <button
+    type="button"
+    role="tab"
+    class="segmento"
+    [class.activo]="vista() === 'anuladas'"
+    [attr.aria-selected]="vista() === 'anuladas'"
+    (click)="elegirVista('anuladas')"
+  >
+    Anuladas <span class="vista-cuenta">{{ cuentas().anuladas }}</span>
+  </button>
+</div>
+
+<!-- --------------------------------------------------------------------- Lista -->
+<section class="lista-filas">
+  @if (cargando() || visibles().length === 0) {
     <app-estado-tabla
       [cargando]="cargando()"
-      [hayFiltro]="estadoFiltro().length > 0"
+      [hayFiltro]="vista() !== 'todas'"
       titulo="Sin proformas emitidas"
       descripcion="Emita la proforma de una orden finalizada o cerrada."
     />
   } @else {
-    <div class="tabla-contenedor">
-      <table class="tabla">
-        <thead>
-          <tr>
-            <th>Código</th>
-            <th>Emisión</th>
-            <th>Orden</th>
-            <th>Cliente</th>
-            <th>NIT / Razón social</th>
-            <th class="num">Total</th>
-            <th class="num">Pagado</th>
-            <th class="num">Saldo</th>
-            <th>Estado</th>
-            <th class="th-acciones">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (proforma of proformas(); track proforma.proformaId) {
-            <tr>
-              <td class="codigo">{{ proforma.proformaId }}</td>
-              <td class="texto-sm">{{ proforma.fechaEmision | date: 'dd/MM/yyyy' }}</td>
-              <td>
-                <a [routerLink]="['/ordenes', proforma.ordenId]" class="codigo">
-                  {{ proforma.ordenId }}
-                </a>
-              </td>
-              <td>
-                <div>{{ proforma.nombreCliente }}</div>
-                <div class="texto-tenue texto-sm">{{ proforma.placaVehiculo }}</div>
-              </td>
-              <td class="texto-sm">{{ proforma.nitRazonSocial || '—' }}</td>
-              <td class="num texto-fuerte">{{ proforma.total | bs }}</td>
-              <td class="num">{{ proforma.totalPagado | bs }}</td>
-              <td class="num">
-                @if (proforma.estaSaldada) {
-                  <span class="insignia insignia-verde">Saldada</span>
-                } @else {
-                  <span class="texto-rojo">{{ proforma.saldoPendiente | bs }}</span>
-                }
-              </td>
-              <td><app-insignia-estado familia="proforma" [valor]="proforma.estado" /></td>
-              <td>
-                <div class="acciones-iconos">
-                  <button
-                    type="button"
-                    class="btn-icono"
-                    [disabled]="descargando() === proforma.proformaId"
-                    [title]="descargando() === proforma.proformaId ? 'Generando…' : 'Descargar PDF'"
-                    aria-label="Descargar el comprobante en PDF"
-                    (click)="descargarPdf(proforma)"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" />
-                    </svg>
-                  </button>
-                  @if (proforma.estado === EstadoProforma.Emitida && proforma.totalPagado === 0) {
-                    <button
-                      type="button"
-                      class="btn-icono btn-icono-peligro"
-                      title="Anular"
-                      aria-label="Anular proforma"
-                      (click)="porAnular.set(proforma)"
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
-                      </svg>
-                    </button>
-                  }
-                </div>
-              </td>
-            </tr>
+    <div class="fila-lista fila-proforma cabecera-lista" aria-hidden="true">
+      <span>Código</span>
+      <span>Orden</span>
+      <span>Cliente</span>
+      <span class="a-la-derecha">Total</span>
+      <span>Cobrado</span>
+      <span>Estado</span>
+      <span></span>
+    </div>
+
+    @for (proforma of visibles(); track proforma.proformaId) {
+      <div class="fila-lista fila-proforma">
+        <span class="codigo">{{ proforma.proformaId }}</span>
+
+        <a class="enlace-orden-proforma" [routerLink]="['/ordenes', proforma.ordenId]">{{ proforma.ordenId }}</a>
+
+        <span class="proforma-cliente">
+          <span class="proforma-cliente-nombre">{{ proforma.nombreCliente }}</span>
+          <span class="proforma-cliente-detalle">
+            {{ proforma.fechaEmision | date: 'dd/MM/yyyy' }}
+            @if (proforma.nitRazonSocial) {
+              · a nombre de {{ proforma.nitRazonSocial }}
+            }
+          </span>
+        </span>
+
+        <span class="monto-mono a-la-derecha">{{ proforma.total | bs }}</span>
+
+        <span class="proforma-cobrado">
+          <span class="proforma-cobrado-texto">{{ cobradoTexto(proforma) }}</span>
+          <span class="barra-cobro" aria-hidden="true">
+            <span
+              class="barra-cobro-relleno {{ estadoClase(proforma) }}"
+              [style.width.%]="cobradoPorcentaje(proforma)"
+            ></span>
+          </span>
+        </span>
+
+        <span><span class="insignia-cobro {{ estadoClase(proforma) }}">{{ estadoTexto(proforma) }}</span></span>
+
+        <span class="proforma-acciones">
+          @if (proforma.estado === EstadoProforma.Emitida && !proforma.estaSaldada) {
+            <a
+              class="btn-icono"
+              title="Registrar pago"
+              [attr.aria-label]="'Registrar un pago de la proforma ' + proforma.proformaId"
+              [routerLink]="['/pagos']"
+              [queryParams]="{ proformaId: proforma.proformaId }"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="2.5" y="6" width="19" height="12" rx="2" /><path d="M2.5 10h19" />
+              </svg>
+            </a>
           }
-        </tbody>
-      </table>
-    </div>
+          <button
+            type="button"
+            class="btn-icono"
+            [disabled]="descargando() === proforma.proformaId"
+            [title]="descargando() === proforma.proformaId ? 'Generando…' : 'Descargar el PDF'"
+            aria-label="Descargar el PDF"
+            (click)="descargarPdf(proforma)"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />
+            </svg>
+          </button>
+          @if (proforma.estado === EstadoProforma.Emitida && proforma.totalPagado === 0) {
+            <button
+              type="button"
+              class="btn-icono btn-icono-peligro"
+              title="Anular"
+              aria-label="Anular la proforma"
+              (click)="porAnular.set(proforma)"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
+              </svg>
+            </button>
+          }
+        </span>
+      </div>
+    }
 
-    <app-paginador
-      [pagina]="pagina()"
-      [totalPaginas]="totalPaginas()"
-      [totalRegistros]="totalRegistros()"
-      [tamanoPagina]="tamanoPagina()"
-      (cambiarPagina)="cambiarPagina($event)"
-      (cambiarTamano)="cambiarTamano($event)"
-    />
+    @if (totalPaginas() > 1) {
+      <app-paginador
+        [pagina]="pagina()"
+        [totalPaginas]="totalPaginas()"
+        [totalRegistros]="filtradas().length"
+        [tamanoPagina]="tamanoPagina()"
+        (cambiarPagina)="pagina.set($event)"
+        (cambiarTamano)="cambiarTamano($event)"
+      />
+    }
   }
-</div>
+</section>
 
+<!-- ------------------------------------------------- Panel: emitir proforma -->
 @if (panelNueva()) {
-  <app-modal titulo="Emitir proforma" (cerrar)="panelNueva.set(false)">
-    <div class="campo">
-      <label for="ordenProforma">Orden de trabajo</label>
-      <app-selector-busqueda
-        idCampo="ordenProforma"
-        name="ordenProforma"
-        marcador="Escriba el código, placa o cliente…"
-        [opciones]="opcionesOrden()"
-        [(ngModel)]="nueva.ordenId"
-      />
-      <span class="texto-tenue texto-sm">
-        Solo se listan órdenes Finalizadas o Cerradas.
-      </span>
-    </div>
+  <app-cajon titulo="Emitir proforma" subtitulo="Documento de cobro del taller, sin valor fiscal." [ancho]="460" (cerrar)="panelNueva.set(false)">
+    <!-- 1. Qué orden se cobra: solo las terminadas que todavía no tienen proforma -->
+    <section class="paso">
+      <h3 class="paso-titulo">1. Orden a cobrar</h3>
+      @if (sinProforma().length === 0) {
+        <p class="paso-vacio">
+          No hay órdenes por cobrar. Aparecen aquí cuando se finaliza o se cierra una orden.
+        </p>
+      } @else {
+        <div class="opciones-orden" role="radiogroup" aria-label="Orden a cobrar">
+          @for (o of sinProforma(); track o.ordenId) {
+            <button
+              type="button"
+              role="radio"
+              class="opcion-orden"
+              [class.elegida]="ordenElegida() === o.ordenId"
+              [attr.aria-checked]="ordenElegida() === o.ordenId"
+              (click)="elegirOrden(o.ordenId)"
+            >
+              <span class="opcion-orden-fila">
+                <span class="codigo">{{ o.ordenId }}</span>
+                <app-placa [valor]="o.placaVehiculo" />
+                <span class="opcion-orden-total">{{ o.total | bs }}</span>
+              </span>
+              <span class="opcion-orden-detalle">{{ o.nombreCliente }} · {{ o.descripcionVehiculo }}</span>
+              <span class="opcion-orden-marcas">
+                @if (o.ordenId === ultimaCerrada()) {
+                  <span class="insignia insignia-verde">Última cerrada</span>
+                }
+                @if (o.estado === EstadoOrden.Cerrada && o.fechaCierre) {
+                  <span class="insignia insignia-gris">Cerrada el {{ o.fechaCierre | date: 'dd/MM/yyyy HH:mm' }}</span>
+                } @else if (o.estado === EstadoOrden.Finalizada) {
+                  <span class="insignia insignia-naranja">Finalizada, sin cerrar</span>
+                }
+              </span>
+            </button>
+          }
+        </div>
+      }
+    </section>
 
-    <div class="campo">
-      <label for="nitProforma">NIT / Razón social</label>
-      <input
-        id="nitProforma"
-        name="nitProforma"
-        [(ngModel)]="nueva.nitRazonSocial"
-        placeholder="Datos de facturación del cliente"
-      />
-    </div>
+    @if (seleccionada(); as orden) {
+      <!-- 2. A nombre de quién sale: el cliente, o el nombre/NIT que pida -->
+      <section class="paso">
+        <h3 class="paso-titulo">2. A nombre de</h3>
+        <div class="campo">
+          <span class="etiqueta-campo">Cliente</span>
+          <span class="dato-fijo">{{ orden.nombreCliente }}</span>
+        </div>
+        <div class="campo">
+          <label for="nitProforma">NIT o CI / Razón social (opcional)</label>
+          <input
+            id="nitProforma"
+            name="nitProforma"
+            maxlength="150"
+            [(ngModel)]="nueva.nitRazonSocial"
+          />
+          <span class="campo-ayuda">
+            Como el cliente quiere que figure. Si queda vacío, va su nombre y CI.
+          </span>
+        </div>
+      </section>
+
+      <!-- 3. Lo que se cobra: el detalle de la orden, tal como saldrá en el PDF -->
+      <section class="paso">
+        <h3 class="paso-titulo">3. Lo que se cobra</h3>
+        <div class="cobro-detalle">
+          @if (detalle(); as d) {
+            @for (s of d.servicios; track s.ordenServicioId) {
+              <div class="cobro-linea">
+                <span class="cobro-concepto">{{ s.nombreServicio }}<small>Servicio</small></span>
+                <span class="num">{{ s.precio | bs }}</span>
+              </div>
+            }
+            @for (r of d.repuestos; track r.ordenRepuestoId) {
+              <div class="cobro-linea">
+                <span class="cobro-concepto">
+                  {{ r.nombreRepuesto }} × {{ r.cantidad }}<small>Repuesto</small>
+                </span>
+                <span class="num">{{ r.subtotal | bs }}</span>
+              </div>
+            }
+          } @else {
+            <div class="cobro-linea texto-tenue">Cargando el detalle…</div>
+          }
+          <div class="cobro-total">
+            <strong>Total a pagar</strong>
+            <span class="num">{{ orden.total | bs }}</span>
+          </div>
+        </div>
+      </section>
+
+      <label class="casilla">
+        <input type="checkbox" name="descargarAlEmitir" [(ngModel)]="descargarAlEmitir" />
+        Descargar el PDF al emitir
+      </label>
+    }
 
     <div pie>
-      <button type="button" class="btn btn-secundario" (click)="panelNueva.set(false)">
-        Cancelar
-      </button>
-      <button type="button" class="btn btn-primario" [disabled]="procesando()" (click)="emitir()">
-        {{ procesando() ? 'Emitiendo…' : 'Emitir proforma' }}
+      <button type="button" class="btn btn-secundario" (click)="panelNueva.set(false)">Cancelar</button>
+      <button
+        type="button"
+        class="btn btn-primario"
+        [disabled]="procesando() || !seleccionada()"
+        (click)="emitir()"
+      >
+        @if (procesando()) {
+          Emitiendo…
+        } @else if (seleccionada(); as orden) {
+          Emitir proforma de {{ orden.total | bs }}
+        } @else {
+          Emitir proforma
+        }
       </button>
     </div>
-  </app-modal>
+  </app-cajon>
 }
 
 @if (porAnular(); as proforma) {

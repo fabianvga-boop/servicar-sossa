@@ -159,7 +159,7 @@ import { ElegirFoto } from '../../shared/components/elegir-foto';
       background: var(--brand);
       color: var(--blanco);
       border-color: transparent;
-      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-family: var(--fuente);
       font-size: 24px;
       font-weight: 600;
     }

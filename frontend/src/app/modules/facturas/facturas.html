@@ -1,26 +1,67 @@
-<div class="fila-entre envuelve mb-2">
-  <div>
-    <h1>Facturas</h1>
-    <p class="texto-tenue texto-sm mb-0">Comprobantes fiscales emitidos ante el SIN</p>
-  </div>
+<div class="encabezado-guia mb-2">
+  <h1>Facturación electrónica</h1>
+  @if (habilitada()) {
+    <p class="texto-tenue texto-sm mb-0">Comprobantes fiscales emitidos ante el SIN.</p>
+  } @else {
+    <p class="guia-intro">
+      Hoy el taller cobra con proformas, que no tienen valor fiscal. Esta guía reúne lo que falta
+      para emitir facturas ante el SIN más adelante.
+    </p>
+  }
 </div>
 
-<!-- Sin NIT habilitado el módulo no puede emitir. Se explica en vez de ofrecer
-     un botón que va a fallar, y se remite al documento que sí corresponde. -->
-@if (estadoModulo(); as estado) {
-  @if (!estado.emisionHabilitada) {
-    <div class="banner-info mb-2">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <circle cx="12" cy="12" r="9" /><path d="M12 16v-4" /><path d="M12 8h.01" />
-      </svg>
-      <span>
-        {{ estado.motivo }}
-        <a routerLink="/proformas">Ir a Proformas</a>
-      </span>
-    </div>
-  }
+<!-- Sin la facturación habilitada el módulo no puede emitir: en vez de un
+     botón que va a fallar, la guía de lo que falta y el enlace a Proformas. -->
+@if (!habilitada()) {
+  <div class="guia mb-2">
+    <section class="tarjeta guia-pasos" aria-label="Pasos para facturar">
+      @for (paso of PASOS; track paso.numero) {
+        <div class="guia-paso">
+          <span class="guia-numero {{ paso.tipo }}">{{ paso.numero }}</span>
+          <div class="guia-paso-texto">
+            <div class="guia-paso-titulo">
+              <strong>{{ paso.titulo }}</strong>
+              <span class="guia-tipo {{ paso.tipo }}">{{ ETIQUETA_TIPO[paso.tipo] }}</span>
+            </div>
+            <p>{{ paso.texto }}</p>
+          </div>
+        </div>
+      }
+    </section>
+
+    <aside class="guia-lateral">
+      <section class="tarjeta guia-lista">
+        <h2>Lo que ya tiene el sistema</h2>
+        @for (item of LISTO; track item) {
+          <div class="guia-item">
+            <svg class="guia-check" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m5 12 5 5 9-10" />
+            </svg>
+            <span>{{ item }}</span>
+          </div>
+        }
+      </section>
+
+      <section class="tarjeta guia-lista">
+        <h2>Lo que falta</h2>
+        @for (item of FALTA; track item) {
+          <div class="guia-item">
+            <span class="guia-pendiente" aria-hidden="true"></span>
+            <span>{{ item }}</span>
+          </div>
+        }
+      </section>
+
+      <p class="guia-nota">
+        Los requisitos dependen de lo que pida el SIN en su momento. Conviene confirmarlos con un
+        contador antes de iniciar el trámite.
+      </p>
+      <a routerLink="/proformas" class="btn btn-secundario guia-enlace">Ir a Proformas</a>
+    </aside>
+  </div>
 }
 
+@if (habilitada() || facturas().length > 0) {
 <div class="tarjeta">
   <div class="tarjeta-encabezado">
     <span class="texto-tenue texto-sm">{{ totalRegistros() }} factura(s)</span>
@@ -62,7 +103,7 @@
               </td>
               <td>{{ factura.nombreCliente }}</td>
               <td class="num">{{ factura.total | bs }}</td>
-              <td class="texto-sm codigo">{{ factura.cuf ?? '—' }}</td>
+              <td class="texto-sm codigo codigo-largo">{{ factura.cuf ?? '—' }}</td>
               <td>
                 <span class="insignia">{{ factura.estadoSiat }}</span>
                 @if (factura.mensajeServicio) {
@@ -99,3 +140,4 @@
     />
   }
 </div>
+}

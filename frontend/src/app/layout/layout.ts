@@ -10,6 +10,7 @@ import {
 } from '@angular/router';
 import { filter, map } from 'rxjs/operators';
 
+import { DATOS_TALLER } from '../core/datos-taller';
 import { Rol } from '../core/models/enums';
 import { urlArchivo } from '../core/services/api-base';
 import { AuthService } from '../core/services/auth.service';
@@ -62,6 +63,7 @@ export class Layout {
   private readonly inactividad = inject(InactividadService);
   private readonly router = inject(Router);
   protected readonly urlArchivo = urlArchivo;
+  protected readonly taller = DATOS_TALLER;
 
   private readonly buscador = viewChild.required(BuscadorGlobal);
 

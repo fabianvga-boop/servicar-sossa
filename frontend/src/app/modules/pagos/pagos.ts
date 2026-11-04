@@ -9,11 +9,15 @@ import { ProformasService, PagosService } from '../../core/services/finanzas.ser
 import { NotificacionService } from '../../core/services/notificacion.service';
 import { Confirmacion } from '../../shared/components/confirmacion';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
-import { Modal } from '../../shared/components/modal';
-import { Paginador } from '../../shared/components/paginador';
+import { Cajon } from '../../shared/components/cajon';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
 import { Atajo } from '../../shared/directives/atajo';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
+
+const MESES = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+];
 
 /** USU037 — registro de pagos de clientes. */
 @Component({
@@ -21,15 +25,15 @@ import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
   imports: [
     FormsModule,
     DatePipe,
-    Modal,
+    Cajon,
     Confirmacion,
     EstadoTabla,
-    Paginador,
     SelectorBusqueda,
     Atajo,
     BolivianosPipe,
   ],
   templateUrl: './pagos.html',
+  styleUrl: './pagos.css',
 })
 export class Pagos {
   private readonly servicio = inject(PagosService);
@@ -43,13 +47,33 @@ export class Pagos {
   protected readonly pagos = signal<Pago[]>([]);
   protected readonly proformas = signal<Proforma[]>([]);
   protected readonly cargando = signal(true);
-  protected readonly metodoFiltro = signal('');
   protected readonly procesando = signal(false);
 
-  protected readonly pagina = signal(1);
-  protected readonly tamanoPagina = signal(20);
-  protected readonly totalRegistros = signal(0);
-  protected readonly totalPaginas = signal(0);
+  /** Método elegido en los filtros; null = todos. */
+  protected readonly metodoVista = signal<MetodoPago | null>(null);
+
+  protected readonly visibles = computed(() => {
+    const metodo = this.metodoVista();
+    return metodo === null ? this.pagos() : this.pagos().filter((p) => p.metodoPago === metodo);
+  });
+
+  /** Solo los métodos que aparecen en los pagos, con su cantidad. */
+  protected readonly chipsMetodo = computed(() =>
+    this.metodos
+      .map((m) => ({ ...m, cuenta: this.pagos().filter((p) => p.metodoPago === m.valor).length }))
+      .filter((m) => m.cuenta > 0),
+  );
+
+  protected readonly mesActual = MESES[new Date().getMonth()];
+
+  protected readonly cobradoMes = computed(() => {
+    const hoy = new Date();
+    const delMes = this.pagos().filter((p) => {
+      const fecha = new Date(p.fechaPago);
+      return fecha.getMonth() === hoy.getMonth() && fecha.getFullYear() === hoy.getFullYear();
+    });
+    return { monto: delMes.reduce((suma, p) => suma + p.monto, 0), cantidad: delMes.length };
+  });
 
   protected readonly panelNuevo = signal(false);
   protected readonly porRevertir = signal<Pago | null>(null);
@@ -98,19 +122,12 @@ export class Pagos {
   protected cargar(): void {
     this.cargando.set(true);
 
-    const metodo = this.metodoFiltro();
-
+    // Todos de una vez: el filtro por método y el resumen del mes son en pantalla.
     this.servicio
-      .getAll({
-        metodoPago: metodo === '' ? undefined : (Number(metodo) as MetodoPago),
-        pagina: this.pagina(),
-        tamanoPagina: this.tamanoPagina(),
-      })
+      .getAll({ pagina: 1, tamanoPagina: 500 })
       .subscribe({
         next: (resultado) => {
           this.pagos.set(resultado.items);
-          this.totalRegistros.set(resultado.totalRegistros);
-          this.totalPaginas.set(resultado.totalPaginas);
           this.cargando.set(false);
         },
         error: () => this.cargando.set(false),
@@ -134,22 +151,6 @@ export class Pagos {
       });
   }
 
-  protected onFiltrarMetodo(valor: string): void {
-    this.metodoFiltro.set(valor);
-    this.pagina.set(1);
-    this.cargar();
-  }
-
-  protected cambiarPagina(pagina: number): void {
-    this.pagina.set(pagina);
-    this.cargar();
-  }
-
-  protected cambiarTamano(tamano: number): void {
-    this.tamanoPagina.set(tamano);
-    this.pagina.set(1);
-    this.cargar();
-  }
 
   protected etiquetaMetodo(metodo: MetodoPago): string {
     return ETIQUETAS.metodoPago[metodo];
@@ -158,8 +159,8 @@ export class Pagos {
   private pagoVacio() {
     return {
       proformaId: '',
-      /** Total: cancela todo el saldo. A cuenta: paga una parte y queda saldo. */
-      tipo: 'total' as 'total' | 'cuenta',
+      /** Todo el saldo, la mitad o un monto escrito a mano. */
+      rapido: 'todo' as 'todo' | 'mitad' | 'otro',
       monto: null as number | null,
       metodoPago: MetodoPago.Efectivo,
       referencia: '',
@@ -171,15 +172,42 @@ export class Pagos {
     this.panelNuevo.set(true);
   }
 
-  /** Al elegir la proforma se propone el pago total, con el saldo ya cargado. */
+  /** Al elegir la proforma se propone todo el saldo. */
   protected onProformaSeleccionada(): void {
-    this.elegirTipo('total');
+    this.elegirRapido('todo');
   }
 
-  /** Total: el monto es el saldo y no se edita. A cuenta: se escribe cuánto paga. */
-  protected elegirTipo(tipo: 'total' | 'cuenta'): void {
-    this.nuevo.tipo = tipo;
-    this.nuevo.monto = tipo === 'total' ? (this.proformaElegida()?.saldoPendiente ?? null) : null;
+  protected elegirRapido(rapido: 'todo' | 'mitad' | 'otro'): void {
+    const saldo = this.proformaElegida()?.saldoPendiente ?? 0;
+    this.nuevo.rapido = rapido;
+    if (rapido === 'todo') this.nuevo.monto = saldo || null;
+    else if (rapido === 'mitad') this.nuevo.monto = saldo ? Math.round((saldo / 2) * 100) / 100 : null;
+    else {
+      this.nuevo.monto = null;
+      setTimeout(() => document.getElementById('montoPago')?.focus());
+    }
+  }
+
+  /** Escribir un monto a mano deja marcado el atajo que corresponda. */
+  protected onMontoEscrito(): void {
+    const saldo = this.proformaElegida()?.saldoPendiente ?? 0;
+    const monto = this.nuevo.monto ?? 0;
+    const mitad = Math.round((saldo / 2) * 100) / 100;
+    this.nuevo.rapido = monto === saldo ? 'todo' : monto === mitad ? 'mitad' : 'otro';
+  }
+
+  /** Cómo se llama la referencia según el método: lo que hay que anotar. */
+  protected etiquetaReferencia(): string {
+    switch (Number(this.nuevo.metodoPago) as MetodoPago) {
+      case MetodoPago.QR:
+        return 'Referencia del QR';
+      case MetodoPago.Transferencia:
+        return 'N.º de transferencia';
+      case MetodoPago.Tarjeta:
+        return 'N.º de comprobante de la tarjeta';
+      default:
+        return 'Referencia';
+    }
   }
 
   protected registrar(): void {
@@ -191,11 +219,14 @@ export class Pagos {
       return;
     }
 
-    if (this.nuevo.tipo === 'cuenta' && (monto <= 0 || monto >= proforma.saldoPendiente)) {
+    if (monto <= 0) {
+      this.notificacion.advertencia('Indique cuánto paga el cliente.');
+      return;
+    }
+
+    if (monto > proforma.saldoPendiente + 0.001) {
       this.notificacion.advertencia(
-        monto >= proforma.saldoPendiente
-          ? 'Ese monto cubre todo el saldo: elija “Pago total”.'
-          : 'Indique cuánto paga el cliente a cuenta.',
+        'El monto supera el saldo pendiente de Bs ' + proforma.saldoPendiente.toFixed(2) + '.',
       );
       return;
     }
@@ -205,7 +236,7 @@ export class Pagos {
     this.servicio
       .crear({
         proformaId: proforma.proformaId,
-        monto: this.nuevo.tipo === 'total' ? proforma.saldoPendiente : monto,
+        monto,
         metodoPago: Number(this.nuevo.metodoPago) as MetodoPago,
         referencia: this.nuevo.referencia || null,
       })
