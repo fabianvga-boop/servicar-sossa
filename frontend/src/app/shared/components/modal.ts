@@ -1,6 +1,7 @@
 import {
   Component,
   DestroyRef,
+  computed,
   ElementRef,
   afterNextRender,
   inject,
@@ -43,48 +44,49 @@ let modalesAbiertos = 0;
         [attr.aria-labelledby]="idTitulo"
         tabindex="-1"
       >
-        <div class="cabecera">
-          @if (peligroso()) {
-            <!-- La acción no se puede deshacer: se ve antes de leer el texto -->
-            <span class="icono-alerta" aria-hidden="true">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
-                <path d="M12 9v4" />
-                <path d="M12 17h.01" />
-              </svg>
-            </span>
+        <div class="cabecera" [class.compacta]="compacto()">
+          @switch (iconoVisible()) {
+            @case ('peligro') {
+              <!-- La acción no se puede deshacer: se ve antes de leer el texto -->
+              <span class="icono-cabecera peligro" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" /><path d="M12 9v4" /><path d="M12 17h.01" />
+                </svg>
+              </span>
+            }
+            @case ('atencion') {
+              <span class="icono-cabecera atencion" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="9" /><path d="M12 8v4.5" /><path d="M12 16h.01" />
+                </svg>
+              </span>
+            }
+            @case ('teclado') {
+              <span class="icono-cabecera neutro" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2.5" y="6" width="19" height="12" rx="2.5" /><path d="M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M6.5 14h.01M17.5 14h.01M9.5 14h5" />
+                </svg>
+              </span>
+            }
           }
 
-          <h2 [id]="idTitulo">{{ titulo() }}</h2>
+          <div class="titulos">
+            <h2 [id]="idTitulo">{{ titulo() }}</h2>
+            <ng-content select="[subtitulo]" />
+          </div>
 
           <button type="button" class="cerrar-btn" (click)="cerrar.emit()" aria-label="Cerrar">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M18 6 6 18" />
-              <path d="m6 6 12 12" />
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M18 6 6 18" /><path d="m6 6 12 12" />
             </svg>
           </button>
         </div>
 
-        <div class="cuerpo">
+        <div class="cuerpo" [class.compacto]="compacto()">
           <ng-content />
         </div>
 
-        <div class="pie">
+        <div class="pie" [class.compacto]="compacto()">
           <ng-content select="[pie]" />
         </div>
       </div>
@@ -94,7 +96,8 @@ let modalesAbiertos = 0;
     .fondo {
       position: fixed;
       inset: 0;
-      background: rgba(20, 23, 28, 0.45);
+      background: rgba(21, 26, 34, 0.42);
+      backdrop-filter: blur(2px);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -104,20 +107,20 @@ let modalesAbiertos = 0;
 
     .panel {
       background: var(--blanco);
-      border-radius: var(--radio);
-      box-shadow: var(--sombra-lg);
+      border-radius: 18px;
+      box-shadow: 0 30px 60px -24px rgba(0, 0, 0, 0.45);
       width: 100%;
       max-height: 90vh;
       display: flex;
       flex-direction: column;
-      animation: aparecer 0.15s ease-out;
+      animation: aparecer 0.18s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     .panel:focus { outline: none; }
 
     @keyframes aparecer {
-      from { opacity: 0; transform: translateY(-8px); }
-      to { opacity: 1; transform: translateY(0); }
+      from { opacity: 0; transform: translateY(6px) scale(0.985); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
     /* Quien prefiere menos movimiento no debería recibir la entrada animada */
@@ -128,49 +131,67 @@ let modalesAbiertos = 0;
     .cabecera {
       display: flex;
       align-items: center;
-      gap: 9px;
-      padding: 15px 20px;
-      border-bottom: 1px solid var(--gris-200);
+      gap: 12px;
+      padding: 18px 20px 16px 24px;
+      border-bottom: 1px solid var(--gris-100);
     }
 
-    .cabecera h2 {
-      font-size: 16px;
+    /* Confirmaciones: sin líneas, el ícono y el título arriba del contenido */
+    .cabecera.compacta {
+      align-items: flex-start;
+      padding: 22px 20px 4px 24px;
+      border-bottom: 0;
+    }
+
+    .titulos {
       flex: 1;
       min-width: 0;
-    }
-
-    /* Ícono de alerta sobre su tinte: mismo lenguaje que las insignias */
-    .icono-alerta {
       display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 28px;
-      height: 28px;
-      flex-shrink: 0;
-      border-radius: 50%;
-      background: var(--brand-soft);
-      color: var(--brand-dk);
+      flex-direction: column;
+      gap: 3px;
     }
 
-    .icono-alerta svg { width: 16px; height: 16px; }
+    .titulos h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .compacta .titulos { padding-top: 2px; }
+
+    /* Ícono sobre su tinte: naranja importante, rojo irreversible, gris neutro */
+    .icono-cabecera {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      flex-shrink: 0;
+      border-radius: 12px;
+    }
+
+    .icono-cabecera svg { width: 21px; height: 21px; }
+    .icono-cabecera.peligro { background: var(--brand-soft); color: var(--brand); }
+    .icono-cabecera.atencion { background: var(--naranja-100); color: var(--naranja-700); }
+    .icono-cabecera.neutro { background: var(--gris-100); color: var(--ink); }
 
     /* Botón con área propia, no una "×" suelta de 24px sin caja */
     .cerrar-btn {
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 30px;
-      height: 30px;
+      width: 34px;
+      height: 34px;
       flex-shrink: 0;
       background: none;
       border: none;
-      border-radius: var(--radio-sm);
+      border-radius: 10px;
       cursor: pointer;
       color: var(--gris-400);
       padding: 0;
     }
 
-    .cerrar-btn svg { width: 17px; height: 17px; }
+    .cerrar-btn svg { width: 18px; height: 18px; }
 
     .cerrar-btn:hover {
       background: var(--gris-100);
@@ -180,24 +201,32 @@ let modalesAbiertos = 0;
     /* overscroll-behavior: al llegar al final del formulario, la rueda del
        mouse no sigue desplazando la tabla de atrás. */
     .cuerpo {
-      padding: 20px;
+      padding: 20px 24px;
       overflow-y: auto;
       overscroll-behavior: contain;
       flex: 1;
     }
 
+    .cuerpo.compacto { padding: 12px 24px 4px 78px; }
+
     .pie {
-      padding: 14px 20px;
-      border-top: 1px solid var(--gris-200);
+      padding: 14px 24px;
+      border-top: 1px solid var(--gris-100);
       display: flex;
       justify-content: flex-end;
-      gap: 8px;
-      background: var(--gris-50);
-      border-radius: 0 0 var(--radio) var(--radio);
+      gap: 10px;
+      background: var(--blanco);
+      border-radius: 0 0 18px 18px;
     }
 
+    .pie.compacto { border-top: 0; padding: 16px 24px 22px; }
+
     .pie:empty { display: none; }
-  `,
+
+    @media (max-width: 520px) {
+      .cuerpo.compacto { padding-left: 24px; }
+    }
+    `,
 })
 export class Modal {
   readonly titulo = input.required<string>();
@@ -205,6 +234,14 @@ export class Modal {
 
   /** Marca el diálogo como acción irreversible: agrega el ícono de alerta. */
   readonly peligroso = input(false);
+
+  /** Ícono junto al título: atención (naranja), peligro (rojo) o teclado (gris). */
+  readonly icono = input<'atencion' | 'peligro' | 'teclado' | null>(null);
+
+  /** Confirmaciones: sin líneas divisorias y el contenido alineado con el título. */
+  readonly compacto = input(false);
+
+  protected readonly iconoVisible = computed(() => this.icono() ?? (this.peligroso() ? 'peligro' : null));
 
   readonly cerrar = output<void>();
 

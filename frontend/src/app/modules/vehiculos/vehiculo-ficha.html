@@ -100,12 +100,15 @@
     <!-- ================================================= Historial y repuestos -->
     @case ('historial') {
       <div class="ficha-columnas">
+        <!-- Izquierda: la historia del vehículo; derecha: los repuestos que le sirven.
+             Servicios frecuentes va con la historia para que las columnas queden parejas. -->
+        <div class="ficha-principal">
         <section class="tarjeta ficha-bloque ficha-tiempo">
           <h2>Línea de tiempo</h2>
           @if (!historial()) {
             <app-esqueleto [filas]="4" [columnas]="1" />
           } @else {
-            @for (item of lineaTiempo(); track item.clave; let ultimo = $last) {
+            @for (item of lineaVisible(); track item.clave; let ultimo = $last) {
               <div class="evento">
                 <span class="evento-guia" aria-hidden="true">
                   <span class="evento-punto {{ item.tono }}"></span>
@@ -129,8 +132,27 @@
             } @empty {
               <p class="ficha-nota">Este vehículo todavía no tiene diagnósticos ni órdenes.</p>
             }
+            @if (lineaTiempo().length > lineaVisible().length) {
+              <button type="button" class="btn-enlace historia-mas" (click)="verTodaLaHistoria.set(true)">
+                Ver historial completo ({{ lineaTiempo().length }})
+              </button>
+            }
           }
         </section>
+
+        <section class="tarjeta ficha-bloque">
+          <h2>Servicios más frecuentes</h2>
+          @if (historial()?.serviciosFrecuentes?.length) {
+            <div class="servicios-frecuentes">
+              @for (s of historial()!.serviciosFrecuentes; track s.nombre) {
+                <span class="servicio-frecuente">{{ s.nombre }} · {{ s.cantidad }}</span>
+              }
+            </div>
+          } @else {
+            <p class="ficha-nota">Se arman con las órdenes cerradas del vehículo.</p>
+          }
+        </section>
+        </div>
 
         <div class="ficha-lateral">
           <section class="tarjeta ficha-lista-repuestos">
@@ -138,7 +160,7 @@
               <h2>Repuestos para este vehículo</h2>
               <span>Los que calzan en un {{ v.marca }} {{ v.modelo }}{{ v.anio ? ' ' + v.anio : '' }}, con su stock.</span>
             </div>
-            @for (r of repuestosVehiculo().slice(0, 8); track r.repuesto.repuestoId) {
+            @for (r of repuestosVehiculo().slice(0, 6); track r.repuesto.repuestoId) {
               <div class="repuesto-fila">
                 <span class="repuesto-fila-nombre">
                   <strong>{{ r.repuesto.nombre }}</strong>
@@ -160,25 +182,13 @@
             } @empty {
               <p class="ficha-nota ficha-nota-lista">Todavía no hay repuestos marcados para este modelo.</p>
             }
-            @if (repuestosVehiculo().length > 8) {
+            @if (repuestosVehiculo().length > 6) {
               <a class="ficha-ver-todos" [routerLink]="['/repuestos']" [queryParams]="{ vehiculoId: v.vehiculoId }">
                 Ver los {{ repuestosVehiculo().length }} repuestos
               </a>
             }
           </section>
 
-          <section class="tarjeta ficha-bloque">
-            <h2>Servicios más frecuentes</h2>
-            @if (historial()?.serviciosFrecuentes?.length) {
-              <div class="servicios-frecuentes">
-                @for (s of historial()!.serviciosFrecuentes; track s.nombre) {
-                  <span class="servicio-frecuente">{{ s.nombre }} · {{ s.cantidad }}</span>
-                }
-              </div>
-            } @else {
-              <p class="ficha-nota">Se arman con las órdenes cerradas del vehículo.</p>
-            }
-          </section>
         </div>
       </div>
     }

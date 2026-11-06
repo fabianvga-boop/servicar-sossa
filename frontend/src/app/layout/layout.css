@@ -142,23 +142,24 @@
   color: var(--blanco);
 }
 
-/* Ayuda de atajos de teclado: un "?" redondo junto al buscador. */
+/* Atajos de teclado: ícono de teclado, sin caja hasta pasar el mouse. */
 .boton-atajos {
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   flex-shrink: 0;
-  border: 1px solid var(--gris-200);
-  border-radius: 50%;
-  background: var(--blanco);
-  color: var(--ink-soft);
-  font: inherit;
-  font-size: 15px;
-  font-weight: 600;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--gris-500);
   cursor: pointer;
 }
 
+.boton-atajos svg { width: 19px; height: 19px; }
+
 .boton-atajos:hover {
-  border-color: var(--gris-400);
+  background: var(--gris-100);
   color: var(--ink);
 }
 
@@ -174,7 +175,8 @@
 
 .encabezado {
   height: var(--alto-encabezado);
-  background: var(--blanco);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--gris-200);
   display: flex;
   align-items: center;
@@ -204,35 +206,46 @@
   width: auto;
 }
 
-/* Nombre de la sección activa: complementa (no reemplaza) la píldora
-   .activo del lateral. Se recorta con puntos suspensivos en vez de
-   empujar al buscador si el título fuera largo. */
+/* Migas: grupo del menú / sección activa. Complementan (no reemplazan) la
+   píldora .activo del lateral; se recortan antes que empujar al buscador. */
+.migas-barra {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex-shrink: 1;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.migas-grupo { color: var(--gris-500); }
+.migas-sep { color: var(--gris-300); }
+
 .titulo-seccion {
-  margin: 0;
   max-width: 220px;
   overflow: hidden;
-  white-space: nowrap;
   text-overflow: ellipsis;
-  font-size: 15.5px;
   font-weight: 600;
   color: var(--ink);
-  flex-shrink: 1;
 }
 
 /* ---------------------------------------------------- Buscador global */
 
 .buscar-disparador {
+  flex: 0 1 440px;
   display: flex;
   align-items: center;
-  gap: 9px;
-  min-width: 280px;
-  padding: 9px 12px;
-  background: var(--fondo-app);
+  gap: 10px;
+  min-width: 260px;
+  height: 40px;
+  margin-left: 8px;
+  padding: 0 8px 0 12px;
+  background: var(--gris-50);
   border: 1px solid var(--gris-200);
-  border-radius: var(--radio-sm);
+  border-radius: 12px;
   font-family: inherit;
-  font-size: 13.5px;
-  color: var(--gris-500);
+  font-size: 14px;
+  color: var(--gris-400);
   cursor: pointer;
   text-align: left;
 }
@@ -247,20 +260,28 @@
   color: var(--gris-400);
 }
 
-.buscar-texto { flex: 1; }
+.buscar-texto {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 
-/* El atajo de teclado es una pista para quien lo use; no es la única forma
-   de abrir el buscador (el botón entero es clickeable/tocable), así que se
-   mantiene discreto en vez de ser el elemento más visible del disparador. */
-.buscar-disparador kbd {
-  font-family: inherit;
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--gris-500);
-  background: var(--blanco);
+/* Un solo chip con forma de tecla: pista para quien use el teclado */
+.combo-teclas {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 7px;
   border: 1px solid var(--gris-200);
-  border-radius: 4px;
-  padding: 2px 5px;
+  border-bottom-width: 2px;
+  border-radius: 7px;
+  background: var(--blanco);
+  font-family: var(--fuente-mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--gris-500);
+  white-space: nowrap;
 }
 
 /* -------------------------------------------------------- Menú usuario */
@@ -270,20 +291,20 @@
 .usuario-btn {
   display: flex;
   align-items: center;
-  gap: 9px;
-  background: none;
-  border: none;
+  gap: 10px;
+  padding: 4px 10px 4px 4px;
+  border: 1px solid var(--gris-200);
+  border-radius: 999px;
+  background: var(--blanco);
   cursor: pointer;
-  padding: 4px 6px;
-  border-radius: var(--radio-sm);
   font-family: inherit;
 }
 
-.usuario-btn:hover { background: var(--gris-100); }
+.usuario-btn:hover { border-color: var(--gris-300); }
 
 .avatar {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   background: var(--brand);
   color: var(--blanco);
@@ -296,6 +317,8 @@
   flex-shrink: 0;
 }
 
+.avatar-grande { width: 42px; height: 42px; font-size: 15px; }
+
 /* La foto recortada al círculo, sin deformarse si no es cuadrada */
 .avatar-foto {
   object-fit: cover;
@@ -306,12 +329,12 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  line-height: 1.25;
+  line-height: 1.2;
 }
 
 .usuario-nombre {
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 13.5px;
+  font-weight: 600;
   color: var(--ink);
 }
 
@@ -320,38 +343,80 @@
   color: var(--gris-500);
 }
 
+.usuario-flecha {
+  width: 16px;
+  height: 16px;
+  color: var(--gris-400);
+}
+
 .menu-usuario {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 8px);
   right: 0;
-  min-width: 200px;
+  width: 280px;
+  overflow: hidden;
   background: var(--blanco);
   border: 1px solid var(--gris-200);
-  border-radius: var(--radio-sm);
-  box-shadow: var(--sombra-md);
-  padding: 5px;
+  border-radius: 14px;
+  box-shadow: 0 18px 40px -18px rgba(21, 26, 34, 0.35);
   display: flex;
   flex-direction: column;
 }
 
+.menu-usuario-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--gris-100);
+}
+
+.menu-usuario-datos {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--gris-500);
+}
+
+.menu-usuario-datos strong {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.menu-usuario-rol { align-self: flex-start; margin-top: 4px; }
+
 .menu-usuario a,
 .menu-usuario button {
-  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px;
   background: none;
   border: none;
   text-align: left;
   font-size: 14px;
   color: var(--ink-soft);
   cursor: pointer;
-  border-radius: var(--radio-sm);
   font-family: inherit;
   text-decoration: none;
 }
 
+.menu-usuario a svg,
+.menu-usuario button svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+.menu-usuario .combo-teclas { margin-left: auto; }
+
 .menu-usuario a:hover,
 .menu-usuario button:hover {
-  background: var(--gris-100);
+  background: var(--gris-50);
   text-decoration: none;
+}
+
+.menu-usuario .menu-usuario-salir {
+  border-top: 1px solid var(--gris-100);
+  color: var(--brand-dk);
 }
 
 /* Ancho fluido: las tablas del taller tienen muchas columnas y en un monitor
@@ -395,14 +460,18 @@
 
   .usuario-datos { display: none; }
 
-  /* En móvil no hay ancho para el título de sección además del buscador y
-     la hamburguesa; el uso desde el celular es ocasional (ver hamburguesa). */
-  .titulo-seccion { display: none; }
+  /* En móvil no hay ancho para las migas además del buscador y la cuenta. */
+  .migas-barra { display: none; }
+
+  .usuario-btn { padding: 0; border: 0; }
+  .usuario-flecha { display: none; }
 
   /* En móvil el disparador se reduce al ícono: no hay ancho para la leyenda */
   .buscar-disparador {
+    flex: none;
     min-width: 0;
-    padding: 7px 9px;
+    margin-left: 0;
+    padding: 0 11px;
   }
 
   .buscar-disparador .buscar-texto,

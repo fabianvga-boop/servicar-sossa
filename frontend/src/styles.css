@@ -232,7 +232,8 @@ a:hover {
 }
 
 .tarjeta-encabezado {
-  padding: 20px 30px;
+  padding: 14px 20px;
+  border-bottom-color: var(--gris-100) !important;
   border-bottom: 1px solid transparent;
   display: flex;
   align-items: center;
@@ -244,6 +245,8 @@ a:hover {
 .tarjeta-encabezado h2,
 .tarjeta-encabezado h3 {
   margin: 0;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .tarjeta-encabezado input[type='search'] {
@@ -781,7 +784,7 @@ table.tabla {
    la jerarquía la da el peso y el color del texto, no un bloque oscuro. */
 table.tabla th {
   text-align: left;
-  padding: 13px 16px;
+  padding: 12px 20px;
   background: var(--gris-50);
   border-bottom: 1px solid var(--gris-200);
   font-size: var(--etiqueta-tam);
@@ -793,7 +796,7 @@ table.tabla th {
 }
 
 table.tabla td {
-  padding: 13px 16px;
+  padding: 12px 20px;
   border-bottom: 1px solid var(--gris-100);
   vertical-align: middle;
 }

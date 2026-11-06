@@ -25,7 +25,7 @@
         [attr.aria-selected]="pestania() === 'historial'"
         (click)="pestania.set('historial')"
       >
-        Historial del día <span class="vista-cuenta">{{ ventas().length }}</span>
+        Historial <span class="vista-cuenta">{{ totalRegistros() }}</span>
       </button>
     </div>
   </div>
@@ -262,80 +262,64 @@
   </aside>
 </div>
 } @else {
-<!-- -------------------------------------------------------- Historial del día -->
+<!-- --------------------------------------------------------------- Historial -->
 <ng-container *ngTemplateOutlet="encabezado" />
 
-<div class="tarjeta">
-  <div class="tarjeta-encabezado">
-    <h2>Ventas registradas</h2>
-    <span class="texto-tenue texto-sm">{{ totalRegistros() }} venta(s)</span>
-  </div>
+<section class="lista-filas lista-ventas">
+  @if (cargando() || ventas().length === 0) {
+    <app-estado-tabla
+      [cargando]="cargando()"
+      titulo="Sin ventas registradas"
+      descripcion="Las ventas de mostrador aparecerán aquí."
+    />
+  } @else {
+    <div class="fila-lista fila-venta cabecera-lista" aria-hidden="true">
+      <span>Código</span>
+      <span>Fecha</span>
+      <span>Cliente</span>
+      <span>Método</span>
+      <span class="a-la-derecha">Artículos</span>
+      <span class="a-la-derecha">Total</span>
+      <span>Estado</span>
+      <span></span>
+    </div>
 
-    @if (cargando() || ventas().length === 0) {
-      <app-estado-tabla
-        [cargando]="cargando()"
-        titulo="Sin ventas registradas"
-        descripcion="Las ventas de mostrador aparecerán aquí."
-      />
-    } @else {
-      <div class="tabla-contenedor">
-        <table class="tabla">
-          <thead>
-            <tr>
-              <th>Código</th>
-              <th>Fecha</th>
-              <th>Cliente</th>
-              <th class="num">Art.</th>
-              <th class="num">Total</th>
-              <th>Estado</th>
-              <th class="th-acciones">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (venta of ventas(); track venta.ventaId) {
-              <tr>
-                <td class="codigo">{{ venta.ventaId }}</td>
-                <td class="texto-sm">{{ venta.fechaVenta | date: 'dd/MM/yyyy HH:mm' }}</td>
-                <td>
-                  <div class="texto-sm">{{ venta.nombreCliente }}</div>
-                  <div class="texto-tenue texto-sm">
-                    {{ ETIQUETAS.metodoPago[venta.metodoPago] }}
-                  </div>
-                </td>
-                <td class="num">{{ venta.cantidadArticulos }}</td>
-                <td class="num texto-fuerte">{{ venta.total | bs }}</td>
-                <td><app-insignia-estado familia="venta" [valor]="venta.estado" /></td>
-                <td>
-                  <div class="acciones-iconos">
-                    <button
-                      type="button"
-                      class="btn btn-secundario btn-sm"
-                      [attr.aria-label]="'Ver el detalle de la venta ' + venta.ventaId"
-                      (click)="detalleDe.set(venta)"
-                    >
-                      Ver detalle
-                    </button>
-                    @if (venta.estado === EstadoVenta.Emitida) {
-                      <button
-                        type="button"
-                        class="btn-icono btn-icono-peligro"
-                        title="Anular"
-                        aria-label="Anular venta"
-                        (click)="porAnular.set(venta)"
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                          <rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
-                        </svg>
-                      </button>
-                    }
-                  </div>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
+    @for (venta of ventas(); track venta.ventaId) {
+      <div class="fila-lista fila-venta" [class.elegida]="detalleDe()?.ventaId === venta.ventaId">
+        <span class="monto-mono venta-codigo">{{ venta.ventaId }}</span>
+        <span class="venta-tenue">{{ venta.fechaVenta | date: 'dd/MM/yyyy HH:mm' }}</span>
+        <span class="venta-cliente">{{ venta.nombreCliente }}</span>
+        <span><span class="insignia insignia-gris">{{ ETIQUETAS.metodoPago[venta.metodoPago] }}</span></span>
+        <span class="monto-mono a-la-derecha venta-tenue">{{ venta.cantidadArticulos }}</span>
+        <span class="monto-mono a-la-derecha">{{ venta.total | bs }}</span>
+        <span><app-insignia-estado familia="venta" [valor]="venta.estado" /></span>
+        <span class="venta-acciones">
+          <button
+            type="button"
+            class="btn btn-secundario btn-sm"
+            [attr.aria-label]="'Ver el detalle de la venta ' + venta.ventaId"
+            (click)="detalleDe.set(venta)"
+          >
+            Ver detalle
+          </button>
+          @if (venta.estado === EstadoVenta.Emitida) {
+            <button
+              type="button"
+              class="btn-icono btn-icono-peligro"
+              title="Anular"
+              aria-label="Anular venta"
+              (click)="porAnular.set(venta)"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
+              </svg>
+            </button>
+          }
+        </span>
       </div>
+    }
 
+    @if (totalPaginas() > 1) {
       <app-paginador
         [pagina]="pagina()"
         [totalPaginas]="totalPaginas()"
@@ -345,58 +329,63 @@
         (cambiarTamano)="cambiarTamano($event)"
       />
     }
-</div>
+  }
+</section>
 }
 
 @if (detalleDe(); as venta) {
-  <app-modal titulo="Venta {{ venta.ventaId }}" [ancho]="640" (cerrar)="detalleDe.set(null)">
-    <dl class="datos mb-2">
-      <dt>Fecha</dt>
-      <dd>{{ venta.fechaVenta | date: 'dd/MM/yyyy HH:mm' }}</dd>
-      <dt>Cliente</dt>
-      <dd>{{ venta.nombreCliente }}</dd>
-      <dt>Método de pago</dt>
-      <dd>{{ ETIQUETAS.metodoPago[venta.metodoPago] }}</dd>
-      <dt>Vendedor</dt>
-      <dd>{{ venta.nombreUsuario }}</dd>
-      @if (venta.observaciones) {
-        <dt>Observaciones</dt>
-        <dd>{{ venta.observaciones }}</dd>
-      }
+  <!-- Mismo panel que el detalle de una compra -->
+  <app-cajon titulo="Venta de mostrador" [etiqueta]="venta.ventaId" (cerrar)="detalleDe.set(null)">
+    <p class="detalle-venta-sub">
+      {{ venta.fechaVenta | date: 'dd/MM/yyyy HH:mm' }} · vendió {{ venta.nombreUsuario }}
+    </p>
+
+    <dl class="detalle-venta-datos">
+      <div><dt>Cliente</dt><dd>{{ venta.nombreCliente }}</dd></div>
+      <div><dt>Método de pago</dt><dd>{{ ETIQUETAS.metodoPago[venta.metodoPago] }}</dd></div>
+      <div><dt>Estado</dt><dd><app-insignia-estado familia="venta" [valor]="venta.estado" /></dd></div>
     </dl>
 
-    <div class="tabla-contenedor">
-      <table class="tabla">
-        <thead>
-          <tr>
-            <th>Repuesto</th>
-            <th class="num">Cant.</th>
-            <th class="num">P. unit.</th>
-            <th class="num">Subtotal</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (linea of venta.detalles; track linea.ventaDetalleId) {
-            <tr>
-              <td>{{ linea.nombreRepuesto }}</td>
-              <td class="num">{{ linea.cantidad }}</td>
-              <td class="num">{{ linea.precioUnitario | bs }}</td>
-              <td class="num">{{ linea.subtotal | bs }}</td>
-            </tr>
-          }
-        </tbody>
-      </table>
+    <div class="detalle-venta-bloque">
+      <span class="etiqueta-campo">Lo que se vendió</span>
+      @for (linea of venta.detalles; track linea.ventaDetalleId) {
+        <div class="detalle-venta-linea">
+          <span class="detalle-venta-ini" aria-hidden="true">{{ iniciales(linea.nombreRepuesto) }}</span>
+          <span class="detalle-venta-nombre">
+            <strong>{{ linea.nombreRepuesto }}</strong>
+            <span class="monto-mono">{{ linea.cantidad }} × {{ linea.precioUnitario | bs }}</span>
+          </span>
+          <span class="monto-mono">{{ linea.subtotal | bs }}</span>
+        </div>
+      }
+      <div class="detalle-venta-total">
+        <strong>Total cobrado</strong>
+        <span class="monto-mono">{{ venta.total | bs }}</span>
+      </div>
     </div>
 
-    <div class="total-caja mt-1">
-      <span>Total</span>
-      <span class="total-monto">{{ venta.total | bs }}</span>
-    </div>
+    @if (venta.observaciones) {
+      <div class="detalle-venta-obs">
+        <span class="etiqueta-campo">Observaciones</span>
+        <p>{{ venta.observaciones }}</p>
+      </div>
+    }
+
+    <p class="detalle-venta-nota">
+      @if (venta.estado === EstadoVenta.Emitida) {
+        Si la venta fue un error, se anula desde el historial y el stock vuelve al inventario.
+      } @else {
+        Venta anulada: el stock de estos repuestos ya volvió al inventario.
+      }
+    </p>
 
     <div pie>
+      @if (venta.estado === EstadoVenta.Emitida) {
+        <button type="button" class="btn btn-peligro" (click)="porAnular.set(venta); detalleDe.set(null)">Anular venta</button>
+      }
       <button type="button" class="btn btn-secundario" (click)="detalleDe.set(null)">Cerrar</button>
     </div>
-  </app-modal>
+  </app-cajon>
 }
 
 @if (porAnular(); as venta) {

@@ -65,14 +65,20 @@
            texto (p. ej. clientes.html); duplicarlo rompería el esquema de
            encabezados de la página. -->
       @if (tituloSeccion(); as titulo) {
-        <span class="titulo-seccion">{{ titulo }}</span>
+        <span class="migas-barra">
+          @if (grupoSeccion(); as grupo) {
+            <span class="migas-grupo">{{ grupo }}</span>
+            <span class="migas-sep" aria-hidden="true">/</span>
+          }
+          <span class="titulo-seccion">{{ titulo }}</span>
+        </span>
       }
 
       <!-- Disparador del buscador global; el atajo Ctrl+K hace lo mismo -->
       <button type="button" class="buscar-disparador" (click)="abrirBuscador()">
         <app-icono-menu class="lupa" nombre="buscar" />
-        <span class="buscar-texto">Buscar orden, cliente, placa…</span>
-        <kbd>Ctrl</kbd><kbd>K</kbd>
+        <span class="buscar-texto">Buscar orden, cliente, placa o repuesto</span>
+        <kbd class="combo-teclas">Ctrl K</kbd>
       </button>
 
       <div class="crece"></div>
@@ -80,15 +86,23 @@
       <button
         type="button"
         class="boton-atajos"
-        title="Atajos de teclado (tecla ?)"
+        title="Atajos de teclado (?)"
         aria-label="Atajos de teclado"
         (click)="ayudaAtajos.set(true)"
       >
-        ?
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2.5" y="6" width="19" height="12" rx="2.5" /><path d="M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M6.5 14h.01M17.5 14h.01M9.5 14h5" />
+        </svg>
       </button>
 
       <div class="usuario">
-        <button type="button" class="usuario-btn" (click)="alternarMenuUsuario()">
+        <button
+          type="button"
+          class="usuario-btn"
+          [attr.aria-expanded]="menuUsuarioAbierto()"
+          aria-haspopup="menu"
+          (click)="alternarMenuUsuario()"
+        >
           <!-- Foto de perfil si la subió; si no, sus iniciales sobre el rojo de marca -->
           @if (auth.fotoUrl(); as foto) {
             <img class="avatar avatar-foto" [src]="urlArchivo(foto)" alt="" />
@@ -99,12 +113,38 @@
             <span class="usuario-nombre">{{ auth.nombreCompleto() }}</span>
             <span class="usuario-rol">{{ auth.rol() }}</span>
           </span>
+          <svg class="usuario-flecha" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m6 9 6 6 6-6" />
+          </svg>
         </button>
 
         @if (menuUsuarioAbierto()) {
-          <div class="menu-usuario">
-            <a routerLink="/perfil" (click)="alternarMenuUsuario()">Cambiar contraseña</a>
-            <button type="button" (click)="salir()">Cerrar sesión</button>
+          <div class="menu-usuario" role="menu">
+            <div class="menu-usuario-cabecera">
+              @if (auth.fotoUrl(); as foto) {
+                <img class="avatar avatar-grande avatar-foto" [src]="urlArchivo(foto)" alt="" />
+              } @else {
+                <span class="avatar avatar-grande">{{ iniciales() }}</span>
+              }
+              <span class="menu-usuario-datos">
+                <strong>{{ auth.nombreCompleto() }}</strong>
+                <span>{{ auth.sesion()?.username }}</span>
+                <span class="insignia insignia-roja menu-usuario-rol">{{ auth.rol() }}</span>
+              </span>
+            </div>
+            <a routerLink="/perfil" role="menuitem" (click)="menuUsuarioAbierto.set(false)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
+              Mi perfil
+            </a>
+            <button type="button" role="menuitem" (click)="menuUsuarioAbierto.set(false); ayudaAtajos.set(true)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2.5" /><path d="M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M9.5 14h5" /></svg>
+              Atajos de teclado
+              <kbd class="combo-teclas">?</kbd>
+            </button>
+            <button type="button" role="menuitem" class="menu-usuario-salir" (click)="salir()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
+              Cerrar sesión
+            </button>
           </div>
         }
       </div>

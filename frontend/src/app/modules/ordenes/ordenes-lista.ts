@@ -11,6 +11,8 @@ import { ProformasService } from '../../core/services/finanzas.service';
 import { OrdenesService } from '../../core/services/ordenes.service';
 import { VehiculosService } from '../../core/services/vehiculos.service';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
+import { Paginador } from '../../shared/components/paginador';
+import { PaginacionLocal } from '../../shared/paginacion-local';
 import { coincidePorPalabras } from '../../shared/busqueda';
 import { Portada, TarjetaOrden } from './tarjeta-orden';
 
@@ -59,7 +61,7 @@ const COLUMNAS: Columna[] = [
  */
 @Component({
   selector: 'app-ordenes-lista',
-  imports: [RouterLink, EstadoTabla, TarjetaOrden],
+  imports: [RouterLink, EstadoTabla, Paginador, TarjetaOrden],
   templateUrl: './ordenes-lista.html',
   styleUrl: './ordenes-lista.css',
 })
@@ -168,6 +170,12 @@ export class OrdenesLista {
         return [];
     }
   });
+
+  /** Cerradas y canceladas crecen cada día: de a 20 tarjetas, la última arriba. */
+  protected readonly paginacion = new PaginacionLocal(
+    () => this.lista(),
+    () => [this.vista(), this.buscar(), this.desde(), this.hasta()],
+  );
 
   protected readonly mensajeVacio = computed(() => {
     switch (this.vista()) {

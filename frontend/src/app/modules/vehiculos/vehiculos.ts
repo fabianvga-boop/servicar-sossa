@@ -1,20 +1,28 @@
 import { DecimalPipe } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
-import { EstadoCliente } from '../../core/models/enums';
+import { EstadoCliente, EstadoDiag, EstadoOrden, RespuestaCliente } from '../../core/models/enums';
 import { Cliente, Vehiculo } from '../../core/models/personas.model';
+import { Diagnostico, Orden } from '../../core/models/taller.model';
+import { urlArchivo } from '../../core/services/api-base';
 import { AuthService } from '../../core/services/auth.service';
 import { ClientesService } from '../../core/services/clientes.service';
 import { NotificacionService } from '../../core/services/notificacion.service';
+import { OrdenesService } from '../../core/services/ordenes.service';
 import { PreferenciasService } from '../../core/services/preferencias.service';
+import { DiagnosticosService } from '../../core/services/taller.service';
 import { VehiculosService } from '../../core/services/vehiculos.service';
+import { coincidePorPalabras } from '../../shared/busqueda';
 import { Cajon } from '../../shared/components/cajon';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { Paginador } from '../../shared/components/paginador';
 import { Placa } from '../../shared/components/placa';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
+import { PaginacionLocal, TODOS_LOS_REGISTROS } from '../../shared/paginacion-local';
 import { detalleConNuevo } from '../../shared/recientes';
 import { Atajo } from '../../shared/directives/atajo';
 import { EnfocarError } from '../../shared/directives/enfocar-error';
@@ -29,15 +37,38 @@ import {
 
 const CLAVE_BUSCAR = 'vehiculos.buscar';
 
+const ORDEN_ACTIVA = [EstadoOrden.Abierta, EstadoOrden.EnProceso, EstadoOrden.Finalizada];
+
+/** Pasado este tiempo sin una orden conviene llamar al cliente (mantenimiento). */
+const SEIS_MESES_MS = 182 * 24 * 60 * 60 * 1000;
+
+type FiltroVehiculos = 'todos' | 'taller' | 'presupuesto' | 'sinVenir';
+
+/** Cómo está el vehículo hoy: lo mismo que muestra la ficha del cliente. */
+interface EstadoVehiculo {
+  texto: string;
+  tono: 'naranja' | 'azul' | 'verde' | 'gris';
+}
+
+/** Portada de la tarjeta: la primera foto del vehículo y cuántas tiene. */
+interface Portada {
+  url: string;
+  cantidad: number;
+}
+
 /**
  * USU009-USU011 — gestión de vehículos. El historial, las fotos y el dibujo
  * con las zonas marcadas viven en la ficha de cada vehículo (/vehiculos/:id).
+ *
+ * La lista son tarjetas con la misma anatomía que las de Órdenes (foto con la
+ * placa encima). Regla del sistema: lo que se reconoce por su foto (órdenes,
+ * vehículos, productos, plantillas) va en tarjetas; los registros y
+ * movimientos (diagnósticos, pagos, compras, auditoría…), en filas.
  */
 @Component({
   selector: 'app-vehiculos',
   imports: [
     ReactiveFormsModule,
-    RouterLink,
     DecimalPipe,
     Cajon,
     EstadoTabla,
@@ -54,6 +85,8 @@ const CLAVE_BUSCAR = 'vehiculos.buscar';
 export class Vehiculos {
   private readonly servicio = inject(VehiculosService);
   private readonly clientesService = inject(ClientesService);
+  private readonly ordenesService = inject(OrdenesService);
+  private readonly diagnosticosService = inject(DiagnosticosService);
   private readonly fb = inject(FormBuilder);
   private readonly notificacion = inject(NotificacionService);
   private readonly preferencias = inject(PreferenciasService);
@@ -66,12 +99,17 @@ export class Vehiculos {
   protected readonly cargando = signal(true);
   protected readonly buscar = signal('');
   protected readonly clienteFiltro = signal('');
+  protected readonly filtro = signal<FiltroVehiculos>('todos');
   protected readonly guardando = signal(false);
 
-  protected readonly pagina = signal(1);
-  protected readonly tamanoPagina = signal(20);
-  protected readonly totalRegistros = signal(0);
-  protected readonly totalPaginas = signal(0);
+  private readonly ordenes = signal<Orden[]>([]);
+  private readonly diagnosticos = signal<Diagnostico[]>([]);
+
+  /** Portadas pedidas solo para las tarjetas a la vista (una petición por vehículo). */
+  private readonly portadas = signal(new Map<string, Portada | null>());
+  private readonly portadasPedidas = new Set<string>();
+
+  protected readonly urlArchivo = urlArchivo;
 
   protected readonly editando = signal<Vehiculo | null>(null);
   protected readonly formularioAbierto = signal(false);
@@ -119,6 +157,81 @@ export class Vehiculos {
     })),
   );
 
+  // --- Estado de cada vehículo (mismo criterio que la ficha del cliente) ----------
+
+  /** Orden en curso de cada vehículo (la más reciente si hubiera dos). */
+  private readonly ordenActiva = computed(() => {
+    const mapa = new Map<string, Orden>();
+    for (const o of this.ordenes()) {
+      if (!ORDEN_ACTIVA.includes(o.estado)) continue;
+      const otra = mapa.get(o.vehiculoId);
+      if (!otra || o.fechaCreacion > otra.fechaCreacion) mapa.set(o.vehiculoId, o);
+    }
+    return mapa;
+  });
+
+  /** Diagnóstico con el presupuesto todavía sin respuesta del cliente. */
+  private readonly diagnosticoPendiente = computed(() => {
+    const mapa = new Map<string, Diagnostico>();
+    for (const d of this.diagnosticos()) {
+      if (d.estado === EstadoDiag.Anulado || d.ordenId) continue;
+      if (d.respuestaCliente !== RespuestaCliente.Pendiente) continue;
+      const otro = mapa.get(d.vehiculoId);
+      if (!otro || d.fecha > otro.fecha) mapa.set(d.vehiculoId, d);
+    }
+    return mapa;
+  });
+
+  private readonly ultimaOrden = computed(() => {
+    const mapa = new Map<string, Orden>();
+    for (const o of this.ordenes()) {
+      const otra = mapa.get(o.vehiculoId);
+      if (!otra || o.fechaCreacion > otra.fechaCreacion) mapa.set(o.vehiculoId, o);
+    }
+    return mapa;
+  });
+
+  // --- Lista: buscar, filtrar y paginar en pantalla --------------------------------
+
+  /** Lo que coincide con el buscador y el dueño elegido, antes de los chips. */
+  private readonly coinciden = computed(() => {
+    const texto = this.buscar();
+    const cliente = this.clienteFiltro();
+    return this.vehiculos().filter(
+      (v) =>
+        (!cliente || v.clienteId === cliente) &&
+        coincidePorPalabras(
+          texto,
+          v.vehiculoId,
+          v.placa,
+          v.marca,
+          v.modelo,
+          v.nombreCliente,
+          v.color,
+          v.anio?.toString(),
+        ),
+    );
+  });
+
+  protected readonly cuentas = computed(() => {
+    const lista = this.coinciden();
+    return {
+      todos: lista.length,
+      taller: lista.filter((v) => this.pasaFiltro(v, 'taller')).length,
+      presupuesto: lista.filter((v) => this.pasaFiltro(v, 'presupuesto')).length,
+      sinVenir: lista.filter((v) => this.pasaFiltro(v, 'sinVenir')).length,
+    };
+  });
+
+  protected readonly filtrados = computed(() =>
+    this.coinciden().filter((v) => this.pasaFiltro(v, this.filtro())),
+  );
+
+  protected readonly paginacion = new PaginacionLocal(
+    () => this.filtrados(),
+    () => [this.buscar(), this.clienteFiltro(), this.filtro()],
+  );
+
   constructor() {
     const parametros = this.ruta.snapshot.queryParamMap;
 
@@ -128,10 +241,16 @@ export class Vehiculos {
     this.buscar.set(parametros.get('buscar') ?? this.preferencias.leer(CLAVE_BUSCAR, ''));
 
     this.cargar();
+    this.cargarEstados();
+
+    // Las fotos se piden para las tarjetas que se ven, no para todo el parque.
+    effect(() => {
+      for (const v of this.paginacion.items()) this.pedirPortada(v.vehiculoId);
+    });
 
     // Solo el administrador puede dar de alta, y necesita el selector de clientes.
     if (this.auth.esAdministrador()) {
-      this.clientesService.getAll(undefined, 1, 500).subscribe((resultado) =>
+      this.clientesService.getAll(undefined, 1, TODOS_LOS_REGISTROS).subscribe((resultado) =>
         this.clientes.set(resultado.items.filter((c) => c.estado === EstadoCliente.Activo)),
       );
     }
@@ -163,49 +282,103 @@ export class Vehiculos {
     });
   }
 
+  /** Todo el parque de una vez: buscar, filtrar y paginar se hace en pantalla. */
   protected cargar(): void {
     this.cargando.set(true);
 
+    this.servicio.getAll(undefined, undefined, 1, TODOS_LOS_REGISTROS).subscribe({
+      next: (resultado) => {
+        this.vehiculos.set(resultado.items);
+        this.cargando.set(false);
+      },
+      error: () => this.cargando.set(false),
+    });
+  }
+
+  /** Órdenes y diagnósticos: de ahí sale el estado de cada tarjeta. */
+  private cargarEstados(): void {
+    this.ordenesService
+      .getAll()
+      .pipe(catchError(() => of([] as Orden[])))
+      .subscribe((lista) => this.ordenes.set(lista));
+    this.diagnosticosService
+      .getAll({ tamanoPagina: TODOS_LOS_REGISTROS })
+      .pipe(catchError(() => of(null)))
+      .subscribe((resultado) => this.diagnosticos.set(resultado?.items ?? []));
+  }
+
+  private pedirPortada(vehiculoId: string): void {
+    if (this.portadasPedidas.has(vehiculoId)) return;
+    this.portadasPedidas.add(vehiculoId);
+
     this.servicio
-      .getAll(
-        this.buscar() || undefined,
-        this.clienteFiltro() || undefined,
-        this.pagina(),
-        this.tamanoPagina(),
-      )
-      .subscribe({
-        next: (resultado) => {
-          this.vehiculos.set(resultado.items);
-          this.totalRegistros.set(resultado.totalRegistros);
-          this.totalPaginas.set(resultado.totalPaginas);
-          this.cargando.set(false);
-        },
-        error: () => this.cargando.set(false),
-      });
+      .getFotos(vehiculoId)
+      .pipe(catchError(() => of([])))
+      .subscribe((fotos) =>
+        this.portadas.update((mapa) =>
+          new Map(mapa).set(
+            vehiculoId,
+            fotos.length ? { url: fotos[0].url, cantidad: fotos.length } : null,
+          ),
+        ),
+      );
+  }
+
+  protected portada(vehiculo: Vehiculo): Portada | null {
+    return this.portadas().get(vehiculo.vehiculoId) ?? null;
+  }
+
+  /** En el taller, listo para entregar, esperando respuesta o cuándo vino por última vez. */
+  protected estado(vehiculo: Vehiculo): EstadoVehiculo {
+    const orden = this.ordenActiva().get(vehiculo.vehiculoId);
+    if (orden?.estado === EstadoOrden.Finalizada) {
+      return { texto: `Listo para entregar · ${orden.ordenId}`, tono: 'verde' };
+    }
+    if (orden) return { texto: `En el taller · ${orden.ordenId}`, tono: 'naranja' };
+
+    if (this.diagnosticoPendiente().has(vehiculo.vehiculoId)) {
+      return { texto: 'Presupuesto esperando respuesta', tono: 'azul' };
+    }
+
+    const ultima = this.ultimaOrden().get(vehiculo.vehiculoId);
+    if (ultima) {
+      return {
+        texto: `Última visita el ${fechaCorta(ultima.fechaCierre ?? ultima.fechaCreacion)}`,
+        tono: 'gris',
+      };
+    }
+    return { texto: 'Todavía no vino al taller', tono: 'gris' };
+  }
+
+  private pasaFiltro(vehiculo: Vehiculo, filtro: FiltroVehiculos): boolean {
+    const id = vehiculo.vehiculoId;
+    switch (filtro) {
+      case 'taller':
+        return this.ordenActiva().has(id);
+      case 'presupuesto':
+        return !this.ordenActiva().has(id) && this.diagnosticoPendiente().has(id);
+      case 'sinVenir': {
+        if (this.ordenActiva().has(id)) return false;
+        const ultima = this.ultimaOrden().get(id);
+        const desde = ultima ? (ultima.fechaCierre ?? ultima.fechaCreacion) : vehiculo.fechaRegistro;
+        return Date.now() - new Date(desde).getTime() > SEIS_MESES_MS;
+      }
+      default:
+        return true;
+    }
+  }
+
+  protected abrirFicha(vehiculo: Vehiculo): void {
+    void this.router.navigate(['/vehiculos', vehiculo.vehiculoId]);
   }
 
   protected onBuscar(valor: string): void {
     this.buscar.set(valor);
     this.preferencias.guardar(CLAVE_BUSCAR, valor);
-    this.pagina.set(1);
-    this.cargar();
   }
 
   protected onFiltrarCliente(valor: string): void {
     this.clienteFiltro.set(valor);
-    this.pagina.set(1);
-    this.cargar();
-  }
-
-  protected cambiarPagina(pagina: number): void {
-    this.pagina.set(pagina);
-    this.cargar();
-  }
-
-  protected cambiarTamano(tamano: number): void {
-    this.tamanoPagina.set(tamano);
-    this.pagina.set(1);
-    this.cargar();
   }
 
   protected invalido(control: string): boolean {
@@ -324,10 +497,17 @@ export class Vehiculos {
         this.guardando.set(false);
         this.cerrarFormulario();
         // El nuevo queda primero en la lista: volver a la página 1 para verlo.
-        if (!enEdicion) this.pagina.set(1);
+        if (!enEdicion) this.paginacion.irA(1);
         this.cargar();
       },
       error: () => this.guardando.set(false),
     });
   }
+}
+
+function fechaCorta(iso: string): string {
+  const fecha = new Date(iso);
+  const dia = String(fecha.getDate()).padStart(2, '0');
+  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+  return `${dia}/${mes}/${fecha.getFullYear()}`;
 }
