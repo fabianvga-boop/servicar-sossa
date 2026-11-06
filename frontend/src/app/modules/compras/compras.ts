@@ -352,8 +352,11 @@ export class Compras {
     this.cargar();
   }
 
+  /** Fecha local (no UTC): en Bolivia, desde las 20:00 el UTC ya es el día siguiente. */
   private fechaIso(fecha: Date): string {
-    return fecha.toISOString().slice(0, 10);
+    const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+    const dia = String(fecha.getDate()).padStart(2, '0');
+    return `${fecha.getFullYear()}-${mes}-${dia}`;
   }
 
   /** Singular/plural para el badge de la columna "Líneas". */
@@ -391,6 +394,60 @@ export class Compras {
     proveedor.setValidators([]);
     proveedor.setValue('');
     proveedor.updateValueAndValidity();
+  }
+
+  /** Desde la compra ocasional: vuelve a pedir proveedor (los repuestos se conservan). */
+  protected pasarAProveedor(): void {
+    if (!this.ocasional()) return;
+    this.ocasional.set(false);
+    const proveedor = this.formulario.controls.proveedorId;
+    proveedor.setValidators([Validators.required]);
+    proveedor.updateValueAndValidity();
+  }
+
+  /** "Cambiar" en la tarjeta del proveedor: vuelve al buscador. */
+  protected cambiarProveedor(): void {
+    this.formulario.controls.proveedorId.setValue('');
+  }
+
+  /** El proveedor elegido, para mostrarlo como tarjeta en vez del buscador. */
+  protected proveedorElegido(): Proveedor | null {
+    const id = this.formulario.controls.proveedorId.value;
+    return id ? (this.proveedores().find((p) => p.proveedorId === id) ?? null) : null;
+  }
+
+  protected contactoProveedor(p: Proveedor): string {
+    return [p.contacto, p.telefono].filter((x) => !!x?.trim()).join(' · ') || 'Sin datos de contacto';
+  }
+
+  /** El repuesto ya existente de una fila (null si está vacía o es nuevo). */
+  protected repuestoInfo(indice: number): Repuesto | null {
+    const id = this.repuestoDeFila(indice);
+    return id ? (this.repuestos().find((r) => r.repuestoId === id) ?? null) : null;
+  }
+
+  /** Botones − / + de la cantidad (mínimo 1). */
+  protected cambiarCantidad(indice: number, delta: number): void {
+    const control = this.detalles.at(indice).get('cantidad');
+    if (!control) return;
+    control.setValue(Math.max(1, (Number(control.value) || 0) + delta));
+    this.sincronizarTotales();
+  }
+
+  /** "+29 %" según los precios escritos en la fila, o '' si falta alguno. */
+  protected gananciaFila(indice: number): string {
+    const fila = this.detalles.at(indice)?.value as { precioUnitario?: number; precioVenta?: number | null };
+    const compra = Number(fila?.precioUnitario) || 0;
+    const venta = Number(fila?.precioVenta) || 0;
+    return compra > 0 && venta > 0 ? this.ganancia(compra, venta) : '';
+  }
+
+  /** "2 repuestos · 6 unidades" con lo cargado hasta ahora. */
+  protected resumenLineas(): string {
+    const filas = this.lineas();
+    const conRepuesto = this.detalles.controls.filter((_, i) => !!this.repuestoDeFila(i)).length;
+    const unidades = filas.reduce((suma, f) => suma + (f.cantidad || 0), 0);
+    return `${conRepuesto === 1 ? '1 repuesto' : conRepuesto + ' repuestos'} · ${unidades === 1 ? '1 unidad' : unidades + ' unidades'}`;
   }
 
   private abrirFormulario(ocasional: boolean): void {

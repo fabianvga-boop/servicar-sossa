@@ -87,7 +87,7 @@
     }
   </div>
 
-  <div class="rango-fechas-compras">
+  <div class="rango-fechas">
     <input
       type="date"
       aria-label="Desde"
@@ -174,66 +174,87 @@
 @if (formularioAbierto()) {
   <app-modal
     [titulo]="ocasional() ? 'Compra ocasional' : 'Nueva compra'"
-    [ancho]="860"
+    [ancho]="900"
     (cerrar)="formularioAbierto.set(false)"
   >
-    <form [formGroup]="formulario" id="form-compra" (ngSubmit)="guardar()" (keydown.enter)="evitarEnvioConEnter($event)">
-      @if (ocasional()) {
-        <div class="aviso-ocasional mb-2">
-          Compra a alguien de quien no tiene o no quiere guardar los datos. Se registra igual
-          que una compra: el stock entra con su precio y queda en la procedencia del repuesto
-          como <strong>Compra ocasional</strong>.
+    <span subtitulo class="compra-subtitulo">El stock sube al registrarla y queda en la procedencia de cada repuesto.</span>
+    <form [formGroup]="formulario" id="form-compra" class="form-compra" (ngSubmit)="guardar()" (keydown.enter)="evitarEnvioConEnter($event)">
+      <!-- 1. A quién se compró -->
+      <section class="paso-compra">
+        <div class="paso-compra-titulo">
+          <span class="paso-compra-num">1</span>
+          ¿A quién se compró?
+          <div class="segmentos en-linea paso-compra-tipo" role="tablist" aria-label="Tipo de compra">
+            <button type="button" role="tab" class="segmento" [class.activo]="!ocasional()" [attr.aria-selected]="!ocasional()" (click)="pasarAProveedor()">
+              Proveedor
+            </button>
+            <button type="button" role="tab" class="segmento" [class.activo]="ocasional()" [attr.aria-selected]="ocasional()" (click)="pasarAOcasional()">
+              Compra ocasional
+            </button>
+          </div>
         </div>
 
-        <div class="campo">
-          <label for="referencia">¿A quién o dónde se compró? <span class="texto-tenue">(opcional)</span></label>
-          <input
-            id="referencia"
-            formControlName="referencia"
-            maxlength="150"
-            autocomplete="off"
-            placeholder="Ej. Feria 16 de Julio, mecánico de otro taller, no recuerdo"
-          />
-        </div>
-      } @else {
-        <div class="campo">
-          <label for="proveedorId">Proveedor <span class="obligatorio">*</span></label>
-          <app-selector-busqueda
-            idCampo="proveedorId"
-            formControlName="proveedorId"
-            marcador="Escriba el nombre del proveedor…"
-            [opciones]="opcionesProveedor()"
-          />
-          <span class="campo-ayuda">
-            ¿No tiene sus datos?
-            <button type="button" class="btn-enlace" (click)="pasarAOcasional()">Registrarla como compra ocasional</button>
-          </span>
-        </div>
-      }
+        @if (ocasional()) {
+          <div class="campo">
+            <label for="referencia">¿A quién o dónde se compró? <span class="texto-tenue">(opcional)</span></label>
+            <input
+              id="referencia"
+              formControlName="referencia"
+              maxlength="150"
+              autocomplete="off"
+              placeholder="Ej. Feria 16 de Julio, mecánico de otro taller, no recuerdo"
+            />
+            <span class="campo-ayuda">
+              Para quien no tiene o no quiere guardar sus datos. El stock entra igual y en la procedencia
+              figura como <strong>Compra ocasional</strong>.
+            </span>
+          </div>
+        } @else if (proveedorElegido(); as p) {
+          <div class="proveedor-elegido">
+            <span class="compra-avatar">{{ iniciales(p.nombre) }}</span>
+            <span class="proveedor-elegido-textos">
+              <strong>{{ p.nombre }}</strong>
+              <span>{{ contactoProveedor(p) }}</span>
+            </span>
+            <button type="button" class="btn-enlace" (click)="cambiarProveedor()">Cambiar</button>
+          </div>
+        } @else {
+          <div class="campo">
+            <app-selector-busqueda
+              idCampo="proveedorId"
+              formControlName="proveedorId"
+              marcador="Escriba el nombre del proveedor…"
+              [opciones]="opcionesProveedor()"
+            />
+          </div>
+        }
+      </section>
 
-      <div class="fila-entre mb-1 mt-2">
-        <h3>Detalle de la compra</h3>
-        <button type="button" class="btn btn-secundario btn-sm" (click)="agregarLinea()">
-          + Agregar repuesto
-        </button>
-      </div>
+      <!-- 2. Lo que se compró -->
+      <section class="paso-compra">
+        <div class="paso-compra-titulo">
+          <span class="paso-compra-num">2</span>
+          Lo que se compró
+        </div>
 
-      <div class="tabla-contenedor">
-        <table class="tabla tabla-detalle-compra">
-          <thead>
-            <tr>
-              <th style="min-width: 220px">Repuesto</th>
-              <th style="width: 100px">Cantidad</th>
-              <th style="width: 130px">Precio compra</th>
-              <th style="width: 130px" title="Opcional: si lo cambia, el repuesto queda con este precio de venta">Precio venta</th>
-              <th class="num" style="width: 120px">Subtotal</th>
-              <th style="width: 40px"></th>
-            </tr>
-          </thead>
-          <tbody formArrayName="detalles">
-            @for (linea of detalles.controls; track $index; let i = $index) {
-              <tr [formGroupName]="i">
-                <td>
+        <div class="linea-compra cabecera-lineas" aria-hidden="true">
+          <span>Repuesto</span>
+          <span>Cantidad</span>
+          <span>Precio de compra</span>
+          <span title="Opcional: si lo cambia, el repuesto queda con este precio de venta">Precio de venta</span>
+          <span class="a-la-derecha">Subtotal</span>
+          <span></span>
+        </div>
+
+        <div formArrayName="detalles" class="lineas-compra">
+          @for (linea of detalles.controls; track $index; let i = $index) {
+            @let rep = repuestoInfo(i);
+            <div class="linea-compra" [formGroupName]="i">
+              <div class="linea-repuesto">
+                <span class="compra-avatar" [class.vacio]="!rep && !esRepuestoNuevo(i)" aria-hidden="true">
+                  {{ rep ? iniciales(rep.nombre) : esRepuestoNuevo(i) ? 'N' : '+' }}
+                </span>
+                <div class="linea-repuesto-campo">
                   <app-selector-busqueda
                     formControlName="repuestoId"
                     marcador="Escriba el repuesto…"
@@ -243,81 +264,96 @@
                     (crear)="abrirRepuestoNuevo(i, $event)"
                   />
                   @if (esRepuestoNuevo(i)) {
-                    <span class="repuesto-nuevo-marca">
+                    <span class="linea-repuesto-info">
                       <span class="insignia insignia-verde">Nuevo</span>
-                      {{ categoriaDeNuevo(i) || 'Sin categoría' }}
+                      {{ categoriaDeNuevo(i) || 'Sin categoría' }} ·
                       <button type="button" class="btn-enlace" (click)="abrirRepuestoNuevo(i)">Cambiar</button>
                     </span>
-                  } @else if (!repuestoDeFila(i)) {
-                    <button
-                      type="button"
-                      class="btn-enlace enlace-repuesto-nuevo"
-                      title="Para un repuesto que todavía no está en el inventario"
-                      (click)="abrirRepuestoNuevo(i)"
-                    >
+                  } @else if (rep) {
+                    <span class="linea-repuesto-info">
+                      {{ rep.repuestoId }} · hay {{ rep.stockActual }} · última compra {{ rep.precioCompra | bs }}
+                    </span>
+                  } @else {
+                    <button type="button" class="btn-enlace linea-repuesto-info" (click)="abrirRepuestoNuevo(i)">
                       + Repuesto nuevo
                     </button>
                   }
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    min="1"
-                    formControlName="cantidad"
-                    (input)="sincronizarTotales()"
-                  />
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    formControlName="precioUnitario"
-                    (input)="sincronizarTotales()"
-                  />
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    formControlName="precioVenta"
-                    [attr.aria-label]="'Precio de venta de la fila ' + (i + 1)"
-                  />
-                </td>
-                <td class="num">
-                  {{ (lineas()[i]?.cantidad || 0) * (lineas()[i]?.precioUnitario || 0) | bs }}
-                </td>
-                <td>
-                  @if (detalles.length > 1) {
-                    <button
-                      type="button"
-                      class="btn-enlace texto-rojo boton-quitar-linea"
-                      (click)="quitarLinea(i)"
-                      aria-label="Quitar repuesto"
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M18 6 6 18" /><path d="m6 6 12 12" />
-                      </svg>
-                    </button>
-                  }
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
+                </div>
+              </div>
 
-      <div class="total-caja mt-2">
-        <span>Total de la compra</span>
-        <span class="total-monto">{{ totalCompra() | bs }}</span>
-      </div>
+              <div class="cantidad-compra">
+                <button type="button" aria-label="Uno menos" (click)="cambiarCantidad(i, -1)">−</button>
+                <input
+                  type="number"
+                  min="1"
+                  formControlName="cantidad"
+                  [attr.aria-label]="'Cantidad de la fila ' + (i + 1)"
+                  (input)="sincronizarTotales()"
+                />
+                <button type="button" aria-label="Uno más" (click)="cambiarCantidad(i, 1)">+</button>
+              </div>
 
-      <p class="texto-tenue texto-sm mt-2 mb-0">
-        Al guardar, el stock de cada repuesto se incrementa automáticamente y su precio de
-        compra se actualiza al de esta compra. Si cambió el precio de venta, el repuesto queda
-        con el nuevo. Las compras no se pueden editar después.
-      </p>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                formControlName="precioUnitario"
+                class="monto-campo"
+                [attr.aria-label]="'Precio de compra de la fila ' + (i + 1)"
+                (input)="sincronizarTotales()"
+              />
+
+              <div class="linea-venta">
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  formControlName="precioVenta"
+                  class="monto-campo"
+                  [attr.aria-label]="'Precio de venta de la fila ' + (i + 1)"
+                />
+                @if (gananciaFila(i); as g) {
+                  <span class="linea-ganancia" [class.perdida]="g.startsWith('-')">Gana {{ g }}</span>
+                }
+              </div>
+
+              <span class="monto-mono a-la-derecha linea-subtotal">
+                {{ (lineas()[i]?.cantidad || 0) * (lineas()[i]?.precioUnitario || 0) | bs }}
+              </span>
+
+              @if (detalles.length > 1) {
+                <button type="button" class="linea-quitar" aria-label="Quitar repuesto" (click)="quitarLinea(i)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+                  </svg>
+                </button>
+              } @else {
+                <span></span>
+              }
+            </div>
+          }
+        </div>
+
+        <button type="button" class="agregar-linea" (click)="agregarLinea()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+          Agregar otro repuesto
+        </button>
+      </section>
+
+      <!-- Resumen: sin la raya negra del diseño anterior -->
+      <div class="resumen-compra">
+        <p>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 16v-5M12 8h.01" /></svg>
+          <span>
+            {{ resumenLineas() }}. Al registrar, el stock sube y el precio de compra de cada repuesto pasa a ser el de esta
+            compra; si cambió el precio de venta, queda el nuevo. Las compras no se editan después.
+          </span>
+        </p>
+        <div class="resumen-compra-total">
+          <span>Total de la compra</span>
+          <strong class="monto-mono">{{ totalCompra() | bs }}</strong>
+        </div>
+      </div>
     </form>
 
     <div pie>

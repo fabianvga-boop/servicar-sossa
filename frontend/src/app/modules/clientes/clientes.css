@@ -278,6 +278,13 @@
   height: 100%;
 }
 
+.vehiculo-cliente-foto {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .silueta-piso { fill: #d3d8df; }
 .silueta-cuerpo { fill: #b8c0cb; }
 .silueta-rueda { fill: #7e8794; }

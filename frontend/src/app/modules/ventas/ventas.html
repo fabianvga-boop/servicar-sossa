@@ -265,10 +265,42 @@
 <!-- --------------------------------------------------------------- Historial -->
 <ng-container *ngTemplateOutlet="encabezado" />
 
+<div class="filtros-ventas">
+  <div class="chips-filtro" role="group" aria-label="Período">
+    @for (rango of rangosRapidos; track rango.clave) {
+      <button
+        type="button"
+        class="chip-filtro"
+        [class.activo]="rangoActivo() === rango.clave"
+        [attr.aria-pressed]="rangoActivo() === rango.clave"
+        (click)="rangoActivo() === rango.clave ? limpiarFechas() : aplicarRango(rango.clave)"
+      >
+        {{ rango.etiqueta }}
+      </button>
+    }
+  </div>
+
+  <div class="rango-fechas">
+    <input type="date" aria-label="Desde" [value]="desde()" (change)="onFecha('desde', $any($event.target).value)" />
+    <span class="separador" aria-hidden="true"></span>
+    <input type="date" aria-label="Hasta" [value]="hasta()" (change)="onFecha('hasta', $any($event.target).value)" />
+    @if (desde() || hasta()) {
+      <button type="button" class="limpiar-fechas" aria-label="Quitar las fechas" (click)="limpiarFechas()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+      </button>
+    }
+  </div>
+
+  <span class="filtros-ventas-cuenta">{{ totalRegistros() }} {{ totalRegistros() === 1 ? 'venta' : 'ventas' }}</span>
+</div>
+
 <section class="lista-filas lista-ventas">
   @if (cargando() || ventas().length === 0) {
     <app-estado-tabla
       [cargando]="cargando()"
+      [hayFiltro]="desde().length > 0 || hasta().length > 0"
       titulo="Sin ventas registradas"
       descripcion="Las ventas de mostrador aparecerán aquí."
     />
