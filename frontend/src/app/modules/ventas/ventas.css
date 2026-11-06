@@ -529,7 +529,15 @@
 
 /* --------------------------------------------------------------- Historial */
 
-.lista-ventas { margin-top: 18px; }
+.filtros-ventas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0 14px;
+}
+
+.filtros-ventas-cuenta { margin-left: auto; font-size: 13px; color: var(--gris-500); }
 
 .fila-venta {
   grid-template-columns: 84px 132px minmax(0, 1fr) 130px 80px 120px 110px 150px;

@@ -308,6 +308,33 @@ a:hover {
 }
 .btn-secundario:not(:disabled):hover { background: var(--gris-100); filter: none; }
 
+/* Botones de contacto y de acción con color propio: se reconocen sin leer.
+   WhatsApp con su verde y su logo; Llamar en azul; la acción principal de una
+   tarjeta (Nueva compra) en rojo suave, para no llenar la pantalla de rojo. */
+.btn .btn-ico { width: 17px; height: 17px; flex-shrink: 0; }
+
+.btn-whatsapp {
+  background: #e8f8ee;
+  border-color: #a8e2be;
+  color: #137a3c;
+}
+.btn-whatsapp .btn-ico { color: #25d366; }
+.btn-whatsapp:not(:disabled):hover { background: #d6f3e1; filter: none; }
+
+.btn-llamar {
+  background: var(--azul-100);
+  border-color: #b9cdee;
+  color: var(--azul-700);
+}
+.btn-llamar:not(:disabled):hover { background: #d9e6f8; filter: none; }
+
+.btn-suave {
+  background: var(--brand-soft);
+  border-color: #f2c2bf;
+  color: var(--brand-dk);
+}
+.btn-suave:not(:disabled):hover { background: #fadbd8; filter: none; }
+
 /* Acción destructiva: outline rojo — distinto del primario sólido, mismo color de marca */
 .btn-peligro {
   background: var(--blanco);
@@ -1449,8 +1476,9 @@ table.tabla th.num {
   display: flex;
   gap: 4px;
   padding: 4px;
-  background: var(--gris-100);
-  border-radius: var(--radio-sm);
+  background: var(--blanco);
+  border: 1px solid var(--gris-200);
+  border-radius: 12px;
 }
 
 .segmento {
@@ -1462,21 +1490,32 @@ table.tabla th.num {
   font: inherit;
   font-size: 14px;
   font-weight: 500;
-  color: var(--gris-500);
+  color: var(--ink-soft);
   cursor: pointer;
-  transition: background 0.12s, color 0.12s, box-shadow 0.12s;
+  transition: background 0.12s, color 0.12s;
 }
 
 .segmento:hover {
-  background: var(--gris-200);
+  background: var(--gris-100);
   color: var(--ink);
 }
 
-/* La elegida: blanca sobre el carril gris, con un borde fino */
-.segmento.activo {
-  background: var(--blanco);
-  color: var(--ink);
-  box-shadow: 0 1px 2px rgba(21, 26, 34, 0.08), 0 0 0 1px var(--gris-200);
+/* La elegida: oscura con texto blanco, como el chip de filtro activo.
+   Antes era blanca sobre un carril gris y parecía apagada. */
+.segmento.activo,
+.segmento.activo:hover {
+  background: var(--ink);
+  color: var(--blanco);
+}
+
+.segmento.activo .vista-cuenta {
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--blanco);
+}
+
+.segmento.activo .vista-cuenta.alerta {
+  background: var(--brand);
+  color: var(--blanco);
 }
 
 /* Pestañas de una pantalla: del ancho de su texto, con el conteo al lado */
@@ -1726,6 +1765,16 @@ table.tabla th.num {
 
 /* Dentro del panel la separación entre campos la da el propio panel */
 .cajon-cuerpo .campo { margin-bottom: 0; }
+
+/* Los formularios del panel reparten sus campos con el mismo aire que el
+   panel; sin esto, el nombre de un campo quedaba pegado a la ayuda del
+   anterior (Nuevo repuesto, Catálogo…). Un formulario con su propia grilla
+   la sigue usando: su regla de componente pesa más que esta. */
+.cajon-cuerpo > form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
 
 /* Lo que va en el panel no se encoge para caber: el panel scrollea. Sin
    esto, una caja con overflow:hidden (un presupuesto, una orden) se aplasta
@@ -2231,3 +2280,51 @@ table.tabla th.num {
   .velo-nuevo,
   .hoja-nuevo { animation: none; }
 }
+
+/* ------------------------------------------------------ Rango de fechas
+
+   Las dos fechas se leen como un solo control (Compras, historial de
+   ventas), con una X para quitarlas. */
+.rango-fechas {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--gris-300);
+  border-radius: var(--radio-sm);
+  background: var(--blanco);
+  overflow: hidden;
+}
+
+.rango-fechas input {
+  width: auto;
+  padding: 9px 11px;
+  border: none;
+  background: none;
+  font-size: 13px;
+}
+
+.rango-fechas input:focus {
+  outline: 2px solid var(--brand);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+.rango-fechas .separador {
+  width: 1px;
+  align-self: stretch;
+  background: var(--gris-200);
+}
+
+.limpiar-fechas {
+  width: 28px;
+  height: 28px;
+  margin-right: 3px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: var(--radio-sm);
+  background: none;
+  color: var(--gris-400);
+  cursor: pointer;
+}
+
+.limpiar-fechas:hover { background: var(--gris-100); color: var(--ink-soft); }

@@ -67,51 +67,6 @@
 
 .filtro-proveedor { width: auto; min-width: 200px; }
 
-/* Las dos fechas se leen como un solo control de rango */
-.rango-fechas-compras {
-  display: flex;
-  align-items: center;
-  border: 1px solid var(--gris-300);
-  border-radius: var(--radio-sm);
-  background: var(--blanco);
-  overflow: hidden;
-}
-
-.rango-fechas-compras input {
-  width: auto;
-  padding: 9px 11px;
-  border: none;
-  background: none;
-  font-size: 13px;
-}
-
-.rango-fechas-compras input:focus {
-  outline: 2px solid var(--brand);
-  outline-offset: -2px;
-  box-shadow: none;
-}
-
-.rango-fechas-compras .separador {
-  width: 1px;
-  align-self: stretch;
-  background: var(--gris-200);
-}
-
-.limpiar-fechas {
-  width: 28px;
-  height: 28px;
-  margin-right: 3px;
-  display: grid;
-  place-items: center;
-  border: none;
-  border-radius: var(--radio-sm);
-  background: none;
-  color: var(--gris-400);
-  cursor: pointer;
-}
-
-.limpiar-fechas:hover { background: var(--gris-100); color: var(--ink-soft); }
-
 /* ================================================================== Lista */
 .fila-compra {
   grid-template-columns: 84px 128px minmax(0, 1.3fr) minmax(0, 1fr) 110px 112px;
@@ -365,3 +320,211 @@ table.tabla.tabla-detalle-compra td.num { padding-top: 25px; }
 table.tabla.tabla-detalle-compra td:last-child { padding-top: 22px; }
 
 .repuesto-nuevo-marca .btn-enlace { font-size: 12.5px; }
+
+/* ============================================================ Nueva compra */
+.compra-subtitulo { font-size: 13px; color: var(--gris-500); }
+
+.form-compra { display: flex; flex-direction: column; gap: 22px; }
+.form-compra .campo { margin-bottom: 0; }
+
+.paso-compra { display: flex; flex-direction: column; gap: 10px; }
+
+.paso-compra-titulo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.paso-compra-num {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--blanco);
+  font-size: 12px;
+}
+
+.paso-compra-tipo { margin-left: auto; }
+.paso-compra-tipo .segmento { padding: 6px 12px; font-size: 13.5px; }
+
+.compra-avatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: var(--azul-100);
+  color: var(--azul-700);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.compra-avatar.vacio { background: var(--gris-100); color: var(--gris-400); }
+
+.proveedor-elegido {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--gris-300);
+  border-radius: 12px;
+}
+
+.proveedor-elegido .compra-avatar { background: var(--gris-100); color: var(--gris-500); }
+.proveedor-elegido-textos { display: flex; flex-direction: column; min-width: 0; font-size: 12.5px; color: var(--gris-500); }
+.proveedor-elegido-textos strong { font-size: 14px; color: var(--ink); }
+
+.linea-compra {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px 120px 140px 104px 32px;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--gris-200);
+  border-radius: 12px;
+}
+
+.cabecera-lineas {
+  padding-top: 0;
+  padding-bottom: 0;
+  border: 0;
+  font-size: 12px;
+  color: var(--gris-400);
+}
+
+.lineas-compra { display: flex; flex-direction: column; gap: 8px; }
+
+.linea-repuesto { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
+.linea-repuesto-campo { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+
+.linea-repuesto-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  font-size: 12px;
+  color: var(--gris-500);
+}
+
+.cantidad-compra {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 28px;
+  align-items: center;
+  height: 40px;
+  padding: 0 5px;
+  border: 1px solid var(--gris-300);
+  border-radius: 10px;
+}
+
+.cantidad-compra button {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--gris-100);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cantidad-compra input {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  text-align: center;
+  font-family: var(--fuente-mono);
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.cantidad-compra input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+.monto-campo { font-family: var(--fuente-mono); }
+
+.linea-venta { display: flex; flex-direction: column; gap: 4px; }
+.linea-ganancia { font-size: 11.5px; color: var(--verde-700); }
+.linea-ganancia.perdida { color: var(--brand-dk); }
+
+.linea-subtotal { font-weight: 500; }
+
+.linea-quitar {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--gris-400);
+  cursor: pointer;
+}
+
+.linea-quitar svg { width: 16px; height: 16px; }
+.linea-quitar:hover { background: var(--brand-soft); color: var(--brand-dk); }
+
+.agregar-linea {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px;
+  border: 1px dashed var(--gris-300);
+  border-radius: 12px;
+  background: none;
+  font: inherit;
+  font-weight: 500;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.agregar-linea svg { width: 16px; height: 16px; }
+.agregar-linea:hover { border-color: var(--gris-400); background: var(--gris-50); }
+
+.resumen-compra {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--gris-200);
+  border-radius: 14px;
+  background: var(--gris-50);
+}
+
+.resumen-compra p {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--gris-500);
+}
+
+.resumen-compra p svg { width: 17px; height: 17px; flex-shrink: 0; margin-top: 1px; color: var(--gris-400); }
+
+.resumen-compra-total { display: flex; flex-direction: column; align-items: flex-end; }
+.resumen-compra-total span { font-size: 12.5px; color: var(--gris-500); }
+.resumen-compra-total strong { font-size: 26px; font-weight: 600; }
+
+@media (max-width: 760px) {
+  .paso-compra-titulo { flex-wrap: wrap; }
+  .paso-compra-tipo { margin-left: 0; }
+
+  .cabecera-lineas { display: none; }
+
+  /* Cada repuesto en dos renglones: el repuesto arriba, los números abajo */
+  .linea-compra { grid-template-columns: 1fr 1fr; }
+  .linea-repuesto { grid-column: 1 / -1; }
+  .linea-subtotal { text-align: left; }
+
+  .resumen-compra { grid-template-columns: 1fr; }
+  .resumen-compra-total { align-items: flex-start; }
+}

@@ -81,6 +81,16 @@ export class Ventas implements ConfirmarSalida {
 
   protected readonly pagina = signal(1);
   protected readonly tamanoPagina = signal(20);
+
+  /** Filtro por fechas del historial (vacío = todas). */
+  protected readonly desde = signal('');
+  protected readonly hasta = signal('');
+  protected readonly rangosRapidos = [
+    { clave: 'hoy', etiqueta: 'Hoy' },
+    { clave: 'semana', etiqueta: 'Esta semana' },
+    { clave: 'mes', etiqueta: 'Este mes' },
+  ] as const;
+  protected readonly rangoActivo = signal<string | null>(null);
   protected readonly totalRegistros = signal(0);
   protected readonly totalPaginas = signal(0);
 
@@ -194,7 +204,12 @@ export class Ventas implements ConfirmarSalida {
     this.cargando.set(true);
 
     this.servicio
-      .getAll({ pagina: this.pagina(), tamanoPagina: this.tamanoPagina() })
+      .getAll({
+        desde: this.desde() || undefined,
+        hasta: this.hasta() || undefined,
+        pagina: this.pagina(),
+        tamanoPagina: this.tamanoPagina(),
+      })
       .subscribe({
         next: (resultado) => {
           this.ventas.set(resultado.items);
@@ -208,6 +223,35 @@ export class Ventas implements ConfirmarSalida {
 
   protected cambiarPagina(pagina: number): void {
     this.pagina.set(pagina);
+    this.cargar();
+  }
+
+  protected onFecha(campo: 'desde' | 'hasta', valor: string): void {
+    this.rangoActivo.set(null);
+    (campo === 'desde' ? this.desde : this.hasta).set(valor);
+    this.pagina.set(1);
+    this.cargar();
+  }
+
+  /** Hoy, esta semana (desde el lunes) o este mes, hasta hoy. */
+  protected aplicarRango(clave: 'hoy' | 'semana' | 'mes'): void {
+    this.rangoActivo.set(clave);
+    const ahora = new Date();
+    let inicio = new Date(ahora);
+    if (clave === 'semana') inicio.setDate(ahora.getDate() - ((ahora.getDay() + 6) % 7));
+    if (clave === 'mes') inicio = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+
+    this.desde.set(fechaLocal(inicio));
+    this.hasta.set(fechaLocal(ahora));
+    this.pagina.set(1);
+    this.cargar();
+  }
+
+  protected limpiarFechas(): void {
+    this.rangoActivo.set(null);
+    this.desde.set('');
+    this.hasta.set('');
+    this.pagina.set(1);
     this.cargar();
   }
 
@@ -444,4 +488,11 @@ export class Ventas implements ConfirmarSalida {
     evento.preventDefault();
     evento.returnValue = '';
   }
+}
+
+/** Fecha local yyyy-mm-dd (no UTC: en Bolivia, desde las 20:00 el UTC ya es mañana). */
+function fechaLocal(fecha: Date): string {
+  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+  const dia = String(fecha.getDate()).padStart(2, '0');
+  return `${fecha.getFullYear()}-${mes}-${dia}`;
 }
