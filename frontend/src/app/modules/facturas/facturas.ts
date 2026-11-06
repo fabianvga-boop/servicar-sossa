@@ -114,6 +114,22 @@ export class Facturas {
   private readonly notificacion = inject(NotificacionService);
 
   protected readonly facturas = signal<Factura[]>([]);
+
+  /** Color del estado ante el SIN: validada en verde, rechazada en rojo, en curso en naranja. */
+  protected tonoSiat(estado: string): string {
+    switch (estado) {
+      case 'Validada':
+        return 'verde';
+      case 'Rechazada':
+        return 'roja';
+      case 'Anulada':
+        return 'gris';
+      case 'Contingencia':
+        return 'azul';
+      default:
+        return 'naranja';
+    }
+  }
   protected readonly cargando = signal(true);
   protected readonly estadoModulo = signal<EstadoFacturacion | null>(null);
 

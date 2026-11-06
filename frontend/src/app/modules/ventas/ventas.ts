@@ -14,7 +14,7 @@ import { NotificacionService } from '../../core/services/notificacion.service';
 import { Confirmacion } from '../../shared/components/confirmacion';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { InsigniaEstado } from '../../shared/components/insignia-estado';
-import { Modal } from '../../shared/components/modal';
+import { Cajon } from '../../shared/components/cajon';
 import { Paginador } from '../../shared/components/paginador';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
 import { detalleConNuevo } from '../../shared/recientes';
@@ -51,7 +51,7 @@ const TONOS = ['naranja', 'azul', 'verde', 'gris'] as const;
     FormsModule,
     DatePipe,
     NgTemplateOutlet,
-    Modal,
+    Cajon,
     Confirmacion,
     EstadoTabla,
     InsigniaEstado,

@@ -55,6 +55,7 @@ interface GrupoMenu {
   styleUrl: './layout.css',
   host: {
     '(document:keydown)': 'alTeclear($event)',
+    '(document:click)': 'alClicDocumento($event)',
   },
 })
 export class Layout {
@@ -174,6 +175,15 @@ export class Layout {
       ],
     },
   ];
+
+  /** Grupo del menú de la sección activa ("Operación", "Almacén"…), para las migas. */
+  protected readonly grupoSeccion = toSignal(
+    this.router.events.pipe(
+      filter((evento): evento is NavigationEnd => evento instanceof NavigationEnd),
+      map(() => this.grupoDesdeUrl(this.router.url)),
+    ),
+    { initialValue: this.grupoDesdeUrl(this.router.url) },
+  );
 
   /**
    * Menú filtrado por rol. Los grupos que quedan sin enlaces visibles se
@@ -301,6 +311,23 @@ export class Layout {
     }
 
     return titulo;
+  }
+
+  /** El grupo cuyo enlace coincide con el comienzo de la dirección actual. */
+  private grupoDesdeUrl(url: string): string | null {
+    const ruta = url.split(/[?#]/)[0];
+    for (const grupo of this.grupos) {
+      if (!grupo.titulo) continue;
+      if (grupo.enlaces.some((e) => ruta === e.ruta || ruta.startsWith(e.ruta + '/'))) return grupo.titulo;
+    }
+    return null;
+  }
+
+  /** El menú de la cuenta se cierra al hacer clic en cualquier otro lado. */
+  protected alClicDocumento(evento: MouseEvent): void {
+    if (!this.menuUsuarioAbierto()) return;
+    const destino = evento.target as HTMLElement | null;
+    if (!destino?.closest('.usuario')) this.menuUsuarioAbierto.set(false);
   }
 
   /** Valor de la insignia de un enlace; 0 se trata como "nada que mostrar". */

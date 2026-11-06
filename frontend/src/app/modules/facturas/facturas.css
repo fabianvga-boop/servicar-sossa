@@ -140,3 +140,58 @@
 
   .guia-pasos { padding: 4px 16px; }
 }
+
+/* ------------------------------------------------------- Facturas emitidas */
+
+.lista-facturas { margin-top: 20px; }
+
+.facturas-cabecera {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--gris-100);
+}
+
+.facturas-cabecera h2 { margin: 0; font-size: 15px; font-weight: 600; }
+.facturas-cabecera span { font-size: 13px; color: var(--gris-500); }
+
+.fila-factura {
+  grid-template-columns: 84px 92px 140px minmax(0, 1fr) 110px minmax(0, 0.9fr) 150px 120px;
+}
+
+.factura-codigo { font-size: 13px; }
+.factura-tenue { font-size: 12.5px; color: var(--gris-500); }
+
+.factura-origen { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+.factura-cliente,
+.factura-cuf {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.factura-cuf { font-size: 12px; color: var(--gris-500); }
+
+.factura-estado { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+
+.factura-acciones { display: flex; justify-content: flex-end; gap: 10px; }
+
+@media (max-width: 900px) {
+  .cabecera-lista.fila-factura { display: none; }
+
+  .fila-factura { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; }
+
+  .fila-factura > :nth-child(3),
+  .fila-factura > :nth-child(6) { display: none; }
+
+  .fila-factura > :nth-child(4) { grid-row: 1; grid-column: 1; font-weight: 500; }
+  .fila-factura > :nth-child(5) { grid-row: 1; grid-column: 2; }
+  .fila-factura > :nth-child(1) { grid-row: 2; grid-column: 1; }
+  .fila-factura > :nth-child(7) { grid-row: 2; grid-column: 2; align-items: flex-end; }
+  .fila-factura > :nth-child(2) { grid-row: 3; grid-column: 1; }
+  .factura-acciones { grid-row: 3; grid-column: 2; }
+}

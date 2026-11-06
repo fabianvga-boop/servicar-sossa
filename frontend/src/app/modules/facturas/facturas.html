@@ -62,9 +62,10 @@
 }
 
 @if (habilitada() || facturas().length > 0) {
-<div class="tarjeta">
-  <div class="tarjeta-encabezado">
-    <span class="texto-tenue texto-sm">{{ totalRegistros() }} factura(s)</span>
+<section class="lista-filas lista-facturas">
+  <div class="facturas-cabecera">
+    <h2>Facturas emitidas</h2>
+    <span>{{ totalRegistros() }} factura(s)</span>
   </div>
 
   @if (cargando() || facturas().length === 0) {
@@ -74,70 +75,59 @@
       descripcion="Acá van a aparecer los comprobantes fiscales cuando el taller esté habilitado ante Impuestos."
     />
   } @else {
-    <div class="tabla-contenedor">
-      <table class="tabla">
-        <thead>
-          <tr>
-            <th>Código</th>
-            <th>Emisión</th>
-            <th>Origen</th>
-            <th>Cliente</th>
-            <th class="num">Total</th>
-            <th>CUF</th>
-            <th>Estado SIAT</th>
-            <th class="th-acciones">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (factura of facturas(); track factura.facturaId) {
-            <tr>
-              <td class="codigo">{{ factura.facturaId }}</td>
-              <td class="texto-sm">{{ factura.fechaEmision | date: 'dd/MM/yyyy' }}</td>
-              <td class="texto-sm">
-                @if (factura.ordenId) {
-                  <a [routerLink]="['/ordenes', factura.ordenId]">{{ factura.ordenId }}</a>
-                } @else {
-                  <span>{{ factura.ventaId }}</span>
-                  <span class="insignia insignia-gris ml-1">Mostrador</span>
-                }
-              </td>
-              <td>{{ factura.nombreCliente }}</td>
-              <td class="num">{{ factura.total | bs }}</td>
-              <td class="texto-sm codigo codigo-largo">{{ factura.cuf ?? '—' }}</td>
-              <td>
-                <span class="insignia">{{ factura.estadoSiat }}</span>
-                @if (factura.mensajeServicio) {
-                  <div class="texto-tenue texto-sm">{{ factura.mensajeServicio }}</div>
-                }
-              </td>
-              <td>
-                <div class="acciones">
-                  @if (factura.tieneXml) {
-                    <button type="button" class="btn-enlace" (click)="descargarXml(factura, false)">
-                      XML
-                    </button>
-                    <button type="button" class="btn-enlace" (click)="descargarXml(factura, true)">
-                      XML firmado
-                    </button>
-                  } @else {
-                    <span class="texto-tenue texto-sm">Sin XML</span>
-                  }
-                </div>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
+    <div class="fila-lista fila-factura cabecera-lista" aria-hidden="true">
+      <span>Código</span>
+      <span>Emisión</span>
+      <span>Origen</span>
+      <span>Cliente</span>
+      <span class="a-la-derecha">Total</span>
+      <span>CUF</span>
+      <span>Estado SIAT</span>
+      <span></span>
     </div>
 
-    <app-paginador
-      [pagina]="pagina()"
-      [totalPaginas]="totalPaginas()"
-      [totalRegistros]="totalRegistros()"
-      [tamanoPagina]="tamanoPagina()"
-      (cambiarPagina)="cambiarPagina($event)"
-      (cambiarTamano)="cambiarTamano($event)"
-    />
+    @for (factura of facturas(); track factura.facturaId) {
+      <div class="fila-lista fila-factura">
+        <span class="monto-mono factura-codigo">{{ factura.facturaId }}</span>
+        <span class="factura-tenue">{{ factura.fechaEmision | date: 'dd/MM/yyyy' }}</span>
+        <span class="factura-origen">
+          @if (factura.ordenId) {
+            <a class="monto-mono" [routerLink]="['/ordenes', factura.ordenId]">{{ factura.ordenId }}</a>
+          } @else {
+            <span class="monto-mono">{{ factura.ventaId }}</span>
+            <span class="insignia insignia-gris">Mostrador</span>
+          }
+        </span>
+        <span class="factura-cliente">{{ factura.nombreCliente }}</span>
+        <span class="monto-mono a-la-derecha">{{ factura.total | bs }}</span>
+        <span class="monto-mono factura-cuf" [title]="factura.cuf ?? ''">{{ factura.cuf ?? '—' }}</span>
+        <span class="factura-estado">
+          <span class="insignia" [class]="'insignia insignia-' + tonoSiat(factura.estadoSiat)">{{ factura.estadoSiat }}</span>
+          @if (factura.mensajeServicio) {
+            <span class="factura-tenue">{{ factura.mensajeServicio }}</span>
+          }
+        </span>
+        <span class="factura-acciones">
+          @if (factura.tieneXml) {
+            <button type="button" class="btn-enlace" (click)="descargarXml(factura, false)">XML</button>
+            <button type="button" class="btn-enlace" (click)="descargarXml(factura, true)">Firmado</button>
+          } @else {
+            <span class="factura-tenue">Sin XML</span>
+          }
+        </span>
+      </div>
+    }
+
+    @if (totalPaginas() > 1) {
+      <app-paginador
+        [pagina]="pagina()"
+        [totalPaginas]="totalPaginas()"
+        [totalRegistros]="totalRegistros()"
+        [tamanoPagina]="tamanoPagina()"
+        (cambiarPagina)="cambiarPagina($event)"
+        (cambiarTamano)="cambiarTamano($event)"
+      />
+    }
   }
-</div>
+</section>
 }

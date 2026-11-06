@@ -1,24 +1,133 @@
-/* ------------------------------------------------------ Filtros y búsqueda */
+/* ------------------------------------------------------------------ Bandeja */
 
-.filtros-diag {
+.bandeja-diag {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.bandeja-diag.una-columna { grid-template-columns: minmax(0, 1fr); }
+
+.bloque-bandeja { overflow: hidden; }
+
+.bandeja-cab {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 10px 16px;
+  gap: 4px 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--gris-100);
 }
+
+.bandeja-cab h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.bandeja-ayuda { font-size: 12.5px; color: var(--gris-500); }
+
+.bandeja-cuenta {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  background: var(--gris-100);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gris-500);
+}
+
+.bandeja-cuenta.naranja { background: var(--naranja-100); color: var(--naranja-700); }
+
+.pendiente {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--gris-100);
+}
+
+.bandeja-cab + .pendiente { border-top: 0; }
+
+.pendiente.elegida { background: var(--gris-50); }
+
+.pendiente-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pendiente-texto strong,
+.pendiente-texto span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pendiente-texto strong { font-size: 14px; font-weight: 600; }
+.pendiente-texto span { font-size: 12.5px; color: var(--gris-500); }
+
+.pendiente-espera {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--naranja-700);
+  white-space: nowrap;
+}
+
+.pendiente-espera.larga { color: var(--brand-dk); }
+
+.bandeja-mas {
+  display: block;
+  width: 100%;
+  padding: 10px 18px;
+  border-top: 1px solid var(--gris-100);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ---------------------------------------------------- Historial: cabecera */
+
+.historial-cab {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--gris-100);
+}
+
+.historial-cab h2 {
+  margin: 0 auto 0 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.buscador-diag { width: 240px; }
 
 /* -------------------------------------------------------------------- Lista */
 
 .fila-diag {
-  grid-template-columns: 84px minmax(0, 1fr) minmax(0, 1.5fr) 110px 150px 190px;
+  grid-template-columns: 70px 44px minmax(0, 1.4fr) minmax(0, 1.3fr) 104px 150px 180px;
 }
 
+.diag-fecha { font-size: 13px; color: var(--gris-500); }
+
+/* Placa y texto en una sola línea: la fila mide la mitad que antes */
 .diag-vehiculo {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
+  align-items: center;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -316,13 +425,17 @@
   }
 
   :host-context(body.con-cajon) .diag-falla,
-  :host-context(body.con-cajon) .cabecera-lista span:nth-child(3) { display: none; }
+  :host-context(body.con-cajon) .diag-fecha,
+  :host-context(body.con-cajon) .cabecera-lista span:nth-child(2),
+  :host-context(body.con-cajon) .cabecera-lista span:nth-child(4) { display: none; }
+
+  :host-context(body.con-cajon) .bandeja-diag { grid-template-columns: minmax(0, 1fr); }
 
   :host-context(body.con-cajon) .diag-accion .btn,
   :host-context(body.con-cajon) .diag-accion .btn-enlace,
   :host-context(body.con-cajon) .diag-accion .enlace-orden-diag { display: none; }
 
-  :host-context(body.con-cajon) .cabecera-lista span:nth-child(6) { visibility: hidden; }
+  :host-context(body.con-cajon) .cabecera-lista span:nth-child(7) { visibility: hidden; }
 }
 
 @media (max-width: 900px) {
@@ -334,20 +447,42 @@
     padding: 14px 16px;
   }
 
-  .fila-diag .codigo { grid-row: 1; grid-column: 1; }
-  .fila-diag > span:nth-child(5) { grid-row: 1; grid-column: 2; justify-self: end; }
+  .fila-diag .codigo { display: none; }
+  .diag-fecha { grid-row: 1; grid-column: 1; }
+  .fila-diag > span:nth-child(6) { grid-row: 1; grid-column: 2; justify-self: end; }
   .diag-vehiculo { grid-row: 2; grid-column: 1 / -1; }
   .diag-falla { grid-row: 3; grid-column: 1 / -1; white-space: normal; }
   .diag-monto { grid-row: 4; grid-column: 1; text-align: left; }
   .diag-accion { grid-row: 4; grid-column: 2; }
 
-  .filtros-diag .chips-filtro {
+  .bandeja-diag { grid-template-columns: minmax(0, 1fr); }
+
+  /* El pendiente en dos renglones: placa y espera arriba, el botón abajo */
+  .pendiente {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px 12px;
+    padding: 12px 16px;
+  }
+
+  .pendiente-texto { grid-column: 1 / -1; grid-row: 2; }
+  .pendiente-espera { justify-self: end; }
+  .pendiente .btn { grid-column: 1 / -1; justify-self: end; }
+
+  /* Sin "hace N días" (falta presupuesto): el botón sube junto a la placa */
+  .pendiente:not(:has(.pendiente-espera)) .btn { grid-row: 1; grid-column: 2; }
+
+  .historial-cab { padding: 14px 16px; }
+  .historial-cab h2 { flex-basis: 100%; }
+
+  .historial-cab .chips-filtro {
     flex-wrap: nowrap;
     overflow-x: auto;
     max-width: 100%;
   }
 
-  .buscador-lista { max-width: none; }
+  .historial-cab .chip-filtro { flex-shrink: 0; }
+
+  .buscador-diag { width: 100%; max-width: none; }
 }
 
 @media (max-width: 520px) {

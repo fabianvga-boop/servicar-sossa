@@ -5,7 +5,29 @@
 
   <!-- ------------------------------------------------------------- Cabecera -->
   <section class="orden-cabecera">
-    <app-placa [valor]="o.placaVehiculo" tamano="grande" />
+    <!-- La foto arriba, como en las tarjetas de Órdenes: placa encima y cuántas fotos hay.
+         Sin fotos queda la placa grande. -->
+    @if (fotosVehiculo().length > 0) {
+      <button
+        type="button"
+        class="orden-portada"
+        [attr.aria-label]="'Ver las fotos de ' + o.placaVehiculo"
+        (click)="abrirGaleriaVehiculo()"
+      >
+        <img [src]="urlArchivo(fotosVehiculo()[0].url)" [alt]="'Foto de ' + o.placaVehiculo" />
+        @if (fotosVehiculo().length > 1) {
+          <span class="portada-cantidad">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" />
+            </svg>
+            {{ fotosVehiculo().length }}
+          </span>
+        }
+        <app-placa class="portada-placa" [valor]="o.placaVehiculo" />
+      </button>
+    } @else {
+      <app-placa [valor]="o.placaVehiculo" tamano="grande" />
+    }
     <div class="orden-titulo">
       <div class="orden-titulo-fila">
         <h1>{{ o.descripcionVehiculo }}</h1>
@@ -173,6 +195,27 @@
 
   <div class="columnas">
     <div class="principal-col">
+      <!-- --------------------------------------------------- Diagnóstico de origen -->
+      <!-- Primero la falla: es el porqué de los servicios y repuestos de abajo. -->
+      @if (o.diagnosticoId) {
+        <section class="tarjeta bloque-orden bloque-orden-cuerpo">
+          <div class="bloque-orden-titulo">
+            <h2>Diagnóstico de origen</h2>
+            <a class="codigo" [routerLink]="['/diagnosticos']" [queryParams]="{ buscar: o.diagnosticoId }">{{ o.diagnosticoId }}</a>
+          </div>
+          <div class="dato-orden">
+            <span>Falla reportada</span>
+            <p>{{ o.descripcionFalla }}</p>
+          </div>
+          @if (o.observacionesTecnicasDiagnostico) {
+            <div class="dato-orden">
+              <span>Observaciones técnicas</span>
+              <p>{{ o.observacionesTecnicasDiagnostico }}</p>
+            </div>
+          }
+        </section>
+      }
+
       <!-- ------------------------------------------------------------ Servicios -->
       <section class="tarjeta bloque-orden">
         <div class="bloque-orden-cabecera">
@@ -405,26 +448,6 @@
           }
         </section>
       }
-
-      <!-- --------------------------------------------------- Diagnóstico de origen -->
-      @if (o.diagnosticoId) {
-        <section class="tarjeta bloque-orden bloque-orden-cuerpo">
-          <div class="bloque-orden-titulo">
-            <h2>Diagnóstico de origen</h2>
-            <a class="codigo" [routerLink]="['/diagnosticos']" [queryParams]="{ buscar: o.diagnosticoId }">{{ o.diagnosticoId }}</a>
-          </div>
-          <div class="dato-orden">
-            <span>Falla reportada</span>
-            <p>{{ o.descripcionFalla }}</p>
-          </div>
-          @if (o.observacionesTecnicasDiagnostico) {
-            <div class="dato-orden">
-              <span>Observaciones técnicas</span>
-              <p>{{ o.observacionesTecnicasDiagnostico }}</p>
-            </div>
-          }
-        </section>
-      }
     </div>
 
     <!-- -------------------------------------------------------- Columna lateral -->
@@ -492,11 +515,6 @@
             <button type="button" class="btn-enlace" (click)="abrirGaleriaVehiculo()">Ver fotos</button>
           }
         </div>
-        @if (fotosVehiculo().length > 0) {
-          <button type="button" class="foto-estado" (click)="abrirGaleriaVehiculo()" aria-label="Ver fotos del vehículo">
-            <img [src]="urlArchivo(fotosVehiculo()[0].url)" [alt]="'Foto de ' + o.placaVehiculo" />
-          </button>
-        }
         @for (z of zonasMarcadas(); track z.zonaObsId; let i = $index) {
           <span class="zona-orden">
             <strong>{{ i + 1 }}</strong>

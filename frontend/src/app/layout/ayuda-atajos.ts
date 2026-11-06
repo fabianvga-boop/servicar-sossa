@@ -22,69 +22,98 @@ interface GrupoAtajos {
   imports: [Modal],
   template: `
     @if (abierta()) {
-      <app-modal titulo="Atajos de teclado" [ancho]="640" (cerrar)="cerrar.emit()">
-        @for (grupo of grupos; track grupo.titulo) {
-          <h3 class="grupo">{{ grupo.titulo }}</h3>
-          <table class="atajos">
-            <tbody>
+      <app-modal titulo="Atajos de teclado" [ancho]="760" icono="teclado" (cerrar)="cerrar.emit()">
+        <span subtitulo class="subtitulo">Para trabajar sin soltar el teclado en el mostrador.</span>
+
+        <div class="columnas">
+          @for (grupo of grupos; track grupo.titulo) {
+            <section class="grupo">
+              <h3>{{ grupo.titulo }}</h3>
               @for (atajo of grupo.atajos; track atajo.accion) {
-                <tr>
-                  <td class="teclas">
+                <div class="fila">
+                  <span>{{ atajo.accion }}</span>
+                  <span class="teclas">
                     @for (tecla of atajo.teclas; track $index) {
-                      @if ($index > 0) { <span class="mas">+</span> }
                       <kbd>{{ tecla }}</kbd>
                     }
-                  </td>
-                  <td>{{ atajo.accion }}</td>
-                </tr>
+                  </span>
+                </div>
               }
-            </tbody>
-          </table>
-        }
-        <div pie>
-          <button type="button" class="btn btn-secundario" (click)="cerrar.emit()">Cerrar</button>
+            </section>
+          }
+        </div>
+
+        <div pie class="pie-ayuda">
+          Pulse <kbd>?</kbd> en cualquier pantalla para volver a ver esta lista.
         </div>
       </app-modal>
     }
   `,
   styles: `
+    .subtitulo { font-size: 13px; color: var(--gris-500); }
+
+    /* Dos columnas que se reparten los grupos sin cortarlos */
+    .columnas {
+      columns: 2;
+      column-gap: 32px;
+    }
+
     .grupo {
-      margin: 14px 0 6px;
-      font-size: 12px;
-      text-transform: uppercase;
+      break-inside: avoid;
+      margin-bottom: 16px;
+    }
+
+    .grupo h3 {
+      margin: 0 0 4px;
+      font-size: 11.5px;
+      font-weight: 600;
       letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--gris-400);
+    }
+
+    .fila {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 9px 0;
+      border-bottom: 1px dashed var(--gris-200);
+      font-size: 13.5px;
+      color: var(--ink-soft);
+    }
+
+    .teclas { display: flex; gap: 4px; flex-shrink: 0; }
+
+    kbd {
+      display: inline-grid;
+      place-items: center;
+      min-width: 26px;
+      height: 26px;
+      padding: 0 7px;
+      border: 1px solid var(--gris-300);
+      border-bottom-width: 2px;
+      border-radius: 7px;
+      background: var(--blanco);
+      font-family: var(--fuente-mono);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--ink);
+    }
+
+    .pie-ayuda {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-right: auto;
+      font-size: 12.5px;
       color: var(--gris-500);
     }
 
-    .grupo:first-of-type { margin-top: 0; }
-
-    .atajos { width: 100%; border-collapse: collapse; font-size: 14px; }
-
-    .atajos td {
-      padding: 7px 4px;
-      border-bottom: 1px solid var(--gris-100);
-      color: var(--ink-soft);
-      vertical-align: middle;
+    @media (max-width: 700px) {
+      .columnas { columns: 1; }
     }
-
-    .teclas { width: 160px; white-space: nowrap; }
-
-    .mas { margin: 0 3px; color: var(--gris-500); }
-
-    kbd {
-      display: inline-block;
-      min-width: 26px;
-      padding: 2px 7px;
-      border: 1px solid var(--gris-300);
-      border-bottom-width: 2px;
-      border-radius: 5px;
-      background: var(--gris-50);
-      font-family: var(--fuente-mono);
-      font-size: 12.5px;
-      text-align: center;
-      color: var(--ink);
-    }
-  `,
+    `,
 })
 export class AyudaAtajos {
   readonly abierta = input(false);

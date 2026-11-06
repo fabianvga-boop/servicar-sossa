@@ -145,7 +145,16 @@
 }
 
 /* La línea de tiempo va más junta: el aire lo da cada evento hacia abajo */
+.ficha-principal {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
 .ficha-tiempo { gap: 4px; }
+
+.historia-mas { align-self: flex-start; margin-top: 4px; padding: 0; font-size: 13px; }
 
 .ficha-tiempo h2 { margin-bottom: 8px; }
 
@@ -238,19 +247,28 @@
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 12px;
-  padding: 12px 20px;
+  padding: 10px 20px;
   border-top: 1px solid var(--gris-100);
   font-size: 14px;
 }
 
+/* Nombre y etiqueta en una sola línea: la lista mide la mitad que antes */
 .repuesto-fila-nombre {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
 }
 
-.repuesto-fila-nombre strong { font-weight: 500; }
+.repuesto-fila-nombre strong {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repuesto-fila-nombre > span { flex-shrink: 0; }
 
 .etiqueta-compat {
   display: inline-flex;
@@ -494,6 +512,10 @@
 }
 
 @media (max-width: 900px) {
+  /* Angosto: el nombre necesita todo el ancho; la etiqueta pasa debajo */
+  .repuesto-fila-nombre { flex-direction: column; align-items: flex-start; gap: 3px; }
+  .repuesto-fila-nombre strong { white-space: normal; }
+
   .ficha-pestana { margin-right: 12px; }
 
   .ficha-indicadores { grid-template-columns: repeat(2, minmax(0, 1fr)); }

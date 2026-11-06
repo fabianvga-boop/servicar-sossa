@@ -12,7 +12,7 @@ import { ClientesService } from '../../core/services/clientes.service';
 import { RepuestosService } from '../../core/services/inventario.service';
 import { OrdenesService } from '../../core/services/ordenes.service';
 import { VehiculosService } from '../../core/services/vehiculos.service';
-import { coincidePorPalabras, palabrasDeBusqueda } from '../busqueda';
+import { coincidePorPalabras, normalizarTexto, palabrasDeBusqueda } from '../busqueda';
 import { coincideRepuesto } from '../busqueda-repuestos';
 import { IconoMenu, NombreIconoMenu } from './icono-menu';
 
@@ -87,17 +87,31 @@ interface Resultado {
                   (mouseenter)="resaltado.set(i)"
                   (click)="ir(item)"
                 >
-                  <app-icono-menu class="icono" [nombre]="item.icono" />
-                  <span class="etiqueta">{{ item.etiqueta }}</span>
-                  <span class="detalle">{{ item.detalle }}</span>
+                  <span class="icono-caja"><app-icono-menu class="icono" [nombre]="item.icono" /></span>
+                  <span class="textos">
+                    <span class="etiqueta">
+                      @for (p of partes(item.etiqueta); track $index) {
+                        @if (p.marca) {
+                          <mark>{{ p.texto }}</mark>
+                        } @else {
+                          {{ p.texto }}
+                        }
+                      }
+                    </span>
+                    @if (item.detalle) {
+                      <span class="detalle">{{ item.detalle }}</span>
+                    }
+                  </span>
+                  <span class="abrir" aria-hidden="true">Abrir ↵</span>
                 </li>
               }
             </ul>
           }
 
           <div class="pie">
-            <span><kbd>↑</kbd><kbd>↓</kbd> navegar</span>
-            <span><kbd>↵</kbd> abrir</span>
+            <span><kbd>↑</kbd><kbd>↓</kbd> moverse</span>
+            <span><kbd>Enter</kbd> abrir</span>
+            <span><kbd>Esc</kbd> cerrar</span>
           </div>
         </div>
       </div>
@@ -108,7 +122,8 @@ interface Resultado {
       position: fixed;
       inset: 0;
       z-index: 900;
-      background: rgba(12, 14, 18, 0.5);
+      background: rgba(21, 26, 34, 0.42);
+      backdrop-filter: blur(2px);
       display: flex;
       justify-content: center;
       align-items: flex-start;
@@ -117,106 +132,165 @@ interface Resultado {
 
     .panel {
       width: 100%;
-      max-width: 560px;
+      max-width: 640px;
       background: var(--blanco);
-      border-radius: var(--radio);
-      box-shadow: var(--sombra-lg);
+      border-radius: 18px;
+      box-shadow: 0 30px 60px -24px rgba(0, 0, 0, 0.45);
       overflow: hidden;
       display: flex;
       flex-direction: column;
-      max-height: 70vh;
+      max-height: 72vh;
+      animation: aparecer 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes aparecer {
+      from { opacity: 0; transform: translateY(6px) scale(0.985); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .panel { animation: none; }
     }
 
     .campo-busqueda {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 12px 14px;
-      border-bottom: 1px solid var(--gris-200);
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--gris-100);
       flex-shrink: 0;
     }
 
-    .lupa { font-size: 19px; color: var(--gris-400); }
+    .lupa { font-size: 20px; color: var(--gris-400); }
 
     .campo-busqueda input {
+      flex: 1;
+      min-width: 0;
       border: none;
       background: none;
       padding: 0;
-      font-size: 15px;
+      font-size: 17px;
+      box-shadow: none;
     }
 
-    .campo-busqueda input:focus { outline: none; }
+    .campo-busqueda input:focus,
+    .campo-busqueda input:focus-visible { outline: none; box-shadow: none; }
 
     kbd {
-      font-family: inherit;
-      font-size: 10px;
-      font-weight: 600;
+      display: inline-grid;
+      place-items: center;
+      min-width: 22px;
+      height: 22px;
+      padding: 0 6px;
+      border: 1px solid var(--gris-300);
+      border-bottom-width: 2px;
+      border-radius: 6px;
+      background: var(--blanco);
+      font-family: var(--fuente-mono);
+      font-size: 11px;
+      font-weight: 500;
       color: var(--gris-500);
-      background: var(--gris-100);
-      border: 1px solid var(--gris-200);
-      border-radius: 4px;
-      padding: 2px 5px;
     }
 
     .resultados {
       list-style: none;
       margin: 0;
-      padding: 5px;
+      padding: 4px 8px 8px;
       overflow-y: auto;
     }
 
     .grupo {
-      padding: 9px 10px 4px;
-      font-size: 10px;
-      font-weight: 700;
+      padding: 12px 10px 4px;
+      font-size: 11.5px;
+      font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.06em;
       color: var(--gris-400);
     }
 
     .resultados li[role='option'] {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       padding: 8px 10px;
-      border-radius: var(--radio-sm);
-      font-size: 13px;
+      border-radius: 10px;
       cursor: pointer;
     }
 
-    .resultados li.resaltado { background: var(--gris-100); }
+    .resultados li.resaltado { background: var(--brand-soft); }
 
-    .icono { width: 18px; text-align: center; flex-shrink: 0; }
-    .etiqueta { font-weight: 500; }
+    .icono-caja {
+      display: grid;
+      place-items: center;
+      width: 32px;
+      height: 32px;
+      flex-shrink: 0;
+      border-radius: 9px;
+      background: var(--gris-100);
+      color: var(--ink-soft);
+    }
 
+    .resaltado .icono-caja { background: var(--blanco); color: var(--brand); }
+
+    .icono { font-size: 17px; }
+
+    .textos {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .etiqueta,
     .detalle {
-      margin-left: auto;
-      font-size: 11.5px;
-      color: var(--gris-500);
-      white-space: nowrap;
       overflow: hidden;
+      white-space: nowrap;
       text-overflow: ellipsis;
     }
 
+    .etiqueta { font-size: 14px; font-weight: 500; color: var(--ink); }
+
+    .detalle { font-size: 12.5px; color: var(--gris-500); }
+
+    mark {
+      background: none;
+      color: var(--brand-dk);
+      font-weight: 600;
+    }
+
+    .abrir {
+      display: none;
+      flex-shrink: 0;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--brand-dk);
+    }
+
+    .resaltado .abrir { display: inline; }
+
     .mensaje {
-      padding: 28px 16px;
+      padding: 32px 16px;
       text-align: center;
-      font-size: 13px;
+      font-size: 13.5px;
       color: var(--gris-500);
     }
 
     .pie {
       display: flex;
       gap: 16px;
-      padding: 8px 14px;
-      border-top: 1px solid var(--gris-200);
+      padding: 11px 18px;
+      border-top: 1px solid var(--gris-100);
       background: var(--gris-50);
-      font-size: 11px;
+      font-size: 12.5px;
       color: var(--gris-500);
       flex-shrink: 0;
     }
 
-    .pie kbd { margin-right: 3px; }
+    .pie span { display: inline-flex; align-items: center; gap: 5px; }
+
+    @media (max-width: 640px) {
+      .pie { display: none; }
+    }
   `,
 })
 export class BuscadorGlobal {
@@ -231,6 +305,34 @@ export class BuscadorGlobal {
   protected readonly cargando = signal(false);
   protected readonly consulta = signal('');
   protected readonly resaltado = signal(0);
+
+/**
+   * La etiqueta en trozos, marcando dónde aparece lo escrito. Se compara sin
+   * tildes ni mayúsculas (como la búsqueda), letra por letra para no correr
+   * los índices al quitar las tildes.
+   */
+  protected partes(texto: string): { texto: string; marca: boolean }[] {
+    const palabras = palabrasDeBusqueda(this.consulta());
+    if (palabras.length === 0) return [{ texto, marca: false }];
+
+    const normal = [...texto].map((letra) => normalizarTexto(letra).charAt(0) || letra).join('');
+    const marcas = new Array<boolean>(texto.length).fill(false);
+    for (const palabra of palabras) {
+      let desde = normal.indexOf(palabra);
+      while (desde >= 0) {
+        for (let i = desde; i < desde + palabra.length; i++) marcas[i] = true;
+        desde = normal.indexOf(palabra, desde + palabra.length);
+      }
+    }
+
+    const partes: { texto: string; marca: boolean }[] = [];
+    [...texto].forEach((letra, i) => {
+      const ultima = partes[partes.length - 1];
+      if (ultima && ultima.marca === marcas[i]) ultima.texto += letra;
+      else partes.push({ texto: letra, marca: marcas[i] });
+    });
+    return partes;
+  }
 
   private readonly ordenes = signal<Orden[]>([]);
   private readonly clientes = signal<Cliente[]>([]);

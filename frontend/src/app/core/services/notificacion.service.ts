@@ -13,6 +13,8 @@ export interface Aviso {
   tipo: TipoAviso;
   mensaje: string;
   accion?: AccionAviso;
+  /** Cuánto dura en pantalla: lo dibuja la línea que se acorta en el aviso. */
+  duracionMs: number;
 }
 
 /**
@@ -73,7 +75,7 @@ export class NotificacionService {
   ): void {
     const id = this.siguienteId++;
 
-    this._avisos.update((lista) => [...lista, { id, tipo, mensaje, accion }]);
+    this._avisos.update((lista) => [...lista, { id, tipo, mensaje, accion, duracionMs }]);
 
     setTimeout(() => this.cerrar(id), duracionMs);
   }

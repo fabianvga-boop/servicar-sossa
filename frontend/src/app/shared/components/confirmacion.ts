@@ -1,4 +1,4 @@
-import { Component, input, output } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 
 import { Modal } from './modal';
 import { TextoResaltado } from './texto-resaltado';
@@ -14,14 +14,32 @@ import { TextoResaltado } from './texto-resaltado';
   template: `
     <app-modal
       [titulo]="titulo()"
-      [ancho]="520"
-      [peligroso]="peligroso()"
+      [ancho]="500"
+      [icono]="peligroso() ? 'peligro' : 'atencion'"
+      [compacto]="true"
       (cerrar)="cancelar.emit()"
     >
-      <p class="mensaje"><app-texto-resaltado [texto]="mensaje()" /></p>
+      <p subtitulo class="mensaje"><app-texto-resaltado [texto]="mensaje()" /></p>
 
-      @if (advertencia()) {
-        <p class="advertencia" [class.grave]="peligroso()"><app-texto-resaltado [texto]="advertencia()" /></p>
+      @if (renglones().length > 0) {
+        <!-- La advertencia de cada pantalla, una oración por renglón; la que
+             dice que no se puede deshacer va en rojo. -->
+        <ul class="efectos">
+          @for (r of renglones(); track $index) {
+            <li [class.grave]="r.grave">
+              @if (r.grave) {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                </svg>
+              } @else {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" /><path d="M12 16v-5" /><path d="M12 8h.01" />
+                </svg>
+              }
+              <span><app-texto-resaltado [texto]="r.texto" /></span>
+            </li>
+          }
+        </ul>
       }
 
       <div pie>
@@ -44,27 +62,42 @@ import { TextoResaltado } from './texto-resaltado';
   styles: `
     .mensaje {
       margin: 0;
-      font-size: 15px;
+      font-size: 14.5px;
       line-height: 1.5;
+      color: var(--gris-600, #4b5260);
+    }
+
+    .efectos {
+      margin: 6px 0 0;
+      padding: 2px 0;
+      list-style: none;
+      border: 1px solid var(--gris-200);
+      border-radius: 12px;
+      background: var(--gris-50);
+    }
+
+    .efectos li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 14px;
+      font-size: 13.5px;
+      line-height: 1.45;
       color: var(--ink-soft);
     }
 
-    .advertencia {
-      margin: 12px 0 0;
-      padding: 11px 13px;
-      background: var(--naranja-100);
-      border-radius: var(--radio-sm);
-      font-size: 13.5px;
-      line-height: 1.45;
-      color: #92400e;
+    .efectos li + li { border-top: 1px solid var(--gris-200); }
+
+    .efectos svg {
+      width: 16px;
+      height: 16px;
+      margin-top: 2px;
+      flex-shrink: 0;
+      color: var(--gris-500);
     }
 
-    /* Anular una proforma y desactivar un cliente no pesan igual: cuando la
-       acción es irreversible la advertencia va en rojo, no en naranja. */
-    .advertencia.grave {
-      background: var(--brand-soft);
-      color: var(--brand-dk);
-    }
+    .efectos li.grave { color: var(--brand-dk); font-weight: 500; }
+    .efectos li.grave svg { color: var(--brand); }
   `,
 })
 export class Confirmacion {
@@ -78,5 +111,20 @@ export class Confirmacion {
   readonly procesando = input(false);
 
   readonly confirmar = output<void>();
+
+  /**
+   * La advertencia partida en oraciones, para leerla como lista corta. Se
+   * marca en rojo la que avisa que algo no tiene vuelta atrás.
+   */
+  protected readonly renglones = computed(() =>
+    (this.advertencia() ?? '')
+      .split(/(?<=[.!?])\s+/)
+      .map((texto) => texto.trim())
+      .filter((texto) => texto.length > 0)
+      .map((texto) => ({
+        texto,
+        grave: /no se puede|no podr[áa]|irreversible|no tiene vuelta/i.test(texto),
+      })),
+  );
   readonly cancelar = output<void>();
 }

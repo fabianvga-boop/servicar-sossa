@@ -116,6 +116,12 @@ export class VehiculoFicha {
   });
 
   /** Los eventos del historial, del más nuevo al más viejo, con su título y su monto. */
+  /** Como el historial de la orden: lo último a la vista y el resto a pedido. */
+  protected readonly verTodaLaHistoria = signal(false);
+  protected readonly lineaVisible = computed(() =>
+    this.verTodaLaHistoria() ? this.lineaTiempo() : this.lineaTiempo().slice(0, 4),
+  );
+
   protected readonly lineaTiempo = computed<ItemLinea[]>(() => {
     const diagnosticos = new Map(this.diagnosticos().map((d) => [d.diagnosticoId, d]));
     const ordenes = new Map(this.ordenes().map((o) => [o.ordenId, o]));

@@ -142,7 +142,7 @@
     </div>
   } @else {
     <div class="grilla-ordenes">
-      @for (orden of lista(); track orden.ordenId) {
+      @for (orden of paginacion.items(); track orden.ordenId) {
         <app-tarjeta-orden
           [orden]="orden"
           [portada]="portada(orden)"
@@ -152,5 +152,18 @@
         />
       }
     </div>
+
+    @if (paginacion.totalPaginas() > 1) {
+      <div class="tarjeta paginador-ordenes">
+        <app-paginador
+          [pagina]="paginacion.pagina()"
+          [totalPaginas]="paginacion.totalPaginas()"
+          [totalRegistros]="paginacion.totalRegistros()"
+          [tamanoPagina]="paginacion.tamanoPagina()"
+          (cambiarPagina)="paginacion.irA($event)"
+          (cambiarTamano)="paginacion.cambiarTamano($event)"
+        />
+      </div>
+    }
   }
 }

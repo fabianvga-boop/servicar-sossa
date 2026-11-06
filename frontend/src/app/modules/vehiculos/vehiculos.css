@@ -1,21 +1,185 @@
-/* -------------------------------------------------- Columna "Vehículo" */
+/* ------------------------------------------------------- Barra de filtros */
+
+.barra-vehiculos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.buscador-vehiculos { width: 300px; max-width: 100%; }
+
+.filtro-dueno { width: 200px; margin-left: auto; }
+
+/* --------------------------------------------------------------- Tarjetas */
+
+/* Misma grilla que las listas de Órdenes */
+.garaje {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 14px;
+}
+
+/* Misma anatomía que app-tarjeta-orden (ordenes/tarjeta-orden.ts): si cambia
+   una, conviene cambiar la otra para que se sigan viendo iguales. */
+.tarjeta-vehiculo {
+  display: flex;
+  flex-direction: column;
+  background: var(--blanco);
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+}
+
+.tarjeta-vehiculo:hover {
+  border-color: var(--gris-300);
+  box-shadow: 0 8px 20px -14px rgba(21, 26, 34, 0.4);
+}
+
+.tarjeta-vehiculo:active { transform: scale(0.99); }
+
+.tarjeta-vehiculo:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+
+.foto {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--gris-100), var(--gris-50));
+  color: var(--gris-400);
+}
+
+/* Absoluta: una foto vertical no puede estirar la tarjeta más allá del 16:9 */
+.foto img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.foto-vacia {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 18px;
+  font-size: 12px;
+}
+
+.foto-vacia svg {
+  width: 26px;
+  height: 26px;
+  color: var(--gris-300);
+}
+
+.foto-placa {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+}
+
+.foto-cantidad {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(21, 26, 34, 0.72);
+  color: var(--blanco);
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 11px 12px 0;
+}
+
+.titulo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.vehiculo,
+.cliente {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vehiculo {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.cliente {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.estado-vehiculo {
+  align-self: flex-start;
+  max-width: 100%;
+  margin-top: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pie {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 10px 12px 0;
+  padding: 7px 0 9px;
+  border-top: 1px solid var(--gris-100);
+}
+
+.datos-pie {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
 
 .color-inline {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  margin-top: 2px;
+  white-space: nowrap;
 }
 
 /* `.punto-color` es global (styles.css): lo comparten chips y listados. */
-
-/* ----------------------------------------------- Columna "Kilometraje" */
 
 .km-valor {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .icono-odometro {
@@ -25,6 +189,9 @@
   flex-shrink: 0;
 }
 
+.paginador-vehiculos { margin-top: 16px; padding: 0; overflow: hidden; }
+.paginador-vehiculos ::ng-deep .paginador { border-top: 0; }
+
 /* Formulario en el panel lateral: el mismo aire entre campos que los demás */
 #form-vehiculo {
   display: flex;
@@ -32,11 +199,20 @@
   gap: 18px;
 }
 
-/* Con el panel abierto la tabla se angosta: Código y Año se ocultan para que
-   el vehículo y el propietario no se partan en tres renglones. */
-@media (min-width: 901px) and (max-width: 1700px) {
-  :host-context(body.con-cajon) .tabla th:nth-child(1),
-  :host-context(body.con-cajon) .tabla td:nth-child(1),
-  :host-context(body.con-cajon) .tabla th:nth-child(4),
-  :host-context(body.con-cajon) .tabla td:nth-child(4) { display: none; }
+@media (max-width: 900px) {
+  .garaje { grid-template-columns: minmax(0, 1fr); }
+
+  .buscador-vehiculos,
+  .filtro-dueno { width: 100%; margin-left: 0; }
+
+  /* Los chips en una sola fila que se desliza con el dedo */
+  .barra-vehiculos .chips-filtro {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    width: calc(100% + 32px);
+    margin: 0 -16px;
+    padding: 0 16px 2px;
+  }
+
+  .barra-vehiculos .chip-filtro { flex-shrink: 0; }
 }

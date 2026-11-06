@@ -167,6 +167,7 @@ export interface Portada {
     .foto {
       position: relative;
       aspect-ratio: 16 / 9;
+      overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -174,7 +175,10 @@ export interface Portada {
       color: var(--gris-400);
     }
 
+    /* Absoluta: una foto vertical no puede estirar la tarjeta más allá del 16:9 */
     .foto img {
+      position: absolute;
+      inset: 0;
       width: 100%;
       height: 100%;
       object-fit: cover;
