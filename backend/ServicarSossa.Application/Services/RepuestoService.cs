@@ -33,7 +33,7 @@ public class RepuestoService(
     public async Task<Result<ResultadoPaginadoDto<RepuestoResponseDto>>> GetAllAsync(
         string? buscar, string? proveedorId, bool soloStockBajo,
         int pagina, int tamanoPagina, CancellationToken ct = default, string? vehiculoId = null,
-        string? categoriaId = null)
+        string? categoriaId = null, bool soloCompatibles = false)
     {
         Vehiculo? vehiculo = null;
         if (!string.IsNullOrWhiteSpace(vehiculoId))
@@ -50,7 +50,7 @@ public class RepuestoService(
                 $"No existe el proveedor {proveedorId}.");
 
         var (items, total) = await repuestos.BuscarAsync(
-            buscar, proveedorId, soloStockBajo, pagina, tamanoPagina, ct, vehiculo, categoriaId);
+            buscar, proveedorId, soloStockBajo, pagina, tamanoPagina, ct, vehiculo, categoriaId, soloCompatibles);
 
         return Result<ResultadoPaginadoDto<RepuestoResponseDto>>.Ok(
             new ResultadoPaginadoDto<RepuestoResponseDto>

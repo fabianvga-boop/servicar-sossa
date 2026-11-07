@@ -151,9 +151,14 @@ public class TipoServicioService(
     private async Task<(string? Error, List<CategoriaRepuesto> Elegidas)> ElegirCategoriasAsync(
         bool requiereRepuesto, List<string>? categoriaIds, CancellationToken ct)
     {
-        if (!requiereRepuesto || categoriaIds is null || categoriaIds.Count == 0) return (null, []);
+        if (!requiereRepuesto) return (null, []);
 
-        var ids = categoriaIds.Where(c => !string.IsNullOrWhiteSpace(c)).Distinct().ToList();
+        // Un servicio que lleva repuestos debe decir cuáles: sin categorías la
+        // orden aceptaría cualquier repuesto y el control no serviría.
+        var ids = (categoriaIds ?? []).Where(c => !string.IsNullOrWhiteSpace(c)).Distinct().ToList();
+        if (ids.Count == 0)
+            return ("Elija qué repuestos lleva el servicio, o márquelo como Solo mano de obra.", []);
+
         var encontradas = (await categorias.FindAsync(c => ids.Contains(c.CategoriaId), ct)).ToList();
 
         return encontradas.Count == ids.Count

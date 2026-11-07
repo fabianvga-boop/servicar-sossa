@@ -8,7 +8,9 @@ public enum TipoReporte
     Ventas,
     Comisiones,
     Inventario,
-    Ordenes
+    Ordenes,
+    /// <summary>Cada servicio y repuesto vendido (proformas vigentes y mostrador).</summary>
+    DetalleVentas
 }
 
 /// <summary>

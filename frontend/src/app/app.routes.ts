@@ -112,20 +112,14 @@ export const routes: Routes = [
       },
 
       // --- Finanzas -------------------------------------------------------
-      // Dos documentos distintos: la proforma es el cobro del taller (sin valor
-      // fiscal) y es el flujo de todos los días; la factura es el comprobante
-      // fiscal ante el SIN, y solo emite con facturación electrónica habilitada.
+      // El taller cobra con proformas (sin valor fiscal). Facturas queda fuera
+      // del menú y de las rutas: el taller no tiene NIT. El módulo sigue en
+      // modules/facturas por si algún día se habilita la facturación.
       {
         path: 'proformas',
         canActivate: [authGuard(['Administrador'])],
         data: { title: 'Proformas' },
         loadComponent: () => import('./modules/proformas/proformas').then((m) => m.Proformas),
-      },
-      {
-        path: 'facturas',
-        canActivate: [authGuard(['Administrador'])],
-        data: { title: 'Facturas' },
-        loadComponent: () => import('./modules/facturas/facturas').then((m) => m.Facturas),
       },
       {
         path: 'pagos',

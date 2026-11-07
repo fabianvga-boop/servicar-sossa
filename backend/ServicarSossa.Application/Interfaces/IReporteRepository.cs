@@ -8,8 +8,15 @@ namespace ServicarSossa.Application.Interfaces;
 /// </summary>
 public interface IReporteRepository
 {
-    /// <summary>USU017 — facturación cobrada y emitida en el periodo.</summary>
+    /// <summary>USU017 — proformas de órdenes y ventas de mostrador del periodo.</summary>
     Task<IEnumerable<FilaVentaDto>> VentasAsync(
+        DateTime desde, DateTime hasta, CancellationToken ct = default);
+
+    /// <summary>
+    /// Detalle de ventas: una fila por servicio o repuesto vendido en el periodo,
+    /// de proformas vigentes y ventas de mostrador no anuladas.
+    /// </summary>
+    Task<IEnumerable<FilaDetalleVentaDto>> DetalleVentasAsync(
         DateTime desde, DateTime hasta, CancellationToken ct = default);
 
     /// <summary>USU018 — comisiones generadas por mecánico en el periodo.</summary>
@@ -33,9 +40,15 @@ public interface IReporteRepository
 
 // ------------------------------------------------------------------ Proyecciones
 
+/// <summary>Una proforma de orden, o una venta de mostrador (sin placa).</summary>
 public record FilaVentaDto(
-    string FacturaId, DateTime FechaEmision, string Cliente, string Placa,
+    string Documento, DateTime FechaEmision, string Cliente, string? Placa,
     decimal Total, decimal Pagado, string Estado);
+
+/// <summary>Una línea vendida. Tipo: "Servicio" o "Repuesto".</summary>
+public record FilaDetalleVentaDto(
+    DateTime Fecha, string Documento, string Cliente, string Tipo,
+    string Descripcion, int Cantidad, decimal PrecioUnitario);
 
 public record FilaComisionDto(
     string MecanicoId, string Mecanico, int CantidadOrdenes,

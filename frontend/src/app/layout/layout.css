@@ -479,3 +479,25 @@
     display: none;
   }
 }
+
+/* "Volver a Clientes": al pasar de un módulo a otro por un enlace. */
+.volver-modulo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  margin-bottom: 14px;
+  padding: 0 12px 0 9px;
+  border: 1px solid var(--gris-200);
+  border-radius: 999px;
+  background: var(--blanco);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, transform 0.1s;
+}
+.volver-modulo svg { width: 15px; height: 15px; }
+.volver-modulo:hover { border-color: var(--gris-400); color: var(--ink); }
+.volver-modulo:active { transform: scale(0.98); }

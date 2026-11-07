@@ -142,6 +142,30 @@ export class VehiculoFicha {
       .sort((a, b) => a.nivel - b.nivel || a.repuesto.nombre.localeCompare(b.repuesto.nombre)),
   );
 
+  /**
+   * Los que están marcados para este modelo. Los de uso general sirven para
+   * cualquier vehículo: con cientos de repuestos taparían a los que importan,
+   * así que solo se cuentan.
+   */
+  protected readonly compatiblesVehiculo = computed(() =>
+    this.repuestosVehiculo().filter((r) => r.nivel === NivelCompatibilidad.Compatible),
+  );
+  protected readonly cantidadUsoGeneral = computed(
+    () => this.repuestosVehiculo().length - this.compatiblesVehiculo().length,
+  );
+
+  /** Compatibles por categoría: "Pastillas de freno · 3", para buscar con orden. */
+  protected readonly categoriasCompatibles = computed(() => {
+    const cuenta = new Map<string, { id: string | null; nombre: string; cuenta: number }>();
+    for (const { repuesto } of this.compatiblesVehiculo()) {
+      const clave = repuesto.categoriaId ?? '';
+      const actual = cuenta.get(clave);
+      if (actual) actual.cuenta++;
+      else cuenta.set(clave, { id: repuesto.categoriaId ?? null, nombre: repuesto.nombreCategoria || 'Sin categoría', cuenta: 1 });
+    }
+    return [...cuenta.values()].sort((a, b) => b.cuenta - a.cuenta);
+  });
+
   protected readonly gruposFotos = computed<GrupoFotos[]>(() => {
     const grupos = new Map<string, VehiculoFoto[]>();
     for (const foto of [...this.fotos()].sort((a, b) => b.fechaSubida.localeCompare(a.fechaSubida))) {

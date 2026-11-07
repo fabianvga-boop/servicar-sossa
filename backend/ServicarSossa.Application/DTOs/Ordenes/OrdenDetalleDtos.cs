@@ -18,6 +18,13 @@ public class CorregirOrdenDto
 }
 
 /// <summary>Corrige el precio o el detalle de un servicio ya cargado (solo Administrador).</summary>
+/// <summary>Nota del trabajo que escribe (o dicta) el mecánico; vacía la borra.</summary>
+public class NotaOrdenServicioDto
+{
+    [MaxLength(255, ErrorMessage = "La nota admite hasta 255 caracteres.")]
+    public string? Nota { get; set; }
+}
+
 public class EditarOrdenServicioDto
 {
     [Range(0, 99999999.99, ErrorMessage = "El precio no puede ser negativo.")]

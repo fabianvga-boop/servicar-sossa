@@ -530,3 +530,23 @@
 
   .foto-ficha-quitar { opacity: 1; }
 }
+
+/* Compatibles por categoría y aviso de los de uso general */
+.categorias-compat { display: flex; flex-wrap: wrap; gap: 6px; }
+.categorias-compat a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 11px;
+  border: 1px solid var(--gris-200);
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+.categorias-compat a:hover { border-color: var(--gris-400); color: var(--ink); }
+.categorias-compat span { font-family: var(--fuente-mono, 'Geist Mono', monospace); color: var(--gris-500); }
+.repuesto-fila-categoria { font-size: 12px; color: var(--gris-500); }
+.ficha-uso-general { margin: 0; font-size: 12.5px; color: var(--gris-500); }

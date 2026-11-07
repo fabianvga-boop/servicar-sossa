@@ -26,7 +26,7 @@ public class RepuestoRepository(AppDbContext context)
     public async Task<(IEnumerable<Repuesto> Items, int Total)> BuscarAsync(
         string? buscar, string? proveedorId, bool soloStockBajo,
         int pagina, int tamanoPagina, CancellationToken ct = default,
-        Vehiculo? vehiculo = null, string? categoriaId = null)
+        Vehiculo? vehiculo = null, string? categoriaId = null, bool soloCompatibles = false)
     {
         var query = Set.Include(r => r.Proveedor)
                        .Include(r => r.Categoria)
@@ -45,7 +45,7 @@ public class RepuestoRepository(AppDbContext context)
             query = query.Where(r => r.StockActual <= r.StockMinimo);   // USU030
 
         if (vehiculo is not null)
-            query = FiltrarPorVehiculo(query, vehiculo);
+            query = FiltrarPorVehiculo(query, vehiculo, soloCompatibles);
 
         // Además del nombre, cada palabra se busca en los vehículos compatibles:
         // "Toyota Corolla 2017" encuentra las pastillas indicadas para ese auto
@@ -94,14 +94,15 @@ public class RepuestoRepository(AppDbContext context)
     /// Misma regla que <see cref="RepuestoCompatibilidad.Admite"/>, escrita para
     /// que PostgreSQL la resuelva (sin distinguir mayúsculas ni espacios).
     /// </summary>
-    private static IQueryable<Repuesto> FiltrarPorVehiculo(IQueryable<Repuesto> query, Vehiculo vehiculo)
+    private static IQueryable<Repuesto> FiltrarPorVehiculo(IQueryable<Repuesto> query, Vehiculo vehiculo, bool soloCompatibles)
     {
         var marca = vehiculo.Marca.Trim().ToLower();
         var modelo = vehiculo.Modelo.Trim().ToLower();
         var anio = vehiculo.Anio;
 
+        // soloCompatibles: sin los de uso general, que sirven para cualquier vehículo.
         return query.Where(r =>
-            r.TipoAplicacion == TipoAplicacionRepuesto.Universal ||
+            (!soloCompatibles && r.TipoAplicacion == TipoAplicacionRepuesto.Universal) ||
             r.Compatibilidades.Any(c =>
                 c.Marca.Trim().ToLower() == marca &&
                 (c.Modelo == null || c.Modelo.Trim() == "" || c.Modelo.Trim().ToLower() == modelo) &&

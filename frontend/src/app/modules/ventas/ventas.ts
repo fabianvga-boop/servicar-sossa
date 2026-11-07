@@ -123,12 +123,10 @@ export class Ventas implements ConfirmarSalida {
   protected readonly ETIQUETAS = ETIQUETAS;
   protected readonly urlArchivo = urlArchivo;
 
-  /** Los cuatro de todos los días primero; "Otro" al final. */
+  /** En mostrador se cobra en efectivo o por QR; "Otro" para lo demás. */
   protected readonly metodosPago = [
     MetodoPago.Efectivo,
     MetodoPago.QR,
-    MetodoPago.Transferencia,
-    MetodoPago.Tarjeta,
     MetodoPago.Otro,
   ];
 

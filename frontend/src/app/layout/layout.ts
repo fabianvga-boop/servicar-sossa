@@ -150,7 +150,6 @@ export class Layout {
       titulo: 'Finanzas',
       enlaces: [
         { ruta: '/proformas', etiqueta: 'Proformas', icono: 'proformas', roles: ['Administrador'] },
-        { ruta: '/facturas', etiqueta: 'Facturas', icono: 'proformas', roles: ['Administrador'] },
         { ruta: '/pagos', etiqueta: 'Pagos', icono: 'pagos', roles: ['Administrador'] },
         {
           ruta: '/comisiones',
@@ -282,11 +281,57 @@ export class Layout {
     this.nuevoAbierto.set(false);
   }
 
+  // --- Volver al módulo de donde se vino -----------------------------------------
+
+  /**
+   * "Volver a Clientes": aparece cuando un enlace lleva de un módulo a otro
+   * (la ficha de un vehículo desde Clientes, una orden desde Vehículos…) y
+   * regresa a la dirección exacta de antes, con el cliente o el filtro que
+   * estaba abierto. Entrar por el menú lo quita: ahí no hay de dónde volver.
+   */
+  protected readonly pilaVolver = signal<{ url: string; etiqueta: string }[]>([]);
+  /** El botón muestra el último módulo de la cadena (Clientes → Vehículos → Repuestos). */
+  protected readonly volver = computed(() => this.pilaVolver().at(-1) ?? null);
+  private urlAnterior = this.router.url;
+  private tituloAnterior = this.tituloDesdeRuta() ?? '';
+
+  private actualizarVolver(url: string): void {
+    const ruta = url.split(/[?#]/)[0];
+    const modulo = (u: string) => u.split(/[?#]/)[0].split('/')[1] ?? '';
+    // Una pantalla principal sin filtros (/clientes, /perfil…) es entrar desde el menú.
+    const desdeMenu = !url.includes('?') && ruta.split('/').filter(Boolean).length <= 1;
+
+    if (desdeMenu) {
+      this.pilaVolver.set([]);
+    } else {
+      const pila = this.pilaVolver();
+      // Si se vuelve a un módulo de la cadena, se corta ahí: Volver lleva al anterior.
+      const indice = pila.findIndex((p) => modulo(p.url) === modulo(url));
+      if (indice >= 0) {
+        this.pilaVolver.set(pila.slice(0, indice));
+      } else if (modulo(url) !== modulo(this.urlAnterior) && this.tituloAnterior) {
+        this.pilaVolver.set([...pila, { url: this.urlAnterior, etiqueta: this.tituloAnterior }]);
+      }
+    }
+
+    this.urlAnterior = url;
+    this.tituloAnterior = this.tituloDesdeRuta() ?? '';
+  }
+
+  protected irAVolver(): void {
+    const destino = this.volver();
+    if (destino) void this.router.navigateByUrl(destino.url);
+  }
+
   constructor() {
     // Al cambiar de pantalla se cierran "Más" y "Nuevo".
     this.router.events
       .pipe(filter((evento) => evento instanceof NavigationEnd))
       .subscribe(() => this.cerrarHojas());
+
+    this.router.events
+      .pipe(filter((evento): evento is NavigationEnd => evento instanceof NavigationEnd))
+      .subscribe((evento) => this.actualizarVolver(evento.urlAfterRedirects));
 
     this.contadores.refrescar();
     // El layout solo existe mientras hay sesión: es el punto justo para

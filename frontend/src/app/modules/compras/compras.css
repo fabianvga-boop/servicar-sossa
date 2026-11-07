@@ -364,7 +364,7 @@ table.tabla.tabla-detalle-compra td:last-child { padding-top: 22px; }
   font-weight: 600;
 }
 
-.compra-avatar.vacio { background: var(--gris-100); color: var(--gris-400); }
+.compra-avatar.sin-repuesto { background: var(--gris-100); color: var(--gris-400); }
 
 .proveedor-elegido {
   display: grid;
@@ -380,11 +380,13 @@ table.tabla.tabla-detalle-compra td:last-child { padding-top: 22px; }
 .proveedor-elegido-textos { display: flex; flex-direction: column; min-width: 0; font-size: 12.5px; color: var(--gris-500); }
 .proveedor-elegido-textos strong { font-size: 14px; color: var(--ink); }
 
+/* Una sola línea de campos a 40 px; el dato del repuesto y la ganancia
+   van en un segundo renglón chico, sin mover los campos. */
 .linea-compra {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 112px 120px 140px 104px 32px;
+  grid-template-columns: minmax(0, 1fr) 108px 116px 116px 96px 28px;
   align-items: center;
-  gap: 12px;
+  gap: 6px 10px;
   padding: 12px 14px;
   border: 1px solid var(--gris-200);
   border-radius: 12px;
@@ -400,17 +402,25 @@ table.tabla.tabla-detalle-compra td:last-child { padding-top: 22px; }
 
 .lineas-compra { display: flex; flex-direction: column; gap: 8px; }
 
-.linea-repuesto { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
-.linea-repuesto-campo { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+.linea-repuesto { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.linea-repuesto-campo { flex: 1; min-width: 0; }
+.linea-repuesto .compra-avatar.sin-repuesto { background: var(--blanco); border: 1px dashed var(--gris-300); }
+
+.linea-compra input,
+.linea-repuesto-campo ::ng-deep input { height: 40px; }
 
 .linea-repuesto-info {
-  display: inline-flex;
+  grid-column: 1;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  align-self: flex-start;
+  padding-left: 50px;
   font-size: 12px;
   color: var(--gris-500);
 }
+
+.cabecera-lineas > span:nth-child(5) { text-align: right; }
 
 .cantidad-compra {
   display: grid;
@@ -448,8 +458,7 @@ table.tabla.tabla-detalle-compra td:last-child { padding-top: 22px; }
 
 .monto-campo { font-family: var(--fuente-mono); }
 
-.linea-venta { display: flex; flex-direction: column; gap: 4px; }
-.linea-ganancia { font-size: 11.5px; color: var(--verde-700); }
+.linea-ganancia { grid-column: 4; padding-left: 2px; font-size: 11.5px; color: var(--verde-700); }
 .linea-ganancia.perdida { color: var(--brand-dk); }
 
 .linea-subtotal { font-weight: 500; }
@@ -468,6 +477,30 @@ table.tabla.tabla-detalle-compra td:last-child { padding-top: 22px; }
 
 .linea-quitar svg { width: 16px; height: 16px; }
 .linea-quitar:hover { background: var(--brand-soft); color: var(--brand-dk); }
+
+/* Repuesto nuevo y casillas de la compra: foco en gris oscuro, no en rojo */
+.form-compra input:focus,
+.form-repuesto-nuevo input:focus {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px rgba(21, 26, 34, 0.08);
+}
+
+.form-repuesto-nuevo { display: flex; flex-direction: column; gap: 16px; }
+.form-repuesto-nuevo .campo { margin: 0; }
+.sugerencia-categoria { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12.5px; color: var(--gris-500); }
+.chip-sugerida { padding: 3px 10px; border: 1px solid var(--gris-200); border-radius: 999px; background: var(--gris-50); color: var(--ink); font-weight: 500; }
+.vista-repuesto-nuevo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px dashed var(--gris-300);
+  border-radius: 12px;
+  background: var(--gris-50);
+}
+.vista-repuesto-nuevo .compra-avatar { background: var(--verde-100); color: var(--verde-700); }
+.vista-repuesto-nuevo strong { display: block; font-weight: 500; }
+.vista-repuesto-nuevo small { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--gris-500); }
 
 .agregar-linea {
   display: flex;
@@ -522,7 +555,9 @@ table.tabla.tabla-detalle-compra td:last-child { padding-top: 22px; }
 
   /* Cada repuesto en dos renglones: el repuesto arriba, los números abajo */
   .linea-compra { grid-template-columns: 1fr 1fr; }
-  .linea-repuesto { grid-column: 1 / -1; }
+  .linea-repuesto, .linea-repuesto-info { grid-column: 1 / -1; }
+  .linea-repuesto-info { padding-left: 0; }
+  .linea-ganancia { grid-column: auto; }
   .linea-subtotal { text-align: left; }
 
   .resumen-compra { grid-template-columns: 1fr; }

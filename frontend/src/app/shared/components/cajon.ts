@@ -189,6 +189,9 @@ export class Cajon {
   /** Una línea de explicación debajo del título, en letra normal. */
   readonly subtitulo = input('');
   readonly ancho = input(440);
+  /** False: el foco va al panel y no a un campo (no abre el teclado del celular
+   *  cuando escribir es opcional, como al elegir repuestos tocando). */
+  readonly enfocarCampo = input(true);
 
   readonly cerrar = output<void>();
 
@@ -239,7 +242,7 @@ export class Cajon {
     const panel = this.panel()?.nativeElement;
     if (!panel) return;
 
-    const campo = panel.querySelector<HTMLElement>(
+    const campo = !this.enfocarCampo() ? null : panel.querySelector<HTMLElement>(
       '.cajon-cuerpo input:not([disabled]):not([readonly]), .cajon-cuerpo select:not([disabled]), .cajon-cuerpo textarea:not([disabled])',
     );
 

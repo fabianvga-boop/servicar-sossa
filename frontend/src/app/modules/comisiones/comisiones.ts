@@ -48,6 +48,7 @@ interface Liquidacion {
   monto: number;
 }
 
+const bs = new BolivianosPipe();
 const nombreMes = (fecha: string) => new Date(fecha).toLocaleDateString('es-BO', { month: 'long' });
 
 /**
@@ -285,7 +286,8 @@ export class Comisiones {
   /** "Cerrada el 27/10/2026 · Jhon Lara" o "Pagada el …". */
   protected detalleDe(comision: Comision): string {
     const orden = this.ordenes().get(comision.ordenId);
-    const fecha = (iso: string) => new Date(iso).toLocaleDateString('es-BO');
+    const fecha = (iso: string) =>
+      new Date(iso).toLocaleDateString('es-BO', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const partes = [
       comision.estadoPago === EstadoPago.Pagado && comision.fechaPago
         ? `Pagada el ${fecha(comision.fechaPago)}`
@@ -335,9 +337,9 @@ export class Comisiones {
       next: (res) => {
         const mensaje =
           res.adelantoDescontado > 0
-            ? `Liquidación pagada: neto Bs ${res.netoPagado.toFixed(2)} ` +
-              `(bruto Bs ${res.totalBruto.toFixed(2)} − adelanto Bs ${res.adelantoDescontado.toFixed(2)}).`
-            : `${res.cantidadComisiones} comisión(es) liquidadas por Bs ${res.netoPagado.toFixed(2)}.`;
+            ? `Liquidación pagada: neto ${bs.transform(res.netoPagado)} ` +
+              `(bruto ${bs.transform(res.totalBruto)} − adelanto ${bs.transform(res.adelantoDescontado)}).`
+            : `${res.cantidadComisiones} comisión(es) liquidadas por ${bs.transform(res.netoPagado)}.`;
         this.notificacion.exito(mensaje);
         this.procesando.set(false);
         this.porLiquidar.set(false);

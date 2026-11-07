@@ -13,18 +13,54 @@
   </button>
 </div>
 
-@if (chipsMetodo().length > 1) {
-  <div class="chips-filtro filtros-pagos" role="group" aria-label="Filtrar por método">
-    <button type="button" class="chip-filtro" [class.activo]="metodoVista() === null" [attr.aria-pressed]="metodoVista() === null" (click)="metodoVista.set(null)">
-      Todos <span class="chip-cuenta">{{ pagos().length }}</span>
-    </button>
-    @for (m of chipsMetodo(); track m.valor) {
-      <button type="button" class="chip-filtro" [class.activo]="metodoVista() === m.valor" [attr.aria-pressed]="metodoVista() === m.valor" (click)="metodoVista.set(m.valor)">
-        {{ m.etiqueta }} <span class="chip-cuenta">{{ m.cuenta }}</span>
+<div class="filtros-pagos">
+  <div class="chips-filtro" role="group" aria-label="Período">
+    @for (rango of rangosRapidos; track rango.clave) {
+      <button
+        type="button"
+        class="chip-filtro"
+        [class.activo]="rangoActivo() === rango.clave"
+        [attr.aria-pressed]="rangoActivo() === rango.clave"
+        (click)="rangoActivo() === rango.clave ? limpiarFechas() : aplicarRango(rango.clave)"
+      >
+        {{ rango.etiqueta }}
       </button>
     }
   </div>
-}
+
+  <div class="rango-fechas">
+    <input type="date" aria-label="Desde" [value]="desde()" (change)="onFecha('desde', $any($event.target).value)" />
+    <span class="separador" aria-hidden="true"></span>
+    <input type="date" aria-label="Hasta" [value]="hasta()" (change)="onFecha('hasta', $any($event.target).value)" />
+    @if (desde() || hasta()) {
+      <button type="button" class="limpiar-fechas" aria-label="Quitar las fechas" (click)="limpiarFechas()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+      </button>
+    }
+  </div>
+
+  @if (chipsMetodo().length > 1) {
+    <div class="chips-filtro" role="group" aria-label="Filtrar por método">
+      <button type="button" class="chip-filtro" [class.activo]="metodoVista() === null" [attr.aria-pressed]="metodoVista() === null" (click)="metodoVista.set(null)">
+        Todos <span class="chip-cuenta">{{ enFechas().length }}</span>
+      </button>
+      @for (m of chipsMetodo(); track m.valor) {
+        <button type="button" class="chip-filtro" [class.activo]="metodoVista() === m.valor" [attr.aria-pressed]="metodoVista() === m.valor" (click)="metodoVista.set(m.valor)">
+          {{ m.etiqueta }} <span class="chip-cuenta">{{ m.cuenta }}</span>
+        </button>
+      }
+    </div>
+  }
+
+  @if (desde() || hasta() || metodoVista() !== null) {
+    <span class="filtros-pagos-cuenta">
+      {{ visibles().length === 1 ? '1 pago' : visibles().length + ' pagos' }} ·
+      <span class="monto-mono">{{ totalVisible() | bs }}</span>
+    </span>
+  }
+</div>
 
 <section class="lista-filas">
   <div class="fila-lista fila-pago cabecera-lista" aria-hidden="true">
@@ -61,7 +97,11 @@
         </span>
       </div>
     } @empty {
-      <p class="pagos-vacio">Todavía no hay pagos registrados. Se registran al cobrar una proforma.</p>
+      @if (pagos().length > 0) {
+        <p class="pagos-vacio">No hay pagos en esas fechas.</p>
+      } @else {
+        <p class="pagos-vacio">Todavía no hay pagos registrados. Se registran al cobrar una proforma.</p>
+      }
     }
 
     @if (paginacion.totalPaginas() > 1) {
@@ -124,7 +164,7 @@
         </div>
         @if (!proformaElegida()) {
           <span class="campo-ayuda">Elija la proforma: el monto se completa con su saldo.</span>
-        } @else if ((nuevo.monto ?? 0) > (proformaElegida()?.saldoPendiente ?? 0) + 0.001) {
+        } @else if (excedeSaldo()) {
           <span class="campo-error">El monto supera el saldo pendiente.</span>
         } @else if ((nuevo.monto ?? 0) > 0 && saldoQueQueda() > 0) {
           <span class="campo-ayuda">Queda un saldo de <span class="monto-mono">{{ saldoQueQueda() | bs }}</span>.</span>
@@ -155,8 +195,8 @@
 
       <div class="campo">
         <label for="referenciaPago">{{ etiquetaReferencia() }}</label>
-        <input id="referenciaPago" name="referenciaPago" class="monto-mono" [(ngModel)]="nuevo.referencia" placeholder="Número de transacción o comprobante" />
-        <span class="campo-ayuda">Opcional en efectivo.</span>
+        <input id="referenciaPago" name="referenciaPago" class="monto-mono" [(ngModel)]="nuevo.referencia" [placeholder]="marcadorReferencia()" />
+        <span class="campo-ayuda">{{ ayudaReferencia() }}</span>
       </div>
     }
 
@@ -164,8 +204,8 @@
       <button
         type="button"
         class="btn btn-primario boton-cobrar"
-        [class.btn-bloqueado]="!proformaElegida() || !(nuevo.monto && nuevo.monto > 0)"
-        [disabled]="procesando() || proformasCobrables().length === 0 || !proformaElegida() || !(nuevo.monto && nuevo.monto > 0)"
+        [class.btn-bloqueado]="!proformaElegida() || !(nuevo.monto && nuevo.monto > 0) || excedeSaldo()"
+        [disabled]="procesando() || proformasCobrables().length === 0 || !proformaElegida() || !(nuevo.monto && nuevo.monto > 0) || excedeSaldo()"
         (click)="registrar()"
       >
         {{ procesando() ? 'Registrando…' : 'Registrar pago de ' + ((nuevo.monto ?? 0) | bs) }}

@@ -28,6 +28,9 @@ export class Reportes {
   private readonly servicio = inject(ReportesService);
   private readonly notificacion = inject(NotificacionService);
 
+  /** Los totales se muestran en el orden en que los arma el servidor, no alfabético. */
+  protected readonly enOrdenDelServidor = () => 0;
+
   protected readonly reporte = signal<Reporte | null>(null);
   protected readonly bitacora = signal<ReporteGenerado[]>([]);
   protected readonly procesando = signal(false);
@@ -41,8 +44,15 @@ export class Reportes {
     {
       valor: TipoReporte.Ventas,
       etiqueta: 'Ventas',
-      ayuda: 'Lo cobrado por órdenes y mostrador, por día y método de pago.',
+      ayuda: 'Cada proforma y venta de mostrador, con lo cobrado y lo que falta.',
       icono: 'M4 19V5M4 19h16M8 15l3-4 3 2 4-6',
+      tono: 'rojo',
+    },
+    {
+      valor: TipoReporte.DetalleVentas,
+      etiqueta: 'Detalle de ventas',
+      ayuda: 'Cada servicio y repuesto vendido, con cantidad y precio.',
+      icono: 'M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01',
       tono: 'rojo',
     },
     {
@@ -191,7 +201,9 @@ export class Reportes {
   }
 
   protected nombreTipoGuardado(tipo: string): string {
-    return tipo === 'Ordenes' ? 'Órdenes' : tipo;
+    if (tipo === 'Ordenes') return 'Órdenes';
+    if (tipo === 'DetalleVentas') return 'Detalle de ventas';
+    return tipo;
   }
 
   protected periodoGuardado(registro: ReporteGenerado): string {

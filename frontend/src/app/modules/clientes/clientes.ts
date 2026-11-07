@@ -435,6 +435,13 @@ export class Clientes {
     this.modo.set('ficha');
     this.editando.set(null);
     this.vistaMovil.set('ficha');
+    // En la dirección: al ir a Vehículos y tocar "Volver", vuelve a este cliente.
+    void this.router.navigate([], {
+      relativeTo: this.ruta,
+      queryParams: { clienteId: cliente.clienteId, buscar: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   protected volverALista(): void {
@@ -709,6 +716,12 @@ export class Clientes {
     if (seguir) {
       this.reiniciarFormulario();
     } else {
+      // Se pone ya en la lista: si no, hasta que vuelve la recarga la ficha
+      // mostraba al primer cliente de la lista en lugar del recién guardado.
+      this.clientes.update((lista) => [
+        cliente,
+        ...lista.filter((c) => c.clienteId !== cliente.clienteId),
+      ]);
       this.elegidoId.set(cliente.clienteId);
       this.modo.set('ficha');
       this.editando.set(null);

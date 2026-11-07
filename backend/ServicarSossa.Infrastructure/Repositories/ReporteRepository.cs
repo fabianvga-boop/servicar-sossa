@@ -12,10 +12,11 @@ public class ReporteRepository(AppDbContext context) : IReporteRepository
 {
     public async Task<IEnumerable<FilaVentaDto>> VentasAsync(
         DateTime desde, DateTime hasta, CancellationToken ct = default)
-        // Se reporta sobre proformas, no sobre facturas: es contra la proforma
-        // que el cliente paga, así que ahí está el dinero del taller. La tabla
-        // de facturas guarda lo fiscal y estaría vacía sin NIT habilitado.
-        => await context.Proformas
+    {
+        // Lo que vende el taller: las proformas de las órdenes (se cobran con
+        // pagos y pueden quedar con saldo) y las ventas de mostrador (se cobran
+        // completas en el acto).
+        var proformas = await context.Proformas
             .AsNoTracking()
             .Where(p => p.FechaEmision >= desde && p.FechaEmision <= hasta)
             .OrderBy(p => p.FechaEmision)
@@ -28,6 +29,76 @@ public class ReporteRepository(AppDbContext context) : IReporteRepository
                 p.Pagos.Sum(x => (decimal?)x.Monto) ?? 0m,
                 p.Estado.ToString()))
             .ToListAsync(ct);
+
+        var mostrador = await context.Ventas
+            .AsNoTracking()
+            .Where(v => v.FechaVenta >= desde && v.FechaVenta <= hasta)
+            .Select(v => new FilaVentaDto(
+                v.VentaId,
+                v.FechaVenta,
+                v.Cliente == null
+                    ? "Cliente de mostrador"
+                    : v.Cliente.RazonSocial ?? (v.Cliente.Nombre + " " + v.Cliente.Apellido),
+                null,
+                v.Total,
+                v.Estado == EstadoVenta.Anulada ? 0m : v.Total,
+                v.Estado.ToString()))
+            .ToListAsync(ct);
+
+        return [.. proformas.Concat(mostrador).OrderBy(f => f.FechaEmision)];
+    }
+
+    public async Task<IEnumerable<FilaDetalleVentaDto>> DetalleVentasAsync(
+        DateTime desde, DateTime hasta, CancellationToken ct = default)
+    {
+        // Las proformas vigentes coinciden con su orden: para corregir una orden
+        // se anula antes su proforma. Por eso el detalle sale de la orden.
+        var proformas = context.Proformas
+            .AsNoTracking()
+            .Where(p => p.Estado == EstadoProforma.Emitida
+                     && p.FechaEmision >= desde && p.FechaEmision <= hasta);
+
+        var servicios = await proformas
+            .SelectMany(p => p.Orden.Servicios, (p, s) => new FilaDetalleVentaDto(
+                p.FechaEmision,
+                p.ProformaId,
+                p.Orden.Cliente.RazonSocial ?? (p.Orden.Cliente.Nombre + " " + p.Orden.Cliente.Apellido),
+                "Servicio",
+                s.Servicio != null ? s.Servicio.Nombre : (s.NombreLibre ?? "Servicio"),
+                1,
+                s.Precio))
+            .ToListAsync(ct);
+
+        var repuestos = await proformas
+            .SelectMany(p => p.Orden.Repuestos, (p, r) => new FilaDetalleVentaDto(
+                p.FechaEmision,
+                p.ProformaId,
+                p.Orden.Cliente.RazonSocial ?? (p.Orden.Cliente.Nombre + " " + p.Orden.Cliente.Apellido),
+                "Repuesto",
+                r.Repuesto != null ? r.Repuesto.Nombre : (r.Descripcion ?? "Repuesto"),
+                r.Cantidad,
+                r.PrecioUnitario))
+            .ToListAsync(ct);
+
+        var mostrador = await context.VentaDetalles
+            .AsNoTracking()
+            .Where(d => d.Venta.Estado == EstadoVenta.Emitida
+                     && d.Venta.FechaVenta >= desde && d.Venta.FechaVenta <= hasta)
+            .Select(d => new FilaDetalleVentaDto(
+                d.Venta.FechaVenta,
+                d.VentaId,
+                d.Venta.Cliente == null
+                    ? "Cliente de mostrador"
+                    : d.Venta.Cliente.RazonSocial ?? (d.Venta.Cliente.Nombre + " " + d.Venta.Cliente.Apellido),
+                "Repuesto",
+                d.Repuesto.Nombre,
+                d.Cantidad,
+                d.PrecioUnitario))
+            .ToListAsync(ct);
+
+        return [.. servicios.Concat(repuestos).Concat(mostrador)
+            .OrderBy(f => f.Fecha).ThenBy(f => f.Documento).ThenByDescending(f => f.Tipo)];
+    }
 
     public async Task<IEnumerable<FilaComisionDto>> ComisionesAsync(
         DateTime desde, DateTime hasta, CancellationToken ct = default)

@@ -1,3 +1,64 @@
+@if (!esAdmin) {
+  <!-- ------------------------------------------- Inicio del mecánico (celular) -->
+  <div class="panel-titulo mecanico-titulo">
+    <span>{{ saludo() }}</span>
+    <h1>Su trabajo ahora</h1>
+  </div>
+
+  @if (cargando()) {
+    <div class="tarjeta panel-cargando"><app-esqueleto [filas]="3" [columnas]="2" /></div>
+  } @else {
+    <div class="inicio-mecanico">
+      @if (trabajoAhora(); as t) {
+        <section class="trabajo-ahora">
+          <span class="trabajo-ahora-et">En curso · {{ t.orden.ordenId }}</span>
+          <strong>{{ t.actual ?? 'Trabajo en proceso' }}</strong>
+          <small>
+            {{ t.orden.descripcionVehiculo }} · {{ t.orden.placaVehiculo }}
+            @if (t.total > 0) {
+              · {{ t.hechos }} de {{ t.total }} {{ t.total === 1 ? 'trabajo hecho' : 'trabajos hechos' }}
+            }
+          </small>
+          <span class="trabajo-ahora-barra" aria-hidden="true"><i [style.width.%]="t.porcentaje"></i></span>
+          <a class="btn trabajo-ahora-btn" [routerLink]="['/ordenes', t.orden.ordenId]">Seguir con este trabajo</a>
+        </section>
+      } @else {
+        <section class="trabajo-ahora vacio">
+          <strong>No tiene un trabajo en curso</strong>
+          <small>Cuando el administrador inicie una de sus órdenes, aparece aquí.</small>
+        </section>
+      }
+
+      @if (otrasOrdenes().length > 0) {
+        <span class="inicio-subtitulo">Sus otras órdenes</span>
+        @for (o of otrasOrdenes(); track o.ordenId) {
+          <a class="orden-mini" [routerLink]="['/ordenes', o.ordenId]">
+            <app-placa [valor]="o.placaVehiculo" />
+            <span><strong>{{ o.descripcionVehiculo }}</strong><small>{{ textoOrdenMecanico(o) }}</small></span>
+          </a>
+        }
+      }
+
+      <div class="datos-mecanico">
+        <a class="dato-mecanico" [routerLink]="['/diagnosticos']">
+          <span>Presupuestos sin respuesta</span>
+          <strong class="monto-mono">{{ presupuestosPendientes() }}</strong>
+          <span>de sus diagnósticos</span>
+        </a>
+        <a class="dato-mecanico" routerLink="/comisiones">
+          <span>Por cobrar</span>
+          <strong class="monto-mono">{{ comisiones().monto | bs }}</strong>
+          <span>de comisión</span>
+        </a>
+      </div>
+
+      <a class="recibir-vehiculo" [routerLink]="['/diagnosticos']" [queryParams]="{ nuevo: true }">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+        Recibir un vehículo (diagnóstico)
+      </a>
+    </div>
+  }
+} @else {
 <div class="panel-cabecera">
   <div class="panel-titulo">
     <span>{{ saludo() }}</span>
@@ -191,4 +252,5 @@
       </section>
     </aside>
   </div>
+}
 }

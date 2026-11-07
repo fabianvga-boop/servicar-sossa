@@ -396,7 +396,7 @@
 
 .metodos-pago {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -413,11 +413,6 @@
 }
 
 .metodo-pago:hover { border-color: var(--gris-400); color: var(--ink); }
-
-.metodo-pago.ancho {
-  grid-column: 1 / -1;
-  height: 38px;
-}
 
 .metodo-pago.activo {
   background: var(--ink);
@@ -662,3 +657,15 @@
 
   .detalle-venta-datos { grid-template-columns: 1fr 1fr; }
 }
+
+/* Pestañas del punto de venta: carril gris y la elegida en oscuro, para que se vean */
+.pestanias-pos { padding: 5px; border: 0; background: var(--gris-100); }
+.pestanias-pos .segmento { height: 42px; padding: 0 18px; font-size: 14.5px; font-weight: 600; color: var(--ink-soft); }
+.pestanias-pos .segmento svg { width: 17px; height: 17px; }
+.pestanias-pos .segmento:not(.activo):hover { background: var(--blanco); color: var(--ink); }
+.pestanias-pos .segmento.activo { background: var(--ink); color: var(--blanco); box-shadow: 0 6px 14px -8px rgba(21, 26, 34, 0.6); }
+
+/* Foto en cada línea de la venta */
+.venta-linea:has(.venta-linea-foto) { grid-template-columns: 44px minmax(0, 1fr) auto; }
+.venta-linea-foto { grid-row: span 2; width: 44px; height: 44px; border-radius: 10px; object-fit: cover; align-self: start; }
+.venta-linea-foto.sin-foto { display: grid; place-items: center; font-size: 13px; font-weight: 600; }

@@ -1,3 +1,4 @@
+import { Placa } from '../../shared/components/placa';
 import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -74,6 +75,7 @@ const SIN_OPCIONES: OpcionSelector[] = [];
 @Component({
   selector: 'app-repuestos',
   imports: [
+    Placa,
     ReactiveFormsModule,
     FormsModule,
     DatePipe,
@@ -265,6 +267,9 @@ export class Repuestos {
 
   /** Filtro "Para el vehículo…": deja solo universales y compatibles. */
   protected readonly vehiculoFiltro = signal('');
+  /** Con un vehículo elegido: solo los marcados para él, o también los de uso general. */
+  protected readonly soloCompatibles = signal(false);
+
   protected readonly opcionesVehiculo = computed<OpcionSelector[]>(() =>
     this.vehiculos().map((v) => ({
       valor: v.vehiculoId,
@@ -319,6 +324,7 @@ export class Repuestos {
     this.proveedorFiltro.set(parametros.get('proveedorId') ?? '');
 
     this.vehiculoFiltro.set(parametros.get('vehiculoId') ?? '');
+    this.soloCompatibles.set(parametros.get('soloCompatibles') === 'true');
     this.categoriaFiltro.set(parametros.get('categoriaId') ?? '');
 
     // El "Kárdex" del detalle de una compra enlaza con ?procedencia=REP-…: se
@@ -358,8 +364,92 @@ export class Repuestos {
     }
   }
 
+  // --- Búsqueda guiada: vehículo → categoría → stock -------------------------
+
+  /** Sin un vehículo registrado elegido, se puede ir por marca y modelo. */
+  protected readonly marcaFiltro = signal('');
+  protected readonly modeloFiltro = signal('');
+
+  private static igual(a: string | null | undefined, b: string | null | undefined): boolean {
+    return (a ?? '').trim().toLocaleLowerCase('es') === (b ?? '').trim().toLocaleLowerCase('es');
+  }
+
+  /** Marcas para las que hay repuestos marcados, con cuántos. */
+  protected readonly marcasCompat = computed(() => {
+    const cuenta = new Map<string, { nombre: string; cuenta: number }>();
+    for (const r of this.repuestos()) {
+      const vistas = new Set<string>();
+      for (const c of r.compatibilidades ?? []) {
+        const clave = c.marca.trim().toLocaleLowerCase('es');
+        if (!clave || vistas.has(clave)) continue;
+        vistas.add(clave);
+        const actual = cuenta.get(clave);
+        if (actual) actual.cuenta++;
+        else cuenta.set(clave, { nombre: c.marca.trim(), cuenta: 1 });
+      }
+    }
+    return [...cuenta.values()].sort((a, b) => b.cuenta - a.cuenta).slice(0, 10);
+  });
+
+  /** Modelos de la marca elegida, con cuántos repuestos. */
+  protected readonly modelosCompat = computed(() => {
+    const marca = this.marcaFiltro();
+    if (!marca) return [];
+    const cuenta = new Map<string, { nombre: string; cuenta: number }>();
+    for (const r of this.repuestos()) {
+      const vistas = new Set<string>();
+      for (const c of r.compatibilidades ?? []) {
+        if (!Repuestos.igual(c.marca, marca) || !c.modelo?.trim()) continue;
+        const clave = c.modelo.trim().toLocaleLowerCase('es');
+        if (vistas.has(clave)) continue;
+        vistas.add(clave);
+        const actual = cuenta.get(clave);
+        if (actual) actual.cuenta++;
+        else cuenta.set(clave, { nombre: c.modelo.trim(), cuenta: 1 });
+      }
+    }
+    return [...cuenta.values()].sort((a, b) => b.cuenta - a.cuenta);
+  });
+
+  private pasaMarca(r: Repuesto): boolean {
+    const marca = this.marcaFiltro();
+    if (!marca || this.vehiculoFiltro()) return true;
+    if (r.tipoAplicacion !== TipoAplicacionRepuesto.Especifico) return !this.soloCompatibles();
+    const modelo = this.modeloFiltro();
+    return (r.compatibilidades ?? []).some(
+      (c) => Repuestos.igual(c.marca, marca) && (!modelo || !c.modelo?.trim() || Repuestos.igual(c.modelo, modelo)),
+    );
+  }
+
+  private pasaCategoria(r: Repuesto): boolean {
+    const categoria = this.categoriaFiltro();
+    if (!categoria) return true;
+    return categoria === SIN_CATEGORIA ? !r.categoriaId : r.categoriaId === categoria;
+  }
+
+  /** Lo que sirve para el vehículo (o marca/modelo) elegido, antes de la categoría. */
+  private readonly delVehiculo = computed(() => this.repuestos().filter((r) => this.pasaMarca(r)));
+
+  /** Las categorías de lo que sirve, con cuántos hay de cada una. */
+  protected readonly categoriasConCuenta = computed(() => {
+    const cuenta = new Map<string, number>();
+    let sinCategoria = 0;
+    for (const r of this.delVehiculo()) {
+      if (r.categoriaId) cuenta.set(r.categoriaId, (cuenta.get(r.categoriaId) ?? 0) + 1);
+      else sinCategoria++;
+    }
+    const lista = this.categorias()
+      .filter((c) => cuenta.has(c.categoriaId))
+      .map((c) => ({ id: c.categoriaId, nombre: c.nombre, cuenta: cuenta.get(c.categoriaId)! }))
+      .sort((a, b) => b.cuenta - a.cuenta);
+    if (sinCategoria > 0) lista.push({ id: SIN_CATEGORIA, nombre: 'Sin categoría', cuenta: sinCategoria });
+    return lista;
+  });
+
+  private readonly enCategoria = computed(() => this.delVehiculo().filter((r) => this.pasaCategoria(r)));
+
   protected readonly cuentasVista = computed(() => {
-    const lista = this.repuestos();
+    const lista = this.enCategoria();
     return {
       todos: lista.length,
       minimo: lista.filter((r) => this.pasaVista(r, 'minimo')).length,
@@ -368,14 +458,69 @@ export class Repuestos {
     };
   });
 
-  protected readonly filtrados = computed(() =>
-    this.repuestos().filter((r) => this.pasaVista(r, this.vista())),
-  );
+  protected readonly filtrados = computed(() => this.enCategoria().filter((r) => this.pasaVista(r, this.vista())));
 
   protected readonly paginacion = new PaginacionLocal(
     () => this.filtrados(),
-    () => [this.vista(), this.buscar(), this.proveedorFiltro(), this.vehiculoFiltro(), this.categoriaFiltro()],
+    () => [
+      this.vista(), this.buscar(), this.proveedorFiltro(), this.vehiculoFiltro(), this.categoriaFiltro(),
+      this.marcaFiltro(), this.modeloFiltro(), this.soloCompatibles(),
+    ],
+    12,
   );
+
+  /** El vehículo registrado elegido arriba a la derecha. */
+  protected readonly vehiculoElegido = computed(
+    () => this.vehiculos().find((v) => v.vehiculoId === this.vehiculoFiltro()) ?? null,
+  );
+
+  /** "Toyota Rav4 2018 › Pastillas de freno › Solo compatibles". */
+  protected readonly miga = computed(() => {
+    const partes: string[] = [];
+    const v = this.vehiculoElegido();
+    if (v) partes.push(`${v.marca} ${v.modelo}${v.anio ? ' ' + v.anio : ''}`);
+    else if (this.marcaFiltro()) partes.push([this.marcaFiltro(), this.modeloFiltro()].filter(Boolean).join(' '));
+    const cat = this.categoriaFiltro();
+    if (cat) partes.push(cat === SIN_CATEGORIA ? 'Sin categoría' : (this.categorias().find((c) => c.categoriaId === cat)?.nombre ?? ''));
+    if (v || this.marcaFiltro()) partes.push(this.soloCompatibles() ? 'Solo compatibles' : 'Con los de uso general');
+    return partes.filter(Boolean);
+  });
+
+  /** Con "Solo compatibles": cuántos de uso general quedaron afuera. */
+  protected readonly cantidadUsoGeneral = signal(0);
+
+  protected elegirMarca(marca: string): void {
+    const nueva = Repuestos.igual(this.marcaFiltro(), marca) ? '' : marca;
+    this.marcaFiltro.set(nueva);
+    this.modeloFiltro.set('');
+    if (nueva) this.soloCompatibles.set(true);
+    this.actualizarUsoGeneral();
+  }
+
+  protected elegirModelo(modelo: string): void {
+    this.modeloFiltro.set(Repuestos.igual(this.modeloFiltro(), modelo) ? '' : modelo);
+  }
+
+  protected elegirCategoria(categoriaId: string): void {
+    this.categoriaFiltro.set(this.categoriaFiltro() === categoriaId ? '' : categoriaId);
+  }
+
+  /** Cuenta los de uso general que sirven pero no se muestran. */
+  private actualizarUsoGeneral(): void {
+    if (!this.soloCompatibles()) {
+      this.cantidadUsoGeneral.set(0);
+      return;
+    }
+    if (this.vehiculoFiltro()) {
+      this.servicio
+        .getAll({ vehiculoId: this.vehiculoFiltro(), pagina: 1, tamanoPagina: 1 })
+        .subscribe((r) => this.cantidadUsoGeneral.set(Math.max(0, r.totalRegistros - this.repuestos().length)));
+    } else if (this.marcaFiltro()) {
+      this.cantidadUsoGeneral.set(
+        this.repuestos().filter((r) => r.tipoAplicacion !== TipoAplicacionRepuesto.Especifico).length,
+      );
+    }
+  }
 
   protected elegirVista(vista: VistaRepuestos): void {
     this.vista.set(vista);
@@ -395,6 +540,8 @@ export class Repuestos {
 
   protected limpiarFiltros(): void {
     this.vista.set('todos');
+    this.marcaFiltro.set('');
+    this.modeloFiltro.set('');
     this.vehiculoFiltro.set('');
     this.categoriaFiltro.set('');
     this.proveedorFiltro.set('');
@@ -410,13 +557,14 @@ export class Repuestos {
         buscar: this.buscar() || undefined,
         proveedorId: this.proveedorFiltro() || undefined,
         vehiculoId: this.vehiculoFiltro() || undefined,
-        categoriaId: this.categoriaFiltro() || undefined,
+        soloCompatibles: (!!this.vehiculoFiltro() && this.soloCompatibles()) || undefined,
         pagina: 1,
         tamanoPagina: TODOS_LOS_REGISTROS,
       })
       .subscribe({
         next: (resultado) => {
           this.repuestos.set(resultado.items);
+          this.actualizarUsoGeneral();
           this.totalRegistros.set(resultado.totalRegistros);
           this.totalPaginas.set(resultado.totalPaginas);
           this.cargando.set(false);
@@ -443,12 +591,24 @@ export class Repuestos {
 
   protected filtrarPorVehiculo(vehiculoId: string | null): void {
     this.vehiculoFiltro.set(vehiculoId ?? '');
+    // Al elegir un vehículo, primero lo que está marcado para él.
+    if (vehiculoId) {
+      this.soloCompatibles.set(true);
+      this.marcaFiltro.set('');
+      this.modeloFiltro.set('');
+    }
     this.cargar();
+  }
+
+
+  protected elegirSoloCompatibles(valor: boolean): void {
+    this.soloCompatibles.set(valor);
+    if (this.vehiculoFiltro()) this.cargar();
+    else this.actualizarUsoGeneral();
   }
 
   protected filtrarPorCategoria(categoriaId: string | null): void {
     this.categoriaFiltro.set(categoriaId ?? '');
-    this.cargar();
   }
 
   protected cargarCategorias(): void {

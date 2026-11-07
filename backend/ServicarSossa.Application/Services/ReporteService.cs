@@ -41,6 +41,7 @@ public class ReporteService(
             TipoReporte.Comisiones => await ComisionesAsync(desdeUtc, hastaUtc, ct),
             TipoReporte.Inventario => await InventarioAsync(ct),
             TipoReporte.Ordenes => await OrdenesAsync(desdeUtc, hastaUtc, ct),
+            TipoReporte.DetalleVentas => await DetalleVentasAsync(desdeUtc, hastaUtc, ct),
             _ => null
         };
 
@@ -113,38 +114,87 @@ public class ReporteService(
 
     // ================================================================== REPORTES
 
-    /// <summary>USU017 — ventas facturadas y cobradas.</summary>
+    /// <summary>USU017 — lo vendido (proformas y mostrador) y lo cobrado.</summary>
     private async Task<ReporteDto> VentasAsync(DateTime desde, DateTime hasta, CancellationToken ct)
     {
         var filas = (await reportes.VentasAsync(desde, hasta, ct)).ToList();
-        var vigentes = filas.Where(f => f.Estado != nameof(EstadoFactura.Anulada)).ToList();
+        var vigentes = filas.Where(f => f.Estado != nameof(EstadoProforma.Anulada)).ToList();
+        var deOrdenes = vigentes.Count(f => f.Placa is not null);
+        var deMostrador = vigentes.Count(f => f.Placa is null);
 
-        var facturado = vigentes.Sum(f => f.Total);
+        var vendido = vigentes.Sum(f => f.Total);
         var cobrado = vigentes.Sum(f => f.Pagado);
 
         return new ReporteDto
         {
             Titulo = "Reporte de ventas",
-            Columnas = ["Factura", "Fecha", "Cliente", "Placa", "Total (Bs)", "Pagado (Bs)", "Saldo (Bs)", "Estado"],
+            Columnas = ["Documento", "Fecha", "Cliente", "Placa", "Total (Bs)", "Pagado (Bs)", "Saldo (Bs)", "Estado"],
             Filas = [.. filas.Select(f => new List<string>
             {
-                f.FacturaId,
+                f.Documento,
                 f.FechaEmision.ToString("dd/MM/yyyy"),
                 f.Cliente,
-                f.Placa,
+                f.Placa ?? "Mostrador",
                 Monto(f.Total),
                 Monto(f.Pagado),
-                Monto(f.Total - f.Pagado),
+                // Lo anulado no se debe: sin saldo.
+                f.Estado == nameof(EstadoProforma.Anulada) ? "—" : Monto(f.Total - f.Pagado),
                 f.Estado
             })],
             Totales = new Dictionary<string, string>
             {
-                ["Facturas emitidas"] = vigentes.Count.ToString(),
-                ["Facturas anuladas"] = (filas.Count - vigentes.Count).ToString(),
-                ["Total facturado"] = Monto(facturado),
-                ["Total cobrado"] = Monto(cobrado),
-                ["Por cobrar"] = Monto(facturado - cobrado)
+                ["Proformas de órdenes"] = deOrdenes.ToString(),
+                ["Ventas de mostrador"] = deMostrador.ToString(),
+                ["Anuladas"] = (filas.Count - vigentes.Count).ToString(),
+                ["Total vendido"] = MontoBs(vendido),
+                ["Total cobrado"] = MontoBs(cobrado),
+                ["Por cobrar"] = MontoBs(vendido - cobrado)
             }
+        };
+    }
+
+    /// <summary>Qué se vendió: cada servicio y repuesto, con cantidad y precio.</summary>
+    private async Task<ReporteDto> DetalleVentasAsync(DateTime desde, DateTime hasta, CancellationToken ct)
+    {
+        var filas = (await reportes.DetalleVentasAsync(desde, hasta, ct)).ToList();
+        var servicios = filas.Where(f => f.Tipo == "Servicio").ToList();
+        var repuestos = filas.Where(f => f.Tipo == "Repuesto").ToList();
+
+        var totales = new Dictionary<string, string>
+        {
+            ["Servicios realizados"] = servicios.Count.ToString(),
+            ["Repuestos vendidos (unidades)"] = repuestos.Sum(f => f.Cantidad).ToString(),
+            ["Total en servicios"] = MontoBs(servicios.Sum(f => f.Cantidad * f.PrecioUnitario)),
+            ["Total en repuestos"] = MontoBs(repuestos.Sum(f => f.Cantidad * f.PrecioUnitario)),
+            ["Total vendido"] = MontoBs(filas.Sum(f => f.Cantidad * f.PrecioUnitario))
+        };
+
+        var servicioTop = servicios.GroupBy(f => f.Descripcion)
+            .OrderByDescending(g => g.Count()).FirstOrDefault();
+        if (servicioTop is not null)
+            totales["Servicio más realizado"] = $"{servicioTop.Key} ({servicioTop.Count()})";
+
+        var repuestoTop = repuestos.GroupBy(f => f.Descripcion)
+            .OrderByDescending(g => g.Sum(f => f.Cantidad)).FirstOrDefault();
+        if (repuestoTop is not null)
+            totales["Repuesto más vendido"] = $"{repuestoTop.Key} ({repuestoTop.Sum(f => f.Cantidad)} u.)";
+
+        return new ReporteDto
+        {
+            Titulo = "Detalle de ventas",
+            Columnas = ["Fecha", "Documento", "Cliente", "Tipo", "Servicio o repuesto", "Cant.", "Precio (Bs)", "Subtotal (Bs)"],
+            Filas = [.. filas.Select(f => new List<string>
+            {
+                f.Fecha.ToString("dd/MM/yyyy"),
+                f.Documento,
+                f.Cliente,
+                f.Tipo,
+                f.Descripcion,
+                f.Cantidad.ToString(),
+                Monto(f.PrecioUnitario),
+                Monto(f.Cantidad * f.PrecioUnitario)
+            })],
+            Totales = totales
         };
     }
 
@@ -171,9 +221,9 @@ public class ReporteService(
             Totales = new Dictionary<string, string>
             {
                 ["Mecánicos con comisiones"] = filas.Count.ToString(),
-                ["Total pendiente de pago"] = Monto(filas.Sum(f => f.TotalPendiente)),
-                ["Total ya pagado"] = Monto(filas.Sum(f => f.TotalPagado)),
-                ["Total general"] = Monto(filas.Sum(f => f.TotalPendiente + f.TotalPagado))
+                ["Total pendiente de pago"] = MontoBs(filas.Sum(f => f.TotalPendiente)),
+                ["Total ya pagado"] = MontoBs(filas.Sum(f => f.TotalPagado)),
+                ["Total general"] = MontoBs(filas.Sum(f => f.TotalPendiente + f.TotalPagado))
             }
         };
     }
@@ -207,7 +257,7 @@ public class ReporteService(
             {
                 ["Repuestos registrados"] = filas.Count.ToString(),
                 ["Con stock bajo"] = bajos.Count.ToString(),
-                ["Valor total del inventario (a costo)"] = Monto(filas.Sum(f => f.StockActual * f.PrecioCompra))
+                ["Valor total del inventario (a costo)"] = MontoBs(filas.Sum(f => f.StockActual * f.PrecioCompra))
             }
         };
     }
@@ -229,7 +279,7 @@ public class ReporteService(
         foreach (var (clave, valor) in porEstado)
             totales[clave] = valor;
 
-        totales["Total facturable"] = Monto(filas.Sum(f => f.TotalServicios + f.TotalRepuestos));
+        totales["Total de las órdenes"] = MontoBs(filas.Sum(f => f.TotalServicios + f.TotalRepuestos));
 
         return new ReporteDto
         {
@@ -252,4 +302,7 @@ public class ReporteService(
     }
 
     private static string Monto(decimal valor) => valor.ToString("N2", Cultura);
+
+    /// <summary>Para los totales, que no tienen la columna "(Bs)" encima.</summary>
+    private static string MontoBs(decimal valor) => "Bs " + Monto(valor);
 }

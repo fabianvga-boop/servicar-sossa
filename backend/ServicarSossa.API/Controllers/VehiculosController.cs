@@ -67,8 +67,9 @@ public class VehiculosController(IVehiculoService service) : ApiControllerBase
         => Responder(await service.GetFotosAsync(id, ct));
 
     /// <summary>Sube una foto (JPG, PNG o WEBP, hasta 8 MB) a la galería del vehículo.</summary>
+    // El mecánico también: saca la foto desde la orden mientras trabaja.
     [HttpPost("{id}/fotos")]
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Roles = "Administrador,Mecanico")]
     [ProducesResponseType(typeof(VehiculoFotoResponseDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

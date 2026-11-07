@@ -35,6 +35,7 @@ import {
 } from '../../core/models/taller.model';
 import { Auditoria } from '../../core/models/auditoria.model';
 import { AuditoriaService } from '../../core/services/auditoria.service';
+import { DIAGNOSTICO_ASISTIDO } from '../../core/funciones-activas';
 import { AuthService } from '../../core/services/auth.service';
 import { urlArchivo } from '../../core/services/api-base';
 import { ContadoresService } from '../../core/services/contadores.service';
@@ -49,6 +50,10 @@ import { Confirmacion } from '../../shared/components/confirmacion';
 import { DiagramaVehiculo, etiquetaZona } from '../../shared/components/diagrama-vehiculo';
 import { Migas } from '../../shared/components/migas';
 import { Modal } from '../../shared/components/modal';
+import { Cajon } from '../../shared/components/cajon';
+import { coincidePorPalabras } from '../../shared/busqueda';
+import { prepararFoto } from '../../shared/fotos';
+import { CorregirOrden } from './corregir-orden';
 import { Paso } from '../../shared/components/pasos';
 import { Placa } from '../../shared/components/placa';
 import {
@@ -189,11 +194,13 @@ function repuestoSugeridoPara(nombreServicio: string): string | null {
 @Component({
   selector: 'app-orden-detalle',
   imports: [
+    CorregirOrden,
     FormsModule,
     RouterLink,
     TextoResaltado,
     DatePipe,
     Modal,
+    Cajon,
     Confirmacion,
     Migas,
     Placa,
@@ -203,7 +210,7 @@ function repuestoSugeridoPara(nombreServicio: string): string | null {
     DiagramaVehiculo,
   ],
   templateUrl: './orden-detalle.html',
-  styleUrl: './orden-detalle.css',
+  styleUrls: ['./orden-detalle.css', './orden-trabajo.css'],
   host: {
     // Cierre de la pestaña/navegador: el guard de ruta no alcanza a interceptarlo.
     '(window:beforeunload)': 'alCerrarPestania($event)',
@@ -292,7 +299,6 @@ export class OrdenDetalle implements ConfirmarSalida {
   protected readonly porCerrar = signal(false);
   protected readonly porCancelar = signal(false);
   protected readonly panelCorregir = signal(false);
-  protected motivoCorreccion = '';
 
   /** Corrección en la línea: el servicio o repuesto que se está editando. */
   protected readonly editandoServicio = signal<OrdenServicio | null>(null);
@@ -427,7 +433,7 @@ export class OrdenDetalle implements ConfirmarSalida {
           {
             etiqueta: 'Cargar los servicios ejecutados',
             cumplido: orden.servicios.length > 0,
-            ayuda: 'Sin servicios la orden no proforma nada ni genera comisiones.',
+            ayuda: 'Sin servicios la orden no cobra nada ni genera comisiones.',
           },
           ...(orden.servicios.some((s) => s.requiereRepuesto)
             ? [
@@ -744,7 +750,7 @@ export class OrdenDetalle implements ConfirmarSalida {
   protected readonly opcionesCatalogo = computed<OpcionSelector[]>(() =>
     this.catalogo().map((s) => {
       const incluye = s.descripcion?.trim();
-      const precio = `Bs ${s.precioBase.toFixed(2)}`;
+      const precio = new BolivianosPipe().transform(s.precioBase);
       return {
         valor: s.servicioId,
         etiqueta: s.nombre,
@@ -945,19 +951,22 @@ export class OrdenDetalle implements ConfirmarSalida {
         // Estado de cobro: se consulta la proforma de la orden si existe. Es
         // una carga secundaria; si falla, el Resumen simplemente no muestra el
         // badge de cobro en vez de romper la vista.
-        this.proformasService
-          .getAll({ ordenId: id })
-          .pipe(
-            map((resultado) => resultado.items[0] ?? null),
-            catchError(() => of(null)),
-          )
-          .subscribe((proforma) => this.proforma.set(proforma));
+        // Las proformas son del Administrador: al mecánico la API le responde 403.
+        if (this.auth.esAdministrador()) {
+          this.proformasService
+            .getAll({ ordenId: id })
+            .pipe(
+              map((resultado) => resultado.items[0] ?? null),
+              catchError(() => of(null)),
+            )
+            .subscribe((proforma) => this.proforma.set(proforma));
+        }
 
         // Diagnóstico asistido: solo tiene sentido mientras se puede seguir
         // agregando servicios/repuestos (orden abierta/en proceso).
         const editable = orden.estado === EstadoOrden.Abierta || orden.estado === EstadoOrden.EnProceso;
 
-        if (orden.diagnosticoId && editable) {
+        if (DIAGNOSTICO_ASISTIDO && orden.diagnosticoId && editable) {
           this.diagnosticosService
             .sugerenciasPorId(orden.diagnosticoId)
             .pipe(catchError(() => of(null)))
@@ -1034,9 +1043,14 @@ export class OrdenDetalle implements ConfirmarSalida {
   }
 
   /** Todas las operaciones del detalle devuelven la orden completa actualizada. */
-  private aplicar(mensaje: string) {
+  /**
+   * @param alExito lo que se limpia solo si el servidor aceptó: ante un error
+   *   (stock insuficiente, por ejemplo) el formulario conserva lo cargado.
+   */
+  private aplicar(mensaje: string, alExito?: () => void) {
     return {
       next: (orden: OrdenDetalleModel) => {
+        alExito?.();
         this.orden.set(orden);
         this.cargarHistorial(orden.ordenId);
         this.notificacion.exito(mensaje);
@@ -1092,7 +1106,7 @@ export class OrdenDetalle implements ConfirmarSalida {
     this.procesando.set(true);
     this.servicio
       .cambiarEstado(this.id(), EstadoOrden.Finalizada)
-      .subscribe(this.aplicar('Orden finalizada. Ya se puede cerrar y facturar.'));
+      .subscribe(this.aplicar('Orden finalizada. Ya se puede cerrar y emitir la proforma.'));
   }
 
   protected cerrarOrden(): void {
@@ -1118,12 +1132,22 @@ export class OrdenDetalle implements ConfirmarSalida {
   });
 
   protected abrirCorregir(): void {
-    this.motivoCorreccion = '';
     this.panelCorregir.set(true);
   }
 
-  protected corregirOrden(): void {
-    const motivo = this.motivoCorreccion.trim();
+  /** Tras revertir pagos desde Corregir orden: el saldo de la proforma cambió. */
+  protected recargarProforma(ordenId: string): void {
+    this.proformasService
+      .getAll({ ordenId })
+      .pipe(
+        map((resultado) => resultado.items[0] ?? null),
+        catchError(() => of(null)),
+      )
+      .subscribe((proforma) => this.proforma.set(proforma));
+  }
+
+  protected corregirOrden(motivoEscrito: string): void {
+    const motivo = motivoEscrito.trim();
     if (!motivo) {
       this.notificacion.advertencia('Escriba el motivo de la corrección.');
       return;
@@ -1327,6 +1351,10 @@ export class OrdenDetalle implements ConfirmarSalida {
 
     this.nuevoServicio = this.servicioVacio();
     this.nuevoServicio.mecanicoId = asignados.length === 1 ? asignados[0].mecanicoId : '';
+    this.buscarServicio.set('');
+    this.filtroServicios.set('todos');
+    this.ultimoAgregado.set(null);
+    this.servicioLibre.set(false);
 
     this.panelServicio.set(true);
   }
@@ -1385,9 +1413,11 @@ export class OrdenDetalle implements ConfirmarSalida {
         precio,
         requiereRepuesto: delCatalogo ? null : requiereRepuesto,
       })
-      .subscribe(this.aplicar('Servicio agregado a la orden.'));
-
-    this.nuevoServicio = this.servicioVacio();
+      .subscribe(
+        this.aplicar('Servicio agregado a la orden.', () => {
+          this.nuevoServicio = this.servicioVacio();
+        }),
+      );
   }
 
   /**
@@ -1520,6 +1550,7 @@ export class OrdenDetalle implements ConfirmarSalida {
       servicio?.ordenServicioId ?? (pendientes.length === 1 ? pendientes[0].ordenServicioId : '');
     this.servicioRepuesto.set(this.nuevoRepuesto.ordenServicioId);
     this.motivoCategoria = '';
+    this.buscarRepuesto.set('');
 
     this.panelRepuesto.set(true);
   }
@@ -1647,11 +1678,13 @@ export class OrdenDetalle implements ConfirmarSalida {
         ordenServicioId: ordenServicioId || null,
         motivoCategoria: deOtraCategoria ? this.motivoCategoria.trim() : null,
       })
-      .subscribe(this.aplicar(this.mensajeRepuestoAgregado(ordenServicioId)));
-
-    this.nuevoRepuesto = this.repuestoVacio();
-    this.servicioRepuesto.set('');
-    this.motivoCategoria = '';
+      .subscribe(
+        this.aplicar(this.mensajeRepuestoAgregado(ordenServicioId), () => {
+          this.nuevoRepuesto = this.repuestoVacio();
+          this.servicioRepuesto.set('');
+          this.motivoCategoria = '';
+        }),
+      );
   }
 
   /** Si el repuesto destraba un servicio, el aviso dice que ya se puede completar. */
@@ -1702,6 +1735,307 @@ export class OrdenDetalle implements ConfirmarSalida {
     );
   }
 
+  // =========================================================================
+  // Vista de trabajo: pensada para el mecánico, que trabaja con las manos
+  // sucias. Todo se elige tocando; escribir queda para lo que no aparece.
+  // =========================================================================
+
+  /** El servicio en curso (o el próximo pendiente): se destaca con sus botones grandes. */
+  protected readonly servicioActual = computed(() => {
+    const servicios = this.orden()?.servicios ?? [];
+    return (
+      servicios.find((s) => s.estado === EstadoServicioOrden.EnProceso) ??
+      null
+    );
+  });
+
+  /** Avance para la barra de "Trabajos": porcentaje de servicios hechos. */
+  protected readonly porcentajeHecho = computed(() => {
+    const total = this.orden()?.servicios.length ?? 0;
+    return total === 0 ? 0 : Math.round((this.serviciosCompletados() / total) * 100);
+  });
+
+  /** Los pasos del trabajo los guían las tarjetas y la barra de abajo, no la tarjeta de arriba. */
+  protected esPasoDeTrabajo(tipo: string): boolean {
+    return ['finalizar', 'agregarServicio', 'registrarRepuesto', 'completar'].includes(tipo) && this.puedeTrabajar();
+  }
+
+  /** Barra fija de abajo: se puede finalizar cuando todo está hecho y con sus repuestos. */
+  protected readonly listoParaFinalizar = computed(() => {
+    const o = this.orden();
+    return !!o && o.servicios.length > 0 && this.serviciosPendientes() === 0;
+  });
+
+  // --- Elegir repuesto tocando ------------------------------------------------
+
+  /** Texto opcional para buscar un repuesto que no aparece entre las tarjetas. */
+  protected readonly buscarRepuesto = signal('');
+
+  /**
+   * Las tarjetas del panel de repuesto. Sin búsqueda: los de la categoría del
+   * servicio (los que sirven para el vehículo primero). Con búsqueda: todos
+   * los que coinciden. Mismo orden y reglas que la lista de antes.
+   */
+  protected readonly mosaicoRepuestos = computed(() => {
+    const servicio = this.servicioDelRepuesto();
+    const texto = this.buscarRepuesto().trim();
+    const esAdministrador = this.auth.esAdministrador();
+
+    const base =
+      this.clasificacionRepuestos()?.map(({ repuesto, nivel }) => ({ repuesto, nivel: nivel as NivelCompatibilidad | null })) ??
+      this.repuestos().map((repuesto) => ({ repuesto, nivel: null as NivelCompatibilidad | null }));
+
+    const peso: Record<EncajeCategoria, number> = { corresponde: 0, libre: 1, otra: 2 };
+    let lista = base.map((o) => ({ ...o, encaje: this.encaje(o.repuesto, servicio) }));
+    const controla = !!servicio && servicio.categorias.length > 0;
+    if (controla) lista.sort((a, b) => peso[a.encaje] - peso[b.encaje]);
+
+    if (texto) {
+      lista = lista.filter((o) =>
+        coincidePorPalabras(texto, o.repuesto.nombre, o.repuesto.repuestoId, o.repuesto.nombreCategoria),
+      );
+    } else if (controla) {
+      const suyos = lista.filter((o) => o.encaje === 'corresponde');
+      if (suyos.length > 0) lista = suyos;
+    }
+
+    return lista.slice(0, texto ? 30 : 12).map(({ repuesto: r, nivel, encaje }) => ({
+      repuesto: r,
+      sirve: nivel === NivelCompatibilidad.Compatible,
+      noIndicado: nivel === NivelCompatibilidad.NoIndicado,
+      deshabilitado: r.stockActual === 0 || (encaje === 'otra' && !esAdministrador),
+      motivo:
+        r.stockActual === 0
+          ? 'Sin stock'
+          : encaje === 'otra' && !esAdministrador
+            ? `No corresponde: es ${r.nombreCategoria}`
+            : '',
+    }));
+  });
+
+  /** Encabezado de las tarjetas: qué lleva el servicio. */
+  protected readonly tituloMosaico = computed(() => {
+    const servicio = this.servicioDelRepuesto();
+    if (this.buscarRepuesto().trim()) return 'Lo que coincide con la búsqueda';
+    const lleva = servicio && servicio.categorias.length > 0 ? this.llevaDe(servicio) : 'Repuestos del inventario';
+    return `${lleva} · primero los que sirven para este vehículo`;
+  });
+
+  protected elegirRepuestoTocando(repuesto: Repuesto): void {
+    this.nuevoRepuesto.repuestoId = repuesto.repuestoId;
+    this.nuevoRepuesto.precioUnitario = repuesto.precioVenta;
+  }
+
+  protected elegirServicioDelRepuesto(ordenServicioId: string): void {
+    const nuevo = this.nuevoRepuesto.ordenServicioId === ordenServicioId ? '' : ordenServicioId;
+    this.nuevoRepuesto.ordenServicioId = nuevo;
+    this.servicioRepuesto.set(nuevo);
+  }
+
+  protected cambiarCantidad(delta: number): void {
+    const tope = this.repuestoElegido()?.stockActual;
+    const siguiente = Math.max(1, (this.nuevoRepuesto.cantidad || 1) + delta);
+    this.nuevoRepuesto.cantidad =
+      this.nuevoRepuesto.origen === OrigenRepuesto.Inventario && tope ? Math.min(siguiente, tope) : siguiente;
+  }
+
+  /** Texto del botón grande del panel de repuesto. */
+  protected textoAgregarRepuesto(): string {
+    const cantidad = this.nuevoRepuesto.cantidad || 1;
+    const nombre =
+      this.nuevoRepuesto.origen === OrigenRepuesto.Inventario
+        ? this.repuestoElegido()?.nombre
+        : this.nuevoRepuesto.descripcion.trim();
+    return nombre ? `Agregar ${cantidad} × ${nombre}` : 'Elija el repuesto';
+  }
+
+  /** Para lo que trae el cliente o se compra afuera: nombres comunes con un toque. */
+  protected readonly nombresRepuestoRapidos = computed(() => {
+    const servicio = this.servicioDelRepuesto();
+    const deCategoria = servicio?.categorias.map((c) => c.nombre) ?? [];
+    return [...new Set([...deCategoria, ...this.descripcionesRepuestoLibreSugeridas()])].slice(0, 8);
+  });
+
+  // --- Agregar trabajo tocando ------------------------------------------------
+
+  protected readonly buscarServicio = signal('');
+  protected readonly filtroServicios = signal<'todos' | 'repuestos' | 'mano'>('todos');
+  /** Nombre del último agregado, para el aviso verde del panel. */
+  protected readonly ultimoAgregado = signal<string | null>(null);
+  /** "Otro trabajo": servicio fuera de catálogo, con nombre y precio escritos. */
+  protected readonly servicioLibre = signal(false);
+
+  protected readonly mosaicoServicios = computed(() => {
+    const texto = this.buscarServicio().trim();
+    const filtro = this.filtroServicios();
+    const enOrden = new Set((this.orden()?.servicios ?? []).map((s) => s.servicioId).filter(Boolean));
+    return this.catalogo()
+      .filter((s) => (filtro === 'todos' ? true : filtro === 'repuestos' ? s.requiereRepuesto : !s.requiereRepuesto))
+      .filter((s) => coincidePorPalabras(texto, s.nombre, s.descripcion))
+      .map((s) => ({
+        servicio: s,
+        enOrden: enOrden.has(s.servicioId),
+        lleva: !s.requiereRepuesto
+          ? 'Solo mano de obra'
+          : s.categorias.length > 0
+            ? 'Lleva ' + s.categorias.map((c) => c.nombre.toLocaleLowerCase('es')).join(' y ')
+            : 'Lleva repuestos',
+      }));
+  });
+
+  protected volverAlCatalogo(): void {
+    const mecanicoId = this.nuevoServicio.mecanicoId;
+    this.nuevoServicio = this.servicioVacio();
+    this.nuevoServicio.mecanicoId = mecanicoId;
+    this.servicioLibre.set(false);
+  }
+
+  /** Un toque: el servicio queda cargado con su precio del catálogo y el panel sigue abierto. */
+  protected agregarTocando(servicio: TipoServicio): void {
+    const asignados = this.orden()?.mecanicos ?? [];
+    if (asignados.length === 0) {
+      this.notificacion.advertencia('Primero hay que asignar el mecánico de la orden.');
+      return;
+    }
+    if (this.puedeGestionar() && asignados.length > 1 && !this.nuevoServicio.mecanicoId) {
+      this.notificacion.advertencia('Elija arriba qué mecánico hace el trabajo.');
+      return;
+    }
+
+    this.procesando.set(true);
+    this.servicio
+      .agregarServicio(this.id(), {
+        servicioId: servicio.servicioId,
+        nombreLibre: null,
+        mecanicoId: this.puedeGestionar() ? this.nuevoServicio.mecanicoId || null : null,
+        descripcion: null,
+        precio: servicio.precioBase,
+        requiereRepuesto: null,
+      })
+      .subscribe({
+        next: (orden) => {
+          this.orden.set(orden);
+          this.cargarHistorial(orden.ordenId);
+          this.procesando.set(false);
+          this.ultimoAgregado.set(servicio.nombre);
+          this.contadores.refrescar();
+        },
+        error: () => this.procesando.set(false),
+      });
+  }
+
+  // --- Nota del trabajo, escrita o dictada ------------------------------------
+
+  /** Nota que se está escribiendo (una a la vez). */
+  protected readonly notaServicio = signal<{ id: string; texto: string } | null>(null);
+  protected readonly escuchando = signal(false);
+  protected readonly dictadoDisponible =
+    typeof window !== 'undefined' &&
+    !!((window as unknown as Record<string, unknown>)['SpeechRecognition'] ||
+      (window as unknown as Record<string, unknown>)['webkitSpeechRecognition']);
+  private reconocimiento: { stop(): void } | null = null;
+
+  protected escribirNota(servicio: OrdenServicio): void {
+    this.notaServicio.set({ id: servicio.ordenServicioId, texto: servicio.descripcion ?? '' });
+  }
+
+  protected cambiarTextoNota(texto: string): void {
+    const actual = this.notaServicio();
+    if (actual) this.notaServicio.set({ ...actual, texto });
+  }
+
+  /**
+   * Dictar: el navegador pasa la voz a texto (Chrome y Edge, con permiso de
+   * micrófono). Lo dicho se suma al final de la nota.
+   */
+  protected dictar(servicio: OrdenServicio): void {
+    if (this.escuchando()) {
+      this.reconocimiento?.stop();
+      return;
+    }
+    if (!this.dictadoDisponible) {
+      this.notificacion.advertencia('Este navegador no permite dictar. Use Chrome o escriba la nota.');
+      return;
+    }
+    if (this.notaServicio()?.id !== servicio.ordenServicioId) this.escribirNota(servicio);
+
+    const ventana = window as unknown as Record<string, new () => ReconocimientoVoz>;
+    const Constructor = ventana['SpeechRecognition'] ?? ventana['webkitSpeechRecognition'];
+    const rec = new Constructor();
+    rec.lang = 'es-BO';
+    rec.interimResults = false;
+    rec.continuous = false;
+    rec.onresult = (evento) => {
+      const dicho = Array.from(evento.results)
+        .map((resultado) => resultado[0].transcript)
+        .join(' ')
+        .trim();
+      const actual = this.notaServicio();
+      if (!dicho || !actual) return;
+      const frase = dicho.charAt(0).toUpperCase() + dicho.slice(1);
+      this.notaServicio.set({ ...actual, texto: actual.texto.trim() ? `${actual.texto.trim()} ${frase}` : frase });
+    };
+    rec.onerror = (evento) => {
+      this.escuchando.set(false);
+      if (evento.error === 'not-allowed') this.notificacion.advertencia('Permita el micrófono para poder dictar.');
+    };
+    rec.onend = () => this.escuchando.set(false);
+    this.reconocimiento = rec;
+    this.escuchando.set(true);
+    rec.start();
+  }
+
+  protected guardarNota(servicio: OrdenServicio): void {
+    const nota = this.notaServicio();
+    if (!nota) return;
+    this.reconocimiento?.stop();
+    this.procesando.set(true);
+    this.servicio.guardarNotaServicio(this.id(), servicio.ordenServicioId, nota.texto.trim() || null).subscribe({
+      next: (orden) => {
+        this.orden.set(orden);
+        this.cargarHistorial(orden.ordenId);
+        this.notaServicio.set(null);
+        this.procesando.set(false);
+        this.notificacion.exito('Nota guardada.');
+      },
+      error: () => this.procesando.set(false),
+    });
+  }
+
+  protected cancelarNota(): void {
+    this.reconocimiento?.stop();
+    this.notaServicio.set(null);
+  }
+
+  // --- Foto desde la orden --------------------------------------------------
+
+  protected readonly subiendoFoto = signal(false);
+
+  /** Abre la cámara del celular (o el selector de archivos en la computadora). */
+  protected async onFotoElegida(evento: Event): Promise<void> {
+    const entrada = evento.target as HTMLInputElement;
+    const archivo = entrada.files?.[0];
+    entrada.value = '';
+    const orden = this.orden();
+    if (!archivo || !orden) return;
+
+    const lista = await prepararFoto(archivo);
+    if (typeof lista === 'string') {
+      this.notificacion.advertencia(lista);
+      return;
+    }
+
+    this.subiendoFoto.set(true);
+    this.vehiculosService.subirFoto(orden.vehiculoId, lista).subscribe({
+      next: (foto) => {
+        this.fotosVehiculo.update((fotos) => [...fotos, foto]);
+        this.subiendoFoto.set(false);
+        this.notificacion.exito('Foto guardada en la ficha del vehículo.');
+      },
+      error: () => this.subiendoFoto.set(false),
+    });
+  }
+
   protected alCerrarPestania(evento: BeforeUnloadEvent): void {
     if (!this.hayCambiosSinGuardar()) return;
 
@@ -1716,4 +2050,16 @@ function recortar(texto: string, largo: number): string {
   const corte = texto.slice(0, largo);
   const espacio = corte.lastIndexOf(' ');
   return `${(espacio > largo * 0.6 ? corte.slice(0, espacio) : corte).trimEnd()}…`;
+}
+
+/** Lo mínimo de la Web Speech API que se usa para dictar la nota. */
+interface ReconocimientoVoz {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  onresult: (evento: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void;
+  onerror: (evento: { error: string }) => void;
+  onend: () => void;
+  start(): void;
+  stop(): void;
 }

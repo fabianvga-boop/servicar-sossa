@@ -75,6 +75,14 @@ public interface IOrdenService
         string ordenId, string ordenServicioId, EditarOrdenServicioDto dto, string usuarioId,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Guarda la nota (detalle) de un servicio. Puede hacerlo el mecánico
+    /// asignado, no solo el Administrador: no toca el precio.
+    /// </summary>
+    Task<Result<OrdenDetalleResponseDto>> GuardarNotaServicioAsync(
+        string ordenId, string ordenServicioId, string? nota, string usuarioId, bool esAdministrador,
+        CancellationToken ct = default);
+
     Task<Result<OrdenDetalleResponseDto>> QuitarServicioAsync(
         string ordenId, string ordenServicioId, string usuarioId, bool esAdministrador,
         CancellationToken ct = default);

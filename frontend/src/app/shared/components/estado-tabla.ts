@@ -54,7 +54,7 @@ import { Esqueleto } from './esqueleto';
         </div>
 
         <div class="texto-sm">
-          {{ hayFiltro() ? 'Pruebe buscando con otras palabras.' : descripcion() }}
+          {{ hayFiltro() ? 'Pruebe con otra búsqueda u otras fechas.' : descripcion() }}
         </div>
       </div>
     }
