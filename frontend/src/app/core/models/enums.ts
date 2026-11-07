@@ -86,6 +86,7 @@ export enum TipoReporte {
   Comisiones = 1,
   Inventario = 2,
   Ordenes = 3,
+  DetalleVentas = 4,
 }
 
 /**

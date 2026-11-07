@@ -57,7 +57,7 @@ public class CompraDetalleRequestDto : IValidatableObject
     [Range(1, int.MaxValue, ErrorMessage = "La cantidad debe ser mayor a cero.")]
     public int Cantidad { get; set; }
 
-    [Range(0, 99999999.99, ErrorMessage = "El precio unitario no puede ser negativo.")]
+    [Range(0.01, 99999999.99, ErrorMessage = "El precio de compra debe ser mayor a cero.")]
     public decimal PrecioUnitario { get; set; }
 
     /// <summary>

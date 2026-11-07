@@ -10,7 +10,32 @@
 
 .buscador-vehiculos { width: 300px; max-width: 100%; }
 
-.filtro-dueno { width: 200px; margin-left: auto; }
+.filtros-extra { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.filtro-marca { width: 190px; }
+.chip-dueno {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 6px 0 12px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--blanco);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.chip-dueno button {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  color: inherit;
+  cursor: pointer;
+}
 
 /* --------------------------------------------------------------- Tarjetas */
 
@@ -203,7 +228,8 @@
   .garaje { grid-template-columns: minmax(0, 1fr); }
 
   .buscador-vehiculos,
-  .filtro-dueno { width: 100%; margin-left: 0; }
+  .filtros-extra { width: 100%; margin-left: 0; }
+  .filtro-marca { flex: 1; width: auto; }
 
   /* Los chips en una sola fila que se desliza con el dedo */
   .barra-vehiculos .chips-filtro {

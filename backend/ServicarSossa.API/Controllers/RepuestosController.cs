@@ -27,9 +27,10 @@ public class RepuestosController(IRepuestoService service) : ApiControllerBase
         [FromQuery] int tamanoPagina = 20,
         [FromQuery] string? vehiculoId = null,
         [FromQuery] string? categoriaId = null,
+        [FromQuery] bool soloCompatibles = false,
         CancellationToken ct = default)
         => Responder(await service.GetAllAsync(
-            buscar, proveedorId, soloStockBajo, pagina, tamanoPagina, ct, vehiculoId, categoriaId));
+            buscar, proveedorId, soloStockBajo, pagina, tamanoPagina, ct, vehiculoId, categoriaId, soloCompatibles));
 
     /// <summary>
     /// Repuestos evaluados contra un vehículo: primero los compatibles con su

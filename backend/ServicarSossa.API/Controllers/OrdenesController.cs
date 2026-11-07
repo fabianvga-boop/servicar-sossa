@@ -157,6 +157,15 @@ public class OrdenesController(IOrdenService service) : ApiControllerBase
         string id, string ordenServicioId, [FromBody] EditarOrdenServicioDto dto, CancellationToken ct)
         => Responder(await service.EditarServicioAsync(id, ordenServicioId, dto, UsuarioIdActual, ct));
 
+    /// <summary>Nota del trabajo: la escribe o la dicta el mecánico asignado.</summary>
+    [HttpPatch("{id}/servicios/{ordenServicioId}/nota")]
+    [ProducesResponseType(typeof(OrdenDetalleResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GuardarNotaServicio(
+        string id, string ordenServicioId, [FromBody] NotaOrdenServicioDto dto, CancellationToken ct)
+        => Responder(await service.GuardarNotaServicioAsync(
+            id, ordenServicioId, dto.Nota, UsuarioIdActual, EsAdministrador, ct));
+
     /// <summary>USU023 — quita un servicio de la orden.</summary>
     [HttpDelete("{id}/servicios/{ordenServicioId}")]
     [ProducesResponseType(typeof(OrdenDetalleResponseDto), StatusCodes.Status200OK)]

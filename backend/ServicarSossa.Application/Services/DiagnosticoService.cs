@@ -64,6 +64,11 @@ public class DiagnosticoService(
     public async Task<Result<DiagnosticoResponseDto>> CreateAsync(
         DiagnosticoRequestDto dto, string mecanicoId, CancellationToken ct = default)
     {
+        // El presupuesto sale del diagnóstico del mecánico: sin diagnóstico no hay precio.
+        if (dto.MontoEstimado is not null && string.IsNullOrWhiteSpace(dto.ObservacionesTecnicas))
+            return Result<DiagnosticoResponseDto>.Fail(
+                "Escriba el diagnóstico del mecánico antes de poner el presupuesto.");
+
         if (!await vehiculos.ExistsAsync(v => v.VehiculoId == dto.VehiculoId, ct))
             return Result<DiagnosticoResponseDto>.Fail($"El vehículo {dto.VehiculoId} no existe.");
 
@@ -137,6 +142,11 @@ public class DiagnosticoService(
         if (await TieneOrdenCerradaAsync(id, ct))
             return Result<DiagnosticoResponseDto>.Fail(
                 "No se puede editar: la orden de trabajo generada a partir de este diagnóstico ya está cerrada.");
+
+        // El presupuesto sale del diagnóstico del mecánico: sin diagnóstico no hay precio.
+        if (dto.MontoEstimado is not null && string.IsNullOrWhiteSpace(dto.ObservacionesTecnicas))
+            return Result<DiagnosticoResponseDto>.Fail(
+                "Escriba el diagnóstico del mecánico antes de poner el presupuesto.");
 
         diagnostico.DescripcionFalla = dto.DescripcionFalla.Trim();
         diagnostico.ObservacionesTecnicas = string.IsNullOrWhiteSpace(dto.ObservacionesTecnicas)

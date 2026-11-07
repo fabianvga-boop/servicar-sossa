@@ -1,6 +1,14 @@
 .resumen-mes { color: var(--ink); }
 
-.filtros-pagos { margin-bottom: 16px; }
+.filtros-pagos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.filtros-pagos-cuenta { margin-left: auto; font-size: 13px; color: var(--gris-500); }
 
 .fila-pago { grid-template-columns: 86px 130px 86px minmax(0, 1fr) 120px 110px 40px; }
 

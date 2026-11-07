@@ -217,3 +217,9 @@
 /* El paginador ya trae su línea: dentro de la tarjeta no hace falta */
 .paginador-ordenes { margin-top: 16px; padding: 0; overflow: hidden; }
 .paginador-ordenes ::ng-deep .paginador { border-top: 0; }
+
+/* Vista del mecánico */
+.encabezado-mecanico { margin-bottom: 12px; }
+.chips-mecanico { margin-bottom: 14px; }
+.grilla-mecanico { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.pie-mecanico { margin: 12px 0 0; text-align: center; font-size: 12.5px; color: var(--gris-500); }

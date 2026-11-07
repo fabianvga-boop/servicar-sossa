@@ -1,3 +1,35 @@
+@if (!auth.esAdministrador()) {
+  <!-- Mecánico: solo sus órdenes, en tarjetas, sin el tablero de columnas -->
+  <div class="encabezado-mecanico">
+    <h1>Mis órdenes</h1>
+    <p class="texto-tenue texto-sm mb-0">Las que le asignaron, la que está en curso primero.</p>
+  </div>
+  <div class="chips-filtro chips-mecanico" role="group" aria-label="Qué órdenes">
+    <button type="button" class="chip-filtro" [class.activo]="vistaMecanico() === 'hacer'" (click)="vistaMecanico.set('hacer')">
+      Para hacer <span class="chip-cuenta">{{ paraHacer().length }}</span>
+    </button>
+    <button type="button" class="chip-filtro" [class.activo]="vistaMecanico() === 'terminadas'" (click)="vistaMecanico.set('terminadas')">
+      Terminadas <span class="chip-cuenta">{{ terminadas().length }}</span>
+    </button>
+  </div>
+  @if (cargando()) {
+    <div class="tarjeta"><app-estado-tabla [cargando]="true" titulo="" descripcion="" /></div>
+  } @else {
+    @let deMecanico = vistaMecanico() === 'hacer' ? paraHacer() : terminadas();
+    <div class="grilla-ordenes grilla-mecanico">
+      @for (orden of deMecanico; track orden.ordenId) {
+        <app-tarjeta-orden [orden]="orden" [portada]="portada(orden)" [proforma]="null" [mostrarCobro]="false" />
+      } @empty {
+        <div class="tarjeta lista-vacia">
+          {{ vistaMecanico() === 'hacer' ? 'No tiene órdenes para hacer. Cuando le asignen una, aparece aquí.' : 'Todavía no terminó ninguna orden.' }}
+        </div>
+      }
+    </div>
+    @if (vistaMecanico() === 'hacer') {
+      <p class="pie-mecanico">Las terminadas se ven en la otra pestaña.</p>
+    }
+  }
+} @else {
 <div class="fila-entre envuelve mb-2">
   <div>
     <h1>Órdenes de trabajo</h1>
@@ -166,4 +198,5 @@
       </div>
     }
   }
+}
 }

@@ -43,7 +43,7 @@
           {{ o.nombreCliente }}
         }
         · abierta el {{ o.fechaCreacion | date: 'dd/MM' }}
-        @if (nombresMecanicos()) {
+        @if (nombresMecanicos() && puedeGestionar()) {
           · mecánico {{ nombresMecanicos() }}
         }
         @if (o.fechaEstimada && o.estado !== EstadoOrden.Cerrada && o.estado !== EstadoOrden.Cancelada) {
@@ -109,6 +109,7 @@
 
   <!-- ------------------------------------------------------- Siguiente paso -->
   @if (siguientePaso(); as paso) {
+    @if (!esPasoDeTrabajo(paso.tipo)) {
     <section class="siguiente-paso no-imprimir tipo-{{ paso.tipo }}">
       <span class="siguiente-icono" aria-hidden="true">
         @switch (paso.tipo) {
@@ -191,94 +192,92 @@
         }
       </div>
     </section>
+    }
+  }
+
+  <!-- Diagnóstico: lo que encontró el mecánico manda; lo que contó el cliente va aparte. -->
+  @if (o.descripcionFalla || o.observacionesTecnicasDiagnostico) {
+    <section class="pidio-cliente">
+      <span class="pidio-icono" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4" /></svg>
+      </span>
+      <div class="pidio-textos">
+        <span>
+          Diagnóstico
+          @if (o.diagnosticoId) {
+            · <a [routerLink]="['/diagnosticos']" [queryParams]="{ buscar: o.diagnosticoId }">{{ o.diagnosticoId }}</a>
+          }
+        </span>
+        <strong>{{ o.observacionesTecnicasDiagnostico || 'Sin diagnóstico escrito todavía' }}</strong>
+        @if (o.descripcionFalla) {
+          <em>El cliente contó: {{ o.descripcionFalla }}</em>
+        }
+      </div>
+    </section>
   }
 
   <div class="columnas">
     <div class="principal-col">
-      <!-- --------------------------------------------------- Diagnóstico de origen -->
-      <!-- Primero la falla: es el porqué de los servicios y repuestos de abajo. -->
-      @if (o.diagnosticoId) {
-        <section class="tarjeta bloque-orden bloque-orden-cuerpo">
-          <div class="bloque-orden-titulo">
-            <h2>Diagnóstico de origen</h2>
-            <a class="codigo" [routerLink]="['/diagnosticos']" [queryParams]="{ buscar: o.diagnosticoId }">{{ o.diagnosticoId }}</a>
-          </div>
-          <div class="dato-orden">
-            <span>Falla reportada</span>
-            <p>{{ o.descripcionFalla }}</p>
-          </div>
-          @if (o.observacionesTecnicasDiagnostico) {
-            <div class="dato-orden">
-              <span>Observaciones técnicas</span>
-              <p>{{ o.observacionesTecnicasDiagnostico }}</p>
-            </div>
-          }
-        </section>
-      }
-
-      <!-- ------------------------------------------------------------ Servicios -->
-      <section class="tarjeta bloque-orden">
-        <div class="bloque-orden-cabecera">
-          <h2>
-            Servicios
-            @if (o.servicios.length > 0) {
-              <span class="bloque-orden-cuenta">{{ serviciosCompletados() }} de {{ o.servicios.length }} completados</span>
-            }
-          </h2>
-          @if (puedeTrabajar()) {
-            <button
-              type="button"
-              class="btn btn-secundario btn-sm"
-              [disabled]="!editableTrabajo()"
-              [title]="motivoBloqueoTrabajo()"
-              (click)="abrirPanelServicio()"
-            >
-              + Agregar servicio
-            </button>
+      <!-- ------------------------------------------------------------- Trabajos -->
+      <section class="trabajos">
+        <div class="trabajos-cabecera">
+          <h2>Trabajos</h2>
+          @if (o.servicios.length > 0) {
+            <span>{{ serviciosCompletados() }} de {{ o.servicios.length }} hechos</span>
           }
         </div>
+        @if (o.servicios.length > 0) {
+          <div class="trabajos-barra" aria-hidden="true"><i [style.width.%]="porcentajeHecho()"></i></div>
+        }
 
-        @for (servicio of o.servicios; track servicio.ordenServicioId) {
-          @let faltaSuRepuesto =
-            servicio.requiereRepuesto &&
-            servicio.estado !== EstadoServicioOrden.Completado &&
-            repuestosDe(servicio).length === 0;
-          @let estado = textoEstadoServicio(servicio.estado);
-          <div class="fila-orden">
-            <div class="fila-orden-textos">
+        @for (servicio of o.servicios; track servicio.ordenServicioId; let i = $index) {
+          @let hecho = servicio.estado === EstadoServicioOrden.Completado;
+          @let enCurso = servicio.estado === EstadoServicioOrden.EnProceso;
+          @let suyos = repuestosDe(servicio);
+          @let avanza = puedeAvanzarServicios() && puedeTrabajar() && !hecho;
+          @let edita = puedeTrabajar() && editableTrabajo();
+          <article class="trabajo" [class.hecho]="hecho" [class.actual]="enCurso">
+            <span class="trabajo-marca" aria-hidden="true">
+              @if (hecho) {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10" /></svg>
+              } @else if (enCurso) {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="3.5" /></svg>
+              } @else {
+                {{ i + 1 }}
+              }
+            </span>
+
+            <div class="trabajo-textos">
+              @if (enCurso) {
+                <span class="trabajo-en-curso">En curso</span>
+              }
               <strong>
                 {{ servicio.nombreServicio }}
                 @if (!servicio.servicioId) {
                   <span class="insignia insignia-gris etiqueta-chica">Fuera de catálogo</span>
                 }
               </strong>
-              <span>
-                @if (servicio.requiereRepuesto) {
-                  @if (repuestosDe(servicio).length > 0) {
-                    Repuesto: {{ resumenRepuestosDe(servicio) }}
-                  } @else if (servicio.estado === EstadoServicioOrden.Completado) {
-                    Completado sin repuesto (excepción)
-                  } @else {
-                    Sin repuesto todavía
-                  }
-                } @else {
-                  {{ servicio.descripcion || 'Solo mano de obra' }}
+              <small>
+                @for (r of suyos; track r.ordenRepuestoId) {
+                  <span class="chip-trabajo verde">{{ r.nombreRepuesto }} × {{ r.cantidad }}</span>
+                }
+                @if (servicio.requiereRepuesto && suyos.length === 0 && hecho) {
+                  <span class="chip-trabajo ambar">Sin repuesto (excepción)</span>
+                } @else if (!servicio.requiereRepuesto && !enCurso) {
+                  <span>{{ servicio.descripcion || 'Solo mano de obra' }}</span>
+                }
+                @if (servicio.requiereRepuesto && servicio.descripcion && !enCurso) {
+                  <span>{{ servicio.descripcion }}</span>
                 }
                 @if (o.mecanicos.length > 1) {
-                  · {{ servicio.nombreMecanico }}
+                  <span>· {{ servicio.nombreMecanico }}</span>
                 }
-              </span>
-              @let avanza = puedeAvanzarServicios() && puedeTrabajar() && servicio.estado !== EstadoServicioOrden.Completado;
-              @let edita = puedeTrabajar() && editableTrabajo();
-              @if (avanza || edita) {
-                <span class="fila-orden-enlaces no-imprimir">
-                  @if (avanza) {
-                    @if (servicio.estado === EstadoServicioOrden.Pendiente) {
-                      <button type="button" class="btn-enlace" [disabled]="procesando()" (click)="avanzarServicio(servicio.ordenServicioId, EstadoServicioOrden.EnProceso)">Empezar</button>
-                    } @else {
-                      <button type="button" class="btn-enlace" [disabled]="procesando()" (click)="avanzarServicio(servicio.ordenServicioId, EstadoServicioOrden.Pendiente)">Volver a pendiente</button>
-                    }
-                  }
+                @if (puedeGestionar()) {
+                  <span class="monto-mono trabajo-precio">{{ servicio.precio | bs }}</span>
+                }
+              </small>
+              @if (!enCurso && (edita || (puedeGestionar() && editableTrabajo()))) {
+                <span class="trabajo-enlaces no-imprimir">
                   @if (puedeGestionar() && editableTrabajo()) {
                     <button type="button" class="btn-enlace" [disabled]="procesando()" (click)="abrirEditarServicio(servicio)">Editar</button>
                   }
@@ -288,173 +287,205 @@
                 </span>
               }
             </div>
-            <span><span class="insignia insignia-{{ estado.tono }} etiqueta-chica">{{ estado.texto }}</span></span>
-            <span class="monto-mono a-la-derecha">{{ servicio.precio | bs }}</span>
-            <span class="fila-orden-acciones">
-              @if (avanza) {
-                <button
-                  type="button"
-                  class="btn btn-secundario btn-sm"
-                  [disabled]="procesando()"
-                  (click)="avanzarServicio(servicio.ordenServicioId, EstadoServicioOrden.Completado)"
-                >
-                  Marcar completado
-                </button>
-              }
-            </span>
-          </div>
-          @if (faltaSuRepuesto) {
-            <div class="falta-repuesto">
-              <span><strong>{{ servicio.nombreServicio }}</strong> usa repuestos: falta registrar el que se usó para poder completarlo.</span>
-              @if (puedeTrabajar() && editableTrabajo()) {
-                <button type="button" class="btn-enlace" [disabled]="procesando()" (click)="abrirPanelRepuesto(servicio)">
-                  Registrar repuesto
-                </button>
-              }
-            </div>
-          }
+
+            @if (!enCurso && avanza && servicio.estado === EstadoServicioOrden.Pendiente) {
+              <button type="button" class="btn btn-secundario btn-trabajo no-imprimir" [disabled]="procesando()" (click)="avanzarServicio(servicio.ordenServicioId, EstadoServicioOrden.EnProceso)">
+                Empezar
+              </button>
+            }
+
+            <!-- El trabajo en curso trae todo lo que hace falta para terminarlo. -->
+            @if (enCurso) {
+              <div class="trabajo-cuerpo">
+                @if (servicio.requiereRepuesto && suyos.length === 0) {
+                  <div class="falta-pieza">
+                    <span class="falta-pieza-icono" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5z" /><path d="m3 8 9 5 9-5M12 13v8" /></svg>
+                    </span>
+                    <div>
+                      <b>Falta el repuesto</b>
+                      <span>Lleva {{ servicio.categorias.length > 0 ? llevaDe(servicio).toLocaleLowerCase() : 'repuestos' }}. Se elige tocando, sin escribir.</span>
+                    </div>
+                    @if (edita) {
+                      <button type="button" class="btn btn-oscuro btn-trabajo" [disabled]="procesando()" (click)="abrirPanelRepuesto(servicio)">
+                        <svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                        Elegir repuesto
+                      </button>
+                    }
+                  </div>
+                } @else if (edita && servicio.requiereRepuesto) {
+                  <button type="button" class="btn-enlace otra-pieza" (click)="abrirPanelRepuesto(servicio)">+ Agregar otro repuesto</button>
+                }
+
+                <!-- Nota del trabajo: se escribe o se dicta -->
+                @if (notaServicio()?.id === servicio.ordenServicioId) {
+                  <div class="nota-trabajo editando">
+                    <textarea
+                      rows="2"
+                      maxlength="255"
+                      placeholder="Escriba o toque Dictar y hable"
+                      [value]="notaServicio()!.texto"
+                      (input)="cambiarTextoNota($any($event.target).value)"
+                    ></textarea>
+                    <div class="nota-botones">
+                      <button type="button" class="btn-dictar" [class.escuchando]="escuchando()" (click)="dictar(servicio)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>
+                        {{ escuchando() ? 'Escuchando… toque para parar' : 'Dictar' }}
+                      </button>
+                      <span class="crece"></span>
+                      <button type="button" class="btn btn-secundario btn-sm" (click)="cancelarNota()">Cancelar</button>
+                      <button type="button" class="btn btn-oscuro btn-sm" [disabled]="procesando()" (click)="guardarNota(servicio)">Guardar nota</button>
+                    </div>
+                  </div>
+                } @else if (edita) {
+                  <div class="nota-trabajo">
+                    <button type="button" class="nota-abrir" (click)="escribirNota(servicio)">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /></svg>
+                      @if (servicio.descripcion) {
+                        <span class="nota-texto">{{ servicio.descripcion }}</span>
+                      } @else {
+                        <span class="nota-vacia">Nota del trabajo (opcional)</span>
+                      }
+                    </button>
+                    <button type="button" class="btn-dictar" (click)="dictar(servicio)">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>
+                      Dictar
+                    </button>
+                  </div>
+                } @else if (servicio.descripcion) {
+                  <p class="nota-solo">{{ servicio.descripcion }}</p>
+                }
+
+                @if (avanza) {
+                  <div class="trabajo-acciones no-imprimir">
+                    <label class="btn btn-secundario btn-trabajo" [class.deshabilitado]="subiendoFoto()">
+                      <svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h3l2-3h8l2 3h3v13H3z" /><circle cx="12" cy="13" r="4" /></svg>
+                      {{ subiendoFoto() ? 'Subiendo…' : 'Foto' }}
+                      <input type="file" accept="image/*" capture="environment" hidden [disabled]="subiendoFoto()" (change)="onFotoElegida($event)" />
+                    </label>
+                    <button type="button" class="btn-enlace enlace-gris" [disabled]="procesando()" (click)="avanzarServicio(servicio.ordenServicioId, EstadoServicioOrden.Pendiente)">
+                      Volver a pendiente
+                    </button>
+                    <span class="crece"></span>
+                    @if (puedeGestionar() && editableTrabajo()) {
+                      <button type="button" class="btn-enlace" [disabled]="procesando()" (click)="abrirEditarServicio(servicio)">Editar</button>
+                    }
+                    <button type="button" class="btn btn-terminar" [disabled]="procesando()" (click)="avanzarServicio(servicio.ordenServicioId, EstadoServicioOrden.Completado)">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10" /></svg>
+                      Terminé este trabajo
+                    </button>
+                  </div>
+                }
+              </div>
+            }
+          </article>
         } @empty {
-          <p class="bloque-orden-vacio">
+          <p class="trabajos-vacio">
             @if (o.estado === EstadoOrden.Abierta) {
-              Inicie el trabajo para poder cargar los servicios que se harán.
+              Cuando se inicie el trabajo, aquí se cargan los trabajos que se harán.
             } @else {
-              Sin servicios registrados.
+              Sin trabajos registrados.
             }
           </p>
         }
-      </section>
 
-      <!-- ------------------------------------------------------------ Repuestos -->
-      <section class="tarjeta bloque-orden">
-        <div class="bloque-orden-cabecera">
-          <h2>Repuestos utilizados</h2>
-          @if (puedeTrabajar()) {
-            <button
-              type="button"
-              class="btn btn-secundario btn-sm"
-              [disabled]="!editableTrabajo()"
-              [title]="motivoBloqueoTrabajo()"
-              (click)="abrirPanelRepuesto()"
-            >
-              + Agregar repuesto
-            </button>
+        @if (puedeTrabajar() && editableTrabajo()) {
+          <button type="button" class="agregar-trabajo no-imprimir" [disabled]="procesando()" (click)="abrirPanelServicio()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+            {{ o.servicios.length === 0 ? 'Agregar el primer trabajo' : 'Agregar otro trabajo' }}
+          </button>
+        }
+      </section>
+    </div>
+
+    <!-- -------------------------------------------------------- Columna lateral -->
+    <aside class="lateral-col">
+      <section class="tarjeta bloque-orden-cuerpo">
+        <div class="bloque-orden-titulo">
+          <h2>Fotos del vehículo</h2>
+          @if (fotosVehiculo().length > 0) {
+            <button type="button" class="btn-enlace" (click)="abrirGaleriaVehiculo()">Ver todas</button>
           }
         </div>
+        @if (puedeTrabajar() && o.estado !== EstadoOrden.Cerrada && o.estado !== EstadoOrden.Cancelada) {
+          <label class="tomar-foto no-imprimir" [class.deshabilitado]="subiendoFoto()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h3l2-3h8l2 3h3v13H3z" /><circle cx="12" cy="13" r="4" /></svg>
+            {{ subiendoFoto() ? 'Subiendo…' : 'Tomar foto' }}
+            <input type="file" accept="image/*" capture="environment" hidden [disabled]="subiendoFoto()" (change)="onFotoElegida($event)" />
+          </label>
+        }
+        @if (fotosVehiculo().length > 0) {
+          <div class="miniaturas-orden">
+            @for (foto of fotosVehiculo().slice(-3).reverse(); track foto.fotoId) {
+              <button type="button" (click)="abrirGaleriaVehiculo()" [attr.aria-label]="'Ver fotos de ' + o.placaVehiculo">
+                <img [src]="urlArchivo(foto.url)" alt="" loading="lazy" />
+              </button>
+            }
+          </div>
+        }
+        @for (z of zonasMarcadas(); track z.zonaObsId; let i = $index) {
+          <span class="zona-orden">
+            <strong>{{ i + 1 }}</strong>
+            <span>{{ etiquetaZona(z.zona) }} · {{ textoZona(z.estado) }}{{ z.detalle ? ' — ' + z.detalle : '' }}</span>
+          </span>
+        }
+        <div class="pie-estado">
+          @if (kilometrajeVehiculo() !== null) {
+            <span class="monto-mono">{{ kilometrajeVehiculo()!.toLocaleString('es-BO') }} km</span>
+          }
+          <button type="button" class="btn-enlace no-imprimir" (click)="diagramaAbierto.set(true)">Marcar zonas</button>
+        </div>
+      </section>
 
+      <section class="tarjeta bloque-orden-cuerpo">
+        <div class="bloque-orden-titulo">
+          <h2>Repuestos usados</h2>
+          @if (puedeTrabajar() && editableTrabajo()) {
+            <button type="button" class="btn-enlace" [disabled]="procesando()" (click)="abrirPanelRepuesto()">+ Agregar</button>
+          }
+        </div>
         @for (repuesto of o.repuestos; track repuesto.ordenRepuestoId) {
           @let foto = fotoRepuesto(repuesto);
-          @let compat = compatibilidadDe(repuesto);
-          <div class="fila-orden">
-            <div class="fila-orden-repuesto">
-              @if (foto) {
-                <img class="repuesto-miniatura" [src]="urlArchivo(foto)" alt="" loading="lazy" />
-              } @else {
-                <span class="repuesto-miniatura" aria-hidden="true">{{ iniciales(repuesto.nombreRepuesto) }}</span>
-              }
-              <div class="fila-orden-textos">
-                <strong>{{ repuesto.nombreRepuesto }}</strong>
-                <span>
-                  @if (repuesto.nombreServicio) {
-                    Para: {{ repuesto.nombreServicio }} ·
-                  }
-                  {{ repuesto.cantidad }} {{ repuesto.cantidad === 1 ? 'unidad' : 'unidades' }}
-                  @if (repuesto.origen !== OrigenRepuesto.Inventario) {
-                    · {{ ETIQUETAS.origenRepuesto[repuesto.origen] }}
-                  }
-                </span>
-              </div>
-            </div>
-            <span>
-              @if (compat) {
-                <span class="insignia etiqueta-chica" [class.insignia-verde]="compat === 'Compatible'" [class.insignia-gris]="compat !== 'Compatible'">
-                  {{ compat }}
+          <div class="repuesto-usado">
+            @if (foto) {
+              <img class="repuesto-miniatura" [src]="urlArchivo(foto)" alt="" loading="lazy" />
+            } @else {
+              <span class="repuesto-miniatura" aria-hidden="true">{{ iniciales(repuesto.nombreRepuesto) }}</span>
+            }
+            <span class="repuesto-usado-textos">
+              <strong>{{ repuesto.nombreRepuesto }} × {{ repuesto.cantidad }}</strong>
+              <small>
+                @if (repuesto.origen !== OrigenRepuesto.Inventario) {
+                  {{ ETIQUETAS.origenRepuesto[repuesto.origen] }}
+                } @else if (repuesto.nombreServicio) {
+                  {{ repuesto.nombreServicio }}
+                }
+              </small>
+              @if (puedeTrabajar() && editableTrabajo()) {
+                <span class="trabajo-enlaces no-imprimir">
+                  <button type="button" class="btn-enlace" [disabled]="procesando()" (click)="abrirEditarRepuesto(repuesto)">Editar</button>
+                  <button type="button" class="btn-enlace texto-rojo" [disabled]="procesando()" (click)="quitarRepuesto(repuesto)">Quitar</button>
                 </span>
               }
             </span>
-            <span class="monto-mono a-la-derecha">
+            <span class="monto-mono">
               @if (repuesto.origen === OrigenRepuesto.ClienteTrae) {
                 <span class="texto-tenue">Sin cargo</span>
               } @else {
                 {{ repuesto.subtotal | bs }}
               }
             </span>
-            <span class="fila-orden-acciones">
-              @if (puedeTrabajar() && editableTrabajo()) {
-                <button type="button" class="btn-enlace" [disabled]="procesando()" (click)="abrirEditarRepuesto(repuesto)">Editar</button>
-                <button type="button" class="btn-enlace texto-rojo" [disabled]="procesando()" (click)="quitarRepuesto(repuesto)">
-                  Quitar
-                </button>
-              }
-            </span>
           </div>
         } @empty {
-          <p class="bloque-orden-vacio">
-            @if (o.estado === EstadoOrden.Abierta) {
-              Inicie el trabajo para poder cargar los repuestos.
-            } @else {
-              Sin repuestos cargados. El stock se descuenta recién al cerrar la orden.
-            }
+          <p class="texto-tenue texto-sm mb-0">
+            {{ o.estado === EstadoOrden.Abierta ? 'Se cargan cuando empieza el trabajo.' : 'Sin repuestos cargados.' }}
           </p>
         }
       </section>
 
-      <!-- ------------------------------------------------- Diagnóstico asistido -->
-      @if (puedeTrabajar() && sugerenciaOrden(); as s) {
-        <section class="tarjeta bloque-orden bloque-orden-cuerpo">
-          <h2>Sugerencias para esta orden</h2>
-          <p class="texto-tenue texto-sm mb-0">
-            Basado en {{ s.basadoEnCasos }} caso(s) con una falla similar. Toque una sugerencia para agregarla.
-          </p>
-          @if (s.servicios.length > 0) {
-            <div>
-              <span class="etiqueta-campo">Servicios probables</span>
-              <div class="chips-sugerencia mt-1">
-                @for (sv of s.servicios; track sv.nombre) {
-                  <button
-                    type="button"
-                    class="chip-sugerido"
-                    [disabled]="!editableTrabajo()"
-                    [title]="motivoBloqueoTrabajo()"
-                    (click)="abrirPanelServicioSugerido(sv)"
-                  >
-                    + {{ sv.nombre }} · {{ sv.frecuencia }} de {{ s.basadoEnCasos }}
-                  </button>
-                }
-              </div>
-            </div>
-          }
-          @if (s.repuestos.length > 0) {
-            <div>
-              <span class="etiqueta-campo">Repuestos probables</span>
-              <div class="chips-sugerencia mt-1">
-                @for (rp of s.repuestos; track rp.nombre) {
-                  <button
-                    type="button"
-                    class="chip-sugerido"
-                    [disabled]="!editableTrabajo()"
-                    [title]="motivoBloqueoTrabajo()"
-                    (click)="abrirPanelRepuestoSugerido(rp)"
-                  >
-                    + {{ rp.nombre }} · {{ rp.frecuencia }} de {{ s.basadoEnCasos }}
-                  </button>
-                }
-              </div>
-            </div>
-          }
-          @if (s.precioMinimo != null) {
-            <p class="texto-tenue texto-sm mb-0">
-              Precio en casos similares: {{ s.precioMinimo | bs }} – {{ s.precioMaximo | bs }} (prom. {{ s.precioPromedio | bs }})
-            </p>
-          }
-        </section>
-      }
-    </div>
-
-    <!-- -------------------------------------------------------- Columna lateral -->
-    <aside class="lateral-col">
       <section class="tarjeta bloque-orden-cuerpo">
         <h2>Resumen</h2>
-        <div class="linea-resumen"><span>Servicios</span><span class="monto-mono">{{ o.totalServicios | bs }}</span></div>
+        <div class="linea-resumen"><span>Trabajos</span><span class="monto-mono">{{ o.totalServicios | bs }}</span></div>
         <div class="linea-resumen"><span>Repuestos</span><span class="monto-mono">{{ o.totalRepuestos | bs }}</span></div>
         <div class="total-resumen"><strong>Total</strong><span class="monto-mono">{{ o.total | bs }}</span></div>
         <dl class="fechas-orden">
@@ -508,34 +539,12 @@
         }
       </section>
 
-      <section class="tarjeta bloque-orden-cuerpo">
-        <div class="bloque-orden-titulo">
-          <h2>Estado del vehículo</h2>
-          @if (fotosVehiculo().length > 0) {
-            <button type="button" class="btn-enlace" (click)="abrirGaleriaVehiculo()">Ver fotos</button>
-          }
-        </div>
-        @for (z of zonasMarcadas(); track z.zonaObsId; let i = $index) {
-          <span class="zona-orden">
-            <strong>{{ i + 1 }}</strong>
-            <span>{{ etiquetaZona(z.zona) }} · {{ textoZona(z.estado) }}{{ z.detalle ? ' — ' + z.detalle : '' }}</span>
-          </span>
-        } @empty {
-          <span class="texto-tenue texto-sm">Sin zonas marcadas.</span>
-        }
-        <div class="pie-estado">
-          <span>{{ fotosVehiculo().length === 1 ? '1 foto' : fotosVehiculo().length + ' fotos' }}</span>
-          @if (kilometrajeVehiculo() !== null) {
-            <span class="monto-mono">{{ kilometrajeVehiculo()!.toLocaleString('es-BO') }} km</span>
-          }
-          <button type="button" class="btn-enlace no-imprimir" (click)="diagramaAbierto.set(true)">Marcar zonas</button>
-        </div>
-      </section>
-
       @if (puedeGestionar()) {
         <!-- Todo lo que se hizo sobre la orden y quién lo hizo (Auditoría). -->
         <section class="tarjeta bloque-orden-cuerpo">
           <h2>Historial</h2>
+          <!-- Completo, se desplaza dentro de su recuadro: no estira la columna. -->
+          <div class="historial-lista" [class.completo]="verTodoHistorial()">
           @for (h of historialVisible(); track h.auditoriaId) {
             @let estilo = ESTILO_HISTORIAL[h.accion];
             <div class="evento-orden" [class.excepcion]="h.accion === AccionAuditoria.Excepcion">
@@ -551,15 +560,35 @@
           } @empty {
             <p class="texto-tenue texto-sm mb-0">Sin movimientos registrados.</p>
           }
-          @if (historial().length > historialVisible().length) {
-            <button type="button" class="btn-enlace historial-mas" (click)="verTodoHistorial.set(true)">
-              Ver historial completo ({{ historial().length }})
+          </div>
+          @if (historial().length > 5) {
+            <button type="button" class="btn-enlace historial-mas" (click)="verTodoHistorial.set(!verTodoHistorial())">
+              {{ verTodoHistorial() ? 'Ver menos' : 'Ver historial completo (' + historial().length + ')' }}
             </button>
           }
         </section>
       }
     </aside>
   </div>
+
+  <!-- Barra fija de abajo: finalizar cuando todos los trabajos están hechos. -->
+  @if (puedeTrabajar() && editableTrabajo()) {
+    <div class="barra-finalizar no-imprimir">
+      <span>
+        @if (o.servicios.length === 0) {
+          Agregue los trabajos que se harán.
+        } @else if (listoParaFinalizar()) {
+          Todo hecho: ya se puede finalizar.
+        } @else {
+          {{ serviciosPendientes() === 1 ? 'Falta 1 trabajo' : 'Faltan ' + serviciosPendientes() + ' trabajos' }} para poder finalizar.
+        }
+      </span>
+      <button type="button" class="btn btn-primario btn-finalizar" [disabled]="procesando() || !listoParaFinalizar()" (click)="finalizar()">
+        Finalizar trabajo
+      </button>
+    </div>
+  }
+
 
   <!-- ========================================================== Diálogos -->
 
@@ -635,54 +664,78 @@
   }
 
   @if (panelServicio()) {
-    <app-modal titulo="Agregar servicio" [ancho]="640" (cerrar)="panelServicio.set(false)">
+    <app-cajon titulo="Agregar trabajo" [etiqueta]="o.ordenId + ' · ' + o.placaVehiculo" [ancho]="600" [enfocarCampo]="false" (cerrar)="panelServicio.set(false)">
       @if (o.mecanicos.length === 0) {
-        <p class="texto-tenue mb-0">
-          Primero asigne al menos un mecánico a la orden: el servicio debe tener un responsable.
-        </p>
+        <p class="texto-tenue mb-0">Primero hay que asignar el mecánico de la orden: cada trabajo tiene un responsable.</p>
       } @else {
-        <div class="campo">
-          <label>Origen del servicio</label>
-          <div class="segmentos">
-            <button
-              type="button"
-              class="segmento"
-              [class.activo]="nuevoServicio.delCatalogo"
-              (click)="cambiarOrigenServicio(true)"
-            >
-              Del catálogo
-            </button>
-            <button
-              type="button"
-              class="segmento"
-              [class.activo]="!nuevoServicio.delCatalogo"
-              (click)="cambiarOrigenServicio(false)"
-            >
-              Fuera de catálogo
-            </button>
-          </div>
-        </div>
-
-        @if (nuevoServicio.delCatalogo) {
+        @if (puedeGestionar() && o.mecanicos.length > 1) {
           <div class="campo">
-            <label for="servicio">Servicio del catálogo</label>
-            <app-selector-busqueda
-              idCampo="servicio"
-              name="servicio"
-              marcador="Escriba el nombre del servicio…"
-              [opciones]="opcionesCatalogo()"
-              [(ngModel)]="nuevoServicio.servicioId"
-              (seleccion)="onServicioSeleccionado($event)"
-            />
-            @if (servicioCatalogoElegido()?.requiereRepuesto) {
-              <span class="campo-ayuda">
-                Usa repuestos: para completarlo habrá que registrar en la orden el repuesto usado.
-              </span>
+            <span class="etiqueta-campo">¿Quién lo hace?</span>
+            <div class="chips-grandes">
+              @for (m of o.mecanicos; track m.mecanicoId) {
+                <button type="button" class="chip-grande" [class.activo]="nuevoServicio.mecanicoId === m.mecanicoId" (click)="nuevoServicio.mecanicoId = m.mecanicoId">
+                  {{ m.nombreMecanico }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        @if (!servicioLibre()) {
+          <div class="chips-grandes">
+            <button type="button" class="chip-grande" [class.activo]="filtroServicios() === 'todos'" (click)="filtroServicios.set('todos')">Todos</button>
+            <button type="button" class="chip-grande" [class.activo]="filtroServicios() === 'repuestos'" (click)="filtroServicios.set('repuestos')">Llevan repuestos</button>
+            <button type="button" class="chip-grande" [class.activo]="filtroServicios() === 'mano'" (click)="filtroServicios.set('mano')">Solo mano de obra</button>
+          </div>
+
+          @if (ultimoAgregado(); as agregado) {
+            <div class="aviso-agregado" role="status">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10" /></svg>
+              Se agregó {{ agregado }}. Toque otro o cierre.
+            </div>
+          }
+
+          <div class="mosaico-servicios">
+            @for (item of mosaicoServicios(); track item.servicio.servicioId) {
+              <button
+                type="button"
+                class="tarjeta-servicio"
+                [class.agregado]="item.enOrden"
+                [disabled]="procesando() || item.enOrden"
+                [title]="item.enOrden ? 'Ya está en la orden' : 'Agregar ' + item.servicio.nombre"
+                (click)="agregarTocando(item.servicio)"
+              >
+                <b>{{ item.servicio.nombre }}</b>
+                <small>{{ item.lleva }}</small>
+                <span class="tarjeta-servicio-pie">
+                  <span class="monto-mono">{{ item.servicio.precioBase | bs }}</span>
+                  <i aria-hidden="true">
+                    @if (item.enOrden) {
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10" /></svg>
+                    } @else {
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                    }
+                  </i>
+                </span>
+              </button>
+            } @empty {
+              <p class="texto-tenue texto-sm mb-0">Nada coincide. Pruebe con otra palabra o cargue otro trabajo.</p>
             }
           </div>
+
+          <label class="buscar-opcional">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+            <input type="search" placeholder="Buscar en el catálogo" [value]="buscarServicio()" (input)="buscarServicio.set($any($event.target).value)" />
+            <small>solo si no aparece</small>
+          </label>
+
+          <button type="button" class="btn-enlace otro-trabajo" (click)="servicioLibre.set(true)">
+            ¿No está en el catálogo? Cargar otro trabajo
+          </button>
         } @else {
+          <!-- Fuera de catálogo: aquí sí se escribe el nombre y el precio. -->
           <div class="campo">
-            <label for="nombreLibreServicio">Nombre del servicio</label>
+            <label for="nombreLibreServicio">Nombre del trabajo</label>
             <input
               id="nombreLibreServicio"
               type="text"
@@ -700,55 +753,10 @@
               }
             </datalist>
           </div>
-        }
-
-        <div class="rejilla">
-          <div class="campo">
-            <label>Mecánico responsable</label>
-            @if (!puedeGestionar()) {
-              <div class="texto-fuerte">{{ auth.nombreCompleto() }}</div>
-            } @else if (o.mecanicos.length === 1) {
-              <div class="texto-fuerte">{{ o.mecanicos[0].nombreMecanico }}</div>
-            } @else {
-              <app-selector-busqueda
-                idCampo="mecanicoServicio"
-                name="mecanicoServicio"
-                marcador="Elija entre los asignados…"
-                [opciones]="opcionesAsignados()"
-                [(ngModel)]="nuevoServicio.mecanicoId"
-              />
-            }
-            <span class="campo-ayuda">Su comisión se calcula sobre este monto.</span>
-          </div>
-
           <div class="campo">
             <label for="precioServicio">Precio (Bs)</label>
-            <input
-              id="precioServicio"
-              type="number"
-              min="0"
-              step="0.01"
-              name="precioServicio"
-              [readonly]="!puedeGestionar() && nuevoServicio.delCatalogo"
-              [(ngModel)]="nuevoServicio.precio"
-            />
-            @if (!puedeGestionar() && nuevoServicio.delCatalogo) {
-              <span class="campo-ayuda">Precio del catálogo.</span>
-            }
+            <input id="precioServicio" type="number" min="0" step="0.01" inputmode="decimal" name="precioServicio" [(ngModel)]="nuevoServicio.precio" />
           </div>
-        </div>
-
-        <div class="campo">
-          <label for="descripcionServicio">Detalle del trabajo</label>
-          <input
-            id="descripcionServicio"
-            name="descripcionServicio"
-            [(ngModel)]="nuevoServicio.descripcion"
-            placeholder="Opcional"
-          />
-        </div>
-
-        @if (!nuevoServicio.delCatalogo) {
           <label class="casilla mb-1">
             <input
               type="checkbox"
@@ -757,123 +765,121 @@
               [ngModel]="nuevoServicio.requiereRepuesto"
               (ngModelChange)="onRequiereRepuestoCambiado($event)"
             />
-            Este trabajo usa repuestos: no se completa sin registrar el que se usó
+            Lleva repuestos: no se termina sin registrar el que se usó
           </label>
-          <p class="texto-tenue texto-sm mb-0">
-            Servicio fuera de catálogo: se registra con el nombre y precio indicados, sin tocar
-            el catálogo de servicios.
-          </p>
+          <button type="button" class="btn-enlace otro-trabajo" (click)="volverAlCatalogo()">
+            Volver al catálogo
+          </button>
         }
       }
 
       <div pie>
-        <button type="button" class="btn btn-secundario" (click)="panelServicio.set(false)">
-          Cancelar
-        </button>
-        <button
-          type="button"
-          class="btn btn-primario"
-          [disabled]="procesando() || o.mecanicos.length === 0"
-          (click)="agregarServicio()"
-        >
-          Agregar
-        </button>
+        @if (servicioLibre()) {
+          <button type="button" class="btn btn-primario btn-pie-grande" [disabled]="procesando() || o.mecanicos.length === 0" (click)="nuevoServicio.delCatalogo = false; agregarServicio()">
+            Agregar trabajo
+          </button>
+        } @else {
+          <button type="button" class="btn btn-secundario btn-pie-grande" (click)="panelServicio.set(false)">Listo</button>
+        }
       </div>
-    </app-modal>
+    </app-cajon>
   }
 
   @if (panelRepuesto()) {
-    <app-modal titulo="Agregar repuesto" [ancho]="640" (cerrar)="panelRepuesto.set(false)">
-      <div class="campo">
-        <label>Origen del repuesto</label>
-        <div class="segmentos">
-          @for (op of origenesRepuesto; track op) {
-            <button
-              type="button"
-              class="segmento"
-              [class.activo]="nuevoRepuesto.origen === op"
-              (click)="cambiarOrigenRepuesto(op)"
-            >
-              {{ ETIQUETAS.origenRepuesto[op] }}
-            </button>
-          }
-        </div>
+    <app-cajon
+      titulo="Repuesto para el trabajo"
+      [subtitulo]="servicioDelRepuesto()?.nombreServicio ?? 'Elija abajo para qué trabajo es'"
+      [ancho]="600"
+      [enfocarCampo]="false"
+      (cerrar)="panelRepuesto.set(false)"
+    >
+      <div class="segmento-grande" role="radiogroup" aria-label="De dónde sale el repuesto">
+        @for (op of origenesRepuesto; track op) {
+          <button type="button" role="radio" [class.activo]="nuevoRepuesto.origen === op" [attr.aria-checked]="nuevoRepuesto.origen === op" (click)="cambiarOrigenRepuesto(op)">
+            @switch (op) {
+              @case (OrigenRepuesto.Inventario) {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21V9l9-6 9 6v12" /><path d="M9 21v-7h6v7" /></svg>
+                Del taller
+              }
+              @case (OrigenRepuesto.ClienteTrae) {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
+                Lo trajo el cliente
+              }
+              @default {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6h15l-1.5 9h-12z" /><path d="M6 6 5 3H2M9 20h.01M18 20h.01" /></svg>
+                Comprado afuera
+              }
+            }
+          </button>
+        }
       </div>
 
-      <!-- Primero el servicio: la lista de repuestos se ordena según lo que lleva. -->
-      @if (o.servicios.length > 0) {
-        <div class="campo">
-          <label for="servicioRepuesto">Para el servicio</label>
-          <app-selector-busqueda
-            idCampo="servicioRepuesto"
-            name="servicioRepuesto"
-            marcador="Ninguno en particular"
-            [opciones]="opcionesServicioRepuesto()"
-            [(ngModel)]="nuevoRepuesto.ordenServicioId"
-            (ngModelChange)="servicioRepuesto.set($event ?? '')"
-          />
-          @if (servicioDelRepuesto(); as servicio) {
-            @if (servicio.categorias.length > 0 && nuevoRepuesto.origen === OrigenRepuesto.Inventario) {
-              <span class="campo-ayuda">
-                <strong>{{ servicio.nombreServicio }}</strong> lleva <strong>{{ llevaDe(servicio) }}</strong>:
-                esos repuestos aparecen primero en la lista.
-              </span>
-            } @else {
-              <span class="campo-ayuda">
-                Los servicios que usan repuestos no se pueden completar sin uno registrado.
-              </span>
-            }
-          } @else {
-            <span class="campo-ayuda">
-              Los servicios que usan repuestos no se pueden completar sin uno registrado.
-            </span>
-          }
-        </div>
+      <!-- Para qué trabajo: se toca uno (viene elegido si se llegó desde el trabajo). -->
+      @if (o.servicios.length > 1 || !nuevoRepuesto.ordenServicioId) {
+        @if (o.servicios.length > 0) {
+          <div class="campo">
+            <span class="etiqueta-campo">Para el trabajo</span>
+            <div class="chips-grandes">
+              @for (s of o.servicios; track s.ordenServicioId) {
+                <button type="button" class="chip-grande" [class.activo]="nuevoRepuesto.ordenServicioId === s.ordenServicioId" (click)="elegirServicioDelRepuesto(s.ordenServicioId)">
+                  {{ s.nombreServicio }}
+                </button>
+              }
+            </div>
+          </div>
+        }
       }
 
       @if (nuevoRepuesto.origen === OrigenRepuesto.Inventario) {
-        <div class="campo">
-          <label for="repuesto">Repuesto</label>
-          <app-selector-busqueda
-            idCampo="repuesto"
-            name="repuesto"
-            marcador="Escriba el nombre del repuesto…"
-            [opciones]="opcionesRepuesto()"
-            [listaEnLinea]="true"
-            [(ngModel)]="nuevoRepuesto.repuestoId"
-            (seleccion)="onRepuestoSeleccionado($event)"
-          />
-          <!-- Ficha del elegido: con la foto se confirma que es la pieza correcta. -->
-          @if (repuestoElegido(); as elegido) {
-            <div class="repuesto-elegido">
-              @if (elegido.fotoUrl) {
-                <img [src]="urlArchivo(elegido.fotoUrl)" [alt]="elegido.nombre" />
-              } @else {
-                <span class="sin-foto" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M3 8l9-5 9 5-9 5-9-5Z" /><path d="M3 8v8l9 5 9-5V8" />
-                  </svg>
-                </span>
+        <span class="titulo-mosaico">{{ tituloMosaico() }}</span>
+        <div class="mosaico-repuestos">
+          @for (item of mosaicoRepuestos(); track item.repuesto.repuestoId) {
+            <button
+              type="button"
+              class="pieza"
+              [class.elegida]="nuevoRepuesto.repuestoId === item.repuesto.repuestoId"
+              [disabled]="item.deshabilitado"
+              [title]="item.motivo || item.repuesto.nombre"
+              (click)="elegirRepuestoTocando(item.repuesto)"
+            >
+              <span class="pieza-foto">
+                @if (item.repuesto.fotoUrl) {
+                  <img [src]="urlArchivo(item.repuesto.fotoUrl)" alt="" loading="lazy" />
+                } @else {
+                  {{ iniciales(item.repuesto.nombre) }}
+                }
+              </span>
+              @if (item.sirve) {
+                <span class="pieza-sirve">Sirve</span>
+              } @else if (item.noIndicado) {
+                <span class="pieza-sirve no">No indicado</span>
               }
-              <div class="crece">
-                <div class="texto-fuerte">{{ elegido.nombre }}</div>
-                <div class="texto-tenue texto-sm">
-                  {{ elegido.repuestoId }} · {{ elegido.nombreCategoria || 'Sin categoría' }} ·
-                  {{ elegido.resumenCompatibilidad || 'Uso general' }}
-                </div>
-                <div class="texto-sm">
-                  {{ elegido.precioVenta | bs }} · {{ elegido.stockActual }} en stock
-                  @if (!elegido.fotoUrl) {
-                    <span class="texto-tenue">· sin foto (se carga en Repuestos)</span>
-                  }
-                </div>
-              </div>
-            </div>
+              <b>{{ item.repuesto.nombre }}</b>
+              <small>
+                <span>{{ item.motivo || 'hay ' + item.repuesto.stockActual }}</span>
+                <span class="monto-mono">{{ item.repuesto.precioVenta | bs }}</span>
+              </small>
+            </button>
+          } @empty {
+            <p class="texto-tenue texto-sm mb-0">No hay repuestos que coincidan.</p>
           }
         </div>
+
+        <label class="buscar-opcional">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+          <input type="search" placeholder="¿No está? Buscar otro repuesto" [value]="buscarRepuesto()" (input)="buscarRepuesto.set($any($event.target).value)" />
+          <small>solo si hace falta</small>
+        </label>
       } @else {
         <div class="campo">
-          <label for="descripcionRepuesto">Descripción del repuesto</label>
+          <label for="descripcionRepuesto">¿Qué repuesto es?</label>
+          @if (nombresRepuestoRapidos().length > 0) {
+            <div class="chips-grandes mb-1">
+              @for (n of nombresRepuestoRapidos(); track n) {
+                <button type="button" class="chip-grande" [class.activo]="nuevoRepuesto.descripcion === n" (click)="nuevoRepuesto.descripcion = n">{{ n }}</button>
+              }
+            </div>
+          }
           <input
             id="descripcionRepuesto"
             type="text"
@@ -881,7 +887,7 @@
             name="descripcionRepuesto"
             list="lista-repuestos-libres"
             autocomplete="off"
-            placeholder="Ej. Pastillas de freno delanteras"
+            placeholder="O escríbalo: Pastillas de freno traseras"
             [(ngModel)]="nuevoRepuesto.descripcion"
           />
           <datalist id="lista-repuestos-libres">
@@ -892,67 +898,35 @@
         </div>
       }
 
-      <div class="rejilla">
-        <div class="campo">
-          <label for="cantidadRepuesto">Cantidad</label>
-          <input
-            id="cantidadRepuesto"
-            type="number"
-            min="1"
-            name="cantidadRepuesto"
-            [(ngModel)]="nuevoRepuesto.cantidad"
-          />
+      <div class="cantidad-grande">
+        <div>
+          <span>Cantidad</span>
+          @if (nuevoRepuesto.origen === OrigenRepuesto.Inventario && repuestoElegido(); as elegido) {
+            <small>{{ elegido.nombre }} · hay {{ elegido.stockActual }}</small>
+          }
         </div>
-
-        @if (nuevoRepuesto.origen !== OrigenRepuesto.ClienteTrae) {
-          <div class="campo">
-            <label for="precioRepuesto">
-              {{ nuevoRepuesto.origen === OrigenRepuesto.CompraExterna ? 'Costo unitario (Bs)' : 'Precio unitario (Bs)' }}
-            </label>
-            <input
-              id="precioRepuesto"
-              type="number"
-              min="0"
-              step="0.01"
-              name="precioRepuesto"
-              [readonly]="!puedeGestionar() && nuevoRepuesto.origen === OrigenRepuesto.Inventario"
-              [(ngModel)]="nuevoRepuesto.precioUnitario"
-            />
-            @if (!puedeGestionar() && nuevoRepuesto.origen === OrigenRepuesto.Inventario) {
-              <span class="campo-ayuda">Precio de venta del inventario.</span>
-            }
-          </div>
-        }
+        <div class="paso-cantidad">
+          <button type="button" aria-label="Uno menos" [disabled]="nuevoRepuesto.cantidad <= 1" (click)="cambiarCantidad(-1)">−</button>
+          <em>{{ nuevoRepuesto.cantidad }}</em>
+          <button type="button" aria-label="Uno más" (click)="cambiarCantidad(1)">+</button>
+        </div>
       </div>
 
-      <p class="texto-tenue texto-sm mb-0">
-        @switch (nuevoRepuesto.origen) {
-          @case (OrigenRepuesto.Inventario) {
-            Se verifica que haya stock suficiente, pero el descuento se aplica al cerrar la orden.
-          }
-          @case (OrigenRepuesto.ClienteTrae) {
-            El repuesto lo trae el cliente: se registra sin cargo y no afecta el inventario.
-          }
-          @case (OrigenRepuesto.CompraExterna) {
-            Comprado fuera del taller: se cobra al costo indicado y no afecta el inventario.
-          }
-        }
-      </p>
+      @if (nuevoRepuesto.origen === OrigenRepuesto.CompraExterna || (puedeGestionar() && nuevoRepuesto.origen === OrigenRepuesto.Inventario && repuestoElegido())) {
+        <div class="campo mb-0">
+          <label for="precioRepuesto">
+            {{ nuevoRepuesto.origen === OrigenRepuesto.CompraExterna ? 'Cuánto costó cada uno (Bs)' : 'Precio unitario (Bs)' }}
+          </label>
+          <input id="precioRepuesto" type="number" min="0" step="0.01" inputmode="decimal" name="precioRepuesto" [(ngModel)]="nuevoRepuesto.precioUnitario" />
+        </div>
+      }
 
       <div pie>
-        <button type="button" class="btn btn-secundario" (click)="panelRepuesto.set(false)">
-          Cancelar
-        </button>
-        <button
-          type="button"
-          class="btn btn-primario"
-          [disabled]="procesando()"
-          (click)="agregarRepuesto()"
-        >
-          Agregar
+        <button type="button" class="btn btn-oscuro btn-pie-grande" [disabled]="procesando()" (click)="agregarRepuesto()">
+          {{ textoAgregarRepuesto() }}
         </button>
       </div>
-    </app-modal>
+    </app-cajon>
   }
 
   @if (galeriaAbierta()) {
@@ -1024,56 +998,14 @@
   }
 
   @if (panelCorregir()) {
-    <app-modal titulo="Corregir orden {{ o.ordenId }}" [ancho]="560" (cerrar)="panelCorregir.set(false)">
-      <p class="mensaje-aviso">
-        La orden vuelve a <strong>En proceso</strong> para corregir servicios o repuestos. Después
-        hay que finalizarla y cerrarla de nuevo.
-      </p>
-
-      <ul class="efectos-correccion">
-        @if (o.estado === EstadoOrden.Cerrada) {
-          <li>Los repuestos del inventario vuelven al stock y se quitan las comisiones pendientes; al cerrar de nuevo se descuentan y se calculan con los datos corregidos.</li>
-        }
-        @if (proformaVigente(); as f) {
-          @if (f.totalPagado > 0) {
-            <li class="bloquea">
-              La proforma {{ f.proformaId }} tiene pagos por {{ f.totalPagado | bs }}: revierta primero
-              los pagos en Pagos.
-            </li>
-          } @else {
-            <li>Se anula la proforma {{ f.proformaId }}; después podrá emitir una nueva.</li>
-          }
-        }
-        <li>Si alguna comisión de esta orden ya se le pagó al mecánico, no se puede corregir.</li>
-      </ul>
-
-      <div class="campo mb-0">
-        <label for="motivoCorreccion">Motivo de la corrección <span class="obligatorio">*</span></label>
-        <textarea
-          id="motivoCorreccion"
-          name="motivoCorreccion"
-          rows="2"
-          maxlength="200"
-          placeholder="Ej. Se cargó 1 litro de aceite y se usaron 4"
-          [(ngModel)]="motivoCorreccion"
-        ></textarea>
-        <span class="campo-ayuda">Queda registrado en Auditoría y en el Historial de la orden.</span>
-      </div>
-
-      <div pie>
-        <button type="button" class="btn btn-secundario" (click)="panelCorregir.set(false)">
-          Cancelar
-        </button>
-        <button
-          type="button"
-          class="btn btn-primario"
-          [disabled]="procesando() || !motivoCorreccion.trim() || (proformaVigente()?.totalPagado ?? 0) > 0"
-          (click)="corregirOrden()"
-        >
-          {{ procesando() ? 'Procesando…' : 'Reabrir para corregir' }}
-        </button>
-      </div>
-    </app-modal>
+    <app-corregir-orden
+      [orden]="o"
+      [proforma]="proformaVigente()"
+      [procesando]="procesando()"
+      (cerrar)="panelCorregir.set(false)"
+      (confirmar)="corregirOrden($event)"
+      (pagosRevertidos)="recargarProforma(o.ordenId)"
+    />
   }
 
   @if (editandoServicio(); as servicio) {
@@ -1136,9 +1068,9 @@
       [mensaje]="
         serviciosPendientes() > 0
           ? 'Esta orden tiene ' + serviciosPendientes() + ' servicio(s) sin completar. Complételos antes de cerrar.'
-          : '¿Cerrar la orden ' + o.ordenId + ' por un total de Bs ' + o.total.toFixed(2) + '?'
+          : '¿Cerrar la orden ' + o.ordenId + ' por un total de ' + (o.total | bs) + '?'
       "
-      advertencia="Al cerrar se descuenta el stock de los repuestos y se calculan las comisiones de los mecánicos. La orden no se puede reabrir."
+      advertencia="Al cerrar se descuenta el stock de los repuestos y se calculan las comisiones de los mecánicos. Si después hay que cambiar algo, use Corregir orden en el menú Más."
       textoConfirmar="Cerrar orden"
       [procesando]="procesando()"
       (confirmar)="cerrarOrden()"
@@ -1150,7 +1082,7 @@
     <app-confirmacion
       titulo="Cancelar orden"
       [mensaje]="'¿Cancelar la orden ' + o.ordenId + '?'"
-      advertencia="Una orden cancelada no se puede reabrir ni facturar."
+      advertencia="Una orden cancelada no se puede reabrir ni cobrar."
       textoConfirmar="Cancelar orden"
       [peligroso]="true"
       [procesando]="procesando()"

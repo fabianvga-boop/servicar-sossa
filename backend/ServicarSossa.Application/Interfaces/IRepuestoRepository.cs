@@ -26,7 +26,7 @@ public interface IRepuestoRepository : IRepository<Repuesto>
     Task<(IEnumerable<Repuesto> Items, int Total)> BuscarAsync(
         string? buscar, string? proveedorId, bool soloStockBajo,
         int pagina, int tamanoPagina, CancellationToken ct = default,
-        Vehiculo? vehiculo = null, string? categoriaId = null);
+        Vehiculo? vehiculo = null, string? categoriaId = null, bool soloCompatibles = false);
 
     /// <summary>Valor del filtro de categoría para los repuestos sin categoría.</summary>
     const string SinCategoria = "sin-categoria";

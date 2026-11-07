@@ -61,6 +61,27 @@ let modalesAbiertos = 0;
                 </svg>
               </span>
             }
+            @case ('candado') {
+              <span class="icono-cabecera atencion" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                </svg>
+              </span>
+            }
+            @case ('caja') {
+              <span class="icono-cabecera neutro" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 8 12 3 3 8v8l9 5 9-5z" /><path d="m3 8 9 5 9-5M12 13v8" />
+                </svg>
+              </span>
+            }
+            @case ('herramienta') {
+              <span class="icono-cabecera neutro" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.5-2.5z" />
+                </svg>
+              </span>
+            }
             @case ('teclado') {
               <span class="icono-cabecera neutro" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -235,8 +256,8 @@ export class Modal {
   /** Marca el diálogo como acción irreversible: agrega el ícono de alerta. */
   readonly peligroso = input(false);
 
-  /** Ícono junto al título: atención (naranja), peligro (rojo) o teclado (gris). */
-  readonly icono = input<'atencion' | 'peligro' | 'teclado' | null>(null);
+  /** Ícono junto al título: atención o candado (naranja), peligro (rojo), teclado o herramienta (gris). */
+  readonly icono = input<'atencion' | 'peligro' | 'teclado' | 'candado' | 'herramienta' | 'caja' | null>(null);
 
   /** Confirmaciones: sin líneas divisorias y el contenido alineado con el título. */
   readonly compacto = input(false);

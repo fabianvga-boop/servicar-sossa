@@ -45,27 +45,33 @@
     </button>
   </div>
 
-  <select
-    *appSiRol="['Administrador']"
-    class="filtro-dueno"
-    aria-label="Filtrar por dueño"
-    [value]="clienteFiltro()"
-    (change)="onFiltrarCliente($any($event.target).value)"
-  >
-    <option value="">Todos los dueños</option>
-    @for (cliente of clientes(); track cliente.clienteId) {
-      <option [value]="cliente.clienteId" [selected]="cliente.clienteId === clienteFiltro()">
-        {{ cliente.razonSocial || cliente.nombre + ' ' + (cliente.apellido || '') }}
-      </option>
+  <!-- El dueño se busca escribiendo arriba; una lista de cientos de dueños no sirve.
+       La marca sí: son pocas y se eligen sin escribir. -->
+  <div class="filtros-extra">
+    @if (nombreClienteFiltro(); as dueno) {
+      <span class="chip-dueno">
+        Dueño: {{ dueno }}
+        <button type="button" aria-label="Quitar el filtro de dueño" (click)="onFiltrarCliente('')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+        </button>
+      </span>
     }
-  </select>
+    @if (marcasPresentes().length > 1) {
+      <select class="filtro-marca" aria-label="Filtrar por marca" [value]="marcaFiltro()" (change)="marcaFiltro.set($any($event.target).value)">
+        <option value="">Todas las marcas</option>
+        @for (m of marcasPresentes(); track m.marca) {
+          <option [value]="m.marca" [selected]="m.marca === marcaFiltro()">{{ m.marca }} ({{ m.cuenta }})</option>
+        }
+      </select>
+    }
+  </div>
 </div>
 
 @if (cargando() || filtrados().length === 0) {
   <div class="tarjeta">
     <app-estado-tabla
       [cargando]="cargando()"
-      [hayFiltro]="buscar().length > 0 || clienteFiltro().length > 0 || filtro() !== 'todos'"
+      [hayFiltro]="buscar().length > 0 || clienteFiltro().length > 0 || marcaFiltro().length > 0 || filtro() !== 'todos'"
       titulo="Sin vehículos registrados"
       descripcion="Registre un vehículo para poder abrir órdenes de trabajo."
     />

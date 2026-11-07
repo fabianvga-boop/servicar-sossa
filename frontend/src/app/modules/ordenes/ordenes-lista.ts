@@ -157,6 +157,23 @@ export class OrdenesLista {
       .sort(masRecienteMovida),
   );
 
+  // --- Vista del mecánico: solo las suyas, sin columnas vacías ---------------------
+
+  protected readonly vistaMecanico = signal<'hacer' | 'terminadas'>('hacer');
+
+  /** Lo que tiene para hacer: la que está en proceso primero. */
+  protected readonly paraHacer = computed(() =>
+    this.filtradas()
+      .filter((o) => o.estado === EstadoOrden.EnProceso || o.estado === EstadoOrden.Abierta)
+      .sort((a, b) => Number(b.estado === EstadoOrden.EnProceso) - Number(a.estado === EstadoOrden.EnProceso) || masRecienteMovida(a, b)),
+  );
+
+  protected readonly terminadas = computed(() =>
+    this.filtradas()
+      .filter((o) => o.estado === EstadoOrden.Finalizada || o.estado === EstadoOrden.Cerrada)
+      .sort(masRecienteMovida),
+  );
+
   /** Las tarjetas de la pestaña elegida, cuando no es el tablero. */
   protected readonly lista = computed(() => {
     switch (this.vista()) {

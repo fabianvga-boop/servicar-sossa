@@ -99,6 +99,30 @@ export class Vehiculos {
   protected readonly cargando = signal(true);
   protected readonly buscar = signal('');
   protected readonly clienteFiltro = signal('');
+  /** Marca elegida en el filtro ('' = todas). Se compara sin mayúsculas. */
+  protected readonly marcaFiltro = signal('');
+
+  /** Las marcas que hay en el taller, con cuántos vehículos de cada una. */
+  protected readonly marcasPresentes = computed(() => {
+    const cuenta = new Map<string, { marca: string; cuenta: number }>();
+    for (const v of this.vehiculos()) {
+      const marca = v.marca?.trim();
+      if (!marca) continue;
+      const clave = marca.toLocaleLowerCase('es');
+      const actual = cuenta.get(clave);
+      if (actual) actual.cuenta++;
+      else cuenta.set(clave, { marca, cuenta: 1 });
+    }
+    return [...cuenta.values()].sort((a, b) => a.marca.localeCompare(b.marca, 'es'));
+  });
+
+  /** Nombre del dueño filtrado (llega desde Clientes con ?clienteId=). */
+  protected readonly nombreClienteFiltro = computed(() => {
+    const id = this.clienteFiltro();
+    if (!id) return null;
+    const c = this.clientes().find((x) => x.clienteId === id);
+    return c ? c.razonSocial?.trim() || `${c.nombre} ${c.apellido ?? ''}`.trim() : id;
+  });
   protected readonly filtro = signal<FiltroVehiculos>('todos');
   protected readonly guardando = signal(false);
 
@@ -197,9 +221,11 @@ export class Vehiculos {
   private readonly coinciden = computed(() => {
     const texto = this.buscar();
     const cliente = this.clienteFiltro();
+    const marca = this.marcaFiltro().toLocaleLowerCase('es');
     return this.vehiculos().filter(
       (v) =>
         (!cliente || v.clienteId === cliente) &&
+        (!marca || v.marca?.trim().toLocaleLowerCase('es') === marca) &&
         coincidePorPalabras(
           texto,
           v.vehiculoId,
@@ -229,7 +255,7 @@ export class Vehiculos {
 
   protected readonly paginacion = new PaginacionLocal(
     () => this.filtrados(),
-    () => [this.buscar(), this.clienteFiltro(), this.filtro()],
+    () => [this.buscar(), this.clienteFiltro(), this.marcaFiltro(), this.filtro()],
   );
 
   constructor() {

@@ -395,3 +395,95 @@ button.repuesto-foto:not(:disabled) { cursor: zoom-in; }
   font-size: 13px;
   color: var(--naranja-700);
 }
+
+/* ------------------------------------------- Búsqueda guiada: tarjetas + panel derecho */
+.subtitulo-repuestos { margin: -8px 0 16px; }
+.repuestos-guiado { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 22px; align-items: start; }
+.resultados-repuestos { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.buscador-repuestos { flex: none; width: 100%; max-width: none; }
+.miga-repuestos { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; }
+.miga-repuestos strong { font-weight: 600; }
+.miga-repuestos > span[aria-hidden] { color: var(--gris-400); }
+.miga-repuestos em { margin-left: auto; font-style: normal; font-size: 13px; color: var(--gris-500); }
+.tarjetas-repuestos { display: grid; grid-template-columns: repeat(auto-fill, minmax(235px, 1fr)); gap: 14px; }
+.tarjeta-repuesto { display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--gris-200); border-radius: 16px; background: var(--blanco); transition: border-color 0.15s, box-shadow 0.15s; }
+.tarjeta-repuesto:hover { border-color: var(--gris-300); box-shadow: 0 14px 30px -24px rgba(21, 26, 34, 0.45); }
+.tarjeta-repuesto.elegida { border-color: var(--ink); }
+.tarjeta-repuesto-foto { position: relative; display: grid; place-items: center; aspect-ratio: 4 / 3; padding: 0; border: 0; background: var(--azul-100); color: var(--azul-700); font: inherit; font-size: 22px; font-weight: 600; cursor: pointer; overflow: hidden; }
+.tarjeta-repuesto-foto:disabled { cursor: default; }
+.tarjeta-repuesto-foto.con-foto { background: var(--blanco); }
+.tarjeta-repuesto-foto img { width: 100%; height: 100%; object-fit: contain; }
+.sello-repuesto { position: absolute; top: 10px; left: 10px; max-width: calc(100% - 20px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 3px 9px; border-radius: 999px; background: var(--verde-100); color: var(--verde-700); font-size: 11.5px; font-weight: 600; }
+.sello-repuesto.general { border: 1px solid var(--gris-200); background: var(--blanco); color: var(--gris-500); }
+.tarjeta-repuesto-cuerpo { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px 14px; }
+.tarjeta-repuesto-cuerpo strong { font-size: 15px; line-height: 1.25; }
+.tarjeta-repuesto-cuerpo small { font-size: 12.5px; color: var(--gris-500); }
+.stock-tarjeta { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-soft); }
+.stock-tarjeta .stock-barra { flex: 1; }
+.stock-tarjeta.bajo { color: #9a5b00; }
+.stock-tarjeta.agotado { color: var(--brand); }
+.tarjeta-repuesto-pie { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 4px; }
+.tarjeta-repuesto-pie .monto-mono { font-size: 15px; font-weight: 600; }
+.tarjeta-repuesto-acciones { display: flex; align-items: center; gap: 2px; }
+.aviso-uso-general { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 1px dashed var(--gris-300); border-radius: 14px; background: var(--blanco); font-size: 13.5px; color: var(--ink-soft); }
+.aviso-uso-general svg { width: 18px; height: 18px; flex-shrink: 0; }
+.aviso-uso-general .btn { margin-left: auto; }
+
+.rail-repuestos { position: sticky; top: 84px; display: flex; flex-direction: column; gap: 14px; }
+.bloque-rail { display: flex; flex-direction: column; gap: 10px; padding: 16px; border: 1px solid var(--gris-200); border-radius: 16px; background: var(--blanco); }
+.bloque-rail h3 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 12.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--gris-500); }
+.rail-n { width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; background: var(--ink); color: var(--blanco); font-size: 11px; letter-spacing: 0; }
+.vehiculo-rail { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--ink); color: var(--blanco); }
+.vehiculo-rail span { display: flex; flex-direction: column; min-width: 0; }
+.vehiculo-rail small { font-size: 12px; color: #c9ced6; }
+.vehiculo-rail button { margin-left: auto; padding: 4px; border: 0; background: none; color: inherit; opacity: 0.75; cursor: pointer; }
+.seg-rail { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 10px; background: var(--gris-100); }
+.seg-rail button { height: 34px; border: 0; border-radius: 7px; background: transparent; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); cursor: pointer; }
+.seg-rail button.activo { background: var(--blanco); color: var(--ink); box-shadow: 0 2px 6px -2px rgba(0, 0, 0, 0.2); }
+.rail-ayuda { font-size: 12px; color: var(--gris-500); }
+.chips-rail { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-rail { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--gris-200); border-radius: 999px; background: var(--blanco); font: inherit; font-size: 12.5px; font-weight: 500; color: var(--ink-soft); cursor: pointer; }
+.chip-rail span { font-family: var(--fuente-mono, 'Geist Mono', monospace); color: var(--gris-400); }
+.chip-rail.activo { border-color: var(--ink); background: var(--ink); color: var(--blanco); }
+.chip-rail.activo span { color: #c9ced6; }
+.categoria-rail { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border: 0; border-radius: 9px; background: transparent; font: inherit; font-size: 13.5px; text-align: left; color: var(--ink-soft); cursor: pointer; }
+.categoria-rail:hover { background: var(--gris-50); }
+.categoria-rail.activo { background: var(--gris-100); color: var(--ink); font-weight: 600; }
+.categoria-rail .monto-mono { font-size: 12px; color: var(--gris-400); }
+
+@media (max-width: 1100px) {
+  .repuestos-guiado { grid-template-columns: minmax(0, 1fr); }
+  .rail-repuestos { position: static; order: -1; }
+}
+
+/* Acciones de cada tarjeta: tres botones del mismo tamaño, con color y ícono */
+.acciones-repuesto { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 2px; }
+.accion-repuesto {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 36px;
+  min-width: 0;
+  padding: 0 2px;
+  border: 0;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: filter 0.15s, transform 0.1s;
+}
+.accion-repuesto svg { width: 14px; height: 14px; flex-shrink: 0; }
+.accion-repuesto:hover { filter: brightness(0.95); }
+.accion-repuesto:active { transform: scale(0.97); }
+.accion-repuesto.stock { background: var(--azul-100); color: var(--azul-700); }
+.accion-repuesto.kardex { background: #fff4e0; color: #9a5b00; }
+.accion-repuesto.editar { background: var(--ink); color: var(--blanco); }
+.accion-repuesto.editar:hover { filter: brightness(1.25); }
+
+/* Formulario abierto: sin el panel de búsqueda, las tarjetas usan todo el ancho */
+.repuestos-guiado.con-formulario { grid-template-columns: minmax(0, 1fr); }
+.repuestos-guiado.con-formulario .rail-repuestos { display: none; }
+.repuestos-guiado.con-formulario .tarjetas-repuestos { grid-template-columns: repeat(auto-fill, minmax(235px, 1fr)); }

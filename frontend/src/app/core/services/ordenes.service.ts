@@ -87,6 +87,11 @@ export class OrdenesService extends ApiBase {
     return this.http.patch<OrdenDetalle>(this.url(ordenId, 'servicios', ordenServicioId), datos);
   }
 
+  /** Nota del trabajo (la puede guardar el mecánico asignado); vacía la borra. */
+  guardarNotaServicio(ordenId: string, ordenServicioId: string, nota: string | null): Observable<OrdenDetalle> {
+    return this.http.patch<OrdenDetalle>(this.url(ordenId, 'servicios', ordenServicioId, 'nota'), { nota });
+  }
+
   /** Corrige la cantidad de un repuesto cargado (y el precio, si es Administrador). */
   editarRepuesto(
     ordenId: string,

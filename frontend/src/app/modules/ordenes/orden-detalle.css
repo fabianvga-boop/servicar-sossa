@@ -514,6 +514,14 @@
   padding: 0;
 }
 
+.historial-lista { display: flex; flex-direction: column; gap: 12px; }
+.historial-lista.completo {
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 6px;
+  overscroll-behavior: contain;
+}
+
 /* Diálogos */
 
 .galeria-fotos-orden {
@@ -558,21 +566,6 @@
   font-size: 15px;
   line-height: 1.5;
   color: var(--ink-soft);
-}
-
-.efectos-correccion {
-  margin: 12px 0 14px;
-  padding-left: 18px;
-  font-size: 13.5px;
-  line-height: 1.5;
-  color: var(--ink-soft);
-}
-
-.efectos-correccion li + li { margin-top: 4px; }
-
-.efectos-correccion li.bloquea {
-  color: var(--brand-dk);
-  font-weight: 600;
 }
 
 .repuesto-elegido {

@@ -791,6 +791,37 @@ public class OrdenService(
         return await RecargarAsync(ordenId, "Servicio actualizado.", ct);
     }
 
+    public async Task<Result<OrdenDetalleResponseDto>> GuardarNotaServicioAsync(
+        string ordenId, string ordenServicioId, string? nota, string usuarioId, bool esAdministrador,
+        CancellationToken ct = default)
+    {
+        var validacion = await ValidarOrdenParaTrabajoAsync(ordenId, ct)
+            ?? await ValidarResponsableAsync(ordenId, usuarioId, esAdministrador, ct);
+        if (validacion is not null) return validacion;
+
+        var servicio = await ordenes.GetServicioAsync(ordenServicioId, ct);
+
+        if (servicio is null || servicio.OrdenId != ordenId)
+            return Result<OrdenDetalleResponseDto>.NoEncontrado(
+                $"El servicio {ordenServicioId} no pertenece a la orden {ordenId}.");
+
+        var limpia = string.IsNullOrWhiteSpace(nota) ? null : nota.Trim();
+        if (limpia == servicio.Descripcion) return await RecargarAsync(ordenId, "Nota guardada.", ct);
+
+        servicio.Descripcion = limpia;
+
+        await auditor.RegistrarAsync(
+            usuarioId, AccionAuditoria.Editar, "Orden", ordenId,
+            limpia is null
+                ? $"Borró la nota de “{NombreDe(servicio)}” en la orden {ordenId}."
+                : $"Anotó en “{NombreDe(servicio)}” de la orden {ordenId}: {limpia}",
+            ct);
+
+        await ordenes.SaveChangesAsync(ct);
+
+        return await RecargarAsync(ordenId, "Nota guardada.", ct);
+    }
+
     public async Task<Result<OrdenDetalleResponseDto>> QuitarServicioAsync(
         string ordenId, string ordenServicioId, string usuarioId, bool esAdministrador,
         CancellationToken ct = default)

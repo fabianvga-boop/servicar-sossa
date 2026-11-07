@@ -81,6 +81,8 @@ export class RepuestosService extends ApiBase {
     soloStockBajo?: boolean;
     /** Solo los repuestos que sirven a ese vehículo (universales y compatibles). */
     vehiculoId?: string;
+    /** Con vehiculoId: solo los marcados para ese modelo, sin los de uso general. */
+    soloCompatibles?: boolean;
     /** Una categoría, o SIN_CATEGORIA para los que todavía no tienen. */
     categoriaId?: string;
     pagina?: number;

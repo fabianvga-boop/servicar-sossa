@@ -112,7 +112,7 @@
             @for (categoria of servicio.categorias; track categoria.categoriaId) {
               <span class="etiqueta-lleva">{{ categoria.nombre }}</span>
             } @empty {
-              <span class="etiqueta-lleva">Cualquier repuesto</span>
+              <span class="etiqueta-lleva falta">Falta elegir repuestos</span>
             }
           }
         </span>
@@ -250,6 +250,7 @@
       @if (formulario.controls.requiereRepuesto.value) {
         <div class="campo">
           <span class="etiqueta-campo">¿Qué repuestos lleva?</span>
+          @if (categoriasElegidas().length > 0 || !agregandoCategoria()) {
           <div class="caja-categorias">
             @for (categoria of categoriasElegidas(); track categoria.categoriaId) {
               <span class="etiqueta-lleva con-quitar">
@@ -272,6 +273,7 @@
               </button>
             }
           </div>
+          }
 
           @if (agregandoCategoria()) {
             @for (clave of [reinicioSelector()]; track clave) {
@@ -302,7 +304,9 @@
           }
 
           @if (categoriasElegidas().length === 0) {
-            <span class="campo-ayuda">Sin categorías, el servicio acepta cualquier repuesto.</span>
+            <span class="campo-ayuda" [class.campo-error]="intentoGuardar()">
+              Elija al menos una categoría. En la orden solo se aceptan repuestos de esas categorías.
+            </span>
           }
         </div>
       }

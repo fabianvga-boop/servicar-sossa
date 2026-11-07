@@ -201,6 +201,7 @@ export class TiposServicio {
 
   protected abrirNuevo(): void {
     this.editando.set(null);
+    this.intentoGuardar.set(false);
     // Un servicio nuevo casi siempre lleva repuestos: queda elegido y se cambia con un clic.
     this.formulario.reset({ nombre: '', descripcion: '', precioBase: 0, requiereRepuesto: true });
     this.categoriasElegidas.set([]);
@@ -210,6 +211,7 @@ export class TiposServicio {
 
   protected abrirEditar(servicio: TipoServicioModel): void {
     this.editando.set(servicio);
+    this.intentoGuardar.set(false);
     this.formulario.reset({
       nombre: servicio.nombre,
       descripcion: servicio.descripcion ?? '',
@@ -279,11 +281,22 @@ export class TiposServicio {
   protected cerrarFormulario(): void {
     this.formularioAbierto.set(false);
     this.editando.set(null);
+    this.intentoGuardar.set(false);
   }
 
+  /** Se intentó guardar: marca en rojo lo que falta (las categorías). */
+  protected readonly intentoGuardar = signal(false);
+
   protected guardar(): void {
+    this.intentoGuardar.set(true);
     if (this.formulario.invalid) {
       this.formulario.markAllAsTouched();
+      return;
+    }
+
+    if (this.formulario.controls.requiereRepuesto.value && this.categoriasElegidas().length === 0) {
+      this.notificacion.advertencia('Elija qué repuestos lleva el servicio, o márquelo como Solo mano de obra.');
+      this.mostrarAgregarCategoria();
       return;
     }
 

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.FileProviders;
@@ -9,6 +10,13 @@ using ServicarSossa.Infrastructure.Archivos;
 using ServicarSossa.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Montos y fechas como en Bolivia (Bs 1.234,50) en avisos, errores y auditoría.
+// Sin esto, el servidor de Render usa la cultura neutra y escribe 1,234.50.
+// JSON, la base y los parámetros de la URL no dependen de esto.
+var culturaBolivia = CultureInfo.GetCultureInfo("es-BO");
+CultureInfo.DefaultThreadCurrentCulture = culturaBolivia;
+CultureInfo.DefaultThreadCurrentUICulture = culturaBolivia;
 
 const string PoliticaCorsAngular = "AngularDev";
 

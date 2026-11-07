@@ -368,7 +368,7 @@ export class Compras {
     return this.fb.nonNullable.group({
       repuestoId: ['', Validators.required],
       cantidad: [1, [Validators.required, Validators.min(1)]],
-      precioUnitario: [0, [Validators.required, Validators.min(0)]],
+      precioUnitario: [0, [Validators.required, Validators.min(0.01)]],
       /** Precio de venta del repuesto: viene con el actual y se puede cambiar acá. */
       precioVenta: [null as number | null, Validators.min(0)],
     });
@@ -434,7 +434,7 @@ export class Compras {
     this.sincronizarTotales();
   }
 
-  /** "+29 %" según los precios escritos en la fila, o '' si falta alguno. */
+  /** "29 %" según los precios escritos en la fila, o '' si falta alguno. */
   protected gananciaFila(indice: number): string {
     const fila = this.detalles.at(indice)?.value as { precioUnitario?: number; precioVenta?: number | null };
     const compra = Number(fila?.precioUnitario) || 0;
@@ -445,8 +445,10 @@ export class Compras {
   /** "2 repuestos · 6 unidades" con lo cargado hasta ahora. */
   protected resumenLineas(): string {
     const filas = this.lineas();
-    const conRepuesto = this.detalles.controls.filter((_, i) => !!this.repuestoDeFila(i)).length;
-    const unidades = filas.reduce((suma, f) => suma + (f.cantidad || 0), 0);
+    const elegidas = this.detalles.controls.map((_, i) => !!this.repuestoDeFila(i) || this.esRepuestoNuevo(i));
+    const conRepuesto = elegidas.filter(Boolean).length;
+    if (conRepuesto === 0) return 'Todavía no hay repuestos elegidos';
+    const unidades = filas.reduce((suma, f, i) => suma + (elegidas[i] ? f.cantidad || 0 : 0), 0);
     return `${conRepuesto === 1 ? '1 repuesto' : conRepuesto + ' repuestos'} · ${unidades === 1 ? '1 unidad' : unidades + ' unidades'}`;
   }
 
@@ -610,7 +612,7 @@ export class Compras {
         const fila = this.detalles.length > 1 ? ` de la fila ${i + 1}` : '';
         if (linea.get('repuestoId')?.invalid) faltan.push(`el repuesto${fila}`);
         else if (linea.get('cantidad')?.invalid) faltan.push(`la cantidad${fila} (1 o más)`);
-        else if (linea.get('precioUnitario')?.invalid) faltan.push(`el precio de compra${fila}`);
+        else if (linea.get('precioUnitario')?.invalid) faltan.push(`el precio de compra${fila} (mayor a 0)`);
         else if (linea.get('precioVenta')?.invalid) faltan.push(`un precio de venta válido${fila}`);
         else if (this.faltaPrecioVentaNuevo(i)) faltan.push(`el precio de venta${fila} (es un repuesto nuevo)`);
       });
@@ -702,11 +704,11 @@ export class Compras {
     return this.repuestos().find((r) => r.repuestoId === repuestoId)?.precioVenta ?? null;
   }
 
-  /** "+60 %": cuánto se gana sobre lo que costó. */
+  /** "60 %" (o "-10 %" si se pierde): cuánto se gana sobre lo que costó. */
   protected ganancia(compra: number, venta: number): string {
     if (compra <= 0) return '';
     const porcentaje = Math.round(((venta - compra) / compra) * 100);
-    return `${porcentaje >= 0 ? '+' : ''}${porcentaje} %`;
+    return `${porcentaje} %`;
   }
 
   /** "Aceite 10w40" → "AC"; las dos primeras palabras con sustancia. */

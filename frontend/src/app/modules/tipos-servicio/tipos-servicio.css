@@ -134,6 +134,12 @@
   white-space: nowrap;
 }
 
+/* Servicio viejo marcado "lleva repuestos" sin categorías: hay que completarlo. */
+.etiqueta-lleva.falta {
+  background: #fff4e0;
+  color: #9a5b00;
+}
+
 .etiqueta-lleva.mano {
   background: var(--gris-100);
   color: var(--gris-500);

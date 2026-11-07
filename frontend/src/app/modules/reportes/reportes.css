@@ -23,6 +23,9 @@
   gap: 12px;
 }
 
+/* Con un número impar de reportes, el último ocupa todo el ancho. */
+.tipos-reporte > .tipo-reporte:last-child:nth-child(odd) { grid-column: 1 / -1; }
+
 .tipo-reporte {
   display: flex;
   align-items: flex-start;

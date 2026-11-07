@@ -8,6 +8,8 @@ import { EstadoDiag, RespuestaCliente } from '../../core/models/enums';
 import { Vehiculo } from '../../core/models/personas.model';
 import { Diagnostico, SugerenciaDiagnostico } from '../../core/models/taller.model';
 import { unicosOrdenados } from '../../shared/sugerencias-texto';
+import { DIAGNOSTICO_ASISTIDO } from '../../core/funciones-activas';
+import { dictadoDisponible, dictar, sumarFrase } from '../../shared/dictado';
 import { AuthService } from '../../core/services/auth.service';
 import { ClientesService } from '../../core/services/clientes.service';
 import { ContadoresService } from '../../core/services/contadores.service';
@@ -37,7 +39,10 @@ interface DatosDiagnostico {
 }
 
 /** Filtro por la respuesta del cliente: lo que más importa de un diagnóstico. */
-type FiltroRespuesta = 'todos' | 'sinPresupuesto' | 'esperando' | 'aprobados' | 'rechazados';
+type FiltroRespuesta = 'todos' | 'sinDiagnostico' | 'sinPresupuesto' | 'esperando' | 'aprobados' | 'rechazados';
+
+/** Lo que más cuentan los clientes: un toque lo suma al relato. */
+const SINTOMAS = ['Ruido', 'Golpe', 'Vibración', 'No arranca', 'Fuga', 'Frenos', 'Luz en el tablero', 'Se calienta'];
 
 /** Cuántos pendientes se ven en cada bloque de la bandeja; el resto, con "Ver los N". */
 const MAXIMO_BANDEJA = 4;
@@ -68,6 +73,7 @@ const MOTIVOS_RECHAZO = ['Le pareció caro', 'Lo hará en otro taller', 'Lo va a
  */
 @Component({
   selector: 'app-diagnosticos',
+  host: { '(document:click)': 'cerrarMenus($event)' },
   imports: [
     ReactiveFormsModule,
     FormsModule,
@@ -178,6 +184,7 @@ export class Diagnosticos {
     const lista = this.todos();
     return {
       todos: lista.length,
+      sinDiagnostico: lista.filter((d) => this.pasaFiltro(d, 'sinDiagnostico')).length,
       sinPresupuesto: lista.filter((d) => this.pasaFiltro(d, 'sinPresupuesto')).length,
       esperando: lista.filter((d) => this.pasaFiltro(d, 'esperando')).length,
       aprobados: lista.filter((d) => this.pasaFiltro(d, 'aprobados')).length,
@@ -199,6 +206,7 @@ export class Diagnosticos {
           d.descripcionVehiculo,
           d.nombreCliente,
           d.descripcionFalla,
+          d.observacionesTecnicas,
         ),
     );
   });
@@ -223,7 +231,14 @@ export class Diagnosticos {
       .sort((a, b) => a.fecha.localeCompare(b.fecha)),
   );
 
-  /** Vehículo recibido al que todavía no se le puso presupuesto. */
+  /** Recibido con lo que cuenta el cliente; el mecánico todavía no lo revisó. */
+  protected readonly faltaDiagnostico = computed(() =>
+    this.todos()
+      .filter((d) => this.pasaFiltro(d, 'sinDiagnostico'))
+      .sort((a, b) => a.fecha.localeCompare(b.fecha)),
+  );
+
+  /** Ya diagnosticado: falta ponerle precio. */
   protected readonly faltaPresupuesto = computed(() =>
     this.todos()
       .filter((d) => this.pasaFiltro(d, 'sinPresupuesto'))
@@ -270,7 +285,7 @@ export class Diagnosticos {
         debounceTime(500),
         distinctUntilChanged(),
         switchMap((texto) => {
-          if (texto.length < 8) {
+          if (!DIAGNOSTICO_ASISTIDO || texto.length < 8) {
             this.cargandoSugerencia.set(false);
             return of(null);
           }
@@ -360,8 +375,16 @@ export class Diagnosticos {
 
     switch (filtro) {
       // Con orden ya no espera nada (p. ej. una revisión sin presupuesto que pasó a orden).
+      case 'sinDiagnostico':
+        return (
+          d.respuestaCliente === RespuestaCliente.Pendiente && d.montoEstimado == null && !d.ordenId &&
+          !d.observacionesTecnicas?.trim()
+        );
       case 'sinPresupuesto':
-        return d.respuestaCliente === RespuestaCliente.Pendiente && d.montoEstimado == null && !d.ordenId;
+        return (
+          d.respuestaCliente === RespuestaCliente.Pendiente && d.montoEstimado == null && !d.ordenId &&
+          !!d.observacionesTecnicas?.trim()
+        );
       case 'esperando':
         return d.respuestaCliente === RespuestaCliente.Pendiente && d.montoEstimado != null && !d.ordenId;
       case 'aprobados':
@@ -425,6 +448,19 @@ export class Diagnosticos {
     window.addEventListener('scroll', () => (detalle.open = false), {
       once: true,
       capture: true,
+    });
+  }
+
+  /**
+   * Cierra el menú de "más acciones" al elegir una opción o al hacer clic fuera.
+   * Antes quedaba abierto y, como es fijo, flotaba encima del panel de detalle.
+   */
+  protected cerrarMenus(evento: Event): void {
+    const objetivo = evento.target as HTMLElement | null;
+    document.querySelectorAll<HTMLDetailsElement>('details.menu-contextual[open]').forEach((menu) => {
+      if (!objetivo || !menu.contains(objetivo) || objetivo.closest('.menu-contextual-panel button')) {
+        menu.open = false;
+      }
     });
   }
 
@@ -493,6 +529,7 @@ export class Diagnosticos {
 
   protected abrirNuevo(): void {
     this.cerrarPaneles();
+    this.faltaElDiagnostico.set(false);
     this.formulario.reset();
     this.formulario.controls.vehiculoId.enable();
     this.sugerencia.set(null);
@@ -503,6 +540,7 @@ export class Diagnosticos {
 
   protected abrirEditar(diagnostico: Diagnostico): void {
     this.cerrarPaneles();
+    this.faltaElDiagnostico.set(false);
     this.editando.set(diagnostico);
     this.sugerencia.set(null);
     this.formulario.reset({
@@ -516,6 +554,12 @@ export class Diagnosticos {
     this.formulario.controls.vehiculoId.disable();
     this.borradorPendiente.set(leerBorrador(this.auth.usuarioId(), this.claveBorrador()));
     this.formularioAbierto.set(true);
+  }
+
+  /** Desde "Falta diagnosticar": abre el diagnóstico con el cursor en lo del mecánico. */
+  protected abrirParaDiagnosticar(diagnostico: Diagnostico): void {
+    this.abrirEditar(diagnostico);
+    setTimeout(() => document.getElementById('observacionesTecnicas')?.focus(), 150);
   }
 
   /** Vuelve a cargar en el formulario lo que había quedado escrito. */
@@ -557,41 +601,41 @@ export class Diagnosticos {
   protected textoSiguiente(): string {
     if (this.guardando()) return 'Guardando…';
     if (this.editando()) return 'Guardar cambios';
-    if (this.paso() < 3) return 'Siguiente';
     return this.formulario.controls.montoEstimado.value != null ? 'Guardar y generar PDF' : 'Guardar';
   }
 
-  /** Avanza un paso (validando el actual) o, en el último, guarda. */
+  /** Hay diagnóstico del mecánico escrito: recién ahí se pone el presupuesto. */
+  protected hayDiagnostico(): boolean {
+    return !!this.formulario.controls.observacionesTecnicas.value?.trim();
+  }
+
+  /** Se pidió guardar sin el diagnóstico del mecánico: se marca el recuadro. */
+  protected readonly faltaElDiagnostico = signal(false);
+
   protected siguiente(): void {
-    if (this.editando() || this.paso() === 3) {
-      this.guardar();
-      return;
-    }
+    this.guardar(false);
+  }
 
-    const control =
-      this.paso() === 1 ? this.formulario.controls.vehiculoId : this.formulario.controls.descripcionFalla;
-    if (control.invalid) {
-      control.markAsTouched();
-      control.markAsDirty();
-      return;
-    }
-
-    this.paso.update((p) => p + 1);
+  /** Recibir ahora y diagnosticar después: se guarda solo lo del cliente. */
+  protected guardarSinDiagnosticar(): void {
+    this.formulario.controls.montoEstimado.setValue(null);
+    this.guardar(true);
   }
 
   protected atras(): void {
-    if (this.editando() || this.paso() === 1) {
-      this.cerrarFormulario();
-      return;
-    }
-    this.paso.update((p) => p - 1);
+    this.cerrarFormulario();
   }
 
-  protected guardar(): void {
+  protected guardar(sinDiagnostico = false): void {
     if (this.formulario.invalid) {
       this.formulario.markAllAsTouched();
-      // Vuelve al paso que tiene el problema.
-      if (!this.editando()) this.paso.set(this.formulario.controls.vehiculoId.invalid ? 1 : 2);
+      return;
+    }
+
+    if (!sinDiagnostico && !this.hayDiagnostico()) {
+      this.faltaElDiagnostico.set(true);
+      this.notificacion.advertencia('Escriba el diagnóstico del mecánico, o use Guardar sin diagnosticar.');
+      document.getElementById('observacionesTecnicas')?.focus();
       return;
     }
 
@@ -623,6 +667,51 @@ export class Diagnosticos {
     });
   }
 
+  // --- Lo que cuenta el cliente: síntomas con un toque y dictado -------------
+
+  protected readonly SINTOMAS = SINTOMAS;
+
+  protected tieneSintoma(sintoma: string): boolean {
+    return (this.formulario.controls.descripcionFalla.value ?? '').toLocaleLowerCase('es').includes(sintoma.toLocaleLowerCase('es'));
+  }
+
+  protected tocarSintoma(sintoma: string): void {
+    if (this.tieneSintoma(sintoma)) return;
+    const control = this.formulario.controls.descripcionFalla;
+    control.setValue(sumarFrase(control.value ?? '', sintoma));
+    control.markAsDirty();
+    setTimeout(() => document.getElementById('descripcionFalla')?.focus());
+  }
+
+  protected readonly puedeDictar = dictadoDisponible();
+  /** Qué recuadro está escuchando: lo del cliente o lo del mecánico. */
+  protected readonly escuchando = signal<'descripcionFalla' | 'observacionesTecnicas' | null>(null);
+  private detenerDictado: (() => void) | null = null;
+
+  protected dictarEn(campo: 'descripcionFalla' | 'observacionesTecnicas'): void {
+    if (this.escuchando()) {
+      this.detenerDictado?.();
+      return;
+    }
+    if (!this.puedeDictar) {
+      this.notificacion.advertencia('Este navegador no permite dictar. Use Chrome o escriba el texto.');
+      return;
+    }
+    const control = this.formulario.controls[campo];
+    this.escuchando.set(campo);
+    this.detenerDictado = dictar(
+      (frase) => {
+        control.setValue(sumarFrase(control.value ?? '', frase));
+        control.markAsDirty();
+        if (campo === 'observacionesTecnicas') this.faltaElDiagnostico.set(false);
+      },
+      (error) => {
+        this.escuchando.set(null);
+        if (error === 'not-allowed') this.notificacion.advertencia('Permita el micrófono para poder dictar.');
+      },
+    );
+  }
+
   /** Escribir menos: usa una falla ya registrada antes tal cual, con un clic. */
   protected usarFallaSugerida(texto: string): void {
     this.formulario.controls.descripcionFalla.setValue(texto);
@@ -646,7 +735,39 @@ export class Diagnosticos {
 
   protected verDetalle(diagnostico: Diagnostico): void {
     this.cerrarPaneles();
+    this.telefonoCliente.set(null);
     this.detalle.set(diagnostico);
+
+    // El teléfono no viene con el diagnóstico: se pide al abrir el detalle.
+    this.clientesService
+      .getById(diagnostico.clienteId)
+      .pipe(catchError(() => of(null)))
+      .subscribe((cliente) => {
+        if (this.detalle()?.diagnosticoId === diagnostico.diagnosticoId) {
+          this.telefonoCliente.set(cliente?.telefono?.trim() || null);
+        }
+      });
+  }
+
+  /** Recibido → Presupuesto → Respuesta → Orden, con el paso actual marcado. */
+  protected pasosDetalle(d: Diagnostico): { nombre: string; estado: 'hecho' | 'actual' | 'falta' | 'cortado' }[] {
+    const conPresupuesto = d.montoEstimado != null;
+    const respondio = d.respuestaCliente !== RespuestaCliente.Pendiente;
+    const rechazado = d.respuestaCliente === RespuestaCliente.Rechazado;
+    const anulado = d.estado === EstadoDiag.Anulado;
+    const estado = (hecho: boolean, actual: boolean) => (hecho ? 'hecho' : actual && !anulado ? 'actual' : 'falta') as 'hecho' | 'actual' | 'falta';
+    return [
+      { nombre: 'Recibido', estado: 'hecho' },
+      { nombre: 'Presupuesto', estado: estado(conPresupuesto, !conPresupuesto) },
+      { nombre: rechazado ? 'No aceptó' : 'Respuesta', estado: rechazado ? 'cortado' : estado(respondio, conPresupuesto && !respondio) },
+      { nombre: 'Orden', estado: rechazado ? 'falta' : estado(!!d.ordenId, respondio && !d.ordenId) },
+    ];
+  }
+
+  protected inicialesDe(nombre: string | null | undefined): string {
+    const partes = (nombre ?? '').trim().split(/\s+/).filter(Boolean);
+    if (partes.length === 0) return '—';
+    return partes.length === 1 ? partes[0].slice(0, 2).toUpperCase() : (partes[0][0] + partes[1][0]).toUpperCase();
   }
 
   // --- Respuesta del cliente y presupuesto en PDF ---------------------------

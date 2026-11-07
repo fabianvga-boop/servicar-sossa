@@ -158,17 +158,25 @@
           <section class="tarjeta ficha-lista-repuestos">
             <div class="ficha-lista-cabecera">
               <h2>Repuestos para este vehículo</h2>
-              <span>Los que calzan en un {{ v.marca }} {{ v.modelo }}{{ v.anio ? ' ' + v.anio : '' }}, con su stock.</span>
+              <span>Los marcados para un {{ v.marca }} {{ v.modelo }}{{ v.anio ? ' ' + v.anio : '' }}, con su stock.</span>
             </div>
-            @for (r of repuestosVehiculo().slice(0, 6); track r.repuesto.repuestoId) {
+
+            <!-- Por categoría: se va directo a lo que se busca -->
+            @if (categoriasCompatibles().length > 1) {
+              <div class="categorias-compat">
+                @for (c of categoriasCompatibles(); track c.nombre) {
+                  <a [routerLink]="['/repuestos']" [queryParams]="{ vehiculoId: v.vehiculoId, categoriaId: c.id, soloCompatibles: true }">
+                    {{ c.nombre }} <span>{{ c.cuenta }}</span>
+                  </a>
+                }
+              </div>
+            }
+
+            @for (r of compatiblesVehiculo().slice(0, 6); track r.repuesto.repuestoId) {
               <div class="repuesto-fila">
                 <span class="repuesto-fila-nombre">
                   <strong>{{ r.repuesto.nombre }}</strong>
-                  <span>
-                    <span class="etiqueta-compat" [class.compatible]="r.nivel === NivelCompatibilidad.Compatible">
-                      {{ r.nivel === NivelCompatibilidad.Compatible ? 'Compatible' : 'Uso general' }}
-                    </span>
-                  </span>
+                  <span class="repuesto-fila-categoria">{{ r.repuesto.nombreCategoria || 'Sin categoría' }}</span>
                 </span>
                 <span class="repuesto-fila-stock" [class.agotado]="r.repuesto.stockActual < 1">
                   {{
@@ -180,12 +188,20 @@
                 <span class="monto-mono">{{ r.repuesto.precioVenta | bs }}</span>
               </div>
             } @empty {
-              <p class="ficha-nota ficha-nota-lista">Todavía no hay repuestos marcados para este modelo.</p>
+              <p class="ficha-nota ficha-nota-lista">
+                Todavía no hay repuestos marcados para este modelo. Se marcan en Repuestos, en "Para qué vehículos sirve".
+              </p>
             }
-            @if (repuestosVehiculo().length > 6) {
-              <a class="ficha-ver-todos" [routerLink]="['/repuestos']" [queryParams]="{ vehiculoId: v.vehiculoId }">
-                Ver los {{ repuestosVehiculo().length }} repuestos
+            @if (compatiblesVehiculo().length > 6) {
+              <a class="ficha-ver-todos" [routerLink]="['/repuestos']" [queryParams]="{ vehiculoId: v.vehiculoId, soloCompatibles: true }">
+                Ver los {{ compatiblesVehiculo().length }} compatibles
               </a>
+            }
+            @if (cantidadUsoGeneral() > 0) {
+              <p class="ficha-uso-general">
+                Además, {{ cantidadUsoGeneral() === 1 ? '1 repuesto de uso general sirve' : cantidadUsoGeneral() + ' repuestos de uso general sirven' }}
+                para cualquier vehículo.
+              </p>
             }
           </section>
 

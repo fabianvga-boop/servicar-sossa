@@ -80,7 +80,7 @@ export class Dashboard {
   protected readonly stockBajoTotal = signal(0);
   protected readonly comisionesPendientes = signal<Comision[]>([]);
   /** Servicios hechos de cada orden en proceso: se piden aparte, una vez. */
-  private readonly avances = signal(new Map<string, { hechos: number; total: number }>());
+  private readonly avances = signal(new Map<string, { hechos: number; total: number; actual: string | null }>());
   private readonly avancesPedidos = new Set<string>();
 
   // --- Encabezado --------------------------------------------------------------------
@@ -160,6 +160,34 @@ export class Dashboard {
       mecanicos: new Set(lista.map((c) => c.mecanicoId)).size,
     };
   });
+
+  // --- Inicio del mecánico: lo que está haciendo, arriba y en grande -------------
+
+  /** La orden en proceso del mecánico (la API ya le devuelve solo las suyas). */
+  protected readonly trabajoAhora = computed(() => {
+    if (this.esAdmin) return null;
+    const orden = this.activas().find((o) => o.estado === EstadoOrden.EnProceso);
+    if (!orden) return null;
+    const avance = this.avances().get(orden.ordenId);
+    return {
+      orden,
+      actual: avance?.actual ?? null,
+      hechos: avance?.hechos ?? 0,
+      total: avance?.total ?? 0,
+      porcentaje: avance && avance.total > 0 ? Math.round((avance.hechos / avance.total) * 100) : 0,
+    };
+  });
+
+  protected readonly otrasOrdenes = computed(() =>
+    this.activas().filter((o) => o.ordenId !== this.trabajoAhora()?.orden.ordenId),
+  );
+
+  protected textoOrdenMecanico(o: Orden): string {
+    if (o.estado === EstadoOrden.Abierta) return 'Espera que la inicie el administrador';
+    if (o.estado === EstadoOrden.Finalizada) return 'Terminada, lista para entregar';
+    const avance = this.avances().get(o.ordenId);
+    return avance?.actual ? `Sigue: ${avance.actual}` : 'En proceso';
+  }
 
   // --- Pendientes de acción ----------------------------------------------------------
 
@@ -299,7 +327,13 @@ export class Dashboard {
           .subscribe((detalle) => {
             if (!detalle) return;
             const hechos = detalle.servicios.filter((s) => s.estado === EstadoServicioOrden.Completado).length;
-            this.avances.update((mapa) => new Map(mapa).set(o.ordenId, { hechos, total: detalle.servicios.length }));
+            // El que está en curso o, si no hay, el próximo pendiente.
+            const actual =
+              detalle.servicios.find((s) => s.estado === EstadoServicioOrden.EnProceso) ??
+              detalle.servicios.find((s) => s.estado === EstadoServicioOrden.Pendiente);
+            this.avances.update((mapa) =>
+              new Map(mapa).set(o.ordenId, { hechos, total: detalle.servicios.length, actual: actual?.nombreServicio ?? null }),
+            );
           });
       }
     });

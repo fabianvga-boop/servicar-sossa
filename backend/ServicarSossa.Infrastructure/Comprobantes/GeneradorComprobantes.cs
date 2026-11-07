@@ -181,15 +181,20 @@ public class GeneradorComprobantes : IGeneradorComprobantes
 
             tabla.Cell().Element(Fila).Column(celda =>
             {
-                celda.Item().Text("FALLA REPORTADA").FontSize(7.5f).Bold().LetterSpacing(0.06f).FontColor(Gris);
-                celda.Item().PaddingTop(2).Text(p.DescripcionFalla).FontSize(10).LineHeight(1.35f);
-
+                // Primero lo que encontró el mecánico; después, en chico, lo que contó el cliente.
                 if (!string.IsNullOrWhiteSpace(p.ObservacionesTecnicas))
                 {
-                    celda.Item().PaddingTop(8).Text("OBSERVACIONES TÉCNICAS")
+                    celda.Item().Text("DIAGNÓSTICO DEL MECÁNICO").FontSize(7.5f).Bold().LetterSpacing(0.06f).FontColor(Gris);
+                    celda.Item().PaddingTop(2).Text(p.ObservacionesTecnicas).FontSize(10).LineHeight(1.35f);
+                    celda.Item().PaddingTop(8).Text("LO QUE CONTÓ EL CLIENTE")
                         .FontSize(7.5f).Bold().LetterSpacing(0.06f).FontColor(Gris);
-                    celda.Item().PaddingTop(2).Text(p.ObservacionesTecnicas)
+                    celda.Item().PaddingTop(2).Text(p.DescripcionFalla)
                         .FontSize(9.5f).LineHeight(1.35f).FontColor(TintaSuave);
+                }
+                else
+                {
+                    celda.Item().Text("LO QUE CONTÓ EL CLIENTE").FontSize(7.5f).Bold().LetterSpacing(0.06f).FontColor(Gris);
+                    celda.Item().PaddingTop(2).Text(p.DescripcionFalla).FontSize(10).LineHeight(1.35f);
                 }
             });
 

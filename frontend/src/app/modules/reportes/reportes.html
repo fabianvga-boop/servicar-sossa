@@ -119,7 +119,7 @@
       </div>
     }
 
-    @if (r.totales | keyvalue; as totales) {
+    @if (r.totales | keyvalue: enOrdenDelServidor; as totales) {
       @if (totales.length > 0) {
         <div class="totales-reporte">
           @for (total of totales; track total.key) {

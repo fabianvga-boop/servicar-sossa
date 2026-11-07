@@ -12,7 +12,7 @@ public interface IRepuestoService
     Task<Result<ResultadoPaginadoDto<RepuestoResponseDto>>> GetAllAsync(
         string? buscar, string? proveedorId, bool soloStockBajo,
         int pagina, int tamanoPagina, CancellationToken ct = default, string? vehiculoId = null,
-        string? categoriaId = null);
+        string? categoriaId = null, bool soloCompatibles = false);
 
     /// <summary>
     /// Todos los repuestos clasificados para un vehículo: compatibles,

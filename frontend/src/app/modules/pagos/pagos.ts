@@ -55,15 +55,38 @@ export class Pagos {
   /** Método elegido en los filtros; null = todos. */
   protected readonly metodoVista = signal<MetodoPago | null>(null);
 
+  /** Filtro por fechas (vacío = todas), en fecha local yyyy-mm-dd. */
+  protected readonly desde = signal('');
+  protected readonly hasta = signal('');
+  protected readonly rangosRapidos = [
+    { clave: 'hoy', etiqueta: 'Hoy' },
+    { clave: 'semana', etiqueta: 'Esta semana' },
+    { clave: 'mes', etiqueta: 'Este mes' },
+  ] as const;
+  protected readonly rangoActivo = signal<string | null>(null);
+
+  /** Los pagos dentro de las fechas elegidas; sobre estos cuentan los chips de método. */
+  protected readonly enFechas = computed(() => {
+    const desde = this.desde();
+    const hasta = this.hasta();
+    if (!desde && !hasta) return this.pagos();
+    return this.pagos().filter((p) => {
+      const dia = fechaLocal(new Date(p.fechaPago));
+      return (!desde || dia >= desde) && (!hasta || dia <= hasta);
+    });
+  });
+
   protected readonly visibles = computed(() => {
     const metodo = this.metodoVista();
-    return metodo === null ? this.pagos() : this.pagos().filter((p) => p.metodoPago === metodo);
+    return metodo === null ? this.enFechas() : this.enFechas().filter((p) => p.metodoPago === metodo);
   });
+
+  protected readonly totalVisible = computed(() => this.visibles().reduce((suma, p) => suma + p.monto, 0));
 
   /** Solo los métodos que aparecen en los pagos, con su cantidad. */
   protected readonly chipsMetodo = computed(() =>
-    this.metodos
-      .map((m) => ({ ...m, cuenta: this.pagos().filter((p) => p.metodoPago === m.valor).length }))
+    this.todosLosMetodos
+      .map((m) => ({ ...m, cuenta: this.enFechas().filter((p) => p.metodoPago === m.valor).length }))
       .filter((m) => m.cuenta > 0),
   );
 
@@ -81,17 +104,26 @@ export class Pagos {
   protected readonly panelNuevo = signal(false);
   protected readonly paginacion = new PaginacionLocal(
     () => this.visibles(),
-    () => this.metodoVista(),
+    () => [this.metodoVista(), this.desde(), this.hasta()],
   );
 
   protected readonly porRevertir = signal<Pago | null>(null);
 
   protected nuevo = this.pagoVacio();
 
-  protected readonly metodos = Object.entries(ETIQUETAS.metodoPago).map(([valor, etiqueta]) => ({
+  /** Todos, para filtrar: pagos viejos pueden tener transferencia o tarjeta. */
+  private readonly todosLosMetodos = Object.entries(ETIQUETAS.metodoPago).map(([valor, etiqueta]) => ({
     valor: Number(valor) as MetodoPago,
     etiqueta,
   }));
+
+  /** Al cobrar, igual que en el punto de venta: efectivo, QR u otro. */
+  protected readonly metodos = [MetodoPago.Efectivo, MetodoPago.QR, MetodoPago.Otro].map((valor) => ({
+    valor,
+    etiqueta: ETIQUETAS.metodoPago[valor],
+  }));
+
+  private readonly bs = new BolivianosPipe();
 
   /** Solo tiene sentido cobrar proformas emitidas con saldo pendiente. */
   protected readonly proformasCobrables = computed(() =>
@@ -118,7 +150,7 @@ export class Pagos {
     this.proformasCobrables().map((f) => ({
       valor: f.proformaId,
       etiqueta: `${f.proformaId} — ${f.nombreCliente}`,
-      detalle: `saldo Bs ${f.saldoPendiente.toFixed(2)}`,
+      detalle: `saldo ${this.bs.transform(f.saldoPendiente)}`,
     })),
   );
 
@@ -204,18 +236,61 @@ export class Pagos {
     this.nuevo.rapido = monto === saldo ? 'todo' : monto === mitad ? 'mitad' : 'otro';
   }
 
+  /** True si el monto escrito es mayor a lo que debe el cliente. */
+  protected excedeSaldo(): boolean {
+    const proforma = this.proformaElegida();
+    return !!proforma && (this.nuevo.monto ?? 0) > proforma.saldoPendiente + 0.001;
+  }
+
   /** Cómo se llama la referencia según el método: lo que hay que anotar. */
   protected etiquetaReferencia(): string {
     switch (Number(this.nuevo.metodoPago) as MetodoPago) {
       case MetodoPago.QR:
         return 'Referencia del QR';
-      case MetodoPago.Transferencia:
-        return 'N.º de transferencia';
-      case MetodoPago.Tarjeta:
-        return 'N.º de comprobante de la tarjeta';
+      case MetodoPago.Otro:
+        return 'Cómo pagó';
       default:
         return 'Referencia';
     }
+  }
+
+  protected ayudaReferencia(): string {
+    switch (Number(this.nuevo.metodoPago) as MetodoPago) {
+      case MetodoPago.QR:
+        return 'El número del comprobante del QR.';
+      case MetodoPago.Otro:
+        return 'Por ejemplo: transferencia, tarjeta o cheque, con su número.';
+      default:
+        return 'Opcional.';
+    }
+  }
+
+  protected marcadorReferencia(): string {
+    return Number(this.nuevo.metodoPago) === MetodoPago.Otro
+      ? 'Transferencia 48213'
+      : 'Número de transacción o comprobante';
+  }
+
+  protected onFecha(campo: 'desde' | 'hasta', valor: string): void {
+    this.rangoActivo.set(null);
+    (campo === 'desde' ? this.desde : this.hasta).set(valor);
+  }
+
+  /** Hoy, esta semana (desde el lunes) o este mes, hasta hoy. */
+  protected aplicarRango(clave: 'hoy' | 'semana' | 'mes'): void {
+    this.rangoActivo.set(clave);
+    const ahora = new Date();
+    let inicio = new Date(ahora);
+    if (clave === 'semana') inicio.setDate(ahora.getDate() - ((ahora.getDay() + 6) % 7));
+    if (clave === 'mes') inicio = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+    this.desde.set(fechaLocal(inicio));
+    this.hasta.set(fechaLocal(ahora));
+  }
+
+  protected limpiarFechas(): void {
+    this.rangoActivo.set(null);
+    this.desde.set('');
+    this.hasta.set('');
   }
 
   protected registrar(): void {
@@ -234,7 +309,7 @@ export class Pagos {
 
     if (monto > proforma.saldoPendiente + 0.001) {
       this.notificacion.advertencia(
-        'El monto supera el saldo pendiente de Bs ' + proforma.saldoPendiente.toFixed(2) + '.',
+        'El monto supera el saldo pendiente de ' + this.bs.transform(proforma.saldoPendiente) + '.',
       );
       return;
     }
@@ -253,7 +328,7 @@ export class Pagos {
           this.notificacion.exito(
             pago.saldoPendienteProforma <= 0
               ? `Pago total registrado: la proforma ${proforma.proformaId} queda saldada.`
-              : `Pago a cuenta registrado. Saldo pendiente: Bs ${pago.saldoPendienteProforma.toFixed(2)}.`,
+              : `Pago a cuenta registrado. Saldo pendiente: ${this.bs.transform(pago.saldoPendienteProforma)}.`,
           );
           this.procesando.set(false);
           this.panelNuevo.set(false);
@@ -284,4 +359,11 @@ export class Pagos {
       },
     });
   }
+}
+
+/** Fecha local yyyy-mm-dd (no UTC: en Bolivia, desde las 20:00 el UTC ya es mañana). */
+function fechaLocal(fecha: Date): string {
+  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+  const dia = String(fecha.getDate()).padStart(2, '0');
+  return `${fecha.getFullYear()}-${mes}-${dia}`;
 }

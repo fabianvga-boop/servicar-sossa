@@ -6,7 +6,7 @@
       <h1>Punto de venta</h1>
       <p class="encabezado-pos-sub">Venta de repuestos en mostrador, sin orden de trabajo.</p>
     </div>
-    <div class="segmentos en-linea" role="tablist" aria-label="Terminal o historial">
+    <div class="segmentos en-linea pestanias-pos" role="tablist" aria-label="Terminal o historial">
       <button
         type="button"
         role="tab"
@@ -15,6 +15,7 @@
         [attr.aria-selected]="pestania() === 'terminal'"
         (click)="pestania.set('terminal')"
       >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h2l2.4 11h11.2L21 8H6.2" /><circle cx="9" cy="20" r="1.4" /><circle cx="18" cy="20" r="1.4" /></svg>
         Terminal de venta
       </button>
       <button
@@ -25,6 +26,7 @@
         [attr.aria-selected]="pestania() === 'historial'"
         (click)="pestania.set('historial')"
       >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
         Historial <span class="vista-cuenta">{{ totalRegistros() }}</span>
       </button>
     </div>
@@ -138,6 +140,12 @@
     <div class="venta-lineas">
       @for (linea of carrito(); track linea.repuesto.repuestoId) {
         <div class="venta-linea">
+          <!-- La foto: de un vistazo se ve qué se está vendiendo -->
+          @if (linea.repuesto.fotoUrl) {
+            <img class="venta-linea-foto" [src]="urlArchivo(linea.repuesto.fotoUrl)" alt="" loading="lazy" />
+          } @else {
+            <span class="venta-linea-foto sin-foto {{ tono(linea.repuesto) }}" aria-hidden="true">{{ iniciales(linea.repuesto.nombre) }}</span>
+          }
           <strong class="venta-linea-nombre">{{ linea.repuesto.nombre }}</strong>
           <span class="venta-linea-subtotal">{{ linea.cantidad * linea.precioUnitario | bs }}</span>
 
@@ -202,7 +210,6 @@
               role="radio"
               class="metodo-pago"
               [class.activo]="metodoPago() === metodo"
-              [class.ancho]="metodo === MetodoPago.Otro"
               [attr.aria-checked]="metodoPago() === metodo"
               (click)="metodoPago.set(metodo)"
             >

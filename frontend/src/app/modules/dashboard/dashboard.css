@@ -357,3 +357,27 @@ a.fila-reciente:hover {
 
   .cabecera-reciente { display: none; }
 }
+
+/* ---------------------------------------------------- Inicio del mecánico */
+.mecanico-titulo { margin-bottom: 16px; }
+.inicio-mecanico { display: flex; flex-direction: column; gap: 12px; max-width: 560px; }
+.trabajo-ahora { display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: 20px; background: var(--ink); color: var(--blanco); }
+.trabajo-ahora.vacio { background: var(--blanco); color: var(--ink); border: 1px dashed var(--gris-300); }
+.trabajo-ahora-et { font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #f3b24a; }
+.trabajo-ahora strong { font-size: 20px; line-height: 1.25; }
+.trabajo-ahora small { font-size: 13px; color: #c9ced6; }
+.trabajo-ahora.vacio small { color: var(--gris-500); }
+.trabajo-ahora-barra { height: 6px; border-radius: 99px; background: rgba(255, 255, 255, 0.18); overflow: hidden; }
+.trabajo-ahora-barra i { display: block; height: 100%; border-radius: 99px; background: #3fb36b; }
+.trabajo-ahora-btn { height: 52px; border: 0; border-radius: 14px; background: var(--blanco); color: var(--ink); font-size: 15.5px; font-weight: 600; justify-content: center; }
+.trabajo-ahora-btn:active { transform: scale(0.98); }
+.inicio-subtitulo { margin-top: 4px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gris-500); }
+.orden-mini { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--gris-200); border-radius: 16px; background: var(--blanco); color: inherit; text-decoration: none; }
+.orden-mini span { display: flex; flex-direction: column; min-width: 0; }
+.orden-mini small { font-size: 12.5px; color: var(--gris-500); }
+.datos-mecanico { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.dato-mecanico { display: flex; flex-direction: column; padding: 12px 14px; border: 1px solid var(--gris-200); border-radius: 16px; background: var(--blanco); color: inherit; text-decoration: none; }
+.dato-mecanico span { font-size: 12px; color: var(--gris-500); }
+.dato-mecanico strong { margin: 2px 0; font-size: 20px; }
+.recibir-vehiculo { display: flex; align-items: center; justify-content: center; gap: 8px; height: 56px; border: 2px dashed var(--gris-300); border-radius: 16px; font-weight: 600; color: var(--ink-soft); text-decoration: none; }
+.recibir-vehiculo svg { width: 20px; height: 20px; }
