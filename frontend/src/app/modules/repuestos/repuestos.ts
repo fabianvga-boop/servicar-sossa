@@ -92,7 +92,7 @@ const SIN_OPCIONES: OpcionSelector[] = [];
     BolivianosPipe,
   ],
   templateUrl: './repuestos.html',
-  styleUrl: './repuestos.css',
+  styleUrls: ['./repuestos.css', './repuesto-ficha.css'],
 })
 export class Repuestos {
   private readonly servicio = inject(RepuestosService);
@@ -565,6 +565,9 @@ export class Repuestos {
         next: (resultado) => {
           this.repuestos.set(resultado.items);
           this.actualizarUsoGeneral();
+          // Con la ficha abierta (p. ej. tras ajustar el stock), se refresca con los datos nuevos.
+          const enFicha = this.fichaDe() && resultado.items.find((r) => r.repuestoId === this.fichaDe()!.repuestoId);
+          if (enFicha) this.abrirFicha(enFicha);
           this.totalRegistros.set(resultado.totalRegistros);
           this.totalPaginas.set(resultado.totalPaginas);
           this.cargando.set(false);
@@ -957,6 +960,70 @@ export class Repuestos {
     this.cargar();
     // El stock mínimo pudo cambiar: la insignia del menú debe seguirlo.
     this.contadores.refrescar();
+  }
+
+  // --- Ficha del repuesto: todo lo que hay que saber, solo para ver -----------
+
+  protected readonly fichaDe = signal<Repuesto | null>(null);
+  protected readonly fichaDatos = signal<ProcedenciaRepuesto | null>(null);
+  protected readonly cargandoFicha = signal(false);
+
+  /** Al tocar la tarjeta: la ficha con sus últimos movimientos del kárdex. */
+  protected abrirFicha(repuesto: Repuesto): void {
+    this.fichaDe.set(repuesto);
+    this.fichaDatos.set(null);
+    this.cargandoFicha.set(true);
+    this.servicio.procedencia(repuesto.repuestoId).subscribe({
+      next: (datos) => {
+        if (this.fichaDe()?.repuestoId === repuesto.repuestoId) this.fichaDatos.set(datos);
+        this.cargandoFicha.set(false);
+      },
+      error: () => this.cargandoFicha.set(false),
+    });
+  }
+
+  protected cerrarFicha(): void {
+    this.fichaDe.set(null);
+    this.fichaDatos.set(null);
+  }
+
+  /** Desde la ficha se va a Stock, Kárdex o Editar cerrándola primero. */
+  protected desdeFicha(accion: 'stock' | 'kardex' | 'editar' | 'foto'): void {
+    const repuesto = this.fichaDe();
+    if (!repuesto) return;
+    // Stock, Kárdex y Foto se abren encima: la ficha queda detrás. Editar sí la
+    // reemplaza, porque es otro panel lateral.
+    if (accion === 'editar') this.cerrarFicha();
+    if (accion === 'stock') this.abrirAjuste(repuesto);
+    else if (accion === 'kardex') this.abrirProcedencia(repuesto);
+    else if (accion === 'foto') this.abrirFoto(repuesto);
+    else this.abrirEditar(repuesto);
+  }
+
+  protected readonly ultimosMovimientos = computed(() => [...(this.fichaDatos()?.movimientos ?? [])].reverse().slice(0, 4));
+
+  protected readonly ultimaCompra = computed(
+    () => [...(this.fichaDatos()?.compras ?? [])].sort((a, b) => b.fecha.localeCompare(a.fecha))[0] ?? null,
+  );
+
+  /** "Toyota 4Runner 2019–2022", para la lista de compatibles. */
+  protected textoCompat(c: CompatibilidadRepuesto): string {
+    if (c.descripcion?.trim()) return c.descripcion.trim();
+    const anios = this.aniosCompat(c);
+    return [c.marca, c.modelo, anios === 'Todos los años' ? '' : anios].filter(Boolean).join(' ');
+  }
+
+  protected aniosCompat(c: CompatibilidadRepuesto): string {
+    if (c.anioDesde && c.anioHasta) return c.anioDesde === c.anioHasta ? `${c.anioDesde}` : `${c.anioDesde}–${c.anioHasta}`;
+    if (c.anioDesde) return `desde ${c.anioDesde}`;
+    if (c.anioHasta) return `hasta ${c.anioHasta}`;
+    return 'Todos los años';
+  }
+
+  /** "100 %": cuánto se gana sobre el costo. */
+  protected gananciaDe(r: Repuesto): string {
+    if (!r.precioCompra) return '—';
+    return `${Math.round(((r.precioVenta - r.precioCompra) / r.precioCompra) * 100)} %`;
   }
 
   // --- Procedencia del stock -------------------------------------------------

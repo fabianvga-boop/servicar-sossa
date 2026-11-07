@@ -25,7 +25,7 @@
 
 <!-- Con el formulario abierto (nuevo o editar) el panel de búsqueda se aparta:
      quedan las tarjetas y el formulario, sin amontonar. -->
-<div class="repuestos-guiado" [class.con-formulario]="formularioAbierto()">
+<div class="repuestos-guiado" [class.con-formulario]="formularioAbierto() || !!fichaDe()">
   <!-- ----------------------------------------------------------- Resultados -->
   <section class="resultados-repuestos">
     <label class="buscador-lista buscador-repuestos">
@@ -66,14 +66,21 @@
           @let agotado = repuesto.stockActual <= 0;
           @let bajo = !agotado && repuesto.stockBajo;
           @let especifico = repuesto.tipoAplicacion === TipoAplicacion.Especifico;
-          <article class="tarjeta-repuesto" [class.elegida]="formularioAbierto() && editando()?.repuestoId === repuesto.repuestoId">
+          <article
+            class="tarjeta-repuesto"
+            [class.elegida]="(formularioAbierto() && editando()?.repuestoId === repuesto.repuestoId) || fichaDe()?.repuestoId === repuesto.repuestoId"
+            tabindex="0"
+            role="button"
+            [attr.aria-label]="'Ver la ficha de ' + repuesto.nombre"
+            (click)="abrirFicha(repuesto)"
+            (keydown.enter)="abrirFicha(repuesto)"
+          >
             <button
               type="button"
               class="tarjeta-repuesto-foto"
               [class.con-foto]="!!repuesto.fotoUrl"
-              [disabled]="!auth.esAdministrador()"
-              [attr.aria-label]="'Foto de ' + repuesto.nombre"
-              (click)="abrirFoto(repuesto)"
+              tabindex="-1"
+              [attr.aria-label]="'Ficha de ' + repuesto.nombre"
             >
               @if (repuesto.fotoUrl) {
                 <img [src]="urlArchivo(repuesto.fotoUrl)" alt="" loading="lazy" />
@@ -81,7 +88,7 @@
                 <span>{{ inicialesRepuesto(repuesto.nombre) }}</span>
               }
               <span class="sello-repuesto" [class.general]="!especifico" [title]="especifico ? 'Compatible con: ' + repuesto.resumenCompatibilidad : 'Sirve en cualquier vehículo'">
-                {{ especifico ? (vehiculoFiltro() || marcaFiltro() ? 'Compatible' : repuesto.resumenCompatibilidad) : 'Uso general' }}
+                {{ especifico ? (vehiculoFiltro() || marcaFiltro() ? 'Compatible' : 'Para ' + repuesto.compatibilidades.length + (repuesto.compatibilidades.length === 1 ? ' vehículo' : ' vehículos')) : 'Uso general' }}
               </span>
             </button>
             <div class="tarjeta-repuesto-cuerpo">
@@ -94,6 +101,20 @@
                   <span class="sin-categoria" title="Sin categoría: en la orden no se controla para qué servicio se usa">sin categoría</span>
                 }
               </small>
+              <!-- Para qué vehículos sirve, uno por uno (no "Toyota… +1") -->
+              @if (especifico) {
+                <ul class="compat-tarjeta" aria-label="Vehículos compatibles">
+                  @for (c of repuesto.compatibilidades.slice(0, 3); track $index) {
+                    <li>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10" /></svg>
+                      {{ textoCompat(c) }}
+                    </li>
+                  }
+                  @if (repuesto.compatibilidades.length > 3) {
+                    <li class="mas">y {{ repuesto.compatibilidades.length - 3 }} más · ver ficha</li>
+                  }
+                </ul>
+              }
               <span class="stock-tarjeta" [class.agotado]="agotado" [class.bajo]="bajo">
                 <span class="stock-barra" aria-hidden="true">
                   <span [class.agotado]="agotado" [class.bajo]="bajo" [style.width.%]="nivelStock(repuesto)"></span>
@@ -105,15 +126,15 @@
               </div>
               @if (auth.esAdministrador()) {
                 <div class="acciones-repuesto">
-                  <button type="button" class="accion-repuesto stock" title="Ajustar stock" (click)="abrirAjuste(repuesto)">
+                  <button type="button" class="accion-repuesto stock" title="Ajustar stock" (click)="$event.stopPropagation(); abrirAjuste(repuesto)">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5z" /><path d="M12 13v8M3 8l9 5 9-5" /></svg>
                     Stock
                   </button>
-                  <button type="button" class="accion-repuesto kardex" title="Procedencia y kárdex" (click)="abrirProcedencia(repuesto)">
+                  <button type="button" class="accion-repuesto kardex" title="Procedencia y kárdex" (click)="$event.stopPropagation(); abrirProcedencia(repuesto)">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5M12 7v5l3 2" /></svg>
                     Kárdex
                   </button>
-                  <button type="button" class="accion-repuesto editar" title="Editar repuesto" (click)="abrirEditar(repuesto)">
+                  <button type="button" class="accion-repuesto editar" title="Editar repuesto" (click)="$event.stopPropagation(); abrirEditar(repuesto)">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /></svg>
                     Editar
                   </button>
@@ -221,6 +242,122 @@
     </section>
   </aside>
 </div>
+
+<!-- ----------------------------------------------------- Ficha del repuesto -->
+@if (fichaDe(); as f) {
+  <app-cajon [titulo]="f.nombre" [etiqueta]="f.repuestoId" [ancho]="540" [enfocarCampo]="false" (cerrar)="cerrarFicha()">
+    <div class="ficha-rep">
+      <div class="ficha-rep-top">
+        <button type="button" class="ficha-rep-foto" [disabled]="!auth.esAdministrador()" [title]="auth.esAdministrador() ? 'Cambiar la foto' : ''" (click)="desdeFicha('foto')">
+          @if (f.fotoUrl) {
+            <img [src]="urlArchivo(f.fotoUrl)" [alt]="f.nombre" />
+          } @else {
+            <span>{{ inicialesRepuesto(f.nombre) }}</span>
+          }
+        </button>
+        <div class="ficha-rep-datos">
+          <div class="ficha-rep-chips">
+            <span class="pill-rep azul">{{ f.nombreCategoria || 'Sin categoría' }}</span>
+            <span class="pill-rep" [class.verde]="f.tipoAplicacion === TipoAplicacion.Especifico">
+              {{ f.tipoAplicacion === TipoAplicacion.Especifico ? 'Para ' + f.compatibilidades.length + (f.compatibilidades.length === 1 ? ' vehículo' : ' vehículos') : 'Uso general' }}
+            </span>
+          </div>
+          @if (f.descripcion) {
+            <p class="ficha-rep-desc">{{ f.descripcion }}</p>
+          }
+          <dl class="ficha-rep-lista">
+            <div><dt>Proveedor</dt><dd>{{ f.nombreProveedor || 'Sin proveedor' }}</dd></div>
+            <div>
+              <dt>Última compra</dt>
+              <dd>
+                @if (ultimaCompra(); as c) {
+                  {{ c.compraId }} · {{ c.fecha | date: 'dd/MM/yyyy' }}
+                } @else if (cargandoFicha()) {
+                  …
+                } @else {
+                  Sin compras registradas
+                }
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+
+      <div class="ficha-rep-compat">
+        <h3>Sirve para</h3>
+        @if (f.tipoAplicacion === TipoAplicacion.Especifico) {
+          <ul>
+            @for (cv of f.compatibilidades; track $index) {
+              <li>
+                <span class="compat-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10" /></svg></span>
+                <strong>{{ cv.marca }} {{ cv.modelo || '(todos los modelos)' }}</strong>
+                <span class="compat-anios">{{ aniosCompat(cv) }}</span>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="compat-general">Cualquier vehículo: es de uso general.</p>
+        }
+      </div>
+
+      <div class="ficha-rep-precios" [class.dos]="!auth.esAdministrador()">
+        @if (auth.esAdministrador()) {
+          <div><span>Costo</span><strong class="monto-mono">{{ f.precioCompra | bs }}</strong></div>
+        }
+        <div><span>Precio de venta</span><strong class="monto-mono">{{ f.precioVenta | bs }}</strong></div>
+        @if (auth.esAdministrador()) {
+          <div class="ganancia"><span>Ganancia</span><strong class="monto-mono">{{ gananciaDe(f) }}</strong></div>
+        }
+      </div>
+
+      @let agotadoFicha = f.stockActual <= 0;
+      <div class="ficha-rep-stock">
+        <div class="ficha-rep-stock-fila">
+          <span>Stock</span>
+          <strong class="monto-mono" [class.agotado]="agotadoFicha" [class.bajo]="!agotadoFicha && f.stockBajo">
+            {{ agotadoFicha ? 'Agotado' : f.stockActual }}
+            @if (!agotadoFicha) {
+              <small>{{ f.stockActual === 1 ? 'disponible' : 'disponibles' }}</small>
+            }
+          </strong>
+        </div>
+        <span class="stock-barra" aria-hidden="true">
+          <span [class.agotado]="agotadoFicha" [class.bajo]="!agotadoFicha && f.stockBajo" [style.width.%]="nivelStock(f)"></span>
+        </span>
+        <small>Mínimo {{ f.stockMinimo }} · avisa para reponer cuando baja de ahí</small>
+      </div>
+
+      <div class="ficha-rep-movs">
+        <h3>Últimos movimientos</h3>
+        @if (cargandoFicha()) {
+          <p class="texto-tenue texto-sm mb-0">Cargando…</p>
+        } @else {
+          <div class="ficha-rep-tabla">
+            @for (m of ultimosMovimientos(); track m.movimientoId) {
+              <div>
+                <span>{{ m.fecha | date: 'dd/MM' }}</span>
+                <span>{{ ESTILO_MOVIMIENTO[m.tipo].texto }}{{ m.referencia ? ' ' + m.referencia : '' }}</span>
+                <span class="monto-mono" [class.entra]="m.cantidad > 0" [class.sale]="m.cantidad < 0">{{ m.cantidad > 0 ? '+' + m.cantidad : m.cantidad }}</span>
+              </div>
+            } @empty {
+              <p class="texto-tenue texto-sm">Todavía no tiene movimientos.</p>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <div pie class="ficha-rep-pie">
+      @if (auth.esAdministrador()) {
+        <button type="button" class="accion-repuesto stock" (click)="desdeFicha('stock')">Stock</button>
+        <button type="button" class="accion-repuesto kardex" (click)="desdeFicha('kardex')">Kárdex</button>
+        <button type="button" class="accion-repuesto editar" (click)="desdeFicha('editar')">Editar</button>
+      } @else {
+        <button type="button" class="btn btn-secundario" (click)="cerrarFicha()">Cerrar</button>
+      }
+    </div>
+  </app-cajon>
+}
 
 @if (formularioAbierto()) {
   <app-cajon

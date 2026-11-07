@@ -487,3 +487,8 @@ button.repuesto-foto:not(:disabled) { cursor: zoom-in; }
 .repuestos-guiado.con-formulario { grid-template-columns: minmax(0, 1fr); }
 .repuestos-guiado.con-formulario .rail-repuestos { display: none; }
 .repuestos-guiado.con-formulario .tarjetas-repuestos { grid-template-columns: repeat(auto-fill, minmax(235px, 1fr)); }
+
+/* Precio y botones siempre al fondo: quedan en línea aunque el nombre o la categoría ocupen dos renglones */
+.tarjeta-repuesto-cuerpo { flex: 1; }
+.tarjeta-repuesto-pie { margin-top: auto; padding-top: 4px; }
+.tarjeta-repuesto-cuerpo small { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }

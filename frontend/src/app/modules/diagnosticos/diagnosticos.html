@@ -39,21 +39,23 @@
         <h2><span class="carril-n gris">1</span>Falta diagnosticar <span class="carril-cuenta">{{ faltaDiagnostico().length }}</span></h2>
         <p>Llegó el vehículo y se anotó lo que cuenta el cliente. Falta que el mecánico lo revise.</p>
       </header>
-      @for (d of faltaDiagnostico().slice(0, MAXIMO_BANDEJA); track d.diagnosticoId) {
-        <article class="tarjeta-diag" [class.elegida]="filaElegida() === d.diagnosticoId">
-          <div class="tarjeta-diag-top"><app-placa [valor]="d.placaVehiculo" /><span>{{ d.descripcionVehiculo }} · {{ haceCuanto(d.fecha) }}</span></div>
-          <p class="tarjeta-diag-cliente">El cliente cuenta: {{ d.descripcionFalla }}</p>
-          <span class="tarjeta-diag-falta">Sin diagnóstico todavía</span>
-          <div class="tarjeta-diag-pie">
-            <small>Recibió {{ d.nombreMecanico }}</small>
-            @if (puedeEditar(d)) {
-              <button type="button" class="btn btn-oscuro btn-sm" (click)="abrirParaDiagnosticar(d)">Diagnosticar</button>
-            }
-          </div>
-        </article>
-      } @empty {
-        <p class="carril-vacio">Nada pendiente.</p>
-      }
+      <div class="carril-lista">
+        @for (d of faltaDiagnostico().slice(0, MAXIMO_BANDEJA); track d.diagnosticoId) {
+          <article class="tarjeta-diag" [class.elegida]="filaElegida() === d.diagnosticoId">
+            <div class="tarjeta-diag-top"><app-placa [valor]="d.placaVehiculo" /><span>{{ d.descripcionVehiculo }} · {{ haceCuanto(d.fecha) }}</span></div>
+            <p class="tarjeta-diag-cliente">El cliente cuenta: {{ d.descripcionFalla }}</p>
+            <span class="tarjeta-diag-falta">Sin diagnóstico todavía</span>
+            <div class="tarjeta-diag-pie">
+              <small>Recibió {{ d.nombreMecanico }}</small>
+              @if (puedeEditar(d)) {
+                <button type="button" class="btn btn-oscuro btn-sm" (click)="abrirParaDiagnosticar(d)">Diagnosticar</button>
+              }
+            </div>
+          </article>
+        } @empty {
+          <p class="carril-vacio">Nada pendiente.</p>
+        }
+        </div>
       @if (faltaDiagnostico().length > MAXIMO_BANDEJA) {
         <button type="button" class="btn-enlace bandeja-mas" (click)="verTodos('sinDiagnostico')">Ver los {{ faltaDiagnostico().length }}</button>
       }
@@ -64,21 +66,23 @@
         <h2><span class="carril-n ambar">2</span>Falta presupuesto <span class="carril-cuenta">{{ faltaPresupuesto().length }}</span></h2>
         <p>El mecánico ya dijo qué tiene. Falta ponerle precio.</p>
       </header>
-      @for (d of faltaPresupuesto().slice(0, MAXIMO_BANDEJA); track d.diagnosticoId) {
-        <article class="tarjeta-diag" [class.elegida]="filaElegida() === d.diagnosticoId">
-          <div class="tarjeta-diag-top"><app-placa [valor]="d.placaVehiculo" /><span>{{ d.descripcionVehiculo }} · {{ haceCuanto(d.fecha) }}</span></div>
-          <strong class="tarjeta-diag-diag">{{ d.observacionesTecnicas }}</strong>
-          <p class="tarjeta-diag-cliente">El cliente cuenta: {{ d.descripcionFalla }}</p>
-          <div class="tarjeta-diag-pie">
-            <small>Diagnosticó {{ d.nombreMecanico }}</small>
-            @if (puedeEditar(d)) {
-              <button type="button" class="btn btn-secundario btn-sm" (click)="abrirEditar(d)">Poner presupuesto</button>
-            }
-          </div>
-        </article>
-      } @empty {
-        <p class="carril-vacio">Nada pendiente.</p>
-      }
+      <div class="carril-lista">
+        @for (d of faltaPresupuesto().slice(0, MAXIMO_BANDEJA); track d.diagnosticoId) {
+          <article class="tarjeta-diag" [class.elegida]="filaElegida() === d.diagnosticoId">
+            <div class="tarjeta-diag-top"><app-placa [valor]="d.placaVehiculo" /><span>{{ d.descripcionVehiculo }} · {{ haceCuanto(d.fecha) }}</span></div>
+            <strong class="tarjeta-diag-diag">{{ d.observacionesTecnicas }}</strong>
+            <p class="tarjeta-diag-cliente">El cliente cuenta: {{ d.descripcionFalla }}</p>
+            <div class="tarjeta-diag-pie">
+              <small>Diagnosticó {{ d.nombreMecanico }}</small>
+              @if (puedeEditar(d)) {
+                <button type="button" class="btn btn-secundario btn-sm" (click)="abrirEditar(d)">Poner presupuesto</button>
+              }
+            </div>
+          </article>
+        } @empty {
+          <p class="carril-vacio">Nada pendiente.</p>
+        }
+        </div>
       @if (faltaPresupuesto().length > MAXIMO_BANDEJA) {
         <button type="button" class="btn-enlace bandeja-mas" (click)="verTodos('sinPresupuesto')">Ver los {{ faltaPresupuesto().length }}</button>
       }
@@ -89,26 +93,28 @@
         <h2><span class="carril-n azul">3</span>Esperando respuesta <span class="carril-cuenta">{{ esperandoRespuesta().length }}</span></h2>
         <p>Presupuesto enviado. Falta que el cliente diga sí o no.</p>
       </header>
-      @for (d of esperandoRespuesta().slice(0, MAXIMO_BANDEJA); track d.diagnosticoId) {
-        <article class="tarjeta-diag" [class.elegida]="filaElegida() === d.diagnosticoId">
-          <div class="tarjeta-diag-top">
-            <app-placa [valor]="d.placaVehiculo" />
-            <span>{{ d.descripcionVehiculo }} · <span class="pendiente-espera" [class.larga]="esperaLarga(d.fecha)">{{ haceCuanto(d.fecha) }}</span></span>
-          </div>
-          <strong class="tarjeta-diag-diag">{{ d.observacionesTecnicas || d.descripcionFalla }}</strong>
-          @if (d.observacionesTecnicas) {
-            <p class="tarjeta-diag-cliente">El cliente cuenta: {{ d.descripcionFalla }}</p>
-          }
-          <div class="tarjeta-diag-pie">
-            <span class="monto-mono tarjeta-diag-monto">{{ d.montoEstimado | bs }}</span>
-            @if (esSuyoOAdmin(d)) {
-              <button type="button" class="btn btn-secundario btn-sm" (click)="abrirResponder(d)">Registrar respuesta</button>
+      <div class="carril-lista">
+        @for (d of esperandoRespuesta().slice(0, MAXIMO_BANDEJA); track d.diagnosticoId) {
+          <article class="tarjeta-diag" [class.elegida]="filaElegida() === d.diagnosticoId">
+            <div class="tarjeta-diag-top">
+              <app-placa [valor]="d.placaVehiculo" />
+              <span>{{ d.descripcionVehiculo }} · <span class="pendiente-espera" [class.larga]="esperaLarga(d.fecha)">{{ haceCuanto(d.fecha) }}</span></span>
+            </div>
+            <strong class="tarjeta-diag-diag">{{ d.observacionesTecnicas || d.descripcionFalla }}</strong>
+            @if (d.observacionesTecnicas) {
+              <p class="tarjeta-diag-cliente">El cliente cuenta: {{ d.descripcionFalla }}</p>
             }
-          </div>
-        </article>
-      } @empty {
-        <p class="carril-vacio">Nada pendiente.</p>
-      }
+            <div class="tarjeta-diag-pie">
+              <span class="monto-mono tarjeta-diag-monto">{{ d.montoEstimado | bs }}</span>
+              @if (esSuyoOAdmin(d)) {
+                <button type="button" class="btn btn-secundario btn-sm" (click)="abrirResponder(d)">Registrar respuesta</button>
+              }
+            </div>
+          </article>
+        } @empty {
+          <p class="carril-vacio">Nada pendiente.</p>
+        }
+        </div>
       @if (esperandoRespuesta().length > MAXIMO_BANDEJA) {
         <button type="button" class="btn-enlace bandeja-mas" (click)="verTodos('esperando')">Ver los {{ esperandoRespuesta().length }}</button>
       }

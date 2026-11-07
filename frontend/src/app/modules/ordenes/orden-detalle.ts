@@ -210,7 +210,7 @@ function repuestoSugeridoPara(nombreServicio: string): string | null {
     DiagramaVehiculo,
   ],
   templateUrl: './orden-detalle.html',
-  styleUrls: ['./orden-detalle.css', './orden-trabajo.css'],
+  styleUrls: ['./orden-detalle.css', './orden-trabajo.css', './orden-jerarquia.css'],
   host: {
     // Cierre de la pestaña/navegador: el guard de ruta no alcanza a interceptarlo.
     '(window:beforeunload)': 'alCerrarPestania($event)',
