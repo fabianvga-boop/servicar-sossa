@@ -202,8 +202,8 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4" /></svg>
       </span>
       <div class="pidio-textos">
-        <span>
-          Diagnóstico
+        <span class="pidio-etiqueta">
+          Diagnóstico del mecánico
           @if (o.diagnosticoId) {
             · <a [routerLink]="['/diagnosticos']" [queryParams]="{ buscar: o.diagnosticoId }">{{ o.diagnosticoId }}</a>
           }
@@ -216,7 +216,8 @@
     </section>
   }
 
-  <div class="columnas">
+  <!-- Con un panel abierto (agregar o editar) la columna lateral se aparta. -->
+  <div class="columnas" [class.con-panel]="panelServicio() || panelRepuesto() || !!editandoServicio() || !!editandoRepuesto()">
     <div class="principal-col">
       <!-- ------------------------------------------------------------- Trabajos -->
       <section class="trabajos">
@@ -289,9 +290,14 @@
             </div>
 
             @if (!enCurso && avanza && servicio.estado === EstadoServicioOrden.Pendiente) {
-              <button type="button" class="btn btn-secundario btn-trabajo no-imprimir" [disabled]="procesando()" (click)="avanzarServicio(servicio.ordenServicioId, EstadoServicioOrden.EnProceso)">
+              <button type="button" class="btn-empezar no-imprimir" [disabled]="procesando()" (click)="avanzarServicio(servicio.ordenServicioId, EstadoServicioOrden.EnProceso)">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z" /></svg>
                 Empezar
               </button>
+            } @else if (hecho) {
+              <span class="estado-hecho">Hecho</span>
+            } @else if (!enCurso) {
+              <span class="estado-pendiente">Pendiente</span>
             }
 
             <!-- El trabajo en curso trae todo lo que hace falta para terminarlo. -->
@@ -396,45 +402,61 @@
           </button>
         }
       </section>
+
+      <!-- El historial va debajo de los trabajos: llena la columna y deja la lateral corta. -->
+      @if (puedeGestionar()) {
+        <!-- Todo lo que se hizo sobre la orden y quién lo hizo (Auditoría). -->
+        <section class="tarjeta bloque-orden-cuerpo">
+          <h2>Historial</h2>
+          <!-- Completo, se desplaza dentro de su recuadro: no estira la columna. -->
+          <div class="historial-lista" [class.completo]="verTodoHistorial()">
+          @for (h of historialVisible(); track h.auditoriaId) {
+            @let estilo = ESTILO_HISTORIAL[h.accion];
+            <div class="evento-orden" [class.excepcion]="h.accion === AccionAuditoria.Excepcion">
+              <span class="evento-orden-punto tono-{{ estilo.tono }}" aria-hidden="true"></span>
+              <span class="evento-orden-textos">
+                @if (h.accion === AccionAuditoria.Excepcion) {
+                  <strong class="evento-orden-excepcion">{{ estilo.etiqueta }}</strong>
+                }
+                <span class="evento-orden-texto"><app-texto-resaltado [texto]="h.descripcion" /></span>
+                <span class="evento-orden-cuando">{{ h.fecha | date: 'dd/MM HH:mm' }} · {{ h.nombreUsuario }}</span>
+              </span>
+            </div>
+          } @empty {
+            <p class="texto-tenue texto-sm mb-0">Sin movimientos registrados.</p>
+          }
+          </div>
+          @if (historial().length > 5) {
+            <button type="button" class="btn-enlace historial-mas" (click)="verTodoHistorial.set(!verTodoHistorial())">
+              {{ verTodoHistorial() ? 'Ver menos' : 'Ver historial completo (' + historial().length + ')' }}
+            </button>
+          }
+        </section>
+      }
     </div>
 
     <!-- -------------------------------------------------------- Columna lateral -->
     <aside class="lateral-col">
-      <section class="tarjeta bloque-orden-cuerpo">
-        <div class="bloque-orden-titulo">
-          <h2>Fotos del vehículo</h2>
-          @if (fotosVehiculo().length > 0) {
-            <button type="button" class="btn-enlace" (click)="abrirGaleriaVehiculo()">Ver todas</button>
+      <!-- Primero lo que importa de un vistazo: cuánto va y qué se usó. -->
+      <section class="tarjeta bloque-orden-cuerpo resumen-orden">
+        <h2>Resumen</h2>
+        <div class="linea-resumen"><span>Trabajos</span><span class="monto-mono">{{ o.totalServicios | bs }}</span></div>
+        <div class="linea-resumen"><span>Repuestos</span><span class="monto-mono">{{ o.totalRepuestos | bs }}</span></div>
+        <div class="total-resumen"><strong>Total</strong><span class="monto-mono">{{ o.total | bs }}</span></div>
+        <dl class="fechas-orden">
+          <div><dt>Abierta</dt><dd>{{ o.fechaCreacion | date: 'dd/MM/yyyy HH:mm' }}</dd></div>
+          <div><dt>Entrega estimada</dt><dd>{{ o.fechaEstimada ? (o.fechaEstimada | date: 'dd/MM/yyyy') : '—' }}</dd></div>
+          @if (o.fechaCierre) {
+            <div><dt>Cerrada</dt><dd>{{ o.fechaCierre | date: 'dd/MM/yyyy HH:mm' }}</dd></div>
           }
-        </div>
-        @if (puedeTrabajar() && o.estado !== EstadoOrden.Cerrada && o.estado !== EstadoOrden.Cancelada) {
-          <label class="tomar-foto no-imprimir" [class.deshabilitado]="subiendoFoto()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h3l2-3h8l2 3h3v13H3z" /><circle cx="12" cy="13" r="4" /></svg>
-            {{ subiendoFoto() ? 'Subiendo…' : 'Tomar foto' }}
-            <input type="file" accept="image/*" capture="environment" hidden [disabled]="subiendoFoto()" (change)="onFotoElegida($event)" />
-          </label>
-        }
-        @if (fotosVehiculo().length > 0) {
-          <div class="miniaturas-orden">
-            @for (foto of fotosVehiculo().slice(-3).reverse(); track foto.fotoId) {
-              <button type="button" (click)="abrirGaleriaVehiculo()" [attr.aria-label]="'Ver fotos de ' + o.placaVehiculo">
-                <img [src]="urlArchivo(foto.url)" alt="" loading="lazy" />
-              </button>
-            }
+          <div><dt>Responsable</dt><dd>{{ o.nombreAdministrador }}</dd></div>
+        </dl>
+        @if (o.observaciones) {
+          <div class="dato-orden">
+            <span>Observaciones</span>
+            <p>{{ o.observaciones }}</p>
           </div>
         }
-        @for (z of zonasMarcadas(); track z.zonaObsId; let i = $index) {
-          <span class="zona-orden">
-            <strong>{{ i + 1 }}</strong>
-            <span>{{ etiquetaZona(z.zona) }} · {{ textoZona(z.estado) }}{{ z.detalle ? ' — ' + z.detalle : '' }}</span>
-          </span>
-        }
-        <div class="pie-estado">
-          @if (kilometrajeVehiculo() !== null) {
-            <span class="monto-mono">{{ kilometrajeVehiculo()!.toLocaleString('es-BO') }} km</span>
-          }
-          <button type="button" class="btn-enlace no-imprimir" (click)="diagramaAbierto.set(true)">Marcar zonas</button>
-        </div>
       </section>
 
       <section class="tarjeta bloque-orden-cuerpo">
@@ -484,24 +506,40 @@
       </section>
 
       <section class="tarjeta bloque-orden-cuerpo">
-        <h2>Resumen</h2>
-        <div class="linea-resumen"><span>Trabajos</span><span class="monto-mono">{{ o.totalServicios | bs }}</span></div>
-        <div class="linea-resumen"><span>Repuestos</span><span class="monto-mono">{{ o.totalRepuestos | bs }}</span></div>
-        <div class="total-resumen"><strong>Total</strong><span class="monto-mono">{{ o.total | bs }}</span></div>
-        <dl class="fechas-orden">
-          <div><dt>Abierta</dt><dd>{{ o.fechaCreacion | date: 'dd/MM/yyyy HH:mm' }}</dd></div>
-          <div><dt>Entrega estimada</dt><dd>{{ o.fechaEstimada ? (o.fechaEstimada | date: 'dd/MM/yyyy') : '—' }}</dd></div>
-          @if (o.fechaCierre) {
-            <div><dt>Cerrada</dt><dd>{{ o.fechaCierre | date: 'dd/MM/yyyy HH:mm' }}</dd></div>
+        <div class="bloque-orden-titulo">
+          <h2>Fotos del vehículo</h2>
+          @if (fotosVehiculo().length > 0) {
+            <button type="button" class="btn-enlace" (click)="abrirGaleriaVehiculo()">Ver todas</button>
           }
-          <div><dt>Responsable</dt><dd>{{ o.nombreAdministrador }}</dd></div>
-        </dl>
-        @if (o.observaciones) {
-          <div class="dato-orden">
-            <span>Observaciones</span>
-            <p>{{ o.observaciones }}</p>
+        </div>
+        @if (puedeTrabajar() && o.estado !== EstadoOrden.Cerrada && o.estado !== EstadoOrden.Cancelada) {
+          <label class="tomar-foto no-imprimir" [class.deshabilitado]="subiendoFoto()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h3l2-3h8l2 3h3v13H3z" /><circle cx="12" cy="13" r="4" /></svg>
+            {{ subiendoFoto() ? 'Subiendo…' : 'Tomar foto' }}
+            <input type="file" accept="image/*" capture="environment" hidden [disabled]="subiendoFoto()" (change)="onFotoElegida($event)" />
+          </label>
+        }
+        @if (fotosVehiculo().length > 0) {
+          <div class="miniaturas-orden">
+            @for (foto of fotosVehiculo().slice(-3).reverse(); track foto.fotoId) {
+              <button type="button" (click)="abrirGaleriaVehiculo()" [attr.aria-label]="'Ver fotos de ' + o.placaVehiculo">
+                <img [src]="urlArchivo(foto.url)" alt="" loading="lazy" />
+              </button>
+            }
           </div>
         }
+        @for (z of zonasMarcadas(); track z.zonaObsId; let i = $index) {
+          <span class="zona-orden">
+            <strong>{{ i + 1 }}</strong>
+            <span>{{ etiquetaZona(z.zona) }} · {{ textoZona(z.estado) }}{{ z.detalle ? ' — ' + z.detalle : '' }}</span>
+          </span>
+        }
+        <div class="pie-estado">
+          @if (kilometrajeVehiculo() !== null) {
+            <span class="monto-mono">{{ kilometrajeVehiculo()!.toLocaleString('es-BO') }} km</span>
+          }
+          <button type="button" class="btn-enlace no-imprimir" (click)="diagramaAbierto.set(true)">Marcar zonas</button>
+        </div>
       </section>
 
       <section class="tarjeta bloque-orden-cuerpo">
@@ -539,35 +577,6 @@
         }
       </section>
 
-      @if (puedeGestionar()) {
-        <!-- Todo lo que se hizo sobre la orden y quién lo hizo (Auditoría). -->
-        <section class="tarjeta bloque-orden-cuerpo">
-          <h2>Historial</h2>
-          <!-- Completo, se desplaza dentro de su recuadro: no estira la columna. -->
-          <div class="historial-lista" [class.completo]="verTodoHistorial()">
-          @for (h of historialVisible(); track h.auditoriaId) {
-            @let estilo = ESTILO_HISTORIAL[h.accion];
-            <div class="evento-orden" [class.excepcion]="h.accion === AccionAuditoria.Excepcion">
-              <span class="evento-orden-punto tono-{{ estilo.tono }}" aria-hidden="true"></span>
-              <span class="evento-orden-textos">
-                @if (h.accion === AccionAuditoria.Excepcion) {
-                  <strong class="evento-orden-excepcion">{{ estilo.etiqueta }}</strong>
-                }
-                <span class="evento-orden-texto"><app-texto-resaltado [texto]="h.descripcion" /></span>
-                <span class="evento-orden-cuando">{{ h.fecha | date: 'dd/MM HH:mm' }} · {{ h.nombreUsuario }}</span>
-              </span>
-            </div>
-          } @empty {
-            <p class="texto-tenue texto-sm mb-0">Sin movimientos registrados.</p>
-          }
-          </div>
-          @if (historial().length > 5) {
-            <button type="button" class="btn-enlace historial-mas" (click)="verTodoHistorial.set(!verTodoHistorial())">
-              {{ verTodoHistorial() ? 'Ver menos' : 'Ver historial completo (' + historial().length + ')' }}
-            </button>
-          }
-        </section>
-      }
     </aside>
   </div>
 
@@ -1009,57 +1018,61 @@
   }
 
   @if (editandoServicio(); as servicio) {
-    <app-modal titulo="Editar {{ servicio.nombreServicio }}" [ancho]="560" (cerrar)="editandoServicio.set(null)">
-      <div class="campo">
-        <label for="precioEdicion">Precio (Bs)</label>
-        <input id="precioEdicion" name="precioEdicion" type="number" min="0" step="0.01" [(ngModel)]="edicion.precio" />
-        <span class="campo-ayuda">La comisión del mecánico se calcula sobre este monto.</span>
+    <app-cajon [titulo]="servicio.nombreServicio" etiqueta="Editar trabajo" [ancho]="460" (cerrar)="editandoServicio.set(null)">
+      <div class="editar-panel">
+        <div class="campo mb-0">
+          <label for="precioEdicion">Precio del trabajo</label>
+          <div class="monto-grande">
+            <input id="precioEdicion" name="precioEdicion" type="number" min="0" step="0.01" inputmode="decimal" [(ngModel)]="edicion.precio" />
+            <span>Bs</span>
+          </div>
+          <span class="campo-ayuda">La comisión del mecánico se calcula sobre este monto.</span>
+        </div>
+        <div class="campo mb-0">
+          <label for="descripcionEdicion">Nota del trabajo</label>
+          <textarea id="descripcionEdicion" name="descripcionEdicion" rows="3" maxlength="255" [(ngModel)]="edicion.descripcion" placeholder="Opcional: qué se hizo, qué se encontró"></textarea>
+        </div>
       </div>
-      <div class="campo mb-0">
-        <label for="descripcionEdicion">Detalle del trabajo</label>
-        <input id="descripcionEdicion" name="descripcionEdicion" [(ngModel)]="edicion.descripcion" placeholder="Opcional" />
-      </div>
-      <div pie>
+      <div pie class="pie-editar">
         <button type="button" class="btn btn-secundario" (click)="editandoServicio.set(null)">Cancelar</button>
-        <button type="button" class="btn btn-primario" [disabled]="procesando()" (click)="guardarServicioEditado()">
-          Guardar
-        </button>
+        <button type="button" class="btn btn-primario crece" [disabled]="procesando()" (click)="guardarServicioEditado()">Guardar</button>
       </div>
-    </app-modal>
+    </app-cajon>
   }
 
   @if (editandoRepuesto(); as repuesto) {
-    <app-modal titulo="Editar {{ repuesto.nombreRepuesto }}" [ancho]="560" (cerrar)="editandoRepuesto.set(null)">
-      <div class="rejilla">
-        <div class="campo mb-0">
-          <label for="cantidadEdicion">Cantidad</label>
-          <input id="cantidadEdicion" name="cantidadEdicion" type="number" min="1" [(ngModel)]="edicion.cantidad" />
+    <app-cajon [titulo]="repuesto.nombreRepuesto" etiqueta="Editar repuesto" [ancho]="460" [enfocarCampo]="false" (cerrar)="editandoRepuesto.set(null)">
+      <div class="editar-panel">
+        <div class="cantidad-grande">
+          <div>
+            <span>Cantidad</span>
+            <small>{{ ETIQUETAS.origenRepuesto[repuesto.origen] }}</small>
+          </div>
+          <div class="paso-cantidad">
+            <button type="button" aria-label="Uno menos" [disabled]="edicion.cantidad <= 1" (click)="edicion.cantidad = edicion.cantidad - 1">−</button>
+            <em>{{ edicion.cantidad }}</em>
+            <button type="button" aria-label="Uno más" (click)="edicion.cantidad = edicion.cantidad + 1">+</button>
+          </div>
         </div>
         @if (repuesto.origen !== OrigenRepuesto.ClienteTrae) {
           <div class="campo mb-0">
-            <label for="precioRepuestoEdicion">Precio unitario (Bs)</label>
-            <input
-              id="precioRepuestoEdicion"
-              name="precioRepuestoEdicion"
-              type="number"
-              min="0"
-              step="0.01"
-              [readonly]="!puedeGestionar()"
-              [(ngModel)]="edicion.precioUnitario"
-            />
+            <label for="precioRepuestoEdicion">Precio por unidad</label>
+            <div class="monto-grande">
+              <input id="precioRepuestoEdicion" name="precioRepuestoEdicion" type="number" min="0" step="0.01" inputmode="decimal" [readonly]="!puedeGestionar()" [(ngModel)]="edicion.precioUnitario" />
+              <span>Bs</span>
+            </div>
             @if (!puedeGestionar()) {
               <span class="campo-ayuda">El precio lo corrige el Administrador.</span>
             }
           </div>
+          <p class="subtotal-editar">Total: <strong class="monto-mono">{{ (edicion.cantidad * edicion.precioUnitario) | bs }}</strong></p>
         }
       </div>
-      <div pie>
+      <div pie class="pie-editar">
         <button type="button" class="btn btn-secundario" (click)="editandoRepuesto.set(null)">Cancelar</button>
-        <button type="button" class="btn btn-primario" [disabled]="procesando()" (click)="guardarRepuestoEditado()">
-          Guardar
-        </button>
+        <button type="button" class="btn btn-primario crece" [disabled]="procesando()" (click)="guardarRepuestoEditado()">Guardar</button>
       </div>
-    </app-modal>
+    </app-cajon>
   }
 
   @if (porCerrar()) {

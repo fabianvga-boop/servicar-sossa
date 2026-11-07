@@ -221,9 +221,12 @@ export class Compras {
     const ruta = inject(ActivatedRoute);
     if (ruta.snapshot.queryParamMap.get('nueva') === 'true') {
       this.abrirNuevo();
+      // Desde Proveedores ("Compra") llega también ?proveedorId=: queda elegido.
+      const proveedorId = ruta.snapshot.queryParamMap.get('proveedorId');
+      if (proveedorId) this.formulario.controls.proveedorId.setValue(proveedorId);
       void inject(Router).navigate([], {
         relativeTo: ruta,
-        queryParams: { nueva: null },
+        queryParams: { nueva: null, proveedorId: null },
         queryParamsHandling: 'merge',
         replaceUrl: true,
       });

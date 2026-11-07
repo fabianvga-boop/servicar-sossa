@@ -570,3 +570,8 @@
 .cita-diag.fuerte p { border-left-color: var(--ink); font-weight: 500; }
 
 @media (max-width: 1100px) { .carriles-diag { grid-template-columns: minmax(0, 1fr); } }
+
+/* Carriles del mismo alto: si uno tiene muchos, se desplaza por dentro y no deja huecos */
+.carriles-diag { align-items: stretch; }
+.carril-lista { flex: 1; display: flex; flex-direction: column; gap: 10px; max-height: 430px; overflow-y: auto; margin-right: -6px; padding-right: 6px; overscroll-behavior: contain; }
+.carril-lista .carril-vacio { flex: 1; display: grid; place-items: center; min-height: 90px; }

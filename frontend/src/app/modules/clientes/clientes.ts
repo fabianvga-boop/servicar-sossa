@@ -1,4 +1,3 @@
-import { NgTemplateOutlet } from '@angular/common';
 import {
   afterNextRender,
   Component,
@@ -32,6 +31,7 @@ import { OrdenesService } from '../../core/services/ordenes.service';
 import { PreferenciasService } from '../../core/services/preferencias.service';
 import { DiagnosticosService } from '../../core/services/taller.service';
 import { VehiculosService } from '../../core/services/vehiculos.service';
+import { Cajon } from '../../shared/components/cajon';
 import { Confirmacion } from '../../shared/components/confirmacion';
 import { Esqueleto } from '../../shared/components/esqueleto';
 import { Paginador } from '../../shared/components/paginador';
@@ -68,7 +68,9 @@ const SILUETAS = {
 
 const ORDEN_ACTIVA = [EstadoOrden.Abierta, EstadoOrden.EnProceso, EstadoOrden.Finalizada];
 
-type Filtro = 'todos' | 'taller' | 'saldo';
+type Filtro = 'todos' | 'taller' | 'saldo' | 'inactivos';
+type OrdenTabla = 'nombre' | 'vehiculos' | 'estado' | 'saldo' | 'ultima';
+type Pestana = 'vehiculos' | 'ordenes' | 'historial';
 type Modo = 'ficha' | 'nuevo' | 'editar';
 
 /** Cómo está un vehículo del cliente ahora mismo. */
@@ -83,19 +85,31 @@ interface FilaCliente {
   iniciales: string;
   saldo: number;
   enTaller: boolean;
+  activo: boolean;
+  vehiculos: number;
+  /** Fecha de su orden más reciente: la última vez que trajo un vehículo. */
+  ultima: string | null;
+}
+
+/** Un renglón del historial de la ficha. */
+interface Evento {
+  fecha: string;
+  texto: string;
+  tono: '' | 'verde' | 'rojo';
 }
 
 /**
- * USU006-USU008 — clientes. A la izquierda la lista con buscador y filtros; a
- * la derecha la ficha del elegido: sus datos, sus vehículos y cómo están, y
- * sus últimas órdenes. El alta y la edición ocupan el lugar de la ficha.
+ * USU006-USU008 — clientes en tabla: quién es, sus placas, si tiene el auto en
+ * el taller, cuánto debe y cuándo vino por última vez; se ordena por columna.
+ * Al tocar una fila se abre su ficha en el panel lateral (datos, resumen,
+ * vehículos, órdenes e historial). El alta y la edición, en otro panel.
  */
 @Component({
   selector: 'app-clientes',
   imports: [
     ReactiveFormsModule,
     RouterLink,
-    NgTemplateOutlet,
+    Cajon,
     Confirmacion,
     Esqueleto,
     Paginador,
@@ -106,6 +120,10 @@ interface FilaCliente {
   ],
   templateUrl: './clientes.html',
   styleUrl: './clientes.css',
+  host: {
+    '(document:click)': 'menuDe.set(null)',
+    '(document:keydown)': 'alTeclear($event)',
+  },
 })
 export class Clientes {
   private readonly servicio = inject(ClientesService);
@@ -141,13 +159,16 @@ export class Clientes {
   // --- Lista ------------------------------------------------------------------------
   protected readonly buscar = signal('');
   protected readonly filtro = signal<Filtro>('todos');
+  protected readonly orden = signal<OrdenTabla>('nombre');
+  /** El cliente con la ficha abierta en el panel. */
   protected readonly elegidoId = signal<string | null>(null);
-
-  /** En el celular se ve una cosa a la vez: la lista o la ficha. */
-  protected readonly vistaMovil = signal<'lista' | 'ficha'>('lista');
+  protected readonly pestana = signal<Pestana>('vehiculos');
+  /** Fila con el menú ⋯ abierto. */
+  protected readonly menuDe = signal<string | null>(null);
 
   // --- Formulario -------------------------------------------------------------------
   protected readonly modo = signal<Modo>('ficha');
+  protected readonly formularioAbierto = computed(() => this.modo() !== 'ficha');
   /** El cliente que se está editando: fijo, aunque la lista cambie mientras tanto. */
   protected readonly editando = signal<Cliente | null>(null);
   protected readonly guardando = signal(false);
@@ -248,21 +269,37 @@ export class Clientes {
     return mapa;
   });
 
+  /** Fecha de la orden más reciente de cada cliente. */
+  private readonly ultimaPorCliente = computed(() => {
+    const mapa = new Map<string, string>();
+    for (const o of this.ordenes()) {
+      const otra = mapa.get(o.clienteId);
+      if (!otra || o.fechaCreacion > otra) mapa.set(o.clienteId, o.fechaCreacion);
+    }
+    return mapa;
+  });
+
   // --- Lista ------------------------------------------------------------------------
 
   protected readonly filas = computed<FilaCliente[]>(() => {
     const saldos = this.saldoPorCliente();
     const porCliente = this.vehiculosPorCliente();
     const activas = this.ordenActiva();
+    const ultimas = this.ultimaPorCliente();
 
     return this.clientes().map((cliente) => {
       const nombre = nombreDe(cliente);
+      const vehiculos = porCliente.get(cliente.clienteId) ?? [];
       return {
         cliente,
         nombre,
         iniciales: iniciales(nombre),
         saldo: saldos.get(cliente.clienteId) ?? 0,
-        enTaller: (porCliente.get(cliente.clienteId) ?? []).some((v) => activas.has(v.vehiculoId)),
+        enTaller: vehiculos.some((v) => activas.has(v.vehiculoId)),
+        activo: cliente.estado === EstadoCliente.Activo,
+        // Las placas del cliente cubren el rato en que los vehículos aún no llegaron.
+        vehiculos: Math.max(vehiculos.length, (cliente.placas ?? []).length),
+        ultima: ultimas.get(cliente.clienteId) ?? null,
       };
     });
   });
@@ -273,6 +310,7 @@ export class Clientes {
       todos: filas.length,
       taller: filas.filter((f) => f.enTaller).length,
       saldo: filas.filter((f) => f.saldo > 0).length,
+      inactivos: filas.filter((f) => !f.activo).length,
     };
   });
 
@@ -280,9 +318,10 @@ export class Clientes {
     const filtro = this.filtro();
     const palabras = normalizar(this.buscar()).split(/\s+/).filter(Boolean);
 
-    return this.filas().filter((f) => {
+    const lista = this.filas().filter((f) => {
       if (filtro === 'taller' && !f.enTaller) return false;
       if (filtro === 'saldo' && f.saldo <= 0) return false;
+      if (filtro === 'inactivos' && f.activo) return false;
       if (palabras.length === 0) return true;
 
       const c = f.cliente;
@@ -293,19 +332,20 @@ export class Clientes {
       );
       return palabras.every((p) => texto.includes(p));
     });
+
+    return lista.sort(comparador(this.orden()));
   });
 
   protected readonly paginacion = new PaginacionLocal(
     () => this.filtradas(),
-    () => [this.buscar(), this.filtro()],
+    () => [this.buscar(), this.filtro(), this.orden()],
   );
   protected readonly visibles = this.paginacion.items;
 
-  /** El cliente de la ficha: el que se tocó o, si no, el primero de la lista. */
+  /** El cliente de la ficha abierta, si hay una. */
   protected readonly elegido = computed<FilaCliente | null>(() => {
     const id = this.elegidoId();
-    const filas = this.filas();
-    return (id ? filas.find((f) => f.cliente.clienteId === id) : null) ?? this.filtradas()[0] ?? null;
+    return id ? (this.filas().find((f) => f.cliente.clienteId === id) ?? null) : null;
   });
 
   // --- Ficha ------------------------------------------------------------------------
@@ -315,13 +355,55 @@ export class Clientes {
     return elegido ? (this.vehiculosPorCliente().get(elegido.cliente.clienteId) ?? []) : [];
   });
 
-  protected readonly ultimasOrdenes = computed(() => {
+  private readonly ordenesElegido = computed(() => {
     const elegido = this.elegido();
     if (!elegido) return [];
     return this.ordenes()
       .filter((o) => o.clienteId === elegido.cliente.clienteId)
-      .sort((a, b) => b.fechaCreacion.localeCompare(a.fechaCreacion))
-      .slice(0, 5);
+      .sort((a, b) => b.fechaCreacion.localeCompare(a.fechaCreacion));
+  });
+
+  protected readonly cantidadOrdenes = computed(() => this.ordenesElegido().length);
+  protected readonly ultimasOrdenes = computed(() => this.ordenesElegido().slice(0, 6));
+
+  /** Proformas con saldo: la más antigua es la que se ofrece cobrar primero. */
+  protected readonly proformasPendientes = computed(() => {
+    const elegido = this.elegido();
+    if (!elegido) return [];
+    return this.proformas()
+      .filter(
+        (p) =>
+          p.clienteId === elegido.cliente.clienteId &&
+          p.estado === EstadoProforma.Emitida &&
+          !p.estaSaldada &&
+          p.saldoPendiente > 0,
+      )
+      .sort((a, b) => a.fechaEmision.localeCompare(b.fechaEmision));
+  });
+
+  /** Lo que pasó con el cliente, del más reciente al más viejo. */
+  protected readonly historial = computed<Evento[]>(() => {
+    const elegido = this.elegido();
+    if (!elegido) return [];
+    const eventos: Evento[] = [
+      { fecha: elegido.cliente.fechaRegistro, texto: 'Se registró como cliente', tono: '' },
+    ];
+    for (const o of this.ordenesElegido()) {
+      eventos.push({ fecha: o.fechaCreacion, texto: `Abrió la orden ${o.ordenId}`, tono: '' });
+      if (o.fechaCierre && o.estado === EstadoOrden.Cerrada) {
+        eventos.push({ fecha: o.fechaCierre, texto: `Se cerró la orden ${o.ordenId}`, tono: 'verde' });
+      }
+    }
+    for (const p of this.proformas()) {
+      if (p.clienteId !== elegido.cliente.clienteId) continue;
+      const debe = !p.estaSaldada && p.saldoPendiente > 0;
+      eventos.push({
+        fecha: p.fechaEmision,
+        texto: `Proforma ${p.proformaId}${debe ? ' · debe ' + bolivianos(p.saldoPendiente) : ' · pagada'}`,
+        tono: debe ? 'rojo' : '',
+      });
+    }
+    return eventos.sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 12);
   });
 
   constructor() {
@@ -334,7 +416,6 @@ export class Clientes {
     const clienteId = parametros.get('clienteId');
     if (clienteId) {
       this.elegidoId.set(clienteId);
-      this.vistaMovil.set('ficha');
       // Que la búsqueda guardada no esconda al cliente que se pidió.
       if (!desdeUrl) this.buscar.set('');
     }
@@ -430,11 +511,36 @@ export class Clientes {
     this.filtro.set(filtro);
   }
 
-  protected elegir(cliente: Cliente): void {
+  protected ordenarPor(orden: OrdenTabla): void {
+    this.orden.set(orden);
+  }
+
+  protected alternarMenu(evento: Event, id: string): void {
+    evento.stopPropagation();
+    this.menuDe.set(this.menuDe() === id ? null : id);
+  }
+
+  /** "/" va al buscador (N ya abre un cliente nuevo con appAtajo). */
+  protected alTeclear(evento: KeyboardEvent): void {
+    const objetivo = evento.target as HTMLElement | null;
+    if (objetivo && ['INPUT', 'TEXTAREA', 'SELECT'].includes(objetivo.tagName)) return;
+    if (evento.key === '/') {
+      evento.preventDefault();
+      document.getElementById('buscarCliente')?.focus();
+    }
+  }
+
+  protected limpiarBusqueda(): void {
+    this.onBuscar('');
+    this.filtro.set('todos');
+  }
+
+  protected elegir(cliente: Cliente, pestana: Pestana = 'vehiculos'): void {
+    this.menuDe.set(null);
+    this.pestana.set(pestana);
     this.elegidoId.set(cliente.clienteId);
     this.modo.set('ficha');
     this.editando.set(null);
-    this.vistaMovil.set('ficha');
     // En la dirección: al ir a Vehículos y tocar "Volver", vuelve a este cliente.
     void this.router.navigate([], {
       relativeTo: this.ruta,
@@ -444,10 +550,40 @@ export class Clientes {
     });
   }
 
-  protected volverALista(): void {
-    this.vistaMovil.set('lista');
-    this.modo.set('ficha');
-    this.editando.set(null);
+  protected cerrarFicha(): void {
+    this.elegidoId.set(null);
+    void this.router.navigate([], {
+      relativeTo: this.ruta,
+      queryParams: { clienteId: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  protected tono(id: string): string {
+    return ['azul', 'verde', 'naranja', 'rojo'][Number(id.replace(/\D/g, '')) % 4];
+  }
+
+  /** "hoy", "hace 10 días", "hace 2 meses". */
+  protected haceCuanto(iso: string): string {
+    const dias = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+    if (dias <= 0) return 'hoy';
+    if (dias === 1) return 'ayer';
+    if (dias < 31) return `hace ${dias} días`;
+    const meses = Math.round(dias / 30);
+    if (meses < 12) return meses === 1 ? 'hace 1 mes' : `hace ${meses} meses`;
+    const anios = Math.round(dias / 365);
+    return anios === 1 ? 'hace 1 año' : `hace ${anios} años`;
+  }
+
+  protected fechaCorta(iso: string): string {
+    return fechaCorta(iso);
+  }
+
+  /** Clase del chip de estado de una orden en la ficha. */
+  protected claseOrden(orden: Orden): string {
+    if (ORDEN_ACTIVA.includes(orden.estado)) return 'curso';
+    return orden.estado === EstadoOrden.Cerrada ? 'cerrada' : 'cancelada';
   }
 
   // --- Lo que muestra la fila y la ficha ------------------------------------------------
@@ -574,8 +710,8 @@ export class Clientes {
   protected abrirNuevo(): void {
     this.reiniciarFormulario();
     this.editando.set(null);
+    this.menuDe.set(null);
     this.modo.set('nuevo');
-    this.vistaMovil.set('ficha');
     this.enfocarFormulario();
   }
 
@@ -592,6 +728,7 @@ export class Clientes {
   }
 
   protected abrirEditar(cliente: Cliente): void {
+    this.menuDe.set(null);
     this.editando.set(cliente);
     this.elegidoId.set(cliente.clienteId);
     this.registrarVehiculo.set(false);
@@ -611,7 +748,6 @@ export class Clientes {
   protected cerrarFormulario(): void {
     this.modo.set('ficha');
     this.editando.set(null);
-    if (!this.elegido()) this.vistaMovil.set('lista');
   }
 
   /** Marca que, al guardar, el formulario siga abierto para cargar otro cliente. */
@@ -788,6 +924,30 @@ function iniciales(nombre: string): string {
 /** Minúsculas y sin tildes, para buscar "jesus" y encontrar "Jesús". */
 function normalizar(texto: string): string {
   return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+}
+
+/** Orden de la tabla según la columna elegida; a igualdad, por nombre. */
+function comparador(orden: OrdenTabla): (a: FilaCliente, b: FilaCliente) => number {
+  const porNombre = (a: FilaCliente, b: FilaCliente) => a.nombre.localeCompare(b.nombre, 'es');
+  const peso = (f: FilaCliente) => (f.enTaller ? 2 : f.activo ? 1 : 0);
+  return (a, b) => {
+    switch (orden) {
+      case 'saldo':
+        return b.saldo - a.saldo || porNombre(a, b);
+      case 'ultima':
+        return (b.ultima ?? '').localeCompare(a.ultima ?? '') || porNombre(a, b);
+      case 'vehiculos':
+        return b.vehiculos - a.vehiculos || porNombre(a, b);
+      case 'estado':
+        return peso(b) - peso(a) || porNombre(a, b);
+      default:
+        return porNombre(a, b);
+    }
+  };
+}
+
+function bolivianos(monto: number): string {
+  return 'Bs ' + monto.toLocaleString('es-BO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fechaCorta(iso: string): string {
