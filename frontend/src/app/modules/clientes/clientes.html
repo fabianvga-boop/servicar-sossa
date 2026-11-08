@@ -69,13 +69,13 @@
 } @else {
   <section class="lista-filas tabla-cli" aria-label="Clientes">
     <div class="fila-lista fila-cli cabecera-lista">
-      <button type="button" [class.ordenada]="orden() === 'nombre'" (click)="ordenarPor('nombre')">Cliente</button>
+      <span>Cliente</span>
       <span class="col-ci">CI / NIT</span>
       <span class="col-tel ocultar-movil">Teléfono</span>
-      <button type="button" class="col-veh" [class.ordenada]="orden() === 'vehiculos'" (click)="ordenarPor('vehiculos')">Vehículos</button>
-      <button type="button" class="col-est" [class.ordenada]="orden() === 'estado'" (click)="ordenarPor('estado')">Estado</button>
-      <button type="button" class="col-saldo a-la-derecha" [class.ordenada]="orden() === 'saldo'" (click)="ordenarPor('saldo')">Saldo</button>
-      <button type="button" class="col-ult" [class.ordenada]="orden() === 'ultima'" (click)="ordenarPor('ultima')">Última actividad</button>
+      <span class="col-veh">Vehículos</span>
+      <span class="col-est">Estado</span>
+      <span class="col-saldo a-la-derecha">Saldo</span>
+      <span class="col-ult">Última actividad</span>
       <span class="col-acc a-la-derecha">Acciones</span>
     </div>
 

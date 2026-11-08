@@ -35,12 +35,6 @@
       Sin teléfono <span class="chip-cuenta">{{ indicadores().sinTelefono }}</span>
     </button>
   </div>
-  <select aria-label="Ordenar" [value]="orden()" (change)="ordenarPor($any($event.target).value)">
-    <option value="nombre">Ordenar: nombre</option>
-    <option value="total">Más comprado</option>
-    <option value="ultima">Compra más reciente</option>
-    <option value="repuestos">Más repuestos</option>
-  </select>
   <span class="cuenta-lista">{{ visibles().length === 1 ? '1 proveedor' : visibles().length + ' proveedores' }}</span>
 </div>
 
@@ -64,11 +58,11 @@
 } @else {
   <section class="lista-filas tabla-prov">
     <div class="fila-lista fila-prov cabecera-lista" role="row">
-      <button type="button" [class.ordenada]="orden() === 'nombre'" (click)="ordenarPor('nombre')">Proveedor</button>
-      <span>Contacto</span>
-      <button type="button" [class.ordenada]="orden() === 'repuestos'" (click)="ordenarPor('repuestos')">Repuestos</button>
-      <button type="button" class="a-la-derecha" [class.ordenada]="orden() === 'total'" (click)="ordenarPor('total')">Comprado</button>
-      <button type="button" class="col-ultima" [class.ordenada]="orden() === 'ultima'" (click)="ordenarPor('ultima')">Última compra</button>
+      <span>Proveedor</span>
+      <span class="col-contacto">Contacto</span>
+      <span class="col-repuestos">Repuestos</span>
+      <span class="a-la-derecha">Comprado</span>
+      <span class="col-ultima">Última compra</span>
       <span class="a-la-derecha">Acciones</span>
     </div>
 
