@@ -147,30 +147,7 @@ export class Compras {
     );
   });
 
-  // --- KPIs de abastecimiento ------------------------------------------------
-  // Siempre sobre `comprasTodas` (sin los filtros de proveedor/fecha de la
-  // tabla): son un resumen del mes en curso, no de la vista filtrada.
-
-  protected readonly kpiTotalMes = computed(() =>
-    this.comprasDelMes().reduce((suma, c) => suma + c.total, 0),
-  );
-
-  /** Unidades que entraron este mes (del detalle de cada compra del mes). */
-  protected readonly kpiUnidadesMes = computed(() => {
-    const detalles = this.detallesCompra();
-    return this.comprasDelMes().reduce(
-      (suma, c) =>
-        suma +
-        (detalles.get(c.compraId)?.detalles.reduce((total, l) => total + l.cantidad, 0) ?? 0),
-      0,
-    );
-  });
-
-  protected readonly kpiOcasionales = computed(() => {
-    const delMes = this.comprasDelMes();
-    return { ocasionales: delMes.filter((c) => c.ocasional).length, total: delMes.length };
-  });
-
+  /** Compras del mes en curso: de ellas se traen los repuestos para la búsqueda. */
   private comprasDelMes(): Compra[] {
     const ahora = new Date();
     return this.comprasTodas().filter((c) => {
@@ -712,6 +689,11 @@ export class Compras {
     if (compra <= 0) return '';
     const porcentaje = Math.round(((venta - compra) / compra) * 100);
     return `${porcentaje} %`;
+  }
+
+  /** Color del avatar de la fila, fijo por código (estándar de tablas). */
+  protected tono(id: string): string {
+    return ['azul', 'verde', 'naranja', 'rojo'][Number(id.replace(/\D/g, '')) % 4];
   }
 
   /** "Aceite 10w40" → "AC"; las dos primeras palabras con sustancia. */

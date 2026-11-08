@@ -147,6 +147,12 @@ export class Auditoria {
     this.cargar();
   }
 
+  /** Color fijo del avatar según el nombre (estándar de tablas). */
+  protected tonoNombre(nombre: string | null | undefined): string {
+    const suma = [...(nombre ?? '')].reduce((total, letra) => total + letra.charCodeAt(0), 0);
+    return ['azul', 'verde', 'naranja', 'rojo'][suma % 4];
+  }
+
   protected iniciales(nombre: string | null | undefined): string {
     const partes = (nombre ?? '').trim().split(/\s+/).filter(Boolean);
     if (partes.length === 0) return '—';

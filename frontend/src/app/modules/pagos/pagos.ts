@@ -13,6 +13,7 @@ import { Cajon } from '../../shared/components/cajon';
 import { Paginador } from '../../shared/components/paginador';
 import { PaginacionLocal, TODOS_LOS_REGISTROS } from '../../shared/paginacion-local';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
+import { coincidePorPalabras } from '../../shared/busqueda';
 import { Atajo } from '../../shared/directives/atajo';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 
@@ -69,12 +70,16 @@ export class Pagos {
   protected readonly enFechas = computed(() => {
     const desde = this.desde();
     const hasta = this.hasta();
-    if (!desde && !hasta) return this.pagos();
+    const buscar = this.buscar();
     return this.pagos().filter((p) => {
       const dia = fechaLocal(new Date(p.fechaPago));
-      return (!desde || dia >= desde) && (!hasta || dia <= hasta);
+      if ((desde && dia < desde) || (hasta && dia > hasta)) return false;
+      return coincidePorPalabras(buscar, p.pagoId, p.proformaId, p.nombreCliente, p.referencia ?? '');
     });
   });
+
+  /** Búsqueda por código, proforma, cliente o referencia. */
+  protected readonly buscar = signal('');
 
   protected readonly visibles = computed(() => {
     const metodo = this.metodoVista();
@@ -104,7 +109,7 @@ export class Pagos {
   protected readonly panelNuevo = signal(false);
   protected readonly paginacion = new PaginacionLocal(
     () => this.visibles(),
-    () => [this.metodoVista(), this.desde(), this.hasta()],
+    () => [this.metodoVista(), this.desde(), this.hasta(), this.buscar()],
   );
 
   protected readonly porRevertir = signal<Pago | null>(null);

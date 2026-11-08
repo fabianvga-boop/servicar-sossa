@@ -403,10 +403,10 @@ export class Diagnosticos {
   }
 
   protected claseRespuesta(d: Diagnostico): string {
-    if (d.estado === EstadoDiag.Anulado) return 'gris';
-    if (d.respuestaCliente === RespuestaCliente.Aprobado) return 'verde';
-    if (d.respuestaCliente === RespuestaCliente.Rechazado) return 'roja';
-    return d.montoEstimado == null ? 'gris' : 'naranja';
+    if (d.estado === EstadoDiag.Anulado) return 'insignia-gris';
+    if (d.respuestaCliente === RespuestaCliente.Aprobado) return 'insignia-verde';
+    if (d.respuestaCliente === RespuestaCliente.Rechazado) return 'insignia-roja';
+    return d.montoEstimado == null ? 'insignia-gris' : 'insignia-naranja';
   }
 
   /**

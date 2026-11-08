@@ -272,7 +272,20 @@
 <!-- --------------------------------------------------------------- Historial -->
 <ng-container *ngTemplateOutlet="encabezado" />
 
-<div class="filtros-ventas">
+<div class="barra-lista barra-ventas">
+  <label class="buscador-lista">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+    <input
+      type="search"
+      maxlength="100"
+      placeholder="Código o cliente"
+      aria-label="Buscar venta"
+      [value]="buscarVenta()"
+      (input)="buscarVenta.set($any($event.target).value)"
+    />
+    <kbd aria-hidden="true">/</kbd>
+  </label>
+
   <div class="chips-filtro" role="group" aria-label="Período">
     @for (rango of rangosRapidos; track rango.clave) {
       <button
@@ -293,65 +306,62 @@
     <input type="date" aria-label="Hasta" [value]="hasta()" (change)="onFecha('hasta', $any($event.target).value)" />
     @if (desde() || hasta()) {
       <button type="button" class="limpiar-fechas" aria-label="Quitar las fechas" (click)="limpiarFechas()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-          <path d="M18 6 6 18M6 6l12 12" />
-        </svg>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
       </button>
     }
   </div>
 
-  <span class="filtros-ventas-cuenta">{{ totalRegistros() }} {{ totalRegistros() === 1 ? 'venta' : 'ventas' }}</span>
+  <span class="cuenta-lista">{{ totalRegistros() }} {{ totalRegistros() === 1 ? 'venta' : 'ventas' }}</span>
 </div>
 
-<section class="lista-filas lista-ventas">
-  @if (cargando() || ventas().length === 0) {
+<section class="lista-filas">
+  @if (cargando() || ventasVisibles().length === 0) {
     <app-estado-tabla
       [cargando]="cargando()"
-      [hayFiltro]="desde().length > 0 || hasta().length > 0"
+      [hayFiltro]="desde().length > 0 || hasta().length > 0 || buscarVenta().length > 0"
       titulo="Sin ventas registradas"
       descripcion="Las ventas de mostrador aparecerán aquí."
     />
   } @else {
     <div class="fila-lista fila-venta cabecera-lista" aria-hidden="true">
-      <span>Código</span>
-      <span>Fecha</span>
+      <span>Venta</span>
       <span>Cliente</span>
       <span>Método</span>
       <span class="a-la-derecha">Artículos</span>
       <span class="a-la-derecha">Total</span>
       <span>Estado</span>
-      <span></span>
+      <span class="a-la-derecha">Acciones</span>
     </div>
 
-    @for (venta of ventas(); track venta.ventaId) {
-      <div class="fila-lista fila-venta" [class.elegida]="detalleDe()?.ventaId === venta.ventaId">
-        <span class="monto-mono venta-codigo">{{ venta.ventaId }}</span>
-        <span class="venta-tenue">{{ venta.fechaVenta | date: 'dd/MM/yyyy HH:mm' }}</span>
-        <span class="venta-cliente">{{ venta.nombreCliente }}</span>
-        <span><span class="insignia insignia-gris">{{ ETIQUETAS.metodoPago[venta.metodoPago] }}</span></span>
-        <span class="monto-mono a-la-derecha venta-tenue">{{ venta.cantidadArticulos }}</span>
-        <span class="monto-mono a-la-derecha">{{ venta.total | bs }}</span>
+    @for (venta of ventasVisibles(); track venta.ventaId) {
+      <div
+        class="fila-lista fila-venta clicable"
+        role="button"
+        tabindex="0"
+        [class.elegida]="detalleDe()?.ventaId === venta.ventaId"
+        [attr.aria-label]="'Ver el detalle de la venta ' + venta.ventaId"
+        (click)="detalleDe.set(venta)"
+        (keydown.enter)="detalleDe.set(venta)"
+      >
+        <span class="celda-doc">
+          <strong>{{ venta.ventaId }}</strong>
+          <span class="celda-sub">{{ venta.fechaVenta | date: 'dd/MM/yyyy · HH:mm' }}</span>
+        </span>
+        <span class="celda-texto"><strong>{{ venta.nombreCliente }}</strong></span>
+        <span class="ocultar-movil"><span class="insignia insignia-gris">{{ ETIQUETAS.metodoPago[venta.metodoPago] }}</span></span>
+        <span class="a-la-derecha ocultar-movil"><span class="monto-mono">{{ venta.cantidadArticulos }}</span></span>
+        <span class="a-la-derecha"><span class="monto-fila">{{ venta.total | bs }}</span></span>
         <span><app-insignia-estado familia="venta" [valor]="venta.estado" /></span>
-        <span class="venta-acciones">
-          <button
-            type="button"
-            class="btn btn-secundario btn-sm"
-            [attr.aria-label]="'Ver el detalle de la venta ' + venta.ventaId"
-            (click)="detalleDe.set(venta)"
-          >
-            Ver detalle
-          </button>
+        <span class="acciones-fila">
           @if (venta.estado === EstadoVenta.Emitida) {
             <button
               type="button"
-              class="btn-icono btn-icono-peligro"
+              class="icono-fila"
               title="Anular"
               aria-label="Anular venta"
-              (click)="porAnular.set(venta)"
+              (click)="$event.stopPropagation(); porAnular.set(venta)"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
-              </svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="m5.6 5.6 12.8 12.8" /></svg>
             </button>
           }
         </span>

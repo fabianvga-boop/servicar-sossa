@@ -67,6 +67,7 @@ export class Proformas {
   protected readonly procesando = signal(false);
 
   protected readonly vista = signal<Vista>('todas');
+  protected readonly buscar = signal('');
   protected readonly pagina = signal(1);
   protected readonly tamanoPagina = signal(20);
 
@@ -109,9 +110,14 @@ export class Proformas {
     };
   });
 
-  protected readonly filtradas = computed(() =>
-    this.todas().filter((p) => this.pasaVista(p, this.vista())),
-  );
+  protected readonly filtradas = computed(() => {
+    const palabras = normalizar(this.buscar()).split(/\s+/).filter(Boolean);
+    return this.todas().filter((p) => {
+      if (!this.pasaVista(p, this.vista())) return false;
+      const texto = normalizar([p.proformaId, p.ordenId, p.nombreCliente, p.placaVehiculo, p.nitRazonSocial].filter(Boolean).join(' '));
+      return palabras.every((x) => texto.includes(x));
+    });
+  });
 
   protected readonly totalPaginas = computed(() =>
     Math.max(1, Math.ceil(this.filtradas().length / this.tamanoPagina())),
@@ -200,6 +206,11 @@ export class Proformas {
     this.cargarProformas().subscribe();
   }
 
+  protected onBuscar(valor: string): void {
+    this.buscar.set(valor);
+    this.pagina.set(1);
+  }
+
   protected elegirVista(vista: Vista): void {
     this.vista.set(vista);
     this.pagina.set(1);
@@ -234,6 +245,12 @@ export class Proformas {
   protected estadoClase(p: Proforma): string {
     if (p.estado === EstadoProforma.Anulada) return 'roja';
     return p.estaSaldada ? 'verde' : 'naranja';
+  }
+
+  /** Estado en la tabla: verde saldada, rojo con saldo, gris anulada. */
+  protected estadoInsignia(p: Proforma): string {
+    if (p.estado === EstadoProforma.Anulada) return 'insignia-gris';
+    return p.estaSaldada ? 'insignia-verde' : 'insignia-roja';
   }
 
   /** "Bs 100 de 250", o "Reemplazada" si se anuló sin pagos. */
@@ -337,4 +354,9 @@ export class Proformas {
       },
     });
   }
+}
+
+/** Minúsculas y sin tildes, para buscar "maria" y encontrar "María". */
+function normalizar(texto: string): string {
+  return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 }

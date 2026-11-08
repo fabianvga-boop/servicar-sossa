@@ -1,4 +1,4 @@
-<div class="fila-entre envuelve mb-2 encabezado-pagina">
+<div class="fila-entre envuelve encabezado-pagina">
   <div>
     <h1>Usuarios</h1>
     <p class="texto-tenue texto-sm mb-0">Quién entra al sistema y qué puede hacer.</p>
@@ -10,47 +10,96 @@
   </button>
 </div>
 
-<div class="roles-usuarios">
-  <div class="rol-usuario">
-    <span><span class="insignia insignia-roja rol-insignia">Administrador</span></span>
-    <span>Todo el sistema: cobra, cierra órdenes, compra, ve reportes y administra usuarios.</span>
+<!-- ------------------------------------------------------- Buscar y filtrar -->
+<div class="barra-lista">
+  <label class="buscador-lista">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+    <input
+      type="search"
+      maxlength="100"
+      placeholder="Nombre, usuario o correo"
+      aria-label="Buscar usuario"
+      [value]="buscar()"
+      (input)="onBuscar($any($event.target).value)"
+    />
+    <kbd aria-hidden="true">/</kbd>
+  </label>
+  <div class="chips-filtro" role="group" aria-label="Filtrar usuarios">
+    <button type="button" class="chip-filtro" [class.activo]="filtro() === 'todos'" [attr.aria-pressed]="filtro() === 'todos'" (click)="filtro.set('todos')">
+      Todos <span class="chip-cuenta">{{ cuentas().todos }}</span>
+    </button>
+    <button
+      type="button"
+      class="chip-filtro"
+      title="Todo el sistema: cobra, cierra órdenes, compra, ve reportes y administra usuarios."
+      [class.activo]="filtro() === 'admin'"
+      [attr.aria-pressed]="filtro() === 'admin'"
+      (click)="filtro.set('admin')"
+    >
+      <span class="chip-punto roja" aria-hidden="true"></span>
+      Administradores <span class="chip-cuenta">{{ cuentas().admin }}</span>
+    </button>
+    <button
+      type="button"
+      class="chip-filtro"
+      title="Sus órdenes, diagnósticos y comisiones. Finaliza su trabajo, pero no cierra ni cobra."
+      [class.activo]="filtro() === 'mecanico'"
+      [attr.aria-pressed]="filtro() === 'mecanico'"
+      (click)="filtro.set('mecanico')"
+    >
+      Mecánicos <span class="chip-cuenta">{{ cuentas().mecanico }}</span>
+    </button>
+    <button type="button" class="chip-filtro" [class.activo]="filtro() === 'inactivos'" [attr.aria-pressed]="filtro() === 'inactivos'" (click)="filtro.set('inactivos')">
+      Inactivos <span class="chip-cuenta">{{ cuentas().inactivos }}</span>
+    </button>
   </div>
-  <div class="rol-usuario">
-    <span><span class="insignia insignia-gris rol-insignia">Mecánico</span></span>
-    <span>Sus órdenes, diagnósticos y comisiones. Finaliza su trabajo, pero no cierra ni cobra.</span>
-  </div>
+  <span class="cuenta-lista">{{ visibles().length === 1 ? '1 usuario' : visibles().length + ' usuarios' }}</span>
 </div>
 
 <section class="lista-filas">
-  <div class="fila-lista fila-usuario cabecera-lista" aria-hidden="true">
-    <span>Nombre</span>
-    <span>Usuario</span>
-    <span>Rol</span>
-    <span>Registrado</span>
-    <span>Activo</span>
-    <span class="a-la-derecha">Acciones</span>
-  </div>
-  @if (cargando() && usuarios().length === 0) {
-    <app-estado-tabla [cargando]="true" titulo="" descripcion="" />
+  @if ((cargando() && usuarios().length === 0) || visibles().length === 0) {
+    <app-estado-tabla
+      [cargando]="cargando() && usuarios().length === 0"
+      [hayFiltro]="usuarios().length > 0 || buscar().length > 0"
+      titulo="Todavía no hay usuarios"
+      descripcion="Cree el primer usuario del sistema."
+    />
   } @else {
-    @for (usuario of usuarios(); track usuario.usuarioId) {
+    <div class="fila-lista fila-usuario cabecera-lista" aria-hidden="true">
+      <span>Nombre</span>
+      <span>Usuario</span>
+      <span>Rol</span>
+      <span>Registrado</span>
+      <span>Activo</span>
+      <span class="a-la-derecha">Acciones</span>
+    </div>
+    @for (usuario of visibles(); track usuario.usuarioId) {
       @let activo = usuario.estado === EstadoUsuario.Activo;
-      <div class="fila-lista fila-usuario" [class.inactiva]="!activo" [class.elegida]="formularioAbierto() && editando()?.usuarioId === usuario.usuarioId">
-        <span class="usuario-identidad">
-          <span class="usuario-avatar" aria-hidden="true">{{ iniciales(usuario) }}</span>
-          <span class="usuario-textos">
+      <div
+        class="fila-lista fila-usuario clicable"
+        role="button"
+        tabindex="0"
+        [class.inactiva]="!activo"
+        [class.elegida]="formularioAbierto() && editando()?.usuarioId === usuario.usuarioId"
+        [attr.aria-label]="'Editar a ' + usuario.nombreCompleto"
+        (click)="abrirEditar(usuario)"
+        (keydown.enter)="abrirEditar(usuario)"
+      >
+        <span class="celda-persona">
+          <span class="avatar-fila {{ tono(usuario.usuarioId) }}" aria-hidden="true">{{ iniciales(usuario) }}</span>
+          <span>
             <strong>{{ usuario.nombreCompleto }}</strong>
-            <span>{{ usuario.email }}</span>
+            <span class="celda-sub">{{ usuario.email }}</span>
           </span>
         </span>
-        <span class="monto-mono usuario-login">{{ usuario.username }}</span>
+        <span class="monto-mono usuario-login ocultar-movil">{{ usuario.username }}</span>
         <span>
-          <span class="insignia rol-insignia" [class.insignia-roja]="usuario.nombreRol === 'Administrador'" [class.insignia-gris]="usuario.nombreRol !== 'Administrador'">
+          <span class="insignia con-punto" [class.insignia-roja]="usuario.nombreRol === 'Administrador'" [class.insignia-gris]="usuario.nombreRol !== 'Administrador'">
             {{ usuario.nombreRol === 'Mecanico' ? 'Mecánico' : usuario.nombreRol }}
           </span>
         </span>
-        <span class="usuario-tenue">{{ usuario.fechaRegistro | date: 'dd/MM/yyyy' }}</span>
-        <span>
+        <span class="celda-texto ocultar-movil"><strong>{{ usuario.fechaRegistro | date: 'dd/MM/yyyy' }}</strong></span>
+        <span class="ocultar-movil" (click)="$event.stopPropagation()" (keydown.enter)="$event.stopPropagation()">
           <button
             type="button"
             class="interruptor"
@@ -60,12 +109,12 @@
             (click)="porCambiarEstado.set(usuario)"
           ></button>
         </span>
-        <span class="a-la-derecha">
-          <button type="button" class="btn btn-fantasma btn-sm" (click)="abrirEditar(usuario)">Editar</button>
+        <span class="acciones-fila">
+          <button type="button" class="icono-fila" title="Editar" [attr.aria-label]="'Editar a ' + usuario.nombreCompleto" (click)="$event.stopPropagation(); abrirEditar(usuario)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /></svg>
+          </button>
         </span>
       </div>
-    } @empty {
-      <p class="usuarios-vacio">Cree el primer usuario del sistema.</p>
     }
 
     @if (totalPaginas() > 1) {

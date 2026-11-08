@@ -10,105 +10,14 @@
   height: 14px;
 }
 
-/* ============================================ KPIs de abastecimiento */
-/* Un solo panel con tres celdas divididas por una línea, en vez de tres
-   tarjetas con borde rojo: el rojo queda para la acción principal. */
-.kpis-compras {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  background: var(--blanco);
-  border: 1px solid var(--gris-200);
-  border-radius: var(--radio);
+/* Lista: usa el estándar global de tablas; acá solo sus columnas */
+.fila-compra { grid-template-columns: 140px minmax(190px, 1.3fr) minmax(140px, 1fr) 120px 120px 84px; }
+
+@container (max-width: 900px) {
+  .fila-compra { grid-template-columns: 140px minmax(190px, 1fr) 120px 120px 84px; }
+  .fila-compra > :nth-child(3) { display: none; }
 }
 
-.kpi-compra {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 16px 20px;
-}
-
-.kpi-compra + .kpi-compra { border-left: 1px solid var(--gris-100); }
-
-.kpi-etiqueta {
-  font-size: 13px;
-  color: var(--gris-500);
-}
-
-.kpi-valor {
-  font-family: var(--fuente-mono);
-  font-size: 22px;
-  font-weight: 500;
-  color: var(--ink);
-  line-height: 1.2;
-}
-
-.kpi-pie {
-  font-size: 12px;
-  color: var(--gris-400);
-}
-
-@media (max-width: 720px) {
-  .kpis-compras { grid-template-columns: 1fr; }
-
-  .kpi-compra + .kpi-compra {
-    border-left: none;
-    border-top: 1px solid var(--gris-100);
-  }
-}
-
-/* ================================================================ Filtros */
-.filtros-compras {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.filtro-proveedor { width: auto; min-width: 200px; }
-
-/* ================================================================== Lista */
-.fila-compra {
-  grid-template-columns: 84px 128px minmax(0, 1.3fr) minmax(0, 1fr) 110px 112px;
-}
-
-.compra-fecha {
-  font-size: 13px;
-  color: var(--gris-500);
-}
-
-.compra-origen {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
-  min-width: 0;
-}
-
-.compra-origen-texto,
-.compra-repuestos {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.compra-repuestos {
-  font-size: 13px;
-  color: var(--gris-500);
-}
-
-.insignia-ocasional {
-  display: inline-flex;
-  align-items: center;
-  height: 22px;
-  padding: 0 8px;
-  border-radius: 999px;
-  background: var(--naranja-100);
-  color: var(--naranja-700);
-  font-size: 12px;
-  font-weight: 500;
-}
 
 /* ===================================================== Detalle de una compra */
 .detalle-compra-sub {
@@ -249,37 +158,6 @@
   font-size: 12px;
   line-height: 1.5;
   color: var(--gris-400);
-}
-
-/* Con el panel abierto la lista se angosta: sin fecha ni repuestos */
-@media (max-width: 1700px) {
-  :host-context(body.con-cajon) .fila-compra {
-    grid-template-columns: 84px minmax(0, 1fr) 110px 112px;
-  }
-
-  :host-context(body.con-cajon) .compra-fecha,
-  :host-context(body.con-cajon) .compra-repuestos,
-  :host-context(body.con-cajon) .cabecera-lista span:nth-child(2),
-  :host-context(body.con-cajon) .cabecera-lista span:nth-child(4) { display: none; }
-}
-
-@media (max-width: 900px) {
-  .cabecera-lista { display: none; }
-
-  .fila-compra {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 6px 12px;
-    padding: 14px 16px;
-  }
-
-  .fila-compra .codigo { grid-row: 1; grid-column: 1; }
-  .compra-fecha { grid-row: 1; grid-column: 2; justify-self: end; }
-  .compra-origen { grid-row: 2; grid-column: 1 / -1; }
-  .compra-repuestos { grid-row: 3; grid-column: 1 / -1; }
-  .fila-compra .monto-mono { grid-row: 4; grid-column: 1; text-align: left; }
-  .fila-compra > span:last-child { grid-row: 4; grid-column: 2; }
-
-  .filtro-proveedor { flex: 1 1 100%; }
 }
 
 /* Explicación de la compra ocasional, arriba del formulario. */

@@ -92,45 +92,8 @@
   gap: 8px;
 }
 
-/* -------------------------------------------------------- Liquidaciones */
-
-.liquidaciones {
-  margin-top: 20px;
-  overflow: hidden;
-  border: 1px solid var(--gris-200);
-  border-radius: var(--radio);
-  background: var(--blanco);
-}
-
-.liquidaciones h2 {
-  margin: 0;
-  padding: 16px 20px;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.fila-liquidacion {
-  display: grid;
-  grid-template-columns: 110px minmax(0, 1fr) minmax(0, 1fr) 130px;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 20px;
-  border-top: 1px solid var(--gris-100);
-  font-size: 14px;
-}
-
-.liquidacion-fecha,
-.liquidacion-detalle {
-  font-size: 13px;
-  color: var(--gris-500);
-}
-
-.liquidaciones-vacio {
-  margin: 0;
-  padding: 0 20px 18px;
-  font-size: 14px;
-  color: var(--gris-500);
-}
+/* Liquidaciones: estándar global de tablas; acá solo sus columnas */
+.fila-liquidacion { grid-template-columns: 130px minmax(200px, 1fr) minmax(120px, 1fr) 140px; }
 
 /* ------------------------------------------------- Panel: servicios del mecánico */
 
@@ -311,11 +274,4 @@
 @media (max-width: 900px) {
   .tarjetas-mecanico { grid-template-columns: 1fr; }
 
-  .fila-liquidacion {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 4px 12px;
-    padding: 12px 16px;
-  }
-
-  .liquidacion-detalle { grid-column: 1; }
 }

@@ -1,4 +1,4 @@
-<div class="fila-entre envuelve mb-2 encabezado-pagina">
+<div class="fila-entre envuelve encabezado-pagina">
   <div>
     <h1>Vehículos</h1>
     <p class="texto-tenue texto-sm mb-0">Cada vehículo con su foto, su dueño y cómo está hoy.</p>
@@ -17,8 +17,8 @@
   </button>
 </div>
 
-<div class="barra-vehiculos">
-  <label class="buscador-lista buscador-vehiculos">
+<div class="barra-lista barra-vehiculos">
+  <label class="buscador-lista">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
     <input
       type="search"
@@ -28,6 +28,7 @@
       [value]="buscar()"
       (input)="onBuscar($any($event.target).value)"
     />
+    <kbd aria-hidden="true">/</kbd>
   </label>
 
   <div class="chips-filtro" role="group" aria-label="Filtrar vehículos">
@@ -35,7 +36,7 @@
       Todos <span class="chip-cuenta">{{ cuentas().todos }}</span>
     </button>
     <button type="button" class="chip-filtro" [class.activo]="filtro() === 'taller'" (click)="filtro.set('taller')">
-      En el taller <span class="chip-cuenta">{{ cuentas().taller }}</span>
+      <span class="chip-punto naranja" aria-hidden="true"></span>En el taller <span class="chip-cuenta">{{ cuentas().taller }}</span>
     </button>
     <button type="button" class="chip-filtro" [class.activo]="filtro() === 'presupuesto'" (click)="filtro.set('presupuesto')">
       Presupuesto pendiente <span class="chip-cuenta">{{ cuentas().presupuesto }}</span>
@@ -65,6 +66,8 @@
       </select>
     }
   </div>
+
+  <span class="cuenta-lista">{{ filtrados().length === 1 ? '1 vehículo' : filtrados().length + ' vehículos' }}</span>
 </div>
 
 @if (cargando() || filtrados().length === 0) {

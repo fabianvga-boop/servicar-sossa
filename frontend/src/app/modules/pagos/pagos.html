@@ -1,4 +1,4 @@
-<div class="fila-entre envuelve mb-2 encabezado-pagina">
+<div class="fila-entre envuelve encabezado-pagina">
   <div>
     <h1>Pagos</h1>
     <p class="texto-tenue texto-sm mb-0">
@@ -13,7 +13,32 @@
   </button>
 </div>
 
-<div class="filtros-pagos">
+<!-- ------------------------------------------------------- Buscar y filtrar -->
+<div class="barra-lista">
+  <label class="buscador-lista">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+    <input
+      type="search"
+      maxlength="100"
+      placeholder="Código, proforma, cliente o referencia"
+      aria-label="Buscar pago"
+      [value]="buscar()"
+      (input)="buscar.set($any($event.target).value)"
+    />
+    <kbd aria-hidden="true">/</kbd>
+  </label>
+
+  <div class="chips-filtro" role="group" aria-label="Filtrar por método">
+    <button type="button" class="chip-filtro" [class.activo]="metodoVista() === null" [attr.aria-pressed]="metodoVista() === null" (click)="metodoVista.set(null)">
+      Todos <span class="chip-cuenta">{{ enFechas().length }}</span>
+    </button>
+    @for (m of chipsMetodo(); track m.valor) {
+      <button type="button" class="chip-filtro" [class.activo]="metodoVista() === m.valor" [attr.aria-pressed]="metodoVista() === m.valor" (click)="metodoVista.set(m.valor)">
+        {{ m.etiqueta }} <span class="chip-cuenta">{{ m.cuenta }}</span>
+      </button>
+    }
+  </div>
+
   <div class="chips-filtro" role="group" aria-label="Período">
     @for (rango of rangosRapidos; track rango.clave) {
       <button
@@ -34,74 +59,57 @@
     <input type="date" aria-label="Hasta" [value]="hasta()" (change)="onFecha('hasta', $any($event.target).value)" />
     @if (desde() || hasta()) {
       <button type="button" class="limpiar-fechas" aria-label="Quitar las fechas" (click)="limpiarFechas()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-          <path d="M18 6 6 18M6 6l12 12" />
-        </svg>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
       </button>
     }
   </div>
 
-  @if (chipsMetodo().length > 1) {
-    <div class="chips-filtro" role="group" aria-label="Filtrar por método">
-      <button type="button" class="chip-filtro" [class.activo]="metodoVista() === null" [attr.aria-pressed]="metodoVista() === null" (click)="metodoVista.set(null)">
-        Todos <span class="chip-cuenta">{{ enFechas().length }}</span>
-      </button>
-      @for (m of chipsMetodo(); track m.valor) {
-        <button type="button" class="chip-filtro" [class.activo]="metodoVista() === m.valor" [attr.aria-pressed]="metodoVista() === m.valor" (click)="metodoVista.set(m.valor)">
-          {{ m.etiqueta }} <span class="chip-cuenta">{{ m.cuenta }}</span>
-        </button>
-      }
-    </div>
-  }
-
-  @if (desde() || hasta() || metodoVista() !== null) {
-    <span class="filtros-pagos-cuenta">
-      {{ visibles().length === 1 ? '1 pago' : visibles().length + ' pagos' }} ·
-      <span class="monto-mono">{{ totalVisible() | bs }}</span>
-    </span>
-  }
+  <span class="cuenta-lista">
+    {{ visibles().length === 1 ? '1 pago' : visibles().length + ' pagos' }} ·
+    <span class="monto-mono">{{ totalVisible() | bs }}</span>
+  </span>
 </div>
 
+<!-- -------------------------------------------------------------------- Lista -->
 <section class="lista-filas">
-  <div class="fila-lista fila-pago cabecera-lista" aria-hidden="true">
-    <span>Código</span>
-    <span>Fecha</span>
-    <span>Proforma</span>
-    <span>Cliente</span>
-    <span>Método</span>
-    <span class="a-la-derecha">Monto</span>
-    <span></span>
-  </div>
-  @if (cargando() && pagos().length === 0) {
-    <app-estado-tabla [cargando]="true" titulo="" descripcion="" />
+  @if (cargando() || paginacion.items().length === 0) {
+    <app-estado-tabla
+      [cargando]="cargando()"
+      [hayFiltro]="pagos().length > 0"
+      titulo="Todavía no hay pagos"
+      descripcion="Se registran al cobrar una proforma."
+    />
   } @else {
+    <div class="fila-lista fila-pago cabecera-lista" aria-hidden="true">
+      <span>Pago</span>
+      <span>Proforma</span>
+      <span>Cliente</span>
+      <span>Método</span>
+      <span class="a-la-derecha">Monto</span>
+      <span class="a-la-derecha">Acciones</span>
+    </div>
+
     @for (pago of paginacion.items(); track pago.pagoId) {
       <div class="fila-lista fila-pago">
-        <span class="monto-mono pago-codigo">{{ pago.pagoId }}</span>
-        <span class="pago-tenue">{{ pago.fechaPago | date: 'dd/MM/yyyy HH:mm' }}</span>
-        <span class="monto-mono pago-codigo">{{ pago.proformaId }}</span>
-        <span class="pago-cliente">
-          {{ pago.nombreCliente }}
+        <span class="celda-doc">
+          <strong>{{ pago.pagoId }}</strong>
+          <span class="celda-sub">{{ pago.fechaPago | date: 'dd/MM/yyyy · HH:mm' }}</span>
+        </span>
+        <span class="codigo ocultar-movil">{{ pago.proformaId }}</span>
+        <span class="celda-texto">
+          <strong>{{ pago.nombreCliente }}</strong>
           @if (pago.referencia) {
-            <span class="pago-tenue">Ref. {{ pago.referencia }}</span>
+            <span class="celda-sub">Ref. {{ pago.referencia }}</span>
           }
         </span>
-        <span><span class="insignia insignia-gris pago-metodo">{{ etiquetaMetodo(pago.metodoPago) }}</span></span>
-        <span class="monto-mono a-la-derecha">{{ pago.monto | bs }}</span>
-        <span class="a-la-derecha">
-          <button type="button" class="btn-icono-plano" title="Revertir" aria-label="Revertir pago" (click)="porRevertir.set(pago)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M3 7v6h6" /><path d="M3.51 13a9 9 0 1 0 2.13-9.36L3 7" />
-            </svg>
+        <span class="ocultar-movil"><span class="insignia insignia-gris">{{ etiquetaMetodo(pago.metodoPago) }}</span></span>
+        <span class="a-la-derecha"><span class="monto-fila">{{ pago.monto | bs }}</span></span>
+        <span class="acciones-fila">
+          <button type="button" class="icono-fila" title="Revertir" aria-label="Revertir pago" (click)="porRevertir.set(pago)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7v6h6" /><path d="M3.51 13a9 9 0 1 0 2.13-9.36L3 7" /></svg>
           </button>
         </span>
       </div>
-    } @empty {
-      @if (pagos().length > 0) {
-        <p class="pagos-vacio">No hay pagos en esas fechas.</p>
-      } @else {
-        <p class="pagos-vacio">Todavía no hay pagos registrados. Se registran al cobrar una proforma.</p>
-      }
     }
 
     @if (paginacion.totalPaginas() > 1) {

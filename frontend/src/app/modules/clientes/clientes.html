@@ -17,8 +17,8 @@
 </div>
 
 <!-- ------------------------------------------------------- Buscar y filtrar -->
-<div class="herramientas-cli">
-  <label class="buscador-lista buscador-cli">
+<div class="barra-lista">
+  <label class="buscador-lista">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
     <input
       id="buscarCliente"
@@ -37,39 +37,41 @@
       Todos <span class="chip-cuenta">{{ cuentas().todos }}</span>
     </button>
     <button type="button" class="chip-filtro" [class.activo]="filtro() === 'taller'" [attr.aria-pressed]="filtro() === 'taller'" (click)="elegirFiltro('taller')">
-      <span class="punto-filtro taller" aria-hidden="true"></span>En el taller <span class="chip-cuenta">{{ cuentas().taller }}</span>
+      <span class="chip-punto naranja" aria-hidden="true"></span>En el taller <span class="chip-cuenta">{{ cuentas().taller }}</span>
     </button>
     <button type="button" class="chip-filtro" [class.activo]="filtro() === 'saldo'" [attr.aria-pressed]="filtro() === 'saldo'" (click)="elegirFiltro('saldo')">
-      <span class="punto-filtro saldo" aria-hidden="true"></span>Con saldo <span class="chip-cuenta">{{ cuentas().saldo }}</span>
+      <span class="chip-punto roja" aria-hidden="true"></span>Con saldo <span class="chip-cuenta">{{ cuentas().saldo }}</span>
     </button>
     <button type="button" class="chip-filtro" [class.activo]="filtro() === 'inactivos'" [attr.aria-pressed]="filtro() === 'inactivos'" (click)="elegirFiltro('inactivos')">
       Inactivos <span class="chip-cuenta">{{ cuentas().inactivos }}</span>
     </button>
   </div>
-  <span class="cuenta-cli">{{ filtradas().length === 1 ? '1 cliente' : filtradas().length + ' clientes' }}</span>
+  <span class="cuenta-lista">{{ filtradas().length === 1 ? '1 cliente' : filtradas().length + ' clientes' }}</span>
 </div>
 
 <!-- ------------------------------------------------------------------ Tabla -->
 @if (cargando() && clientes().length === 0) {
-  <div class="tarjeta clientes-esqueleto"><app-esqueleto [filas]="6" [columnas]="5" /></div>
+  <section class="lista-filas"><app-estado-tabla [cargando]="true" [filas]="6" [columnas]="5" /></section>
 } @else if (filtradas().length === 0) {
-  <div class="vacio-cli">
-    @if (clientes().length === 0) {
-      <strong>Todavía no hay clientes</strong>
-      <p>Registre el primero para poder recibir sus vehículos.</p>
-      <button type="button" class="btn btn-primario" (click)="abrirNuevo()">Registrar el primer cliente</button>
-    } @else {
-      <strong>Ningún cliente coincide</strong>
-      <p>Pruebe con el nombre, el CI/NIT o la placa, o quite el filtro.</p>
-      <button type="button" class="btn btn-secundario" (click)="limpiarBusqueda()">Quitar la búsqueda</button>
-    }
-  </div>
+  <section class="lista-filas">
+    <app-estado-tabla
+      [hayFiltro]="clientes().length > 0"
+      titulo="Todavía no hay clientes"
+      descripcion="Registre el primero para poder recibir sus vehículos."
+    >
+      @if (clientes().length === 0) {
+        <button type="button" class="btn btn-primario" (click)="abrirNuevo()">Registrar el primer cliente</button>
+      } @else {
+        <button type="button" class="btn btn-secundario" (click)="limpiarBusqueda()">Quitar la búsqueda</button>
+      }
+    </app-estado-tabla>
+  </section>
 } @else {
-  <section class="tabla-cli" aria-label="Clientes">
-    <div class="fila-cli cabecera-cli">
+  <section class="lista-filas tabla-cli" aria-label="Clientes">
+    <div class="fila-lista fila-cli cabecera-lista">
       <button type="button" [class.ordenada]="orden() === 'nombre'" (click)="ordenarPor('nombre')">Cliente</button>
       <span class="col-ci">CI / NIT</span>
-      <span class="col-tel">Teléfono</span>
+      <span class="col-tel ocultar-movil">Teléfono</span>
       <button type="button" class="col-veh" [class.ordenada]="orden() === 'vehiculos'" (click)="ordenarPor('vehiculos')">Vehículos</button>
       <button type="button" class="col-est" [class.ordenada]="orden() === 'estado'" (click)="ordenarPor('estado')">Estado</button>
       <button type="button" class="col-saldo a-la-derecha" [class.ordenada]="orden() === 'saldo'" (click)="ordenarPor('saldo')">Saldo</button>
@@ -80,7 +82,7 @@
     @for (f of visibles(); track f.cliente.clienteId) {
       @let c = f.cliente;
       <div
-        class="fila-cli"
+        class="fila-lista fila-cli clicable"
         role="button"
         tabindex="0"
         [class.elegida]="elegido()?.cliente?.clienteId === c.clienteId || editando()?.clienteId === c.clienteId"
@@ -89,12 +91,12 @@
         (click)="elegir(c)"
         (keydown.enter)="elegir(c)"
       >
-        <div class="cli-identidad">
-          <span class="avatar-cli {{ tono(c.clienteId) }}" aria-hidden="true">{{ f.iniciales }}</span>
-          <span class="cli-nombre"><strong>{{ f.nombre }}</strong><span class="codigo">{{ c.clienteId }}</span></span>
+        <div class="celda-persona">
+          <span class="avatar-fila {{ tono(c.clienteId) }}" aria-hidden="true">{{ f.iniciales }}</span>
+          <span><strong>{{ f.nombre }}</strong><span class="celda-sub codigo">{{ c.clienteId }}</span></span>
         </div>
-        <span class="monto-mono col-ci">{{ c.ciNit }}</span>
-        <span class="col-tel">
+        <span class="monto-mono col-ci ocultar-movil">{{ c.ciNit }}</span>
+        <span class="col-tel ocultar-movil">
           @if (c.telefono) {
             <span class="monto-mono">{{ c.telefono }}</span>
           } @else {
@@ -113,50 +115,50 @@
         </div>
         <div class="col-est">
           @if (f.enTaller) {
-            <span class="estado-cli taller">En el taller</span>
+            <span class="insignia con-punto insignia-naranja">En el taller</span>
           } @else if (f.activo) {
-            <span class="estado-cli">Activo</span>
+            <span class="insignia con-punto insignia-verde">Activo</span>
           } @else {
-            <span class="estado-cli inactivo">Inactivo</span>
+            <span class="insignia con-punto insignia-gris">Inactivo</span>
           }
         </div>
         <div class="col-saldo a-la-derecha">
           @if (f.saldo > 0) {
-            <span class="monto-mono saldo-cli">{{ f.saldo | bs }}</span>
+            <span class="monto-fila debe">{{ f.saldo | bs }}</span>
           } @else {
             <span class="texto-tenue sin-saldo">—</span>
           }
         </div>
-        <div class="cli-ultima col-ult">
+        <div class="celda-texto col-ult ocultar-movil">
           @if (f.ultima) {
             <strong>{{ haceCuanto(f.ultima) }}</strong>
-            <span>{{ fechaCorta(f.ultima) }}</span>
+            <span class="celda-sub">{{ fechaCorta(f.ultima) }}</span>
           } @else {
             <span class="texto-tenue">Sin órdenes</span>
           }
         </div>
-        <div class="cli-acciones col-acc" (click)="$event.stopPropagation()" (keydown.enter)="$event.stopPropagation()">
+        <div class="acciones-fila col-acc" (click)="$event.stopPropagation()" (keydown.enter)="$event.stopPropagation()">
           @if (c.telefono; as telefono) {
-            <a class="icono-cli llamar" [href]="enlaceLlamada(telefono)" title="Llamar" [attr.aria-label]="'Llamar a ' + f.nombre">
+            <a class="icono-fila llamar" [href]="enlaceLlamada(telefono)" title="Llamar" [attr.aria-label]="'Llamar a ' + f.nombre">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2" /></svg>
             </a>
-            <a class="icono-cli whatsapp" [href]="enlaceWhatsapp(telefono)" target="_blank" rel="noopener" title="WhatsApp" [attr.aria-label]="'WhatsApp a ' + f.nombre">
+            <a class="icono-fila whatsapp" [href]="enlaceWhatsapp(telefono)" target="_blank" rel="noopener" title="WhatsApp" [attr.aria-label]="'WhatsApp a ' + f.nombre">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.04 2a9.9 9.9 0 0 0-8.5 15l-1.4 5 5.1-1.3A9.9 9.9 0 1 0 12.04 2Zm0 18.1a8.2 8.2 0 0 1-4.2-1.15l-.3-.18-3 .8.8-2.95-.2-.3a8.2 8.2 0 1 1 6.9 3.78Zm4.5-6.15c-.25-.12-1.46-.72-1.69-.8-.23-.08-.39-.12-.56.12-.16.25-.64.8-.79.97-.14.16-.29.18-.54.06-.25-.12-1.05-.39-2-1.23a7.5 7.5 0 0 1-1.38-1.72c-.14-.25 0-.38.11-.5.11-.11.25-.29.37-.43.12-.15.16-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.35-.77-1.85-.2-.48-.41-.42-.56-.42h-.48a.92.92 0 0 0-.66.31 2.8 2.8 0 0 0-.87 2.08c0 1.22.89 2.4 1.02 2.57.12.16 1.75 2.68 4.25 3.76.6.26 1.06.41 1.42.52.6.19 1.14.16 1.57.1.48-.07 1.46-.6 1.67-1.18.2-.58.2-1.07.14-1.18-.06-.1-.22-.16-.47-.29Z" /></svg>
             </a>
           } @else {
-            <span class="icono-cli apagado" title="Sin teléfono" aria-hidden="true">
+            <span class="icono-fila apagado" title="Sin teléfono" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2" /></svg>
             </span>
-            <span class="icono-cli apagado" title="Sin teléfono" aria-hidden="true">
+            <span class="icono-fila apagado" title="Sin teléfono" aria-hidden="true">
               <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12.04 2a9.9 9.9 0 0 0-8.5 15l-1.4 5 5.1-1.3A9.9 9.9 0 1 0 12.04 2Zm0 18.1a8.2 8.2 0 0 1-4.2-1.15l-.3-.18-3 .8.8-2.95-.2-.3a8.2 8.2 0 1 1 6.9 3.78Z" /></svg>
             </span>
           }
-          <div class="menu-cli">
-            <button type="button" class="icono-cli" title="Más acciones" aria-haspopup="menu" [attr.aria-expanded]="menuDe() === c.clienteId" (click)="alternarMenu($event, c.clienteId)">
+          <div class="menu-fila">
+            <button type="button" class="icono-fila" title="Más acciones" aria-haspopup="menu" [attr.aria-expanded]="menuDe() === c.clienteId" (click)="alternarMenu($event, c.clienteId)">
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></svg>
             </button>
             @if (menuDe() === c.clienteId) {
-              <div class="menu-cli-lista" role="menu" (click)="$event.stopPropagation()">
+              <div class="menu-fila-lista" role="menu" (click)="$event.stopPropagation()">
                 <button type="button" role="menuitem" (click)="elegir(c)">Ver ficha</button>
                 <button type="button" role="menuitem" (click)="abrirEditar(c)">Editar datos</button>
                 <button type="button" role="menuitem" (click)="agregarVehiculo(c)">Agregar vehículo</button>
@@ -171,10 +173,8 @@
         </div>
       </div>
     }
-  </section>
 
-  @if (paginacion.totalPaginas() > 1) {
-    <div class="tarjeta paginador-clientes">
+    @if (paginacion.totalPaginas() > 1) {
       <app-paginador
         [pagina]="paginacion.pagina()"
         [totalPaginas]="paginacion.totalPaginas()"
@@ -183,8 +183,8 @@
         (cambiarPagina)="paginacion.irA($event)"
         (cambiarTamano)="paginacion.cambiarTamano($event)"
       />
-    </div>
-  }
+    }
+  </section>
 }
 
 <!-- ------------------------------------------------------------------ Ficha -->

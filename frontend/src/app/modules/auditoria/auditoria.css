@@ -1,130 +1,14 @@
-.filtros-auditoria {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 18px;
-}
-
-.filtro-usuario {
-  width: auto;
-  min-width: 190px;
-  height: 40px;
-}
-
-.buscador-auditoria {
-  max-width: 320px;
-  margin-left: auto;
-}
-
-.dia-auditoria {
-  margin-bottom: 18px;
-  overflow: hidden;
-  border: 1px solid var(--gris-200);
-  border-radius: var(--radio);
-  background: var(--blanco);
-}
-
-.dia-cabecera {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 12px 20px;
-  background: var(--gris-50);
-  font-size: 13px;
-  color: var(--gris-400);
-}
-
-.dia-cabecera h2 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.evento-auditoria {
-  display: grid;
-  grid-template-columns: 56px 32px minmax(0, 1fr) auto;
-  align-items: start;
-  gap: 14px;
-  padding: 14px 20px;
-  border-top: 1px solid var(--gris-100);
-}
-
-.evento-auditoria:hover { background: var(--gris-50); }
-
-.evento-hora,
-.evento-codigo {
-  padding-top: 6px;
-  font-size: 13px;
-}
-
-.evento-hora { color: var(--gris-500); }
-
-.evento-codigo.sin-enlace { color: var(--gris-500); }
-
-.evento-avatar {
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--ink);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--blanco);
-}
-
-.evento-cuerpo {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.evento-quien {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.evento-quien strong {
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.evento-accion {
-  border-radius: 6px;
-  font-weight: 500;
-}
+/* Auditoría: estándar global de tablas, con una fila de grupo por día */
+.fila-evento { grid-template-columns: minmax(170px, 0.9fr) 140px minmax(220px, 2fr) 100px; }
 
 .evento-texto {
-  font-size: 14px;
+  min-width: 0;
+  font-size: 13.5px;
   line-height: 1.5;
-  color: var(--gris-500);
+  color: var(--ink-soft);
 }
 
-.auditoria-vacia {
-  padding: 32px 20px;
-  text-align: center;
-  color: var(--gris-500);
-}
-
-.paginador-auditoria { padding: 4px 8px; }
-
-@media (max-width: 900px) {
-  .buscador-auditoria { max-width: none; margin-left: 0; }
-
-  .evento-auditoria {
-    grid-template-columns: 32px minmax(0, 1fr);
-    padding: 12px 16px;
-  }
-
-  .evento-hora { display: none; }
-
-  .evento-codigo {
-    grid-column: 2;
-    padding-top: 0;
-  }
+@container (max-width: 900px) {
+  .fila-evento { grid-template-columns: minmax(160px, 0.8fr) minmax(200px, 2fr) 100px; }
+  .fila-evento > :nth-child(2) { display: none; }
 }

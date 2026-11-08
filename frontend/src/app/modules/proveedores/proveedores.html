@@ -10,8 +10,8 @@
   </button>
 </div>
 
-<div class="herramientas-prov">
-  <label class="buscador-lista buscador-prov">
+<div class="barra-lista">
+  <label class="buscador-lista">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
     <input
       id="buscarProveedor"
@@ -35,36 +35,35 @@
       Sin teléfono <span class="chip-cuenta">{{ indicadores().sinTelefono }}</span>
     </button>
   </div>
-  <select class="orden-prov" aria-label="Ordenar" [value]="orden()" (change)="ordenarPor($any($event.target).value)">
+  <select aria-label="Ordenar" [value]="orden()" (change)="ordenarPor($any($event.target).value)">
     <option value="nombre">Ordenar: nombre</option>
     <option value="total">Más comprado</option>
     <option value="ultima">Compra más reciente</option>
     <option value="repuestos">Más repuestos</option>
   </select>
-  <span class="cuenta-prov">{{ visibles().length === 1 ? '1 proveedor' : visibles().length + ' proveedores' }}</span>
+  <span class="cuenta-lista">{{ visibles().length === 1 ? '1 proveedor' : visibles().length + ' proveedores' }}</span>
 </div>
 
 @if (cargando() && proveedores().length === 0) {
-  <div class="tarjeta"><app-estado-tabla [cargando]="true" titulo="" descripcion="" /></div>
+  <section class="lista-filas"><app-estado-tabla [cargando]="true" /></section>
 } @else if (visibles().length === 0) {
   <!-- Vacío: o no hay ninguno todavía, o la búsqueda no encontró -->
-  <div class="vacio-prov">
-    <span class="vacio-prov-icono" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5z" /><path d="m3 8 9 5 9-5M12 13v8" /></svg>
-    </span>
-    @if (proveedores().length === 0) {
-      <strong>Todavía no hay proveedores</strong>
-      <p>Registre a quién le compra repuestos: así cada compra queda con su proveedor y se sabe cuánto se le compró.</p>
-      <button type="button" class="btn btn-primario" (click)="abrirNuevo()">Registrar el primer proveedor</button>
-    } @else {
-      <strong>Ningún proveedor coincide</strong>
-      <p>Pruebe con otro nombre, teléfono o código, o quite el filtro.</p>
-      <button type="button" class="btn btn-secundario" (click)="limpiarBusqueda()">Quitar la búsqueda</button>
-    }
-  </div>
+  <section class="lista-filas">
+    <app-estado-tabla
+      [hayFiltro]="proveedores().length > 0"
+      titulo="Todavía no hay proveedores"
+      descripcion="Registre a quién le compra repuestos: así cada compra queda con su proveedor."
+    >
+      @if (proveedores().length === 0) {
+        <button type="button" class="btn btn-primario" (click)="abrirNuevo()">Registrar el primer proveedor</button>
+      } @else {
+        <button type="button" class="btn btn-secundario" (click)="limpiarBusqueda()">Quitar la búsqueda</button>
+      }
+    </app-estado-tabla>
+  </section>
 } @else {
-  <section class="tabla-prov">
-    <div class="fila-prov cabecera-prov" role="row">
+  <section class="lista-filas tabla-prov">
+    <div class="fila-lista fila-prov cabecera-lista" role="row">
       <button type="button" [class.ordenada]="orden() === 'nombre'" (click)="ordenarPor('nombre')">Proveedor</button>
       <span>Contacto</span>
       <button type="button" [class.ordenada]="orden() === 'repuestos'" (click)="ordenarPor('repuestos')">Repuestos</button>
@@ -76,7 +75,7 @@
     @for (f of paginacion.items(); track f.proveedor.proveedorId) {
       @let p = f.proveedor;
       <div
-        class="fila-prov"
+        class="fila-lista fila-prov clicable"
         role="button"
         tabindex="0"
         [class.elegida]="ficha()?.proveedor?.proveedorId === p.proveedorId || (formularioAbierto() && editando()?.proveedorId === p.proveedorId)"
@@ -84,66 +83,62 @@
         (click)="abrirFicha(f)"
         (keydown.enter)="abrirFicha(f)"
       >
-        <div class="prov-identidad">
-          <span class="avatar-prov {{ tono(p.proveedorId) }}" aria-hidden="true">{{ iniciales(p.nombre) }}</span>
-          <span class="prov-nombre"><strong>{{ p.nombre }}</strong><span class="codigo">{{ p.proveedorId }}</span></span>
+        <div class="celda-persona">
+          <span class="avatar-fila {{ tono(p.proveedorId) }}" aria-hidden="true">{{ iniciales(p.nombre) }}</span>
+          <span><strong>{{ p.nombre }}</strong><span class="celda-sub codigo">{{ p.proveedorId }}</span></span>
         </div>
-        <div class="prov-contacto col-contacto">
+        <div class="celda-texto col-contacto ocultar-movil">
           @if (p.contacto) {
             <strong>{{ p.contacto }}</strong>
           } @else {
-            <span class="texto-tenue">Sin persona de contacto</span>
+            <strong class="texto-tenue">Sin persona de contacto</strong>
           }
-          @if (p.telefono) {
-            <span class="monto-mono">{{ p.telefono }}</span>
-          } @else {
-            <span class="texto-tenue">Sin teléfono</span>
-          }
+          <span class="celda-sub" [class.monto-mono]="p.telefono">{{ p.telefono || 'Sin teléfono' }}</span>
         </div>
-        <div class="col-repuestos">
+        <div class="col-repuestos ocultar-movil">
           <a class="chip-repuestos" [routerLink]="['/repuestos']" [queryParams]="{ proveedorId: p.proveedorId }" [title]="'Ver los repuestos de ' + p.nombre" (click)="$event.stopPropagation()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5z" /><path d="m3 8 9 5 9-5M12 13v8" /></svg>
             {{ p.cantidadRepuestos }}
           </a>
         </div>
-        <div class="prov-comprado col-comprado">
-          <strong class="monto-mono">{{ f.total | bs }}</strong>
-          <span>{{ f.compras === 1 ? '1 compra' : f.compras + ' compras' }}</span>
+        <div class="a-la-derecha col-comprado">
+          <strong class="monto-fila">{{ f.total | bs }}</strong>
+          <span class="celda-sub">{{ f.compras === 1 ? '1 compra' : f.compras + ' compras' }}</span>
         </div>
-        <div class="prov-ultima col-ultima">
+        <div class="celda-texto col-ultima ocultar-movil">
           @if (f.ultima) {
             <strong>{{ haceCuanto(f.ultima) }}</strong>
-            <span>{{ f.ultima | date: 'dd/MM/yyyy' }}</span>
+            <span class="celda-sub">{{ f.ultima | date: 'dd/MM/yyyy' }}</span>
           } @else {
             <span class="texto-tenue">Sin compras</span>
           }
         </div>
-        <div class="prov-acciones col-acciones" (click)="$event.stopPropagation()">
+        <div class="acciones-fila col-acciones" (click)="$event.stopPropagation()">
           @if (p.telefono) {
-            <a class="icono-prov llamar" [href]="enlaceLlamada(p.telefono)" title="Llamar" [attr.aria-label]="'Llamar a ' + p.nombre">
+            <a class="icono-fila llamar" [href]="enlaceLlamada(p.telefono)" title="Llamar" [attr.aria-label]="'Llamar a ' + p.nombre">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2" /></svg>
             </a>
-            <a class="icono-prov whatsapp" [href]="linkWhatsapp(p.telefono)" target="_blank" rel="noopener" title="WhatsApp" [attr.aria-label]="'WhatsApp a ' + p.nombre">
+            <a class="icono-fila whatsapp" [href]="linkWhatsapp(p.telefono)" target="_blank" rel="noopener" title="WhatsApp" [attr.aria-label]="'WhatsApp a ' + p.nombre">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.04 2a9.9 9.9 0 0 0-8.5 15l-1.4 5 5.1-1.3A9.9 9.9 0 1 0 12.04 2Zm0 18.1a8.2 8.2 0 0 1-4.2-1.15l-.3-.18-3 .8.8-2.95-.2-.3a8.2 8.2 0 1 1 6.9 3.78Zm4.5-6.15c-.25-.12-1.46-.72-1.69-.8-.23-.08-.39-.12-.56.12-.16.25-.64.8-.79.97-.14.16-.29.18-.54.06-.25-.12-1.05-.39-2-1.23a7.5 7.5 0 0 1-1.38-1.72c-.14-.25 0-.38.11-.5.11-.11.25-.29.37-.43.12-.15.16-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.35-.77-1.85-.2-.48-.41-.42-.56-.42h-.48a.92.92 0 0 0-.66.31 2.8 2.8 0 0 0-.87 2.08c0 1.22.89 2.4 1.02 2.57.12.16 1.75 2.68 4.25 3.76.6.26 1.06.41 1.42.52.6.19 1.14.16 1.57.1.48-.07 1.46-.6 1.67-1.18.2-.58.2-1.07.14-1.18-.06-.1-.22-.16-.47-.29Z" /></svg>
             </a>
           } @else {
-            <span class="icono-prov apagado" title="Sin teléfono" aria-hidden="true">
+            <span class="icono-fila apagado" title="Sin teléfono" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2" /></svg>
             </span>
-            <span class="icono-prov apagado" title="Sin teléfono" aria-hidden="true">
+            <span class="icono-fila apagado" title="Sin teléfono" aria-hidden="true">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.04 2a9.9 9.9 0 0 0-8.5 15l-1.4 5 5.1-1.3A9.9 9.9 0 1 0 12.04 2Zm0 18.1a8.2 8.2 0 0 1-4.2-1.15l-.3-.18-3 .8.8-2.95-.2-.3a8.2 8.2 0 1 1 6.9 3.78Z" /></svg>
             </span>
           }
-          <a class="btn btn-suave btn-sm boton-compra" [routerLink]="['/compras']" [queryParams]="{ nueva: true, proveedorId: p.proveedorId }" [title]="'Nueva compra a ' + p.nombre">
+          <a class="btn btn-secundario btn-sm" [routerLink]="['/compras']" [queryParams]="{ nueva: true, proveedorId: p.proveedorId }" [title]="'Nueva compra a ' + p.nombre">
             <svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.4" /><circle cx="17" cy="20" r="1.4" /><path d="M3 4h2l2.4 11.2a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.76L20 8H6.2" /></svg>
             Compra
           </a>
-          <div class="menu-prov">
-            <button type="button" class="icono-prov" title="Más acciones" aria-haspopup="menu" [attr.aria-expanded]="menuDe() === p.proveedorId" (click)="alternarMenu($event, p.proveedorId)">
+          <div class="menu-fila">
+            <button type="button" class="icono-fila" title="Más acciones" aria-haspopup="menu" [attr.aria-expanded]="menuDe() === p.proveedorId" (click)="alternarMenu($event, p.proveedorId)">
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></svg>
             </button>
             @if (menuDe() === p.proveedorId) {
-              <div class="menu-prov-lista" role="menu" (click)="$event.stopPropagation()">
+              <div class="menu-fila-lista" role="menu" (click)="$event.stopPropagation()">
                 <button type="button" role="menuitem" (click)="abrirFicha(f)">Ver ficha</button>
                 <button type="button" role="menuitem" (click)="abrirEditar(p)">Editar datos</button>
                 <a role="menuitem" [routerLink]="['/repuestos']" [queryParams]="{ proveedorId: p.proveedorId }">Ver sus {{ p.cantidadRepuestos }} repuestos</a>
@@ -155,10 +150,8 @@
         </div>
       </div>
     }
-  </section>
 
-  @if (paginacion.totalPaginas() > 1) {
-    <div class="tarjeta paginador-proveedores">
+    @if (paginacion.totalPaginas() > 1) {
       <app-paginador
         [pagina]="paginacion.pagina()"
         [totalPaginas]="paginacion.totalPaginas()"
@@ -167,8 +160,8 @@
         (cambiarPagina)="paginacion.irA($event)"
         (cambiarTamano)="paginacion.cambiarTamano($event)"
       />
-    </div>
-  }
+    }
+  </section>
 }
 
 <!-- ----------------------------------------------------------- Ficha (ver) -->

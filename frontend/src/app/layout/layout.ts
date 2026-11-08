@@ -80,14 +80,23 @@ export class Layout {
       this.cerrarHojas();
       return;
     }
-    if (evento.key !== '?' || evento.ctrlKey || evento.metaKey || evento.altKey) return;
+    if ((evento.key !== '?' && evento.key !== '/') || evento.ctrlKey || evento.metaKey || evento.altKey) return;
 
-    // Escribiendo en un campo, el "?" es texto; con un diálogo abierto, no se apila otro.
+    // Escribiendo en un campo, la tecla es texto; con un diálogo abierto, no se apila otro.
     const destino = evento.target as HTMLElement | null;
     const escribiendo =
       !!destino &&
       (destino.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(destino.tagName));
     if (escribiendo || document.querySelector('[aria-modal="true"]')) return;
+
+    // "/" lleva al buscador de la lista de la pantalla (estándar de tablas).
+    if (evento.key === '/') {
+      const campo = document.querySelector<HTMLInputElement>('.barra-lista .buscador-lista input');
+      if (!campo) return;
+      evento.preventDefault();
+      campo.focus();
+      return;
+    }
 
     evento.preventDefault();
     this.ayudaAtajos.set(true);

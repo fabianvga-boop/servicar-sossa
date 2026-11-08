@@ -1,17 +1,10 @@
 /* ------------------------------------------------------- Barra de filtros */
 
-.barra-vehiculos {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 16px;
-}
+.barra-vehiculos { margin-bottom: 16px; }
 
-.buscador-vehiculos { width: 300px; max-width: 100%; }
 
-.filtros-extra { display: flex; align-items: center; gap: 8px; margin-left: auto; }
-.filtro-marca { width: 190px; }
+.filtros-extra { display: flex; align-items: center; gap: 8px; }
+
 .chip-dueno {
   display: inline-flex;
   align-items: center;
@@ -227,8 +220,7 @@
 @media (max-width: 900px) {
   .garaje { grid-template-columns: minmax(0, 1fr); }
 
-  .buscador-vehiculos,
-  .filtros-extra { width: 100%; margin-left: 0; }
+  .filtros-extra { width: 100%; }
   .filtro-marca { flex: 1; width: auto; }
 
   /* Los chips en una sola fila que se desliza con el dedo */

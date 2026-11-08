@@ -1,7 +1,16 @@
-<div class="fila-entre envuelve mb-2 encabezado-pagina">
+<div class="fila-entre envuelve encabezado-pagina">
   <div>
     <h1>Proformas</h1>
-    <p class="texto-tenue texto-sm mb-0">El documento de cobro de cada orden terminada.</p>
+    <p class="texto-tenue texto-sm mb-0">
+      El documento de cobro de cada orden terminada.
+      @if (resumenCobro(); as r) {
+        @if (r.ordenes > 0) {
+          <button type="button" class="btn-enlace enlace-pendientes" (click)="abrirNueva()">
+            {{ r.ordenes === 1 ? '1 orden espera su proforma' : r.ordenes + ' órdenes esperan su proforma' }}
+          </button>
+        }
+      }
+    </p>
   </div>
   <button
     type="button"
@@ -16,75 +25,42 @@
   </button>
 </div>
 
-<!-- Lo que falta cobrar en todo el taller, sin buscarlo en la lista -->
-@if (resumenCobro(); as r) {
-  <div class="aviso-cobro mb-2" role="status">
-    <span class="aviso-cobro-punto" aria-hidden="true"></span>
-    <span class="aviso-cobro-texto">
-      @if (r.conSaldo > 0) {
-        <strong>{{ r.saldo | bs }} por cobrar</strong>
-        <span class="texto-tenue">
-          en {{ r.conSaldo }} {{ r.conSaldo === 1 ? 'proforma con saldo' : 'proformas con saldo' }}</span
-        >
+<!-- ------------------------------------------------------- Buscar y filtrar -->
+<div class="barra-lista">
+  <label class="buscador-lista">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+    <input
+      type="search"
+      maxlength="100"
+      placeholder="Código, orden, cliente o placa"
+      aria-label="Buscar proforma"
+      [value]="buscar()"
+      (input)="onBuscar($any($event.target).value)"
+    />
+    <kbd aria-hidden="true">/</kbd>
+  </label>
+  <div class="chips-filtro" role="group" aria-label="Estado de las proformas">
+    <button type="button" class="chip-filtro" [class.activo]="vista() === 'todas'" [attr.aria-pressed]="vista() === 'todas'" (click)="elegirVista('todas')">
+      Todas <span class="chip-cuenta">{{ cuentas().todas }}</span>
+    </button>
+    <button type="button" class="chip-filtro" [class.activo]="vista() === 'saldo'" [attr.aria-pressed]="vista() === 'saldo'" (click)="elegirVista('saldo')">
+      <span class="chip-punto roja" aria-hidden="true"></span>
+      Con saldo <span class="chip-cuenta">{{ cuentas().saldo }}</span>
+      @if (resumenCobro(); as r) {
+        @if (r.conSaldo > 0) {
+          <span class="chip-cuenta">· {{ r.saldo | bs }}</span>
+        }
       }
-      @if (r.ordenes > 0 && r.conSaldo > 0) {
-        <span class="texto-tenue"> · </span>
-      }
-      @if (r.ordenes > 0) {
-        <strong>{{ r.ordenes }} {{ r.ordenes === 1 ? 'orden terminada' : 'órdenes terminadas' }} sin proforma</strong>
-      }
-    </span>
-    @if (r.conSaldo > 0) {
-      <button type="button" class="btn btn-secundario btn-sm" (click)="elegirVista('saldo')">Ver con saldo</button>
-    }
-    @if (r.ordenes > 0) {
-      <button type="button" class="btn btn-secundario btn-sm" (click)="abrirNueva()">Emitir la que falta</button>
-    }
+    </button>
+    <button type="button" class="chip-filtro" [class.activo]="vista() === 'saldadas'" [attr.aria-pressed]="vista() === 'saldadas'" (click)="elegirVista('saldadas')">
+      <span class="chip-punto verde" aria-hidden="true"></span>
+      Saldadas <span class="chip-cuenta">{{ cuentas().saldadas }}</span>
+    </button>
+    <button type="button" class="chip-filtro" [class.activo]="vista() === 'anuladas'" [attr.aria-pressed]="vista() === 'anuladas'" (click)="elegirVista('anuladas')">
+      Anuladas <span class="chip-cuenta">{{ cuentas().anuladas }}</span>
+    </button>
   </div>
-}
-
-<!-- ------------------------------------------------------------------ Pestañas -->
-<div class="segmentos en-linea mb-2" role="tablist" aria-label="Estado de las proformas">
-  <button
-    type="button"
-    role="tab"
-    class="segmento"
-    [class.activo]="vista() === 'todas'"
-    [attr.aria-selected]="vista() === 'todas'"
-    (click)="elegirVista('todas')"
-  >
-    Todas <span class="vista-cuenta">{{ cuentas().todas }}</span>
-  </button>
-  <button
-    type="button"
-    role="tab"
-    class="segmento"
-    [class.activo]="vista() === 'saldo'"
-    [attr.aria-selected]="vista() === 'saldo'"
-    (click)="elegirVista('saldo')"
-  >
-    Con saldo <span class="vista-cuenta" [class.alerta]="cuentas().saldo > 0">{{ cuentas().saldo }}</span>
-  </button>
-  <button
-    type="button"
-    role="tab"
-    class="segmento"
-    [class.activo]="vista() === 'saldadas'"
-    [attr.aria-selected]="vista() === 'saldadas'"
-    (click)="elegirVista('saldadas')"
-  >
-    Saldadas <span class="vista-cuenta">{{ cuentas().saldadas }}</span>
-  </button>
-  <button
-    type="button"
-    role="tab"
-    class="segmento"
-    [class.activo]="vista() === 'anuladas'"
-    [attr.aria-selected]="vista() === 'anuladas'"
-    (click)="elegirVista('anuladas')"
-  >
-    Anuladas <span class="vista-cuenta">{{ cuentas().anuladas }}</span>
-  </button>
+  <span class="cuenta-lista">{{ filtradas().length === 1 ? '1 proforma' : filtradas().length + ' proformas' }}</span>
 </div>
 
 <!-- --------------------------------------------------------------------- Lista -->
@@ -92,41 +68,48 @@
   @if (cargando() || visibles().length === 0) {
     <app-estado-tabla
       [cargando]="cargando()"
-      [hayFiltro]="vista() !== 'todas'"
+      [hayFiltro]="vista() !== 'todas' || buscar().length > 0"
       titulo="Sin proformas emitidas"
       descripcion="Emita la proforma de una orden finalizada o cerrada."
     />
   } @else {
     <div class="fila-lista fila-proforma cabecera-lista" aria-hidden="true">
-      <span>Código</span>
+      <span>Proforma</span>
       <span>Orden</span>
       <span>Cliente</span>
       <span class="a-la-derecha">Total</span>
       <span>Cobrado</span>
       <span>Estado</span>
-      <span></span>
+      <span class="a-la-derecha">Acciones</span>
     </div>
 
     @for (proforma of visibles(); track proforma.proformaId) {
       <div class="fila-lista fila-proforma">
-        <span class="codigo">{{ proforma.proformaId }}</span>
+        <span class="celda-doc">
+          <strong>{{ proforma.proformaId }}</strong>
+          <span class="celda-sub">{{ proforma.fechaEmision | date: 'dd/MM/yyyy' }}</span>
+        </span>
 
-        <a class="enlace-orden-proforma" [routerLink]="['/ordenes', proforma.ordenId]">{{ proforma.ordenId }}</a>
+        <span class="ocultar-movil">
+          <a class="enlace-codigo" [routerLink]="['/ordenes', proforma.ordenId]">{{ proforma.ordenId }}</a>
+        </span>
 
-        <span class="proforma-cliente">
-          <span class="proforma-cliente-nombre">{{ proforma.nombreCliente }}</span>
-          <span class="proforma-cliente-detalle">
-            {{ proforma.fechaEmision | date: 'dd/MM/yyyy' }}
+        <span class="celda-vehiculo">
+          @if (proforma.placaVehiculo) {
+            <app-placa [valor]="proforma.placaVehiculo" />
+          }
+          <span class="celda-texto">
+            <strong>{{ proforma.nombreCliente }}</strong>
             @if (proforma.nitRazonSocial) {
-              · a nombre de {{ proforma.nitRazonSocial }}
+              <span class="celda-sub">A nombre de {{ proforma.nitRazonSocial }}</span>
             }
           </span>
         </span>
 
-        <span class="monto-mono a-la-derecha">{{ proforma.total | bs }}</span>
+        <span class="a-la-derecha"><span class="monto-fila">{{ proforma.total | bs }}</span></span>
 
-        <span class="proforma-cobrado">
-          <span class="proforma-cobrado-texto">{{ cobradoTexto(proforma) }}</span>
+        <span class="proforma-cobrado ocultar-movil">
+          <span class="celda-sub">{{ cobradoTexto(proforma) }}</span>
           <span class="barra-cobro" aria-hidden="true">
             <span
               class="barra-cobro-relleno {{ estadoClase(proforma) }}"
@@ -135,25 +118,20 @@
           </span>
         </span>
 
-        <span><span class="insignia-cobro {{ estadoClase(proforma) }}">{{ estadoTexto(proforma) }}</span></span>
+        <span><span class="insignia con-punto {{ estadoInsignia(proforma) }}">{{ estadoTexto(proforma) }}</span></span>
 
-        <span class="proforma-acciones">
+        <span class="acciones-fila">
           @if (proforma.estado === EstadoProforma.Emitida && !proforma.estaSaldada) {
             <a
-              class="btn-icono"
-              title="Registrar pago"
+              class="btn btn-secundario btn-sm"
               [attr.aria-label]="'Registrar un pago de la proforma ' + proforma.proformaId"
               [routerLink]="['/pagos']"
               [queryParams]="{ proformaId: proforma.proformaId }"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <rect x="2.5" y="6" width="19" height="12" rx="2" /><path d="M2.5 10h19" />
-              </svg>
-            </a>
+            >Cobrar</a>
           }
           <button
             type="button"
-            class="btn-icono"
+            class="icono-fila"
             [disabled]="descargando() === proforma.proformaId"
             [title]="descargando() === proforma.proformaId ? 'Generando…' : 'Descargar el PDF'"
             aria-label="Descargar el PDF"
@@ -166,13 +144,13 @@
           @if (proforma.estado === EstadoProforma.Emitida && proforma.totalPagado === 0) {
             <button
               type="button"
-              class="btn-icono btn-icono-peligro"
+              class="icono-fila"
               title="Anular"
               aria-label="Anular la proforma"
               (click)="porAnular.set(proforma)"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                <circle cx="12" cy="12" r="9" /><path d="m5.6 5.6 12.8 12.8" />
               </svg>
             </button>
           }

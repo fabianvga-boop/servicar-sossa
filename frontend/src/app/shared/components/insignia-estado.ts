@@ -93,7 +93,7 @@ export class InsigniaEstado {
         return {
           [EstadoDiag.Registrado]: 'insignia-azul',
           [EstadoDiag.Revisado]: 'insignia-verde',
-          [EstadoDiag.Anulado]: 'insignia-roja',
+          [EstadoDiag.Anulado]: 'insignia-gris',
         }[v as EstadoDiag];
 
       case 'respuestaCliente':
@@ -106,13 +106,13 @@ export class InsigniaEstado {
       case 'proforma':
         return {
           [EstadoProforma.Emitida]: 'insignia-verde',
-          [EstadoProforma.Anulada]: 'insignia-roja',
+          [EstadoProforma.Anulada]: 'insignia-gris',
         }[v as EstadoProforma];
 
       case 'venta':
         return {
           [EstadoVenta.Emitida]: 'insignia-verde',
-          [EstadoVenta.Anulada]: 'insignia-roja',
+          [EstadoVenta.Anulada]: 'insignia-gris',
         }[v as EstadoVenta];
 
       case 'pago':

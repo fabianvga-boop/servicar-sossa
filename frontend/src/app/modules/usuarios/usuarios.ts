@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { EstadoUsuario } from '../../core/models/enums';
@@ -51,6 +51,29 @@ export class Usuarios {
 
   protected readonly EstadoUsuario = EstadoUsuario;
 
+  /** Filtro de la tabla: por rol o los inactivos (sobre la página cargada). */
+  protected readonly filtro = signal<'todos' | 'admin' | 'mecanico' | 'inactivos'>('todos');
+
+  protected readonly cuentas = computed(() => {
+    const lista = this.usuarios();
+    return {
+      todos: lista.length,
+      admin: lista.filter((u) => esAdmin(u)).length,
+      mecanico: lista.filter((u) => !esAdmin(u)).length,
+      inactivos: lista.filter((u) => u.estado !== EstadoUsuario.Activo).length,
+    };
+  });
+
+  protected readonly visibles = computed(() => {
+    const filtro = this.filtro();
+    return this.usuarios().filter((u) => {
+      if (filtro === 'admin') return esAdmin(u);
+      if (filtro === 'mecanico') return !esAdmin(u);
+      if (filtro === 'inactivos') return u.estado !== EstadoUsuario.Activo;
+      return true;
+    });
+  });
+
   protected readonly formulario = this.fb.nonNullable.group({
     nombre: ['', [Validators.required, Validators.maxLength(100)]],
     apellido: ['', [Validators.required, Validators.maxLength(100)]],
@@ -97,6 +120,10 @@ export class Usuarios {
     this.tamanoPagina.set(tamano);
     this.pagina.set(1);
     this.cargar();
+  }
+
+  protected tono(id: string): string {
+    return ['azul', 'verde', 'naranja', 'rojo'][Number(id.replace(/\D/g, '')) % 4];
   }
 
   protected iniciales(usuario: Usuario): string {
@@ -216,4 +243,8 @@ export class Usuarios {
       },
     });
   }
+}
+
+function esAdmin(usuario: Usuario): boolean {
+  return usuario.nombreRol === 'Administrador';
 }

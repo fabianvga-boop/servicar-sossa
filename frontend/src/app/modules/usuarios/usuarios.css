@@ -1,78 +1,11 @@
-.roles-usuarios {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  margin-bottom: 18px;
-}
-
-.rol-usuario {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 16px 18px;
-  border: 1px solid var(--gris-200);
-  border-radius: var(--radio);
-  background: var(--blanco);
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--gris-500);
-}
-
-.rol-insignia { font-weight: 500; }
-
-.fila-usuario { grid-template-columns: minmax(0, 1.4fr) 140px 130px minmax(0, 1fr) 90px 110px; }
-
-.fila-usuario.inactiva .usuario-textos strong { color: var(--gris-400); }
-
-.usuario-identidad {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.usuario-avatar {
-  width: 36px;
-  height: 36px;
-  flex: none;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--ink);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--blanco);
-}
-
-.usuario-textos {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.usuario-textos strong { font-weight: 500; }
-
-.usuario-textos span {
-  overflow: hidden;
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--gris-400);
-}
-
+/* Lista: usa el estándar global de tablas; acá solo sus columnas */
+.fila-usuario { grid-template-columns: minmax(220px, 1.6fr) 150px 150px 120px 80px 84px; }
+.fila-usuario.inactiva .celda-persona { opacity: 0.55; }
 .usuario-login { font-size: 13px; }
 
-.usuario-tenue {
-  font-size: 13px;
-  color: var(--gris-500);
-}
-
-.usuarios-vacio {
-  margin: 0;
-  padding: 20px;
-  border-top: 1px solid var(--gris-100);
-  color: var(--gris-500);
+@container (max-width: 860px) {
+  .fila-usuario { grid-template-columns: minmax(200px, 1fr) 150px 80px 84px; }
+  .fila-usuario > :nth-child(2), .fila-usuario > :nth-child(4) { display: none; }
 }
 
 #form-usuario {
@@ -81,20 +14,6 @@
   gap: 18px;
 }
 
-@media (max-width: 1500px) {
-  :host-context(body.con-cajon) .fila-usuario { grid-template-columns: minmax(0, 1fr) 110px 70px 90px; }
-  :host-context(body.con-cajon) .fila-usuario > :nth-child(2),
-  :host-context(body.con-cajon) .fila-usuario > :nth-child(4) { display: none; }
-}
-
-@media (max-width: 900px) {
-  .roles-usuarios { grid-template-columns: minmax(0, 1fr); }
-  .fila-usuario { grid-template-columns: minmax(0, 1fr) auto auto; }
-  .fila-usuario > :nth-child(2),
-  .fila-usuario > :nth-child(3),
-  .fila-usuario > :nth-child(4) { display: none; }
-  .cabecera-lista.fila-usuario { display: none; }
-}
 
 .btn-fantasma {
   border-color: transparent;

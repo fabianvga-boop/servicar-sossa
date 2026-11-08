@@ -28,7 +28,8 @@
 <div class="repuestos-guiado" [class.con-formulario]="formularioAbierto() || !!fichaDe()">
   <!-- ----------------------------------------------------------- Resultados -->
   <section class="resultados-repuestos">
-    <label class="buscador-lista buscador-repuestos">
+    <div class="barra-lista barra-repuestos">
+    <label class="buscador-lista">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
       <input
         type="search"
@@ -38,7 +39,9 @@
         [value]="buscar()"
         (input)="onBuscar($any($event.target).value)"
       />
+      <kbd aria-hidden="true">/</kbd>
     </label>
+    </div>
 
     <div class="miga-repuestos">
       @for (parte of miga(); track parte; let ultima = $last) {
