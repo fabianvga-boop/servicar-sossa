@@ -1928,7 +1928,7 @@ table.tabla th.num {
    1. .barra-lista arriba y fuera de la caja: buscador ancho (tecla /),
       filtros en píldora con su número, controles extra y .cuenta-lista.
    2. .lista-filas: una caja con borde gris; .cabecera-lista gris clara en
-      mayúsculas; las columnas que ordenan son <button> y la elegida lleva ↓.
+      mayúsculas, sin ordenar por columna (orden fijo en todas).
    3. Primera columna en dos líneas: .celda-doc (código mono + fecha) o
       .celda-persona (avatar, nombre y dato).
    4. Estado: .insignia.con-punto (o <app-insignia-estado>).
@@ -2026,28 +2026,13 @@ table.tabla th.num {
 /* Cabecera debajo de un título de bloque (Panel): sin esquinas redondeadas */
 .lista-filas .cabecera-lista:not(:first-child) { border-top: 1px solid var(--gris-100); border-radius: 0; }
 
-.cabecera-lista > *,
-.cabecera-lista button {
+.cabecera-lista > * {
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--gris-500);
 }
-
-.cabecera-lista button {
-  padding: 0;
-  border: 0;
-  background: none;
-  font-family: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.cabecera-lista button:hover,
-.cabecera-lista button.ordenada { color: var(--ink); }
-
-.cabecera-lista button.ordenada::after { content: ' ↓'; }
 
 .cabecera-lista .a-la-derecha { justify-self: end; text-align: right; }
 

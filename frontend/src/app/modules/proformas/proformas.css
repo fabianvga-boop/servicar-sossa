@@ -8,7 +8,7 @@
 .proforma-cobrado { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 
 @container (max-width: 1060px) {
-  .fila-proforma { grid-template-columns: 112px minmax(180px, 1fr) 120px 120px 150px; }
+  .fila-proforma { grid-template-columns: 104px minmax(140px, 1fr) 110px 110px 130px; }
   .fila-proforma > :nth-child(2), .fila-proforma > :nth-child(5) { display: none; }
 }
 

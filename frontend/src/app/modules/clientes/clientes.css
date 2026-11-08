@@ -17,7 +17,7 @@
   .col-tel { display: none; }
 }
 @container (max-width: 1020px) {
-  .fila-cli { grid-template-columns: minmax(180px, 1.5fr) minmax(110px, 1fr) 124px 110px 120px; }
+  .fila-cli { grid-template-columns: minmax(160px, 1.5fr) minmax(100px, 1fr) 116px 100px 120px; }
   .col-ci, .col-ult { display: none; }
 }
 

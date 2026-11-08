@@ -3,7 +3,7 @@
 /* Lista: usa el estándar global de tablas; acá solo sus columnas */
 .fila-pago { grid-template-columns: 150px 100px minmax(180px, 1fr) 130px 130px 84px; }
 
-@container (max-width: 860px) {
+@container (max-width: 900px) {
   .fila-pago { grid-template-columns: 150px minmax(180px, 1fr) 130px 84px; }
   .fila-pago > :nth-child(2), .fila-pago > :nth-child(4) { display: none; }
 }

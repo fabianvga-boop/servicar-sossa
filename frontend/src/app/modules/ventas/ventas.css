@@ -529,8 +529,8 @@
 /* Lista: estándar global de tablas; acá solo sus columnas */
 .fila-venta { grid-template-columns: 150px minmax(180px, 1fr) 120px 90px 130px 120px 84px; }
 
-@container (max-width: 900px) {
-  .fila-venta { grid-template-columns: 150px minmax(160px, 1fr) 130px 120px 84px; }
+@container (max-width: 1000px) {
+  .fila-venta { grid-template-columns: 140px minmax(140px, 1fr) 120px 110px 84px; }
   .fila-venta > :nth-child(3), .fila-venta > :nth-child(4) { display: none; }
 }
 

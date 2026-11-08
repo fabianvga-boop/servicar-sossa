@@ -18,7 +18,6 @@ import { EnfocarError } from '../../shared/directives/enfocar-error';
 import { unicosOrdenados } from '../../shared/sugerencias-texto';
 
 type Filtro = 'todos' | 'mes' | 'sinTelefono';
-type Orden = 'nombre' | 'total' | 'ultima' | 'repuestos';
 
 /** Un proveedor con lo que se le compró, calculado de las compras. */
 interface FilaProveedor {
@@ -67,7 +66,6 @@ export class Proveedores {
   protected readonly buscar = signal('');
   protected readonly guardando = signal(false);
   protected readonly filtro = signal<Filtro>('todos');
-  protected readonly orden = signal<Orden>('nombre');
 
   /** Compras del taller, para saber cuánto se le compró a cada uno y cuándo. */
   private readonly compras = signal<Compra[]>([]);
@@ -109,7 +107,6 @@ export class Proveedores {
   protected readonly visibles = computed(() => {
     const texto = this.buscar();
     const filtro = this.filtro();
-    const orden = this.orden();
     const lista = this.filas().filter(
       (f) =>
         (filtro === 'todos' ||
@@ -117,29 +114,14 @@ export class Proveedores {
           (filtro === 'sinTelefono' && !f.proveedor.telefono?.trim())) &&
         coincidePorPalabras(texto, f.proveedor.nombre, f.proveedor.contacto, f.proveedor.telefono, f.proveedor.proveedorId),
     );
-    return [...lista].sort((a, b) => {
-      switch (orden) {
-        case 'total':
-          return b.total - a.total;
-        case 'ultima':
-          return (b.ultima ?? '').localeCompare(a.ultima ?? '');
-        case 'repuestos':
-          return b.proveedor.cantidadRepuestos - a.proveedor.cantidadRepuestos;
-        default:
-          return a.proveedor.nombre.localeCompare(b.proveedor.nombre, 'es');
-      }
-    });
+    // Orden fijo por nombre, como el resto de las tablas (sin ordenar por columna).
+    return [...lista].sort((a, b) => a.proveedor.nombre.localeCompare(b.proveedor.nombre, 'es'));
   });
 
   protected readonly paginacion = new PaginacionLocal(
     () => this.visibles(),
-    () => [this.buscar(), this.filtro(), this.orden()],
+    () => [this.buscar(), this.filtro()],
   );
-
-  /** Clic en el título de una columna: ordena por ella. */
-  protected ordenarPor(orden: Orden): void {
-    this.orden.set(orden);
-  }
 
   protected iniciales(nombre: string): string {
     const palabras = nombre.split(/\s+/).filter((p) => p.length > 2);

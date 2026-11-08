@@ -69,7 +69,6 @@ const SILUETAS = {
 const ORDEN_ACTIVA = [EstadoOrden.Abierta, EstadoOrden.EnProceso, EstadoOrden.Finalizada];
 
 type Filtro = 'todos' | 'taller' | 'saldo' | 'inactivos';
-type OrdenTabla = 'nombre' | 'vehiculos' | 'estado' | 'saldo' | 'ultima';
 type Pestana = 'vehiculos' | 'ordenes' | 'historial';
 type Modo = 'ficha' | 'nuevo' | 'editar';
 
@@ -158,7 +157,6 @@ export class Clientes {
   // --- Lista ------------------------------------------------------------------------
   protected readonly buscar = signal('');
   protected readonly filtro = signal<Filtro>('todos');
-  protected readonly orden = signal<OrdenTabla>('nombre');
   /** El cliente con la ficha abierta en el panel. */
   protected readonly elegidoId = signal<string | null>(null);
   protected readonly pestana = signal<Pestana>('vehiculos');
@@ -332,12 +330,13 @@ export class Clientes {
       return palabras.every((p) => texto.includes(p));
     });
 
-    return lista.sort(comparador(this.orden()));
+    // Orden fijo por nombre, como el resto de las tablas (sin ordenar por columna).
+    return lista.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
   });
 
   protected readonly paginacion = new PaginacionLocal(
     () => this.filtradas(),
-    () => [this.buscar(), this.filtro(), this.orden()],
+    () => [this.buscar(), this.filtro()],
   );
   protected readonly visibles = this.paginacion.items;
 
@@ -508,10 +507,6 @@ export class Clientes {
 
   protected elegirFiltro(filtro: Filtro): void {
     this.filtro.set(filtro);
-  }
-
-  protected ordenarPor(orden: OrdenTabla): void {
-    this.orden.set(orden);
   }
 
   protected alternarMenu(evento: Event, id: string): void {
@@ -913,26 +908,6 @@ function iniciales(nombre: string): string {
 /** Minúsculas y sin tildes, para buscar "jesus" y encontrar "Jesús". */
 function normalizar(texto: string): string {
   return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
-}
-
-/** Orden de la tabla según la columna elegida; a igualdad, por nombre. */
-function comparador(orden: OrdenTabla): (a: FilaCliente, b: FilaCliente) => number {
-  const porNombre = (a: FilaCliente, b: FilaCliente) => a.nombre.localeCompare(b.nombre, 'es');
-  const peso = (f: FilaCliente) => (f.enTaller ? 2 : f.activo ? 1 : 0);
-  return (a, b) => {
-    switch (orden) {
-      case 'saldo':
-        return b.saldo - a.saldo || porNombre(a, b);
-      case 'ultima':
-        return (b.ultima ?? '').localeCompare(a.ultima ?? '') || porNombre(a, b);
-      case 'vehiculos':
-        return b.vehiculos - a.vehiculos || porNombre(a, b);
-      case 'estado':
-        return peso(b) - peso(a) || porNombre(a, b);
-      default:
-        return porNombre(a, b);
-    }
-  };
 }
 
 function bolivianos(monto: number): string {

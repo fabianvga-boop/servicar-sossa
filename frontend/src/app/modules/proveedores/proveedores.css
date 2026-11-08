@@ -16,6 +16,17 @@
   .col-ultima { display: none; }
 }
 
+/* Con el panel abierto: sin contacto (se ve en la ficha) */
+@container (max-width: 940px) {
+  .fila-prov { grid-template-columns: minmax(180px, 1fr) 80px 130px 220px; }
+  .col-contacto { display: none; }
+}
+
+@container (max-width: 780px) {
+  .fila-prov { grid-template-columns: minmax(160px, 1fr) 130px 220px; }
+  .col-repuestos { display: none; }
+}
+
 /* Ficha */
 .ficha-prov { display: flex; flex-direction: column; gap: 16px; }
 .ficha-prov-contacto { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }

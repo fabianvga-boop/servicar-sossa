@@ -3,7 +3,7 @@
 .fila-usuario.inactiva .celda-persona { opacity: 0.55; }
 .usuario-login { font-size: 13px; }
 
-@container (max-width: 860px) {
+@container (max-width: 920px) {
   .fila-usuario { grid-template-columns: minmax(200px, 1fr) 150px 80px 84px; }
   .fila-usuario > :nth-child(2), .fila-usuario > :nth-child(4) { display: none; }
 }
