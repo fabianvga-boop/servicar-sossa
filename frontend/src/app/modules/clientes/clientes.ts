@@ -33,7 +33,7 @@ import { DiagnosticosService } from '../../core/services/taller.service';
 import { VehiculosService } from '../../core/services/vehiculos.service';
 import { Cajon } from '../../shared/components/cajon';
 import { Confirmacion } from '../../shared/components/confirmacion';
-import { Esqueleto } from '../../shared/components/esqueleto';
+import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { Paginador } from '../../shared/components/paginador';
 import { Placa } from '../../shared/components/placa';
 import { Atajo } from '../../shared/directives/atajo';
@@ -111,7 +111,7 @@ interface Evento {
     RouterLink,
     Cajon,
     Confirmacion,
-    Esqueleto,
+    EstadoTabla,
     Paginador,
     Placa,
     Atajo,
@@ -122,7 +122,6 @@ interface Evento {
   styleUrl: './clientes.css',
   host: {
     '(document:click)': 'menuDe.set(null)',
-    '(document:keydown)': 'alTeclear($event)',
   },
 })
 export class Clientes {
@@ -518,16 +517,6 @@ export class Clientes {
   protected alternarMenu(evento: Event, id: string): void {
     evento.stopPropagation();
     this.menuDe.set(this.menuDe() === id ? null : id);
-  }
-
-  /** "/" va al buscador (N ya abre un cliente nuevo con appAtajo). */
-  protected alTeclear(evento: KeyboardEvent): void {
-    const objetivo = evento.target as HTMLElement | null;
-    if (objetivo && ['INPUT', 'TEXTAREA', 'SELECT'].includes(objetivo.tagName)) return;
-    if (evento.key === '/') {
-      evento.preventDefault();
-      document.getElementById('buscarCliente')?.focus();
-    }
   }
 
   protected limpiarBusqueda(): void {

@@ -1,4 +1,4 @@
-<div class="fila-entre envuelve mb-2 encabezado-pagina">
+<div class="fila-entre envuelve encabezado-pagina">
   <div>
     <h1>Catálogo de servicios</h1>
     <p class="texto-tenue texto-sm mb-0">
@@ -19,58 +19,36 @@
   </button>
 </div>
 
-<!-- ------------------------------------------------------ Pestañas y búsqueda -->
-<div class="filtros-catalogo mb-2">
-  <div class="segmentos en-linea" role="tablist" aria-label="Tipo de servicio">
-    <button
-      type="button"
-      role="tab"
-      class="segmento"
-      [class.activo]="vista() === 'todos'"
-      [attr.aria-selected]="vista() === 'todos'"
-      (click)="vista.set('todos')"
-    >
-      Todos <span class="vista-cuenta">{{ cuentas().todos }}</span>
-    </button>
-    <button
-      type="button"
-      role="tab"
-      class="segmento"
-      [class.activo]="vista() === 'repuestos'"
-      [attr.aria-selected]="vista() === 'repuestos'"
-      (click)="vista.set('repuestos')"
-    >
-      Lleva repuestos <span class="vista-cuenta">{{ cuentas().repuestos }}</span>
-    </button>
-    <button
-      type="button"
-      role="tab"
-      class="segmento"
-      [class.activo]="vista() === 'mano'"
-      [attr.aria-selected]="vista() === 'mano'"
-      (click)="vista.set('mano')"
-    >
-      Solo mano de obra <span class="vista-cuenta">{{ cuentas().mano }}</span>
-    </button>
-  </div>
-
-  <label class="buscador-catalogo">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-      <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
-    </svg>
+<!-- ------------------------------------------------------- Buscar y filtrar -->
+<div class="barra-lista">
+  <label class="buscador-lista">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
     <input
       type="search"
       maxlength="100"
-      placeholder="Nombre o descripción"
+      placeholder="Nombre, descripción o código"
       aria-label="Buscar servicio"
       [value]="buscar()"
       (input)="buscar.set($any($event.target).value)"
     />
+    <kbd aria-hidden="true">/</kbd>
   </label>
+  <div class="chips-filtro" role="group" aria-label="Tipo de servicio">
+    <button type="button" class="chip-filtro" [class.activo]="vista() === 'todos'" [attr.aria-pressed]="vista() === 'todos'" (click)="vista.set('todos')">
+      Todos <span class="chip-cuenta">{{ cuentas().todos }}</span>
+    </button>
+    <button type="button" class="chip-filtro" [class.activo]="vista() === 'repuestos'" [attr.aria-pressed]="vista() === 'repuestos'" (click)="vista.set('repuestos')">
+      Lleva repuestos <span class="chip-cuenta">{{ cuentas().repuestos }}</span>
+    </button>
+    <button type="button" class="chip-filtro" [class.activo]="vista() === 'mano'" [attr.aria-pressed]="vista() === 'mano'" (click)="vista.set('mano')">
+      Solo mano de obra <span class="chip-cuenta">{{ cuentas().mano }}</span>
+    </button>
+  </div>
+  <span class="cuenta-lista">{{ filtrados().length === 1 ? '1 servicio' : filtrados().length + ' servicios' }}</span>
 </div>
 
 <!-- ------------------------------------------------------------------- Lista -->
-<section class="lista-catalogo">
+<section class="lista-filas">
   @if (cargando() || filtrados().length === 0) {
     <app-estado-tabla
       [cargando]="cargando()"
@@ -79,33 +57,31 @@
       descripcion="Registre los servicios que ofrece el taller para poder cargarlos en las órdenes."
     />
   } @else {
-    <div class="fila-catalogo cabecera-catalogo" aria-hidden="true">
-      <span>Código</span>
-      <span>Servicio y qué incluye</span>
+    <div class="fila-lista fila-catalogo cabecera-lista" aria-hidden="true">
+      <span>Servicio</span>
       <span>Lleva</span>
       <span class="a-la-derecha">Precio base</span>
       <span>Activo</span>
-      <span></span>
+      <span class="a-la-derecha">Acciones</span>
     </div>
 
     @for (servicio of paginacion.items(); track servicio.servicioId) {
       <div
-        class="fila-catalogo"
+        class="fila-lista fila-catalogo"
+        [class.clicable]="auth.esAdministrador()"
         [class.elegida]="formularioAbierto() && editando()?.servicioId === servicio.servicioId"
         [class.inactiva]="servicio.estado !== EstadoServicio.Activo"
+        (click)="auth.esAdministrador() && abrirEditar(servicio)"
       >
-        <span class="codigo">{{ servicio.servicioId }}</span>
-
-        <span class="servicio-textos">
+        <span class="celda-texto">
           <strong class="servicio-nombre">{{ servicio.nombre }}</strong>
-          @if (servicio.descripcion) {
-            <span class="servicio-descripcion">{{ servicio.descripcion }}</span>
-          } @else {
-            <span class="servicio-descripcion sin-descripcion">Sin descripción de lo que incluye</span>
-          }
+          <span class="celda-sub">
+            <span class="codigo">{{ servicio.servicioId }}</span> ·
+            {{ servicio.descripcion || 'Sin descripción de lo que incluye' }}
+          </span>
         </span>
 
-        <span class="servicio-lleva">
+        <span class="servicio-lleva ocultar-movil">
           @if (!servicio.requiereRepuesto) {
             <span class="etiqueta-lleva mano">Solo mano de obra</span>
           } @else {
@@ -117,9 +93,9 @@
           }
         </span>
 
-        <span class="servicio-precio">{{ servicio.precioBase | bs }}</span>
+        <span class="a-la-derecha"><span class="monto-fila">{{ servicio.precioBase | bs }}</span></span>
 
-        <span class="servicio-activo">
+        <span (click)="$event.stopPropagation()">
           <button
             type="button"
             class="interruptor"
@@ -131,10 +107,10 @@
           ></button>
         </span>
 
-        <span class="servicio-acciones">
+        <span class="acciones-fila">
           @if (auth.esAdministrador()) {
-            <button type="button" class="btn btn-secundario btn-sm" (click)="abrirEditar(servicio)">
-              Editar
+            <button type="button" class="icono-fila" title="Editar" [attr.aria-label]="'Editar ' + servicio.nombre" (click)="$event.stopPropagation(); abrirEditar(servicio)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /></svg>
             </button>
           }
         </span>

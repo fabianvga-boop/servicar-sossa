@@ -313,6 +313,12 @@ export class Comisiones {
 
   // --- Liquidación (USU034) ---------------------------------------------------
 
+  /** Color fijo del avatar según el nombre (estándar de tablas). */
+  protected tonoNombre(nombre: string): string {
+    const suma = [...nombre].reduce((total, letra) => total + letra.charCodeAt(0), 0);
+    return ['azul', 'verde', 'naranja', 'rojo'][suma % 4];
+  }
+
   protected pedirLiquidacion(): void {
     if (this.elegidas().size === 0) {
       this.notificacion.advertencia('Elija al menos una comisión para liquidar.');

@@ -1,15 +1,15 @@
-<div class="encabezado-pagina mb-2">
+<div class="encabezado-pagina">
   <h1>Auditoría</h1>
   <p class="texto-tenue texto-sm mb-0">Quién hizo qué y cuándo. No se puede editar ni borrar.</p>
 </div>
 
-<div class="filtros-auditoria">
-  <select class="filtro-usuario" aria-label="Usuario" [ngModel]="usuarioId()" (ngModelChange)="elegirUsuario($event)">
-    <option value="">Todos los usuarios</option>
-    @for (u of usuarios(); track u.usuarioId) {
-      <option [value]="u.usuarioId">{{ u.nombreCompleto }}</option>
-    }
-  </select>
+<!-- ------------------------------------------------------- Buscar y filtrar -->
+<div class="barra-lista">
+  <label class="buscador-lista">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+    <input type="search" placeholder="Código o texto" aria-label="Buscar en la auditoría" [value]="texto()" (input)="onBuscar($any($event.target).value)" />
+    <kbd aria-hidden="true">/</kbd>
+  </label>
 
   <div class="chips-filtro" role="group" aria-label="Módulo">
     @for (g of GRUPOS; track g.clave) {
@@ -19,57 +19,62 @@
     }
   </div>
 
-  <label class="buscador-lista buscador-auditoria">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-    <input type="search" placeholder="Código o texto" aria-label="Buscar en la auditoría" [value]="texto()" (input)="onBuscar($any($event.target).value)" />
-  </label>
+  <select aria-label="Usuario" [ngModel]="usuarioId()" (ngModelChange)="elegirUsuario($event)">
+    <option value="">Todos los usuarios</option>
+    @for (u of usuarios(); track u.usuarioId) {
+      <option [value]="u.usuarioId">{{ u.nombreCompleto }}</option>
+    }
+  </select>
+
+  <span class="cuenta-lista">{{ totalRegistros() === 1 ? '1 movimiento' : totalRegistros() + ' movimientos' }}</span>
 </div>
 
-@if (cargando() && filas().length === 0) {
-  <div class="tarjeta"><app-estado-tabla [cargando]="true" titulo="" descripcion="" /></div>
-} @else {
-  @for (dia of dias(); track dia.clave) {
-    <section class="dia-auditoria">
-      <div class="dia-cabecera">
-        <h2>{{ dia.titulo }}</h2>
+<section class="lista-filas">
+  @if ((cargando() && filas().length === 0) || dias().length === 0) {
+    <app-estado-tabla
+      [cargando]="cargando() && filas().length === 0"
+      [hayFiltro]="!!(grupo() || usuarioId() || texto())"
+      titulo="Sin movimientos"
+      descripcion="Las acciones sobre órdenes, repuestos, cobros y demás módulos aparecerán aquí."
+    />
+  } @else {
+    @for (dia of dias(); track dia.clave) {
+      <div class="fila-lista grupo-lista">
+        <strong>{{ dia.titulo }}</strong>
         <span>{{ dia.filas.length === 1 ? '1 movimiento' : dia.filas.length + ' movimientos' }}</span>
       </div>
       @for (fila of dia.filas; track fila.auditoriaId) {
         @let destino = enlace(fila);
-        <div class="evento-auditoria">
-          <span class="monto-mono evento-hora">{{ fila.fecha | date: 'HH:mm' }}</span>
-          <span class="evento-avatar" aria-hidden="true">{{ iniciales(fila.nombreUsuario) }}</span>
-          <div class="evento-cuerpo">
-            <div class="evento-quien">
+        <div class="fila-lista fila-evento">
+          <span class="celda-persona">
+            <span class="avatar-fila {{ tonoNombre(fila.nombreUsuario) }}" aria-hidden="true">{{ iniciales(fila.nombreUsuario) }}</span>
+            <span>
               <strong>{{ fila.nombreUsuario }}</strong>
-              <span class="insignia evento-accion {{ claseAccion(fila.accion) }}">{{ ETIQUETAS.accionAuditoria[fila.accion] }}</span>
-            </div>
-            <span class="evento-texto"><app-texto-resaltado [texto]="fila.descripcion" /></span>
-          </div>
-          @if (destino) {
-            <a class="monto-mono evento-codigo" [routerLink]="destino.ruta" [queryParams]="destino.parametros">{{ fila.entidadId }}</a>
-          } @else {
-            <span class="monto-mono evento-codigo sin-enlace">{{ fila.entidadId }}</span>
-          }
+              <span class="celda-sub monto-mono">{{ fila.fecha | date: 'HH:mm' }}</span>
+            </span>
+          </span>
+          <span class="ocultar-movil"><span class="insignia con-punto {{ claseAccion(fila.accion) }}">{{ ETIQUETAS.accionAuditoria[fila.accion] }}</span></span>
+          <span class="evento-texto"><app-texto-resaltado [texto]="fila.descripcion" /></span>
+          <span class="a-la-derecha">
+            @if (destino) {
+              <a class="enlace-codigo" [routerLink]="destino.ruta" [queryParams]="destino.parametros">{{ fila.entidadId }}</a>
+            } @else {
+              <span class="codigo">{{ fila.entidadId }}</span>
+            }
+          </span>
         </div>
       }
-    </section>
-  } @empty {
-    <div class="tarjeta auditoria-vacia">
-      {{ grupo() || usuarioId() || texto() ? 'Nada coincide con el filtro.' : 'Las acciones sobre órdenes, repuestos, cobros y demás módulos aparecerán aquí.' }}
-    </div>
+    }
   }
 
   @if (totalPaginas() > 1) {
-    <div class="tarjeta paginador-auditoria">
-      <app-paginador
-        [pagina]="pagina()"
-        [totalPaginas]="totalPaginas()"
-        [totalRegistros]="totalRegistros()"
-        [tamanoPagina]="tamanoPagina()"
-        (cambiarPagina)="cambiarPagina($event)"
-        (cambiarTamano)="cambiarTamano($event)"
-      />
-    </div>
+    <app-paginador
+      [pagina]="pagina()"
+      [totalPaginas]="totalPaginas()"
+      [totalRegistros]="totalRegistros()"
+      [tamanoPagina]="tamanoPagina()"
+      (cambiarPagina)="cambiarPagina($event)"
+      (cambiarTamano)="cambiarTamano($event)"
+    />
   }
-}
+</section>

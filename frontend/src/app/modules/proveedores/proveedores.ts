@@ -51,7 +51,6 @@ interface FilaProveedor {
   styleUrl: './proveedores.css',
   host: {
     '(document:click)': 'menuDe.set(null)',
-    '(document:keydown)': 'alTeclear($event)',
   },
 })
 export class Proveedores {
@@ -190,16 +189,6 @@ export class Proveedores {
   protected abrirFicha(fila: FilaProveedor): void {
     this.menuDe.set(null);
     this.ficha.set(fila);
-  }
-
-  /** "/" va al buscador (N ya abre un proveedor nuevo con appAtajo). */
-  protected alTeclear(evento: KeyboardEvent): void {
-    const objetivo = evento.target as HTMLElement | null;
-    if (objetivo && ['INPUT', 'TEXTAREA', 'SELECT'].includes(objetivo.tagName)) return;
-    if (evento.key === '/') {
-      evento.preventDefault();
-      document.getElementById('buscarProveedor')?.focus();
-    }
   }
 
   protected limpiarBusqueda(): void {

@@ -20,6 +20,7 @@ import { OpcionSelector, SelectorBusqueda } from '../../shared/components/select
 import { detalleConNuevo } from '../../shared/recientes';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 import { coincideRepuesto } from '../../shared/busqueda-repuestos';
+import { coincidePorPalabras } from '../../shared/busqueda';
 
 /** Una línea del carrito, antes de confirmar la venta. */
 interface LineaCarrito {
@@ -74,6 +75,12 @@ export class Ventas implements ConfirmarSalida {
   private readonly contadores = inject(ContadoresService);
 
   protected readonly ventas = signal<Venta[]>([]);
+
+  /** Búsqueda del historial por código o cliente (sobre la página cargada). */
+  protected readonly buscarVenta = signal('');
+  protected readonly ventasVisibles = computed(() =>
+    this.ventas().filter((v) => coincidePorPalabras(this.buscarVenta(), v.ventaId, v.nombreCliente ?? '')),
+  );
   protected readonly repuestos = signal<Repuesto[]>([]);
   protected readonly clientes = signal<Cliente[]>([]);
   protected readonly cargando = signal(true);

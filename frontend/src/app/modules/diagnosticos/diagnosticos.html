@@ -123,10 +123,21 @@
 }
 
 <!-- ------------------------------------------------------------------ Historial -->
-<section class="lista-filas lista-diag" id="historial-diag">
-  <div class="historial-cab">
-    <h2>Historial</h2>
-    <div class="chips-filtro" role="group" aria-label="Filtrar por respuesta del cliente">
+<h2 class="titulo-lista" id="historial-diag">Historial</h2>
+<div class="barra-lista">
+  <label class="buscador-lista">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+    <input
+      type="search"
+      maxlength="100"
+      placeholder="Placa, cliente o falla"
+      aria-label="Buscar diagnóstico por placa, cliente o falla"
+      [value]="buscar()"
+      (input)="onBuscar($any($event.target).value)"
+    />
+    <kbd aria-hidden="true">/</kbd>
+  </label>
+  <div class="chips-filtro" role="group" aria-label="Filtrar por respuesta del cliente">
       <button
         type="button"
         class="chip-filtro"
@@ -183,22 +194,10 @@
         Rechazados <span class="chip-cuenta">{{ cuentas().rechazados }}</span>
       </button>
     </div>
+  <span class="cuenta-lista">{{ filtrados().length === 1 ? '1 diagnóstico' : filtrados().length + ' diagnósticos' }}</span>
+</div>
 
-    <label class="buscador-lista buscador-diag">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-        <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
-      </svg>
-      <input
-        type="search"
-        maxlength="100"
-        placeholder="Placa, cliente o falla"
-        aria-label="Buscar diagnóstico por placa, cliente o falla"
-        [value]="buscar()"
-        (input)="onBuscar($any($event.target).value)"
-      />
-    </label>
-  </div>
-
+<section class="lista-filas lista-diag">
   @if (cargando() || visibles().length === 0) {
     <app-estado-tabla
       [cargando]="cargando()"
@@ -208,49 +207,59 @@
     />
   } @else {
     <div class="fila-lista fila-diag cabecera-lista" aria-hidden="true">
-      <span>Código</span>
-      <span>Fecha</span>
-      <span>Vehículo y cliente</span>
       <span>Diagnóstico</span>
+      <span>Vehículo y cliente</span>
+      <span>Lo que encontró</span>
       <span class="a-la-derecha">Presupuesto</span>
       <span>Respuesta</span>
-      <span class="a-la-derecha">Acción</span>
+      <span class="a-la-derecha">Acciones</span>
     </div>
 
     @for (d of visibles(); track d.diagnosticoId) {
       <div class="fila-lista fila-diag" [class.elegida]="filaElegida() === d.diagnosticoId">
-        <span class="codigo">{{ d.diagnosticoId }}</span>
-
-        <span class="diag-fecha">{{ d.fecha | date: 'dd/MM' }}</span>
-
-        <span class="diag-vehiculo">
-          <app-placa [valor]="d.placaVehiculo" />
-          <span class="diag-vehiculo-texto">{{ d.descripcionVehiculo }} · {{ d.nombreCliente }}</span>
+        <span class="celda-doc">
+          <strong>{{ d.diagnosticoId }}</strong>
+          <span class="celda-sub">{{ d.fecha | date: 'dd/MM/yyyy' }}</span>
         </span>
 
-        <span class="diag-falla" [title]="d.descripcionFalla">
+        <span class="celda-vehiculo">
+          <app-placa [valor]="d.placaVehiculo" />
+          <span class="celda-texto">
+            <strong>{{ d.descripcionVehiculo }}</strong>
+            <span class="celda-sub">{{ d.nombreCliente }}</span>
+          </span>
+        </span>
+
+        <span class="celda-texto ocultar-movil" [title]="d.descripcionFalla">
           @if (d.observacionesTecnicas) {
-            {{ d.observacionesTecnicas }}
+            <strong>{{ d.observacionesTecnicas }}</strong>
           } @else {
-            <span class="texto-tenue">Cliente: {{ d.descripcionFalla }}</span>
+            <strong class="texto-tenue">Sin diagnosticar</strong>
+          }
+          <span class="celda-sub">Cliente: {{ d.descripcionFalla }}</span>
+        </span>
+
+        <span class="a-la-derecha">
+          @if (d.montoEstimado != null) {
+            <span class="monto-fila">{{ d.montoEstimado | bs }}</span>
+          } @else {
+            <span class="texto-tenue">—</span>
           }
         </span>
 
-        <span class="diag-monto">{{ d.montoEstimado != null ? (d.montoEstimado | bs) : '—' }}</span>
-
         <span>
-          <span class="insignia-respuesta {{ claseRespuesta(d) }}">{{ textoRespuesta(d) }}</span>
+          <span class="insignia con-punto {{ claseRespuesta(d) }}">{{ textoRespuesta(d) }}</span>
         </span>
 
-        <span class="diag-accion">
+        <span class="acciones-fila">
           @if (puedeResponder(d) && esSuyoOAdmin(d)) {
             <button type="button" class="btn btn-secundario btn-sm" (click)="abrirResponder(d)">
               Registrar respuesta
             </button>
           } @else if (d.ordenId) {
-            <a class="enlace-orden-diag" [routerLink]="['/ordenes', d.ordenId]">Ver {{ d.ordenId }}</a>
+            <a class="enlace-codigo" [routerLink]="['/ordenes', d.ordenId]">{{ d.ordenId }}</a>
           } @else if (d.respuestaCliente === RespuestaCliente.Rechazado) {
-            <button type="button" class="btn-enlace enlace-gris" (click)="verDetalle(d)">Ver motivo</button>
+            <button type="button" class="btn btn-secundario btn-sm" (click)="verDetalle(d)">Ver motivo</button>
           } @else if (d.montoEstimado == null && puedeEditar(d)) {
             <button type="button" class="btn btn-secundario btn-sm" (click)="abrirEditar(d)">
               Poner presupuesto
@@ -259,9 +268,9 @@
 
           <!-- Lo demás, a mano pero sin ocupar lugar: <details> nativo, uno abierto a la vez -->
           <details class="menu-contextual" name="menu-diagnostico" (toggle)="posicionarMenu($event)">
-            <summary class="btn-icono" title="Más acciones" aria-label="Más acciones">
+            <summary class="icono-fila" title="Más acciones" aria-label="Más acciones">
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <circle cx="12" cy="5" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="12" cy="19" r="1.8" />
+                <circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" />
               </svg>
             </summary>
             <div class="menu-contextual-panel">
@@ -598,7 +607,7 @@
           <span>Presupuesto</span>
           <b>{{ d.montoEstimado != null ? (d.montoEstimado | bs) : 'Sin presupuesto' }}</b>
         </div>
-        <span class="insignia-respuesta {{ claseRespuesta(d) }}">{{ textoRespuesta(d) }}</span>
+        <span class="insignia con-punto {{ claseRespuesta(d) }}">{{ textoRespuesta(d) }}</span>
       </div>
 
       <div class="cita-diag fuerte">

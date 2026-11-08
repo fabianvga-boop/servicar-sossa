@@ -811,19 +811,19 @@ table.tabla {
    la jerarquía la da el peso y el color del texto, no un bloque oscuro. */
 table.tabla th {
   text-align: left;
-  padding: 12px 20px;
+  padding: 11px 18px;
   background: var(--gris-50);
-  border-bottom: 1px solid var(--gris-200);
-  font-size: var(--etiqueta-tam);
+  border-bottom: 1px solid var(--gris-100);
+  font-size: 12px;
   font-weight: 600;
-  color: var(--gris-400);
+  color: var(--gris-500);
   text-transform: uppercase;
-  letter-spacing: var(--etiqueta-tracking);
+  letter-spacing: 0.04em;
   white-space: nowrap;
 }
 
 table.tabla td {
-  padding: 12px 20px;
+  padding: 12px 18px;
   border-bottom: 1px solid var(--gris-100);
   vertical-align: middle;
 }
@@ -1922,26 +1922,92 @@ table.tabla th.num {
   opacity: 1;
 }
 
-/* Lista en filas (en vez de <table>): fondo blanco, filas separadas por una
-   línea, la elegida en el panel lateral con una barra roja a la izquierda. */
+/* ===================================================== Tablas: el estándar
+
+   Todas las listas en tabla del sistema se arman igual:
+   1. .barra-lista arriba y fuera de la caja: buscador ancho (tecla /),
+      filtros en píldora con su número, controles extra y .cuenta-lista.
+   2. .lista-filas: una caja con borde gris; .cabecera-lista gris clara en
+      mayúsculas; las columnas que ordenan son <button> y la elegida lleva ↓.
+   3. Primera columna en dos líneas: .celda-doc (código mono + fecha) o
+      .celda-persona (avatar, nombre y dato).
+   4. Estado: .insignia.con-punto (o <app-insignia-estado>).
+   5. Acciones a la derecha en .acciones-fila: como mucho un botón con texto,
+      íconos .icono-fila y el menú ⋯ (.menu-fila).
+   6. El paginador va dentro de la caja. En el celular cada fila se apila. */
+
+/* Título de una tabla que no es lo principal de la pantalla (Historial,
+   Liquidaciones, Generados antes) */
+.titulo-lista {
+  margin: 28px 0 12px;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.barra-lista {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.barra-lista .buscador-lista { flex: 1 1 260px; max-width: none; }
+.barra-lista .rango-fechas { height: 40px; }
+
+.buscador-lista kbd {
+  padding: 1px 6px;
+  border: 1px solid var(--gris-200);
+  border-radius: 5px;
+  font-family: var(--fuente-mono);
+  font-size: 11px;
+  color: var(--gris-400);
+}
+
+/* Select dentro de la barra: del mismo alto que el buscador y las fechas */
+.barra-lista select,
+.control-barra {
+  width: auto;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: var(--radio-sm);
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.cuenta-lista {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--gris-500);
+  white-space: nowrap;
+}
+
 .lista-filas {
+  container-type: inline-size;
   background: var(--blanco);
   border: 1px solid var(--gris-200);
   border-radius: var(--radio);
-  overflow: hidden;
 }
 
 .lista-filas .fila-lista {
   display: grid;
   align-items: center;
   gap: 14px;
-  padding: 12px 20px;
+  min-height: 60px;
+  padding: 10px 18px;
   border-top: 1px solid var(--gris-100);
   font-size: 14px;
   transition: background-color 0.12s;
 }
 
-.lista-filas .fila-lista:hover { background: var(--gris-50); }
+.lista-filas > .fila-lista:first-child { border-top: 0; }
+
+.lista-filas .fila-lista:not(.cabecera-lista):hover { background: var(--gris-50); }
+
+.lista-filas .fila-lista.clicable { cursor: pointer; }
+
+.lista-filas .fila-lista:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
 
 .lista-filas .fila-lista.elegida {
   background: var(--gris-50);
@@ -1949,18 +2015,268 @@ table.tabla th.num {
 }
 
 .lista-filas .cabecera-lista {
-  padding-top: 12px;
-  padding-bottom: 12px;
+  min-height: 0;
+  padding-top: 11px;
+  padding-bottom: 11px;
   border-top: 0;
+  border-radius: var(--radio) var(--radio) 0 0;
   background: var(--gris-50);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--gris-400);
 }
 
-.lista-filas .cabecera-lista:hover { background: var(--gris-50); }
+/* Cabecera debajo de un título de bloque (Panel): sin esquinas redondeadas */
+.lista-filas .cabecera-lista:not(:first-child) { border-top: 1px solid var(--gris-100); border-radius: 0; }
+
+.cabecera-lista > *,
+.cabecera-lista button {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gris-500);
+}
+
+.cabecera-lista button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cabecera-lista button:hover,
+.cabecera-lista button.ordenada { color: var(--ink); }
+
+.cabecera-lista button.ordenada::after { content: ' ↓'; }
+
+.cabecera-lista .a-la-derecha { justify-self: end; text-align: right; }
+
+/* Fila de grupo (un día en Auditoría): separa sin ser un registro */
+.lista-filas .grupo-lista {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 0;
+  padding-top: 9px;
+  padding-bottom: 9px;
+  background: var(--gris-50);
+  font-size: 12.5px;
+  color: var(--gris-500);
+}
+
+.lista-filas .grupo-lista:hover { background: var(--gris-50); }
+.lista-filas .grupo-lista:first-child { border-radius: var(--radio) var(--radio) 0 0; }
+.grupo-lista strong { font-weight: 600; color: var(--ink); }
+
+/* El paginador dentro de la caja */
+.lista-filas app-paginador { border-radius: 0 0 var(--radio) var(--radio); }
+
+/* Celdas */
+.celda-doc,
+.celda-texto { min-width: 0; }
+
+.celda-doc strong {
+  display: block;
+  font-family: var(--fuente-mono);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.celda-texto strong {
+  display: block;
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.celda-sub {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--gris-500);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.celda-persona {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.celda-persona > span:last-child { display: flex; flex-direction: column; min-width: 0; }
+
+.celda-persona strong {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.celda-vehiculo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.avatar-fila {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.avatar-fila img { width: 100%; height: 100%; object-fit: cover; }
+.avatar-fila.azul { background: var(--azul-100); color: var(--azul-700); }
+.avatar-fila.verde { background: var(--verde-100); color: var(--verde-700); }
+.avatar-fila.naranja { background: var(--naranja-100); color: var(--naranja-700); }
+.avatar-fila.rojo { background: var(--brand-soft); color: var(--brand); }
+
+/* Código de otro documento que lleva a él (ORD-015 en una proforma) */
+.enlace-codigo {
+  font-family: var(--fuente-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brand);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.enlace-codigo:hover { text-decoration: underline; color: var(--brand-dk); }
+
+.monto-fila { font-family: var(--fuente-mono); font-weight: 600; white-space: nowrap; }
+.monto-fila.debe { color: var(--brand); }
+
+/* Estado: píldora con punto */
+.insignia.con-punto {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 8px;
+}
+
+.insignia.con-punto::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--punto, currentColor);
+}
+
+/* Acciones */
+.acciones-fila {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.icono-fila {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.icono-fila svg { width: 17px; height: 17px; }
+.icono-fila:hover { background: var(--gris-100); color: var(--ink); }
+.icono-fila:disabled { opacity: 0.4; cursor: default; background: transparent; }
+.icono-fila.llamar { background: var(--azul-100); color: var(--azul-700); }
+.icono-fila.whatsapp { background: #e4f9ec; color: #128c7e; }
+.icono-fila.apagado { opacity: 0.35; cursor: default; background: var(--gris-100); }
+
+/* Menú ⋯ de la fila */
+.menu-fila { position: relative; }
+
+.menu-fila-lista {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  min-width: 200px;
+  padding: 6px;
+  border: 1px solid var(--gris-200);
+  border-radius: 12px;
+  background: var(--blanco);
+  box-shadow: 0 18px 40px -18px rgba(21, 26, 34, 0.35);
+}
+
+.menu-fila-lista button,
+.menu-fila-lista a {
+  display: block;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--ink);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.menu-fila-lista button:hover,
+.menu-fila-lista a:hover { background: var(--gris-50); }
+.menu-fila-lista button:disabled { opacity: 0.5; cursor: default; }
+.menu-fila-lista hr { margin: 4px 0; border: 0; border-top: 1px solid var(--gris-100); }
+.menu-fila-lista .peligro { color: var(--brand); }
+.menu-fila-lista .exito { color: var(--verde-700); }
+
+/* Celular (o caja angosta): arriba lo principal y las acciones, abajo el
+   resto en una línea. Las columnas con .ocultar-movil quedan en la ficha. */
+@container (max-width: 700px) {
+
+  .lista-filas .fila-lista:not(.grupo-lista) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 10px;
+    padding: 12px 14px;
+  }
+
+  /* Corte de renglón: lo principal y las acciones arriba, el resto abajo */
+  .lista-filas .fila-lista:not(.grupo-lista)::after {
+    content: '';
+    order: 1;
+    flex-basis: 100%;
+    height: 0;
+  }
+
+  .lista-filas .cabecera-lista + .fila-lista { border-top: 0; }
+  .lista-filas .fila-lista > :first-child { flex: 1 1 0; min-width: 0; }
+  .lista-filas .fila-lista > .acciones-fila { order: 1; }
+  .lista-filas .fila-lista:not(.grupo-lista) > :not(:first-child):not(.acciones-fila) { order: 2; flex: 0 1 auto; min-width: 0; margin-top: 8px; }
+  .lista-filas .fila-lista > .a-la-derecha { margin-left: auto; }
+  .lista-filas .ocultar-movil { display: none !important; }
+  .lista-filas .fila-lista.cabecera-lista { display: none; }
+}
+
+@media (max-width: 860px) {
+  .barra-lista .buscador-lista { flex-basis: 100%; }
+  .cuenta-lista { margin-left: 0; width: 100%; }
+}
 
 .a-la-derecha { text-align: right; }
 

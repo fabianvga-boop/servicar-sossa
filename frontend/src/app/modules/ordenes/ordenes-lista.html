@@ -40,90 +40,53 @@
   </a>
 </div>
 
-<!-- -------------------------------------------------------- Pestañas y filtros -->
-<div class="filtros-ordenes mb-2">
-  <div class="segmentos en-linea" role="tablist" aria-label="Vista de órdenes">
-    <button
-      type="button"
-      role="tab"
-      class="segmento"
-      [class.activo]="vista() === 'activas'"
-      [attr.aria-selected]="vista() === 'activas'"
-      (click)="vista.set('activas')"
-    >
-      Activas <span class="vista-cuenta">{{ cantidadActivas() }}</span>
-    </button>
-    @if (auth.esAdministrador()) {
-      <button
-        type="button"
-        role="tab"
-        class="segmento"
-        [class.activo]="vista() === 'cobrar'"
-        [attr.aria-selected]="vista() === 'cobrar'"
-        (click)="vista.set('cobrar')"
-      >
-        Por cobrar
-        <span class="vista-cuenta" [class.alerta]="porCobrar().length > 0">{{ porCobrar().length }}</span>
-      </button>
-    }
-    <button
-      type="button"
-      role="tab"
-      class="segmento"
-      [class.activo]="vista() === 'cerradas'"
-      [attr.aria-selected]="vista() === 'cerradas'"
-      (click)="vista.set('cerradas')"
-    >
-      Cerradas <span class="vista-cuenta">{{ cerradas().length }}</span>
-    </button>
-    <button
-      type="button"
-      role="tab"
-      class="segmento"
-      [class.activo]="vista() === 'canceladas'"
-      [attr.aria-selected]="vista() === 'canceladas'"
-      (click)="vista.set('canceladas')"
-    >
-      Canceladas <span class="vista-cuenta">{{ canceladas().length }}</span>
-    </button>
-  </div>
-
-  <div class="buscador">
-    <svg class="lupa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <circle cx="10.5" cy="10.5" r="6.5" /><path d="m20 20-4.4-4.4" />
-    </svg>
+<!-- ------------------------------------------------------- Buscar y filtrar -->
+<div class="barra-lista">
+  <label class="buscador-lista">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
     <input
       type="search"
       maxlength="100"
-      placeholder="Buscar orden, cliente o placa…"
+      placeholder="Orden, cliente o placa"
       aria-label="Buscar orden, cliente o placa"
       [value]="buscar()"
       (input)="onBuscar($any($event.target).value)"
     />
+    <kbd aria-hidden="true">/</kbd>
+  </label>
+
+  <div class="chips-filtro" role="group" aria-label="Vista de órdenes">
+    <button type="button" class="chip-filtro" [class.activo]="vista() === 'activas'" [attr.aria-pressed]="vista() === 'activas'" (click)="vista.set('activas')">
+      <span class="chip-punto naranja" aria-hidden="true"></span>
+      Activas <span class="chip-cuenta">{{ cantidadActivas() }}</span>
+    </button>
+    @if (auth.esAdministrador()) {
+      <button type="button" class="chip-filtro" [class.activo]="vista() === 'cobrar'" [attr.aria-pressed]="vista() === 'cobrar'" (click)="vista.set('cobrar')">
+        <span class="chip-punto roja" aria-hidden="true"></span>
+        Por cobrar <span class="chip-cuenta">{{ porCobrar().length }}</span>
+      </button>
+    }
+    <button type="button" class="chip-filtro" [class.activo]="vista() === 'cerradas'" [attr.aria-pressed]="vista() === 'cerradas'" (click)="vista.set('cerradas')">
+      Cerradas <span class="chip-cuenta">{{ cerradas().length }}</span>
+    </button>
+    <button type="button" class="chip-filtro" [class.activo]="vista() === 'canceladas'" [attr.aria-pressed]="vista() === 'canceladas'" (click)="vista.set('canceladas')">
+      Canceladas <span class="chip-cuenta">{{ canceladas().length }}</span>
+    </button>
   </div>
 
   <div class="rango-fechas">
-    <input
-      type="date"
-      aria-label="Apertura desde"
-      [value]="desde()"
-      (change)="onDesde($any($event.target).value)"
-    />
+    <input type="date" aria-label="Apertura desde" [value]="desde()" (change)="onDesde($any($event.target).value)" />
     <span class="separador"></span>
-    <input
-      type="date"
-      aria-label="Apertura hasta"
-      [value]="hasta()"
-      (change)="onHasta($any($event.target).value)"
-    />
+    <input type="date" aria-label="Apertura hasta" [value]="hasta()" (change)="onHasta($any($event.target).value)" />
     @if (desde() || hasta()) {
       <button type="button" class="limpiar-fechas" aria-label="Quitar el rango de fechas" (click)="limpiarFechas()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M18 6 6 18" /><path d="m6 6 12 12" />
-        </svg>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
       </button>
     }
   </div>
+
+  @let enVista = vista() === 'activas' ? cantidadActivas() : vista() === 'cobrar' ? porCobrar().length : vista() === 'cerradas' ? cerradas().length : canceladas().length;
+  <span class="cuenta-lista">{{ enVista === 1 ? '1 orden' : enVista + ' órdenes' }}</span>
 </div>
 
 <!-- ------------------------------------------------------------------ Contenido -->

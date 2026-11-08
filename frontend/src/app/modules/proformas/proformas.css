@@ -1,73 +1,15 @@
 /* --------------------------------------------- Aviso de lo que falta cobrar */
 
-.aviso-cobro {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px 12px;
-  padding: 12px 16px;
-  border: 1px solid var(--gris-200);
-  border-radius: var(--radio);
-  background: var(--blanco);
-}
+.enlace-pendientes { margin-left: 4px; font-size: inherit; font-weight: 600; }
 
-.aviso-cobro-punto {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--brand);
-  flex-shrink: 0;
-}
+/* Lista: usa el estándar global de tablas; acá solo sus columnas */
+.fila-proforma { grid-template-columns: 112px 92px minmax(180px, 1.4fr) 120px minmax(150px, 1fr) 120px 150px; }
 
-.aviso-cobro-texto {
-  flex: 1 1 280px;
-  font-size: 14px;
-}
+.proforma-cobrado { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 
-.aviso-cobro-texto strong { font-weight: 600; }
-
-/* -------------------------------------------------------------------- Lista */
-
-.fila-proforma {
-  grid-template-columns: 84px 76px minmax(0, 1.2fr) 110px minmax(0, 1fr) 100px 112px;
-}
-
-.enlace-orden-proforma {
-  font-family: var(--fuente-mono);
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.proforma-cliente {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.proforma-cliente-nombre,
-.proforma-cliente-detalle {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.proforma-cliente-detalle {
-  font-size: 12px;
-  color: var(--gris-400);
-}
-
-/* Cuánto se cobró, con una barra: verde completa, ámbar a medias */
-.proforma-cobrado {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  min-width: 0;
-}
-
-.proforma-cobrado-texto {
-  font-size: 12px;
-  color: var(--gris-500);
+@container (max-width: 1060px) {
+  .fila-proforma { grid-template-columns: 112px minmax(180px, 1fr) 120px 120px 150px; }
+  .fila-proforma > :nth-child(2), .fila-proforma > :nth-child(5) { display: none; }
 }
 
 .barra-cobro {
@@ -88,26 +30,7 @@
 .barra-cobro-relleno.naranja { background: var(--naranja-600); }
 .barra-cobro-relleno.roja { background: var(--gris-300); }
 
-.insignia-cobro {
-  display: inline-flex;
-  align-items: center;
-  height: 22px;
-  padding: 0 8px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 500;
-  white-space: nowrap;
-}
 
-.insignia-cobro.verde { background: var(--verde-100); color: var(--verde-700); }
-.insignia-cobro.naranja { background: var(--naranja-100); color: var(--naranja-700); }
-.insignia-cobro.roja { background: var(--brand-soft); color: var(--brand-dk); }
-
-.proforma-acciones {
-  display: flex;
-  justify-content: flex-end;
-  gap: 4px;
-}
 
 /* ------------------------------------------------------- Emitir proforma */
 
@@ -255,35 +178,3 @@
 .cobro-total strong { font-size: 15px; }
 
 .cobro-total .num { font-size: 20px; }
-
-/* ------------------------------------------------------------- Responsive */
-
-/* Con el panel abierto la lista se angosta: sin la orden ni la barra de cobro */
-@media (max-width: 1700px) {
-  :host-context(body.con-cajon) .fila-proforma {
-    grid-template-columns: 84px minmax(0, 1fr) 110px 100px 112px;
-  }
-
-  :host-context(body.con-cajon) .enlace-orden-proforma,
-  :host-context(body.con-cajon) .proforma-cobrado,
-  :host-context(body.con-cajon) .cabecera-lista span:nth-child(2),
-  :host-context(body.con-cajon) .cabecera-lista span:nth-child(5) { display: none; }
-}
-
-@media (max-width: 900px) {
-  .cabecera-lista { display: none; }
-
-  .fila-proforma {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 8px 12px;
-    padding: 14px 16px;
-  }
-
-  .fila-proforma .codigo { grid-row: 1; grid-column: 1; }
-  .fila-proforma > span:nth-child(6) { grid-row: 1; grid-column: 2; justify-self: end; }
-  .enlace-orden-proforma { grid-row: 2; grid-column: 1 / -1; }
-  .proforma-cliente { grid-row: 3; grid-column: 1 / -1; }
-  .fila-proforma .monto-mono { grid-row: 4; grid-column: 2; }
-  .proforma-cobrado { grid-row: 4; grid-column: 1; }
-  .proforma-acciones { grid-row: 5; grid-column: 1 / -1; }
-}

@@ -165,29 +165,30 @@
       </section>
 
       <!-- --------------------------------------------------- Órdenes recientes -->
-      <section class="tarjeta panel-bloque">
+      <section class="lista-filas panel-bloque">
         <div class="panel-bloque-cabecera">
           <h2>Órdenes recientes</h2>
           <a routerLink="/ordenes">Ver todas</a>
         </div>
         @if (recientes().length > 0) {
-          <div class="fila-reciente cabecera-reciente" aria-hidden="true">
+          <div class="fila-lista fila-reciente cabecera-lista" aria-hidden="true">
             <span>Orden</span>
-            <span>Vehículo</span>
-            <span>Cliente</span>
+            <span>Vehículo y cliente</span>
             <span>Estado</span>
             <span class="a-la-derecha">Total</span>
           </div>
           @for (o of recientes(); track o.ordenId) {
-            <a class="fila-reciente" [routerLink]="['/ordenes', o.ordenId]">
-              <span class="monto-mono reciente-codigo">{{ o.ordenId }}</span>
-              <span class="reciente-vehiculo">
+            <a class="fila-lista fila-reciente clicable" [routerLink]="['/ordenes', o.ordenId]">
+              <span class="celda-doc"><strong>{{ o.ordenId }}</strong></span>
+              <span class="celda-vehiculo">
                 <app-placa [valor]="o.placaVehiculo" />
-                <span>{{ o.descripcionVehiculo }}</span>
+                <span class="celda-texto">
+                  <strong>{{ o.descripcionVehiculo }}</strong>
+                  <span class="celda-sub">{{ o.nombreCliente }}</span>
+                </span>
               </span>
-              <span class="reciente-cliente">{{ o.nombreCliente }}</span>
-              <span><span class="insignia insignia-{{ claseEstado(o.estado) }} reciente-estado">{{ textoEstado(o.estado) }}</span></span>
-              <span class="monto-mono a-la-derecha">{{ o.total | bs }}</span>
+              <span><span class="insignia con-punto insignia-{{ claseEstado(o.estado) }}">{{ textoEstado(o.estado) }}</span></span>
+              <span class="a-la-derecha"><span class="monto-fila">{{ o.total | bs }}</span></span>
             </a>
           }
         } @else {

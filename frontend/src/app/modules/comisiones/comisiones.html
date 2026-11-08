@@ -70,17 +70,30 @@
   </div>
 
   <!-- -------------------------------------------------------- Liquidaciones -->
-  <section class="liquidaciones">
-    <h2>Liquidaciones</h2>
-    @for (l of paginacionLiquidaciones.items(); track l.clave) {
-      <div class="fila-liquidacion">
-        <span class="liquidacion-fecha">{{ l.fecha | date: 'dd/MM/yyyy' }}</span>
-        <span>{{ l.mecanico }}</span>
-        <span class="liquidacion-detalle">{{ l.cantidad === 1 ? '1 comisión' : l.cantidad + ' comisiones' }}</span>
-        <span class="monto-mono a-la-derecha">{{ l.monto | bs }}</span>
+  <h2 class="titulo-lista">Liquidaciones</h2>
+  <section class="lista-filas">
+    @if (paginacionLiquidaciones.items().length === 0) {
+      <app-estado-tabla titulo="Sin liquidaciones" descripcion="Todavía no se liquidó ninguna comisión." />
+    } @else {
+      <div class="fila-lista fila-liquidacion cabecera-lista" aria-hidden="true">
+        <span>Fecha</span>
+        <span>Mecánico</span>
+        <span>Comisiones</span>
+        <span class="a-la-derecha">Pagado</span>
       </div>
-    } @empty {
-      <p class="liquidaciones-vacio">Todavía no se liquidó ninguna comisión.</p>
+      @for (l of paginacionLiquidaciones.items(); track l.clave) {
+        <div class="fila-lista fila-liquidacion">
+          <span class="celda-texto">
+            <strong>{{ l.fecha | date: 'dd/MM/yyyy' }}</strong>
+          </span>
+          <span class="celda-persona">
+            <span class="avatar-fila {{ tonoNombre(l.mecanico) }}" aria-hidden="true">{{ iniciales(l.mecanico) }}</span>
+            <span><strong>{{ l.mecanico }}</strong></span>
+          </span>
+          <span class="celda-sub ocultar-movil">{{ l.cantidad === 1 ? '1 comisión' : l.cantidad + ' comisiones' }}</span>
+          <span class="a-la-derecha"><span class="monto-fila">{{ l.monto | bs }}</span></span>
+        </div>
+      }
     }
 
     @if (paginacionLiquidaciones.totalPaginas() > 1) {

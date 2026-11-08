@@ -131,31 +131,35 @@
   </section>
 }
 
-<section class="lista-filas generados">
-  <div class="generados-cabecera"><h2>Generados antes</h2></div>
-  @if (bitacora().length > 0) {
+<h2 class="titulo-lista">Generados antes</h2>
+<section class="lista-filas">
+  @if (bitacora().length === 0) {
+    <app-estado-tabla titulo="Sin reportes generados" descripcion="Cada reporte descargado queda registrado aquí." />
+  } @else {
     <div class="fila-lista fila-generado cabecera-lista" aria-hidden="true">
-      <span>Código</span>
       <span>Reporte</span>
-      <span>Periodo</span>
+      <span>Qué incluye</span>
       <span>Formato</span>
-      <span>Fecha</span>
-      <span></span>
+      <span class="a-la-derecha">Acciones</span>
     </div>
-  }
-  @for (g of bitacora(); track g.reporteId) {
-    <div class="fila-lista fila-generado">
-      <span class="monto-mono generado-codigo">{{ g.reporteId }}</span>
-      <span>{{ nombreTipoGuardado(g.tipoReporte) }}</span>
-      <span class="generado-tenue">{{ periodoGuardado(g) }}</span>
-      <span class="monto-mono generado-formato">{{ nombreFormato(g.formato) }}</span>
-      <span class="generado-tenue">{{ g.fechaGeneracion | date: 'dd/MM/yyyy HH:mm' }}</span>
-      <button type="button" class="btn-icono-plano" title="Descargar de nuevo" aria-label="Descargar de nuevo" [disabled]="procesando()" (click)="repetir(g)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>
-      </button>
-    </div>
-  } @empty {
-    <p class="generados-vacio">Cada reporte descargado queda registrado aquí.</p>
+    @for (g of bitacora(); track g.reporteId) {
+      <div class="fila-lista fila-generado">
+        <span class="celda-doc">
+          <strong>{{ g.reporteId }}</strong>
+          <span class="celda-sub">{{ g.fechaGeneracion | date: 'dd/MM/yyyy · HH:mm' }}</span>
+        </span>
+        <span class="celda-texto">
+          <strong>{{ nombreTipoGuardado(g.tipoReporte) }}</strong>
+          <span class="celda-sub">{{ periodoGuardado(g) }}</span>
+        </span>
+        <span class="ocultar-movil"><span class="insignia insignia-gris">{{ nombreFormato(g.formato) }}</span></span>
+        <span class="acciones-fila">
+          <button type="button" class="icono-fila" title="Descargar de nuevo" aria-label="Descargar de nuevo" [disabled]="procesando()" (click)="repetir(g)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>
+          </button>
+        </span>
+      </div>
+    }
   }
   @if (totalPaginasBitacora() > 1) {
     <app-paginador

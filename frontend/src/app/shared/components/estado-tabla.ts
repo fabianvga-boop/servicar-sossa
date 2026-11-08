@@ -56,6 +56,8 @@ import { Esqueleto } from './esqueleto';
         <div class="texto-sm">
           {{ hayFiltro() ? 'Pruebe con otra búsqueda u otras fechas.' : descripcion() }}
         </div>
+        <!-- Botón opcional: "Registrar el primero" o "Quitar la búsqueda" -->
+        <div class="vacio-accion"><ng-content /></div>
       </div>
     }
   `,
@@ -73,6 +75,7 @@ import { Esqueleto } from './esqueleto';
     }
 
     .vacio-icono svg { width: 22px; height: 22px; }
+    .vacio-accion:not(:empty) { margin-top: 14px; }
   `,
 })
 export class EstadoTabla {

@@ -28,28 +28,10 @@
   </div>
 </div>
 
-<!-- ------------------------------------------- KPIs de abastecimiento -->
-<div class="kpis-compras mb-2">
-  <div class="kpi-compra">
-    <span class="kpi-etiqueta">Comprado en {{ nombreMes }}</span>
-    <span class="kpi-valor">{{ kpiTotalMes() | bs }}</span>
-  </div>
-  <div class="kpi-compra">
-    <span class="kpi-etiqueta">Repuestos ingresados</span>
-    <span class="kpi-valor">{{ kpiUnidadesMes() === 1 ? '1 unidad' : kpiUnidadesMes() + ' unidades' }}</span>
-  </div>
-  <div class="kpi-compra">
-    <span class="kpi-etiqueta">Compras ocasionales</span>
-    <span class="kpi-valor">{{ kpiOcasionales().ocasionales }} de {{ kpiOcasionales().total }}</span>
-  </div>
-</div>
-
-<!-- ------------------------------------------------------------------ Filtros -->
-<div class="filtros-compras mb-2">
+<!-- ------------------------------------------------------- Buscar y filtrar -->
+<div class="barra-lista">
   <label class="buscador-lista">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-      <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
-    </svg>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
     <input
       type="search"
       maxlength="100"
@@ -58,20 +40,8 @@
       [value]="buscarTexto()"
       (input)="onBuscarTexto($any($event.target).value)"
     />
+    <kbd aria-hidden="true">/</kbd>
   </label>
-
-  <select
-    class="filtro-proveedor"
-    aria-label="Proveedor"
-    [value]="proveedorFiltro()"
-    (change)="onFiltrarProveedor($any($event.target).value)"
-  >
-    <option value="">Todos los proveedores</option>
-    <option value="ocasional">Solo ocasionales</option>
-    @for (proveedor of proveedores(); track proveedor.proveedorId) {
-      <option [value]="proveedor.proveedorId">{{ proveedor.nombre }}</option>
-    }
-  </select>
 
   <div class="chips-filtro" role="group" aria-label="Período">
     @for (rango of rangosRapidos; track rango.clave) {
@@ -87,28 +57,26 @@
     }
   </div>
 
+  <select aria-label="Proveedor" [value]="proveedorFiltro()" (change)="onFiltrarProveedor($any($event.target).value)">
+    <option value="">Todos los proveedores</option>
+    <option value="ocasional">Solo ocasionales</option>
+    @for (proveedor of proveedores(); track proveedor.proveedorId) {
+      <option [value]="proveedor.proveedorId">{{ proveedor.nombre }}</option>
+    }
+  </select>
+
   <div class="rango-fechas">
-    <input
-      type="date"
-      aria-label="Desde"
-      [value]="desde()"
-      (change)="onFecha('desde', $any($event.target).value)"
-    />
+    <input type="date" aria-label="Desde" [value]="desde()" (change)="onFecha('desde', $any($event.target).value)" />
     <span class="separador" aria-hidden="true"></span>
-    <input
-      type="date"
-      aria-label="Hasta"
-      [value]="hasta()"
-      (change)="onFecha('hasta', $any($event.target).value)"
-    />
+    <input type="date" aria-label="Hasta" [value]="hasta()" (change)="onFecha('hasta', $any($event.target).value)" />
     @if (desde() || hasta()) {
       <button type="button" class="limpiar-fechas" aria-label="Quitar las fechas" (click)="limpiarFechas()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-          <path d="M18 6 6 18M6 6l12 12" />
-        </svg>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
       </button>
     }
   </div>
+
+  <span class="cuenta-lista">{{ totalRegistros() === 1 ? '1 compra' : totalRegistros() + ' compras' }}</span>
 </div>
 
 <!-- -------------------------------------------------------------------- Lista -->
@@ -122,37 +90,55 @@
     />
   } @else {
     <div class="fila-lista fila-compra cabecera-lista" aria-hidden="true">
-      <span>Código</span>
-      <span>Fecha</span>
-      <span>Origen</span>
+      <span>Compra</span>
+      <span>Proveedor</span>
       <span>Repuestos</span>
       <span class="a-la-derecha">Total</span>
-      <span></span>
+      <span>Origen</span>
+      <span class="a-la-derecha">Acciones</span>
     </div>
 
     @for (compra of comprasFiltradas(); track compra.compraId) {
-      <div class="fila-lista fila-compra" [class.elegida]="detalle()?.compraId === compra.compraId">
-        <span class="codigo">{{ compra.compraId }}</span>
-        <span class="compra-fecha">{{ compra.fecha | date: 'dd/MM/yyyy HH:mm' }}</span>
-        <span class="compra-origen">
-          @if (compra.ocasional) {
-            <span class="insignia-ocasional">Ocasional</span>
-            <span class="compra-origen-texto">{{ compra.referencia || 'Sin referencia' }}</span>
-          } @else {
-            <span class="compra-origen-texto">{{ compra.nombreProveedor }}</span>
-          }
+      <div
+        class="fila-lista fila-compra clicable"
+        role="button"
+        tabindex="0"
+        [class.elegida]="detalle()?.compraId === compra.compraId"
+        [attr.aria-label]="'Ver el detalle de la compra ' + compra.compraId"
+        (click)="verDetalle(compra)"
+        (keydown.enter)="verDetalle(compra)"
+      >
+        <span class="celda-doc">
+          <strong>{{ compra.compraId }}</strong>
+          <span class="celda-sub">{{ compra.fecha | date: 'dd/MM/yyyy · HH:mm' }}</span>
         </span>
-        <span class="compra-repuestos" [title]="resumenRepuestos(compra)">{{ resumenRepuestos(compra) }}</span>
-        <span class="monto-mono a-la-derecha">{{ compra.total | bs }}</span>
-        <span class="a-la-derecha">
-          <!-- Con texto, no solo un ícono: que se vea que la compra se puede abrir -->
+        <span class="celda-persona">
+          <span class="avatar-fila {{ tono(compra.compraId) }}" aria-hidden="true">{{ iniciales(compra.ocasional ? 'Compra ocasional' : compra.nombreProveedor) }}</span>
+          <span>
+            <strong>{{ compra.ocasional ? 'Compra ocasional' : compra.nombreProveedor }}</strong>
+            @if (compra.ocasional) {
+              <span class="celda-sub">{{ compra.referencia || 'Sin referencia' }}</span>
+            }
+          </span>
+        </span>
+        <span class="celda-texto ocultar-movil" [title]="resumenRepuestos(compra)">
+          <strong>{{ resumenRepuestos(compra) }}</strong>
+        </span>
+        <span class="a-la-derecha"><span class="monto-fila">{{ compra.total | bs }}</span></span>
+        <span class="ocultar-movil">
+          <span class="insignia con-punto" [class.insignia-naranja]="compra.ocasional" [class.insignia-gris]="!compra.ocasional">
+            {{ compra.ocasional ? 'Ocasional' : 'Proveedor' }}
+          </span>
+        </span>
+        <span class="acciones-fila">
           <button
             type="button"
-            class="btn btn-secundario btn-sm"
+            class="icono-fila"
+            title="Ver detalle"
             [attr.aria-label]="'Ver el detalle de la compra ' + compra.compraId"
-            (click)="verDetalle(compra)"
+            (click)="$event.stopPropagation(); verDetalle(compra)"
           >
-            Ver detalle
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
           </button>
         </span>
       </div>
@@ -170,7 +156,6 @@
     }
   }
 </section>
-
 @if (formularioAbierto()) {
   <app-modal
     [titulo]="ocasional() ? 'Compra ocasional' : 'Nueva compra'"

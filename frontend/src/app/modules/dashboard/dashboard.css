@@ -179,51 +179,9 @@
 
 .tarea-monto { font-size: 14px; }
 
-/* Órdenes recientes */
-
-.fila-reciente {
-  display: grid;
-  grid-template-columns: 96px minmax(0, 1.4fr) minmax(0, 1fr) 120px 110px;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 20px;
-  border-top: 1px solid var(--gris-100);
-  font-size: 14px;
-  color: var(--ink);
-  text-decoration: none;
-}
-
-a.fila-reciente:hover {
-  background: var(--gris-50);
-  color: var(--ink);
-}
-
-.cabecera-reciente {
-  background: var(--gris-50);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--gris-400);
-}
-
-.reciente-codigo { font-size: 13px; }
-
-.reciente-vehiculo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.reciente-vehiculo span,
-.reciente-cliente {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.reciente-estado { font-weight: 500; }
+/* Órdenes recientes: estándar global de tablas; acá solo sus columnas */
+.fila-reciente { grid-template-columns: 100px minmax(200px, 1fr) 130px 120px; color: var(--ink); text-decoration: none; }
+a.fila-reciente:hover { color: var(--ink); }
 
 /* Stock por reponer */
 
@@ -349,13 +307,6 @@ a.fila-reciente:hover {
     justify-self: start;
   }
 
-  .fila-reciente { grid-template-columns: minmax(0, 1fr) auto; }
-
-  .fila-reciente > :nth-child(1),
-  .fila-reciente > :nth-child(3),
-  .fila-reciente > :nth-child(4) { display: none; }
-
-  .cabecera-reciente { display: none; }
 }
 
 /* ---------------------------------------------------- Inicio del mecánico */

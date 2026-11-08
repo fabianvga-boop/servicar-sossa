@@ -1,119 +1,13 @@
 /* ------------------------------------------------- Pestañas y búsqueda */
 
-.filtros-catalogo {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
+/* Lista: usa el estándar global de tablas; acá solo sus columnas */
+.fila-catalogo { grid-template-columns: minmax(240px, 1.6fr) minmax(170px, 1fr) 120px 70px 84px; }
+.fila-catalogo.inactiva .celda-texto { opacity: 0.55; }
+
+@container (max-width: 860px) {
+  .fila-catalogo { grid-template-columns: minmax(200px, 1fr) 120px 70px 84px; }
+  .fila-catalogo > :nth-child(2) { display: none; }
 }
-
-/* Búsqueda con la lupa adentro: el borde y el foco los lleva la etiqueta */
-.buscador-catalogo {
-  flex: 1 1 260px;
-  max-width: 360px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 40px;
-  padding: 0 12px;
-  border: 1px solid var(--gris-300);
-  border-radius: var(--radio-sm);
-  background: var(--blanco);
-  color: var(--gris-400);
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-
-.buscador-catalogo:focus-within {
-  border-color: var(--brand);
-  box-shadow: 0 0 0 3px rgba(200, 35, 28, 0.14);
-}
-
-.buscador-catalogo input {
-  flex: 1;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  font-size: 14px;
-}
-
-.buscador-catalogo input:focus,
-.buscador-catalogo input:focus-visible {
-  outline: none;
-  box-shadow: none;
-}
-
-/* ---------------------------------------------------------------- Lista */
-
-.lista-catalogo {
-  background: var(--blanco);
-  border: 1px solid var(--gris-200);
-  border-radius: var(--radio);
-  overflow: hidden;
-}
-
-/* Cada servicio en una fila: código, qué incluye (completo, sin recortar),
-   qué repuestos lleva, precio, interruptor y Editar. */
-.fila-catalogo {
-  display: grid;
-  grid-template-columns: 84px minmax(0, 1fr) 200px 110px 64px 84px;
-  align-items: center;
-  gap: 16px;
-  padding: 16px 20px;
-  border-top: 1px solid var(--gris-100);
-  font-size: 14px;
-  transition: background-color 0.12s;
-}
-
-.fila-catalogo:hover { background: var(--gris-50); }
-
-/* La que se está editando en el panel: una barra roja a la izquierda */
-.fila-catalogo.elegida {
-  background: var(--gris-50);
-  box-shadow: inset 3px 0 0 var(--brand);
-}
-
-.cabecera-catalogo {
-  padding-top: 12px;
-  padding-bottom: 12px;
-  border-top: 0;
-  background: var(--gris-50);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--gris-400);
-}
-
-.cabecera-catalogo:hover { background: var(--gris-50); }
-
-.a-la-derecha { text-align: right; }
-
-.servicio-textos {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.servicio-nombre {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.servicio-descripcion {
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--gris-500);
-}
-
-.sin-descripcion { color: var(--gris-400); }
-
-/* Apagado: sigue en la lista, pero en gris */
-.fila-catalogo.inactiva .servicio-nombre,
-.fila-catalogo.inactiva .servicio-descripcion { color: var(--gris-400); }
 
 .servicio-lleva {
   display: flex;
@@ -145,14 +39,6 @@
   color: var(--gris-500);
 }
 
-.servicio-precio {
-  font-family: var(--fuente-mono);
-  font-weight: 500;
-  text-align: right;
-  white-space: nowrap;
-}
-
-.servicio-acciones { text-align: right; }
 
 /* ------------------------------------------------- Formulario del panel */
 
@@ -288,36 +174,3 @@
 
 /* ------------------------------------------------------------ Responsive */
 
-/* Con el panel abierto la lista se angosta: "Lleva" pasa debajo del nombre.
-   Recién en pantallas muy anchas entran las seis columnas al lado del panel. */
-@media (max-width: 1700px) {
-  :host-context(body.con-cajon) .fila-catalogo {
-    grid-template-columns: 76px minmax(0, 1fr) 100px 52px 76px;
-  }
-
-  :host-context(body.con-cajon) .servicio-lleva {
-    grid-column: 2;
-    grid-row: 2;
-  }
-
-  :host-context(body.con-cajon) .cabecera-catalogo span:nth-child(3) { display: none; }
-}
-
-@media (max-width: 900px) {
-  .buscador-catalogo { max-width: none; }
-
-  .cabecera-catalogo { display: none; }
-
-  .fila-catalogo {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 8px 12px;
-    padding: 14px 16px;
-  }
-
-  .fila-catalogo .codigo { grid-row: 1; grid-column: 1; }
-  .servicio-activo { grid-row: 1; grid-column: 2; justify-self: end; }
-  .servicio-textos { grid-row: 2; grid-column: 1 / -1; }
-  .servicio-lleva { grid-row: 3; grid-column: 1 / -1; }
-  .servicio-precio { grid-row: 4; grid-column: 1; text-align: left; }
-  .servicio-acciones { grid-row: 4; grid-column: 2; }
-}
