@@ -154,7 +154,7 @@ export interface Portada {
 
     :host(:hover) {
       border-color: var(--gris-300);
-      box-shadow: 0 8px 20px -14px rgba(21, 26, 34, 0.4);
+      box-shadow: var(--sombra-elegida);
     }
 
     :host(:active) { transform: scale(0.99); }

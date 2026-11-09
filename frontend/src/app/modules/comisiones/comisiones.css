@@ -100,7 +100,7 @@
 .orden-comision {
   overflow: hidden;
   border: 1px solid var(--gris-200);
-  border-radius: 12px;
+  border-radius: var(--radio-md);
   transition: opacity 0.15s;
 }
 

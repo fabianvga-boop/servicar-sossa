@@ -68,7 +68,7 @@
     @if (esAdmin) {
       <a class="btn btn-secundario" routerLink="/ventas">Registrar venta</a>
     }
-    <a class="btn btn-primario" [routerLink]="['/diagnosticos']" [queryParams]="{ nuevo: true }">Nuevo diagnóstico</a>
+    <a class="btn btn-primario btn-nuevo" [routerLink]="['/diagnosticos']" [queryParams]="{ nuevo: true }"><span class="btn-nuevo-mas" aria-hidden="true">+</span>Nuevo diagnóstico</a>
   </div>
 </div>
 

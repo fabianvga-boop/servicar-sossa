@@ -99,9 +99,9 @@ const TITULOS: Record<TipoAviso, string> = {
       padding: 14px 12px 16px 14px;
       overflow: hidden;
       border: 1px solid var(--gris-200);
-      border-radius: 14px;
+      border-radius: var(--radio);
       background: var(--blanco);
-      box-shadow: 0 16px 34px -18px rgba(21, 26, 34, 0.38);
+      box-shadow: var(--sombra-flotante);
       animation: entrar 0.22s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
@@ -119,7 +119,7 @@ const TITULOS: Record<TipoAviso, string> = {
       place-items: center;
       width: 32px;
       height: 32px;
-      border-radius: 10px;
+      border-radius: var(--radio-sm);
       background: var(--tono-fondo);
       color: var(--tono);
     }
@@ -153,7 +153,7 @@ const TITULOS: Record<TipoAviso, string> = {
     .mensaje {
       font-size: 13.5px;
       line-height: 1.45;
-      color: var(--gris-600, #4b5260);
+      color: var(--ink-soft);
     }
 
     .accion {
@@ -161,7 +161,7 @@ const TITULOS: Record<TipoAviso, string> = {
       height: 30px;
       padding: 0 11px;
       border: 1px solid var(--gris-300);
-      border-radius: 8px;
+      border-radius: var(--radio-xs);
       background: var(--blanco);
       font-family: inherit;
       font-size: 13px;
@@ -179,7 +179,7 @@ const TITULOS: Record<TipoAviso, string> = {
       height: 28px;
       padding: 0;
       border: 0;
-      border-radius: 8px;
+      border-radius: var(--radio-xs);
       background: none;
       color: var(--gris-400);
       cursor: pointer;

@@ -16,7 +16,7 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   padding: 14px;
-  border-radius: 12px;
+  border-radius: var(--radio-md);
   background: var(--fondo-app);
 }
 
@@ -50,7 +50,7 @@
 .metodo-pago {
   height: 40px;
   border: 1px solid var(--gris-300);
-  border-radius: 9px;
+  border-radius: var(--radio-sm);
   background: var(--blanco);
   font: inherit;
   font-size: 13px;

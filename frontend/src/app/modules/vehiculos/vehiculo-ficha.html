@@ -34,8 +34,8 @@
       @if (auth.esAdministrador()) {
         <a class="btn btn-secundario" [routerLink]="['/vehiculos']" [queryParams]="{ editar: v.vehiculoId }">Editar</a>
       }
-      <a class="btn btn-primario" [routerLink]="['/diagnosticos']" [queryParams]="{ nuevo: true, vehiculoId: v.vehiculoId }">
-        Nuevo diagnóstico
+      <a class="btn btn-primario btn-nuevo" [routerLink]="['/diagnosticos']" [queryParams]="{ nuevo: true, vehiculoId: v.vehiculoId }">
+        <span class="btn-nuevo-mas" aria-hidden="true">+</span>Nuevo diagnóstico
       </a>
     </div>
   </section>

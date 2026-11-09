@@ -1,4 +1,4 @@
-<div class="fila-entre envuelve mb-2 encabezado-pagina agenda-cabecera">
+<div class="fila-entre envuelve encabezado-pagina agenda-cabecera">
   <div>
     <h1>Agenda</h1>
     <p class="texto-tenue texto-sm mb-0">{{ titulo() }}</p>
@@ -11,7 +11,7 @@
     <button type="button" class="btn-icono agenda-flecha" aria-label="Semana siguiente" (click)="moverSemana(1)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
     </button>
-    <a class="btn btn-primario" [routerLink]="['/diagnosticos']" [queryParams]="{ nuevo: true }">+ Nuevo diagnóstico</a>
+    <a class="btn btn-primario btn-nuevo" [routerLink]="['/diagnosticos']" [queryParams]="{ nuevo: true }"><span class="btn-nuevo-mas" aria-hidden="true">+</span>Nuevo diagnóstico</a>
   </div>
 </div>
 

@@ -1,6 +1,5 @@
 /* Clientes en tabla; la ficha y el formulario se abren en el panel lateral. */
 
-.encabezado-pagina { margin-bottom: 16px; }
 
 /* La tabla usa el estándar global (.barra-lista, .lista-filas); acá solo
    sus columnas, que se esconden cuando falta ancho (pantalla o panel). */
@@ -31,7 +30,7 @@
 .ficha-cli-acciones { display: flex; flex-wrap: wrap; gap: 8px; }
 .ficha-cli-acciones .btn { flex: 1; min-width: 110px; justify-content: center; }
 
-.resumen-cli { display: grid; grid-template-columns: 0.8fr 1.3fr 1fr; border: 1px solid var(--gris-200); border-radius: 14px; }
+.resumen-cli { display: grid; grid-template-columns: 0.8fr 1.3fr 1fr; border: 1px solid var(--gris-200); border-radius: var(--radio); }
 .resumen-cli div { padding: 11px 13px; min-width: 0; }
 .resumen-cli div + div { border-left: 1px solid var(--gris-100); }
 .resumen-cli span { display: block; font-size: 12px; color: var(--gris-500); }
@@ -39,7 +38,7 @@
 .resumen-cli .debe { color: var(--brand); }
 .resumen-cli .al-dia { color: var(--verde-700); }
 
-.aviso-saldo-cli { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--brand-soft); color: var(--brand-dk); font-size: 13.5px; font-weight: 500; }
+.aviso-saldo-cli { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radio-md); background: var(--brand-soft); color: var(--brand-dk); font-size: 13.5px; font-weight: 500; }
 .aviso-saldo-cli .btn { margin-left: auto; }
 
 .pestanas-cli { display: flex; gap: 4px; border-bottom: 1px solid var(--gris-200); }
@@ -48,10 +47,10 @@
 .pestanas-cli button.activa::after { content: ''; position: absolute; left: 8px; right: 8px; bottom: -1px; height: 2px; border-radius: 2px; background: var(--brand); }
 
 .lista-ficha { display: flex; flex-direction: column; gap: 8px; }
-.vacio-ficha { margin: 0; padding: 16px; border: 1px dashed var(--gris-300); border-radius: 12px; text-align: center; font-size: 13.5px; color: var(--gris-500); }
+.vacio-ficha { margin: 0; padding: 16px; border: 1px dashed var(--gris-300); border-radius: var(--radio-md); text-align: center; font-size: 13.5px; color: var(--gris-500); }
 
-.vehiculo-cli { display: grid; grid-template-columns: 88px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px; border: 1px solid var(--gris-200); border-radius: 12px; }
-.vehiculo-cli-imagen { height: 60px; overflow: hidden; border-radius: 8px; background: #e3e7ec; }
+.vehiculo-cli { display: grid; grid-template-columns: 88px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px; border: 1px solid var(--gris-200); border-radius: var(--radio-md); }
+.vehiculo-cli-imagen { height: 60px; overflow: hidden; border-radius: var(--radio-xs); background: #e3e7ec; }
 .vehiculo-cli-imagen img, .vehiculo-cli-imagen svg { display: block; width: 100%; height: 100%; object-fit: cover; }
 .silueta-piso { fill: #d3d8df; }
 .silueta-cuerpo { fill: #b8c0cb; }
@@ -61,11 +60,11 @@
 .vehiculo-cli-titulo strong { font-size: 14.5px; font-weight: 600; }
 .estado-vehiculo { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; font-weight: 500; white-space: normal; }
 .estado-vehiculo-punto { width: 7px; height: 7px; flex-shrink: 0; border-radius: 50%; background: var(--punto); }
-.agregar-cli { height: 48px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 2px dashed var(--gris-300); border-radius: 12px; background: none; font: inherit; font-weight: 600; color: var(--ink-soft); cursor: pointer; }
+.agregar-cli { height: 48px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 2px dashed var(--gris-300); border-radius: var(--radio-md); background: none; font: inherit; font-weight: 600; color: var(--ink-soft); cursor: pointer; }
 .agregar-cli svg { width: 17px; height: 17px; }
 .agregar-cli:hover { border-color: var(--gris-400); color: var(--ink); }
 
-.orden-cli { display: grid; grid-template-columns: 70px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--gris-200); border-radius: 12px; color: var(--ink); text-decoration: none; }
+.orden-cli { display: grid; grid-template-columns: 70px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--gris-200); border-radius: var(--radio-md); color: var(--ink); text-decoration: none; }
 .orden-cli:hover { background: var(--gris-50); color: var(--ink); }
 .orden-cli-texto { display: flex; flex-direction: column; min-width: 0; }
 .orden-cli-texto strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }

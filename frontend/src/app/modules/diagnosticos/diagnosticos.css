@@ -140,7 +140,7 @@
 
 .resp-presupuesto {
   border: 1px solid var(--gris-200);
-  border-radius: 12px;
+  border-radius: var(--radio-md);
   overflow: hidden;
 }
 
@@ -200,7 +200,7 @@
   gap: 8px;
   padding: 14px;
   border: 1px solid var(--gris-300);
-  border-radius: 12px;
+  border-radius: var(--radio-md);
   background: var(--blanco);
   font: inherit;
   color: inherit;
@@ -375,19 +375,19 @@
 .detalle-cabeza { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--gris-500); }
 .camino-diag { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 0; padding: 0; list-style: none; }
 .camino-diag li { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--gris-400); }
-.camino-diag i { height: 6px; border-radius: 99px; background: var(--gris-200); }
+.camino-diag i { height: 6px; border-radius: 999px; background: var(--gris-200); }
 .camino-diag .hecho { color: var(--ink-soft); }
-.camino-diag .hecho i { background: var(--verde-700, #1e6b35); }
-.camino-diag .actual { color: #9a5b00; font-weight: 600; }
-.camino-diag .actual i { background: #e09a1a; }
+.camino-diag .hecho i { background: var(--verde-700); }
+.camino-diag .actual { color: var(--naranja-700); font-weight: 600; }
+.camino-diag .actual i { background: var(--naranja-600); }
 .camino-diag .cortado { color: var(--brand); font-weight: 600; }
 .camino-diag .cortado i { background: var(--brand); }
-.monto-diag { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; padding: 16px 18px; border: 1px solid var(--gris-200); border-radius: 14px; background: var(--gris-50); }
+.monto-diag { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; padding: 16px 18px; border: 1px solid var(--gris-200); border-radius: var(--radio); background: var(--gris-50); }
 .monto-diag span { font-size: 12.5px; color: var(--gris-500); }
 .monto-diag b { display: block; margin-top: 2px; font-family: var(--fuente-mono, 'Geist Mono', monospace); font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }
 .cita-diag span { display: block; margin-bottom: 6px; font-size: 12.5px; font-weight: 600; color: var(--gris-500); }
 .cita-diag p { margin: 0; padding: 2px 0 2px 14px; border-left: 3px solid var(--gris-300); font-size: 15px; line-height: 1.5; }
-.persona-diag { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 1px solid var(--gris-200); border-radius: 14px; }
+.persona-diag { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 1px solid var(--gris-200); border-radius: var(--radio); }
 .persona-avatar { width: 42px; height: 42px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; background: var(--azul-100); color: var(--azul-700); font-weight: 600; }
 .persona-textos { display: flex; flex-direction: column; min-width: 0; }
 .persona-textos strong { font-weight: 600; }
@@ -405,32 +405,31 @@
 
 /* ------------------------------------------- Carriles: diagnosticar → precio → respuesta */
 .carriles-diag { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-bottom: 22px; align-items: start; }
-.carril-diag { display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1px solid var(--gris-200); border-radius: 16px; background: var(--blanco); }
+.carril-diag { display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1px solid var(--gris-200); border-radius: var(--radio); background: var(--blanco); }
 .carril-cab h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 2px; font-size: 15px; }
 .carril-cab p { margin: 0; font-size: 12.5px; color: var(--gris-500); }
 .carril-n { width: 22px; height: 22px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; font-size: 12px; font-weight: 600; color: var(--blanco); }
 .carril-n.gris { background: var(--gris-500); }
-.carril-n.ambar { background: #e09a1a; }
+.carril-n.ambar { background: var(--naranja-600); }
 .carril-n.azul { background: var(--azul-700); }
 .carril-n.oscuro { background: var(--ink); }
 .carril-cuenta { padding: 1px 8px; border-radius: 999px; background: var(--gris-100); font-family: var(--fuente-mono, 'Geist Mono', monospace); font-size: 12px; font-weight: 500; color: var(--ink-soft); }
-.carril-vacio { margin: 0; padding: 14px; border: 1px dashed var(--gris-200); border-radius: 12px; text-align: center; font-size: 12.5px; color: var(--gris-400); }
-.tarjeta-diag { display: flex; flex-direction: column; gap: 7px; padding: 12px; border: 1px solid var(--gris-200); border-radius: 12px; }
+.carril-vacio { margin: 0; padding: 14px; border: 1px dashed var(--gris-200); border-radius: var(--radio-md); text-align: center; font-size: 12.5px; color: var(--gris-400); }
+.tarjeta-diag { display: flex; flex-direction: column; gap: 7px; padding: 12px; border: 1px solid var(--gris-200); border-radius: var(--radio-md); }
 .tarjeta-diag.elegida { border-color: var(--ink); }
 .tarjeta-diag-top { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--gris-500); }
 .tarjeta-diag-diag { font-size: 14.5px; font-weight: 600; line-height: 1.35; }
 .tarjeta-diag-cliente { margin: 0; padding-left: 8px; border-left: 2px solid var(--gris-300); font-size: 12.5px; color: var(--gris-500); }
-.tarjeta-diag-falta { font-size: 12.5px; font-weight: 600; color: #9a5b00; }
+.tarjeta-diag-falta { font-size: 12.5px; font-weight: 600; color: var(--naranja-700); }
 .tarjeta-diag-pie { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .tarjeta-diag-pie small { font-size: 12px; color: var(--gris-500); }
 .tarjeta-diag-monto { font-weight: 600; }
-.btn-oscuro { background: var(--ink); border-color: var(--ink); color: var(--blanco); }
 
 /* ------------------------------------------------- Formulario en tres partes */
-.vehiculo-diag { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--gris-200); border-radius: 12px; }
+.vehiculo-diag { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--gris-200); border-radius: var(--radio-md); }
 .vehiculo-diag span { display: flex; flex-direction: column; }
 .vehiculo-diag small { font-size: 13px; color: var(--gris-500); }
-.seccion-diag { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border: 1px solid var(--gris-200); border-radius: 14px; }
+.seccion-diag { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border: 1px solid var(--gris-200); border-radius: var(--radio); }
 .seccion-diag.mecanico { border: 2px solid var(--ink); }
 .seccion-diag.mecanico.falta { border-color: var(--brand); }
 .seccion-diag.apagada { opacity: 0.6; }
@@ -440,11 +439,10 @@
 .seccion-diag textarea { font-size: 14.5px; line-height: 1.45; }
 .seccion-diag-pie { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .sintomas { display: flex; flex-wrap: wrap; gap: 6px; }
-.chip-sintoma { height: 32px; padding: 0 12px; border: 1px solid var(--gris-200); border-radius: 999px; background: var(--blanco); font: inherit; font-size: 12.5px; font-weight: 500; color: var(--ink-soft); cursor: pointer; }
+.chip-sintoma { height: 32px; padding: 0 12px; border: 1px solid var(--gris-300); border-radius: 999px; background: var(--blanco); font: inherit; font-size: 13px; font-weight: 500; color: var(--gris-500); cursor: pointer; }
+.chip-sintoma:hover { border-color: var(--gris-400); color: var(--ink); }
 .chip-sintoma.activo { border-color: var(--ink); background: var(--ink); color: var(--blanco); }
-.btn-dictar-diag { display: inline-flex; align-items: center; gap: 6px; height: 36px; margin-left: auto; padding: 0 12px; border: 0; border-radius: 10px; background: var(--brand-soft); color: var(--brand); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
-.btn-dictar-diag svg { width: 16px; height: 16px; }
-.btn-dictar-diag.escuchando { background: var(--brand); color: var(--blanco); }
+.seccion-diag-pie .btn-dictar { margin-left: auto; }
 .monto-diag-entrada { display: flex; align-items: center; gap: 10px; }
 .monto-diag-entrada input { flex: 1; height: 46px; font-family: var(--fuente-mono, 'Geist Mono', monospace); font-size: 18px; }
 .monto-diag-entrada span { color: var(--gris-500); }

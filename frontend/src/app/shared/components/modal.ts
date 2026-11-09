@@ -128,7 +128,7 @@ let modalesAbiertos = 0;
 
     .panel {
       background: var(--blanco);
-      border-radius: 18px;
+      border-radius: var(--radio-lg);
       box-shadow: 0 30px 60px -24px rgba(0, 0, 0, 0.45);
       width: 100%;
       max-height: 90vh;
@@ -188,7 +188,7 @@ let modalesAbiertos = 0;
       width: 42px;
       height: 42px;
       flex-shrink: 0;
-      border-radius: 12px;
+      border-radius: var(--radio-md);
     }
 
     .icono-cabecera svg { width: 21px; height: 21px; }
@@ -206,7 +206,7 @@ let modalesAbiertos = 0;
       flex-shrink: 0;
       background: none;
       border: none;
-      border-radius: 10px;
+      border-radius: var(--radio-sm);
       cursor: pointer;
       color: var(--gris-400);
       padding: 0;

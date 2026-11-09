@@ -1,7 +1,7 @@
-<div class="fila-entre envuelve mb-2 encabezado-pagina">
-  <div class="titulo-con-antetitulo">
-    <span>Almacén</span>
+<div class="fila-entre envuelve encabezado-pagina">
+  <div>
     <h1>Repuestos</h1>
+    <p class="texto-tenue texto-sm mb-0">Elija el vehículo y lo que busca: solo aparece lo que sirve.</p>
   </div>
   <div *appSiRol="['Administrador']" class="fila envuelve" style="gap: 8px">
     <button type="button" class="btn btn-secundario" (click)="gestionCategorias.set(true)">
@@ -21,7 +21,6 @@
   </div>
 </div>
 
-<p class="texto-tenue texto-sm subtitulo-repuestos">Elija el vehículo y lo que busca: solo aparece lo que sirve.</p>
 
 <!-- Con el formulario abierto (nuevo o editar) el panel de búsqueda se aparta:
      quedan las tarjetas y el formulario, sin amontonar. -->

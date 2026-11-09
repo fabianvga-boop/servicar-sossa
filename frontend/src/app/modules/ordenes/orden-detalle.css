@@ -17,7 +17,7 @@
   padding: 0;
   overflow: hidden;
   border: 1px solid var(--gris-200);
-  border-radius: 12px;
+  border-radius: var(--radio-md);
   background: var(--gris-100);
   cursor: pointer;
 }
@@ -105,7 +105,7 @@
   flex-direction: column;
   padding: 6px;
   border: 1px solid var(--gris-200);
-  border-radius: 12px;
+  border-radius: var(--radio-md);
   background: var(--blanco);
   box-shadow: var(--sombra-md);
 }
@@ -113,7 +113,7 @@
 .menu-mas-lista > * {
   padding: 9px 12px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radio-xs);
   background: none;
   font: inherit;
   font-size: 14px;
@@ -177,7 +177,7 @@
   flex: none;
   display: grid;
   place-items: center;
-  border-radius: 10px;
+  border-radius: var(--radio-sm);
   background: var(--gris-100);
   color: var(--brand);
 }
@@ -339,7 +339,7 @@
   flex: none;
   display: grid;
   place-items: center;
-  border-radius: 8px;
+  border-radius: var(--radio-xs);
   background: var(--gris-100);
   object-fit: cover;
   font-size: 12px;

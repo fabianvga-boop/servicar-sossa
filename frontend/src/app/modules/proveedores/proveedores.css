@@ -1,7 +1,6 @@
 /* Proveedores en tabla: identidad, contacto, repuestos, comprado, última
    compra y acciones. Se lee de corrido y se ordena por columna. */
 
-.encabezado-pagina { margin-bottom: 16px; }
 
 
 /* La tabla usa el estándar global (.barra-lista, .lista-filas); acá solo
@@ -31,14 +30,12 @@
 .ficha-prov { display: flex; flex-direction: column; gap: 16px; }
 .ficha-prov-contacto { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .ficha-prov-contacto .btn { justify-content: center; }
-.ficha-prov-datos { margin: 0; border: 1px solid var(--gris-200); border-radius: 12px; }
+.ficha-prov-datos { margin: 0; border: 1px solid var(--gris-200); border-radius: var(--radio-md); }
 .ficha-prov-datos div { display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; font-size: 13.5px; }
 .ficha-prov-datos div + div { border-top: 1px solid var(--gris-100); }
 .ficha-prov-datos dt { color: var(--gris-500); }
 .ficha-prov-datos dd { margin: 0; text-align: right; }
 .ficha-prov-pie { display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 8px; width: 100%; }
 .ficha-prov-pie .btn { justify-content: center; }
-.btn-oscuro-prov { background: var(--ink); border-color: var(--ink); color: var(--blanco); }
-.btn-oscuro-prov:hover { filter: brightness(1.2); }
 
 

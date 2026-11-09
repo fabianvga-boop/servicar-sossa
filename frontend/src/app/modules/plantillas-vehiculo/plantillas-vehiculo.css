@@ -39,7 +39,7 @@
   height: 48px;
   display: grid;
   place-items: center;
-  border-radius: 12px;
+  border-radius: var(--radio-md);
   background: var(--brand-soft);
   color: var(--brand);
 }
@@ -58,7 +58,7 @@
 
 .plantilla:hover {
   border-color: var(--gris-300);
-  box-shadow: 0 8px 20px -14px rgba(21, 26, 34, 0.35);
+  box-shadow: var(--sombra-elegida);
 }
 
 .plantilla-vista {
@@ -79,7 +79,7 @@
 .plantilla-cargando {
   width: 60%;
   height: 50%;
-  border-radius: 10px;
+  border-radius: var(--radio-sm);
   background: var(--gris-100);
 }
 
@@ -104,15 +104,6 @@
   margin-top: auto;
   padding: 0 10px 12px;
 }
-
-.btn-fantasma {
-  border-color: transparent;
-  background: transparent;
-  color: var(--gris-500);
-}
-
-.btn-fantasma:hover { background: var(--gris-100); color: var(--ink); }
-.btn-fantasma.peligro:hover { color: var(--brand-dk); }
 
 .form-plantilla {
   display: flex;

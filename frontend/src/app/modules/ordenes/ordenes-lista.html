@@ -30,12 +30,13 @@
     }
   }
 } @else {
-<div class="fila-entre envuelve mb-2">
+<div class="fila-entre envuelve encabezado-pagina">
   <div>
     <h1>Órdenes de trabajo</h1>
     <p class="texto-tenue texto-sm mb-0">Cada orden nace al aprobar un diagnóstico.</p>
   </div>
-  <a routerLink="/diagnosticos" [queryParams]="{ nuevo: true }" class="btn btn-primario">
+  <a routerLink="/diagnosticos" [queryParams]="{ nuevo: true }" class="btn btn-primario btn-nuevo">
+    <span class="btn-nuevo-mas" aria-hidden="true">+</span>
     Nuevo diagnóstico
   </a>
 </div>

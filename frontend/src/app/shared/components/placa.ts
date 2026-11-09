@@ -86,7 +86,7 @@ import { Component, input } from '@angular/core';
        es el dato principal de la pantalla, no un chip más de la fila. */
     .placa-bo.grande {
       border-width: 3px;
-      border-radius: 8px;
+      border-radius: var(--radio-xs);
     }
 
     .placa-bo.grande .placa-bo-franja {

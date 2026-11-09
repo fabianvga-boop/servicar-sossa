@@ -13,15 +13,3 @@
   flex-direction: column;
   gap: 18px;
 }
-
-
-.btn-fantasma {
-  border-color: transparent;
-  background: transparent;
-  color: var(--gris-500);
-}
-
-.btn-fantasma:hover {
-  background: var(--gris-100);
-  color: var(--ink);
-}

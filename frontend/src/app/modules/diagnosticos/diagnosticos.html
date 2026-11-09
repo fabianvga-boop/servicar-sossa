@@ -1,4 +1,4 @@
-<div class="fila-entre envuelve mb-2 encabezado-pagina">
+<div class="fila-entre envuelve encabezado-pagina">
   <div>
     <h1>Diagnósticos</h1>
     <p class="texto-tenue texto-sm mb-0">Recepción, diagnóstico del mecánico, presupuesto y respuesta del cliente.</p>
@@ -525,7 +525,7 @@
           @if (fallasSugeridas().length > 0 && !formulario.controls.descripcionFalla.value) {
             <span class="campo-ayuda">Toque un síntoma o dicte lo que dice el cliente.</span>
           }
-          <button type="button" class="btn-dictar-diag" [class.escuchando]="escuchando() === 'descripcionFalla'" (click)="dictarEn('descripcionFalla')">
+          <button type="button" class="btn-dictar" [class.escuchando]="escuchando() === 'descripcionFalla'" (click)="dictarEn('descripcionFalla')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>
             {{ escuchando() === 'descripcionFalla' ? 'Escuchando…' : 'Dictar' }}
           </button>
@@ -543,7 +543,7 @@
         ></textarea>
         <div class="seccion-diag-pie">
           <span class="campo-ayuda">Diagnostica: <strong>{{ editando()?.nombreMecanico ?? auth.nombreCompleto() }}</strong></span>
-          <button type="button" class="btn-dictar-diag" [class.escuchando]="escuchando() === 'observacionesTecnicas'" (click)="dictarEn('observacionesTecnicas')">
+          <button type="button" class="btn-dictar" [class.escuchando]="escuchando() === 'observacionesTecnicas'" (click)="dictarEn('observacionesTecnicas')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>
             {{ escuchando() === 'observacionesTecnicas' ? 'Escuchando…' : 'Dictar' }}
           </button>
