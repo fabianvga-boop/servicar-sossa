@@ -124,9 +124,8 @@ public class OrdenServicioRequestDto : IValidatableObject
                     "Indique el servicio del catálogo o describa el trabajo realizado.",
                     [nameof(ServicioId), nameof(NombreLibre)]);
 
-            if (Precio is null || Precio <= 0)
-                yield return new ValidationResult(
-                    "Un servicio fuera de catálogo exige el precio cobrado.", [nameof(Precio)]);
+            // El precio de un trabajo fuera de catálogo lo exige el servicio solo al
+            // Administrador: el mecánico lo carga sin precio y el Administrador lo pone.
         }
     }
 }
