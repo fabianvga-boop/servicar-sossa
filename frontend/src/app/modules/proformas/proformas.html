@@ -118,7 +118,7 @@
           </span>
         </span>
 
-        <span><span class="insignia con-punto {{ estadoInsignia(proforma) }}">{{ estadoTexto(proforma) }}</span></span>
+        <span><span class="insignia {{ estadoInsignia(proforma) }}">{{ estadoTexto(proforma) }}</span></span>
 
         <span class="acciones-fila">
           @if (proforma.estado === EstadoProforma.Emitida && !proforma.estaSaldada) {

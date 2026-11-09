@@ -126,9 +126,7 @@
         </span>
         <span class="a-la-derecha"><span class="monto-fila">{{ compra.total | bs }}</span></span>
         <span class="ocultar-movil">
-          <span class="insignia con-punto" [class.insignia-naranja]="compra.ocasional" [class.insignia-gris]="!compra.ocasional">
-            {{ compra.ocasional ? 'Ocasional' : 'Proveedor' }}
-          </span>
+          <span class="dato-ico" [class.ic-mano]="compra.ocasional" [class.ic-camion]="!compra.ocasional">{{ compra.ocasional ? 'Ocasional' : 'Proveedor' }}</span>
         </span>
         <span class="acciones-fila">
           <button

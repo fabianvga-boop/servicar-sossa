@@ -21,6 +21,7 @@ import { OrdenesService } from '../../core/services/ordenes.service';
 import { DiagnosticosService } from '../../core/services/taller.service';
 import { Esqueleto } from '../../shared/components/esqueleto';
 import { Placa } from '../../shared/components/placa';
+import { estiloOrden } from '../../shared/estilo-estado';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 
 const MESES = [
@@ -61,6 +62,8 @@ interface Tarea {
   styleUrl: './dashboard.css',
 })
 export class Dashboard {
+  protected readonly estiloOrden = estiloOrden;
+
   private readonly ordenesService = inject(OrdenesService);
   private readonly repuestosService = inject(RepuestosService);
   private readonly comisionesService = inject(ComisionesService);
@@ -412,9 +415,6 @@ export class Dashboard {
     return ['En espera', 'En proceso', 'Finalizada', 'Cerrada', 'Cancelada'][estado] ?? '';
   }
 
-  protected claseEstado(estado: EstadoOrden): string {
-    return ['azul', 'naranja', 'verde', 'gris', 'roja'][estado] ?? 'gris';
-  }
 }
 
 /** "hoy 18:02", "ayer", "hace 3 días" o la fecha. */

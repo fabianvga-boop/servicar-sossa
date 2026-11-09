@@ -31,10 +31,7 @@
     <div class="orden-titulo">
       <div class="orden-titulo-fila">
         <h1>{{ o.descripcionVehiculo }}</h1>
-        <span class="insignia insignia-{{ tonoEstado(o.estado) }} estado-orden">
-          <span class="estado-punto" aria-hidden="true"></span>
-          {{ textoEstado(o.estado) }}
-        </span>
+        <span class="insignia estado-orden {{ estiloOrden(o.estado) }}">{{ textoEstado(o.estado) }}</span>
       </div>
       <span class="orden-subtitulo">
         @if (puedeGestionar()) {
@@ -295,9 +292,9 @@
                 Empezar
               </button>
             } @else if (hecho) {
-              <span class="estado-hecho">Hecho</span>
+              <span class="insignia insignia-verde con-icono ic-ok">Hecho</span>
             } @else if (!enCurso) {
-              <span class="estado-pendiente">Pendiente</span>
+              <span class="insignia insignia-gris con-icono ic-reloj">Pendiente</span>
             }
 
             <!-- El trabajo en curso trae todo lo que hace falta para terminarlo. -->

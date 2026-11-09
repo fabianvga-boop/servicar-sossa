@@ -152,7 +152,7 @@
           <strong>{{ nombreTipoGuardado(g.tipoReporte) }}</strong>
           <span class="celda-sub">{{ periodoGuardado(g) }}</span>
         </span>
-        <span class="ocultar-movil"><span class="insignia insignia-gris">{{ nombreFormato(g.formato) }}</span></span>
+        <span class="ocultar-movil"><span class="dato-ico ic-doc">{{ nombreFormato(g.formato) }}</span></span>
         <span class="acciones-fila">
           <button type="button" class="icono-fila" title="Descargar de nuevo" aria-label="Descargar de nuevo" [disabled]="procesando()" (click)="repetir(g)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>

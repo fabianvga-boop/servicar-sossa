@@ -115,11 +115,11 @@
         </div>
         <div class="col-est">
           @if (f.enTaller) {
-            <span class="insignia con-punto insignia-naranja">En el taller</span>
+            <span class="insignia insignia-naranja con-icono ic-proceso vivo">En el taller</span>
           } @else if (f.activo) {
-            <span class="insignia con-punto insignia-verde">Activo</span>
+            <span class="insignia insignia-verde con-icono ic-ok">Activo</span>
           } @else {
-            <span class="insignia con-punto insignia-gris">Inactivo</span>
+            <span class="insignia insignia-gris apagada con-icono ic-pausa">Inactivo</span>
           }
         </div>
         <div class="col-saldo a-la-derecha">
@@ -275,10 +275,12 @@
                       <app-placa [valor]="v.placa" />
                       <strong>{{ v.marca }} {{ v.modelo }}{{ v.anio ? ' ' + v.anio : '' }}</strong>
                     </div>
-                    <span class="insignia insignia-{{ estado.tono }} estado-vehiculo">
-                      <span class="estado-vehiculo-punto" aria-hidden="true"></span>
-                      {{ estado.texto }}
-                    </span>
+                    <span class="insignia estado-vehiculo {{ estiloVehiculo(estado.tono) }}">{{ estado.texto }}</span>
+                    @if (estado.avance; as a) {
+                      <span class="avance-mini" [class.completo]="a.hechos === a.total" role="img" [attr.aria-label]="a.hechos + ' de ' + a.total + ' servicios hechos'">
+                        <i [style.width.%]="(a.hechos / a.total) * 100"></i>
+                      </span>
+                    }
                   </div>
                   <a class="btn btn-secundario btn-sm" [routerLink]="['/vehiculos', v.vehiculoId]">Ver ficha</a>
                 </article>
@@ -300,7 +302,7 @@
                     <strong>{{ o.descripcionFalla || o.descripcionVehiculo }}</strong>
                     <span>{{ fechaCorta(o.fechaCreacion) }} · {{ o.total | bs }}</span>
                   </span>
-                  <span class="estado-orden-cli {{ claseOrden(o) }}">{{ cuandoOrden(o) }}</span>
+                  <span class="insignia {{ estiloOrden(o.estado) }}">{{ cuandoOrden(o) }}</span>
                 </a>
               } @empty {
                 <p class="vacio-ficha">Todavía no tiene órdenes de trabajo.</p>

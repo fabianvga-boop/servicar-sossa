@@ -94,9 +94,7 @@
         </span>
         <span class="monto-mono usuario-login ocultar-movil">{{ usuario.username }}</span>
         <span>
-          <span class="insignia con-punto" [class.insignia-roja]="usuario.nombreRol === 'Administrador'" [class.insignia-gris]="usuario.nombreRol !== 'Administrador'">
-            {{ usuario.nombreRol === 'Mecanico' ? 'Mecánico' : usuario.nombreRol }}
-          </span>
+          <span class="dato-ico" [class.ic-escudo]="usuario.nombreRol === 'Administrador'" [class.ic-persona]="usuario.nombreRol !== 'Administrador'">{{ usuario.nombreRol === 'Mecanico' ? 'Mecánico' : usuario.nombreRol }}</span>
         </span>
         <span class="celda-texto ocultar-movil"><strong>{{ usuario.fechaRegistro | date: 'dd/MM/yyyy' }}</strong></span>
         <span class="ocultar-movil" (click)="$event.stopPropagation()" (keydown.enter)="$event.stopPropagation()">

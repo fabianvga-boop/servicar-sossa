@@ -348,7 +348,7 @@
           <span class="celda-sub">{{ venta.fechaVenta | date: 'dd/MM/yyyy · HH:mm' }}</span>
         </span>
         <span class="celda-texto"><strong>{{ venta.nombreCliente }}</strong></span>
-        <span class="ocultar-movil"><span class="insignia insignia-gris">{{ ETIQUETAS.metodoPago[venta.metodoPago] }}</span></span>
+        <span class="ocultar-movil"><span class="dato-ico {{ iconoMetodo(venta.metodoPago) }}">{{ ETIQUETAS.metodoPago[venta.metodoPago] }}</span></span>
         <span class="a-la-derecha ocultar-movil"><span class="monto-mono">{{ venta.cantidadArticulos }}</span></span>
         <span class="a-la-derecha"><span class="monto-fila">{{ venta.total | bs }}</span></span>
         <span><app-insignia-estado familia="venta" [valor]="venta.estado" /></span>

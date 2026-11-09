@@ -56,6 +56,7 @@ import { prepararFoto } from '../../shared/fotos';
 import { CorregirOrden } from './corregir-orden';
 import { Paso } from '../../shared/components/pasos';
 import { Placa } from '../../shared/components/placa';
+import { estiloOrden } from '../../shared/estilo-estado';
 import {
   MarcaOpcion,
   OpcionSelector,
@@ -495,14 +496,6 @@ export class OrdenDetalle implements ConfirmarSalida {
     return ['En espera', 'En proceso', 'Finalizada', 'Cerrada', 'Cancelada'][estado] ?? '';
   }
 
-  protected textoEstadoServicio(estado: EstadoServicioOrden): { texto: string; tono: string } {
-    return [
-      { texto: 'Pendiente', tono: 'naranja' },
-      { texto: 'En proceso', tono: 'azul' },
-      { texto: 'Completado', tono: 'verde' },
-    ][estado] ?? { texto: '', tono: 'gris' };
-  }
-
   protected readonly serviciosCompletados = computed(
     () => this.orden()?.servicios.filter((s) => s.estado === EstadoServicioOrden.Completado).length ?? 0,
   );
@@ -551,9 +544,7 @@ export class OrdenDetalle implements ConfirmarSalida {
     this.verTodoHistorial() ? this.historial() : this.historial().slice(0, 5),
   );
 
-  protected tonoEstado(estado: EstadoOrden): string {
-    return ['azul', 'naranja', 'verde', 'gris', 'roja'][estado] ?? 'gris';
-  }
+  protected readonly estiloOrden = estiloOrden;
 
   /**
    * Lo único que hay que hacer ahora con la orden, con su botón. Reemplaza a

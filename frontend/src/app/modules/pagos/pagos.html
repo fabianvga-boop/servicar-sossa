@@ -102,7 +102,7 @@
             <span class="celda-sub">Ref. {{ pago.referencia }}</span>
           }
         </span>
-        <span class="ocultar-movil"><span class="insignia insignia-gris">{{ etiquetaMetodo(pago.metodoPago) }}</span></span>
+        <span class="ocultar-movil"><span class="dato-ico {{ iconoMetodo(pago.metodoPago) }}">{{ etiquetaMetodo(pago.metodoPago) }}</span></span>
         <span class="a-la-derecha"><span class="monto-fila">{{ pago.monto | bs }}</span></span>
         <span class="acciones-fila">
           <button type="button" class="icono-fila" title="Revertir" aria-label="Revertir pago" (click)="porRevertir.set(pago)">

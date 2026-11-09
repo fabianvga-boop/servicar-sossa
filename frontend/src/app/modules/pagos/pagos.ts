@@ -14,6 +14,7 @@ import { Paginador } from '../../shared/components/paginador';
 import { PaginacionLocal, TODOS_LOS_REGISTROS } from '../../shared/paginacion-local';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
 import { coincidePorPalabras } from '../../shared/busqueda';
+import { iconoMetodo } from '../../shared/estilo-estado';
 import { Atajo } from '../../shared/directives/atajo';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 
@@ -40,6 +41,8 @@ const MESES = [
   styleUrl: './pagos.css',
 })
 export class Pagos {
+  protected readonly iconoMetodo = iconoMetodo;
+
   private readonly servicio = inject(PagosService);
   private readonly proformasService = inject(ProformasService);
   private readonly notificacion = inject(NotificacionService);

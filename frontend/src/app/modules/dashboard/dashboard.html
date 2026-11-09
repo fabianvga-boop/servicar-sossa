@@ -187,7 +187,7 @@
                   <span class="celda-sub">{{ o.nombreCliente }}</span>
                 </span>
               </span>
-              <span><span class="insignia con-punto insignia-{{ claseEstado(o.estado) }}">{{ textoEstado(o.estado) }}</span></span>
+              <span><span class="insignia {{ estiloOrden(o.estado) }}">{{ textoEstado(o.estado) }}</span></span>
               <span class="a-la-derecha"><span class="monto-fila">{{ o.total | bs }}</span></span>
             </a>
           }
