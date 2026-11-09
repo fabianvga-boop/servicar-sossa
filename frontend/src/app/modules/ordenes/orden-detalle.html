@@ -7,20 +7,20 @@
   <section class="orden-cabecera">
     <!-- La foto arriba, como en las tarjetas de Órdenes: placa encima y cuántas fotos hay.
          Sin fotos queda la placa grande. -->
-    @if (fotosVehiculo().length > 0) {
+    @if (fotosGenerales().length > 0) {
       <button
         type="button"
         class="orden-portada"
         [attr.aria-label]="'Ver las fotos de ' + o.placaVehiculo"
         (click)="abrirGaleriaVehiculo()"
       >
-        <img [src]="urlArchivo(fotosVehiculo()[0].url)" [alt]="'Foto de ' + o.placaVehiculo" />
-        @if (fotosVehiculo().length > 1) {
+        <img [src]="urlArchivo(fotosGenerales()[0].url)" [alt]="'Foto de ' + o.placaVehiculo" />
+        @if (fotosGenerales().length > 1) {
           <span class="portada-cantidad">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" />
             </svg>
-            {{ fotosVehiculo().length }}
+            {{ fotosGenerales().length }}
           </span>
         }
         <app-placa class="portada-placa" [valor]="o.placaVehiculo" />
@@ -68,7 +68,7 @@
         </button>
         @if (menuMas()) {
           <div class="menu-mas-lista" role="menu">
-            <button type="button" role="menuitem" [disabled]="fotosVehiculo().length === 0" (click)="menuMas.set(false); abrirGaleriaVehiculo()">
+            <button type="button" role="menuitem" [disabled]="fotosGenerales().length === 0" (click)="menuMas.set(false); abrirGaleriaVehiculo()">
               Ver fotos del vehículo
             </button>
             <button type="button" role="menuitem" (click)="menuMas.set(false); diagramaAbierto.set(true)">
@@ -232,6 +232,7 @@
           @let hecho = servicio.estado === EstadoServicioOrden.Completado;
           @let enCurso = servicio.estado === EstadoServicioOrden.EnProceso;
           @let suyos = repuestosDe(servicio);
+          @let fotosT = fotosDe(servicio);
           @let avanza = puedeAvanzarServicios() && puedeTrabajar() && !hecho;
           @let edita = puedeTrabajar() && editableTrabajo();
           <article class="trabajo" [class.hecho]="hecho" [class.actual]="enCurso">
@@ -359,12 +360,25 @@
                   <p class="nota-solo">{{ servicio.descripcion }}</p>
                 }
 
+                @if (fotosT.length > 0) {
+                  <div class="trabajo-fotos no-imprimir">
+                    @for (foto of fotosT.slice(-4); track foto.fotoId) {
+                      <button type="button" (click)="abrirGaleriaTrabajo(servicio)" [attr.aria-label]="'Ver las fotos de ' + servicio.nombreServicio">
+                        <img [src]="urlArchivo(foto.url)" alt="" loading="lazy" />
+                      </button>
+                    }
+                    <button type="button" class="btn-enlace" (click)="abrirGaleriaTrabajo(servicio)">
+                      {{ fotosT.length === 1 ? '1 foto del trabajo' : fotosT.length + ' fotos del trabajo' }}
+                    </button>
+                  </div>
+                }
+
                 @if (avanza) {
                   <div class="trabajo-acciones no-imprimir">
-                    <label class="btn btn-secundario btn-trabajo" [class.deshabilitado]="subiendoFoto()">
+                    <label class="btn btn-secundario btn-trabajo" [class.deshabilitado]="subiendoFoto()" title="La foto queda guardada en este trabajo">
                       <svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h3l2-3h8l2 3h3v13H3z" /><circle cx="12" cy="13" r="4" /></svg>
                       {{ subiendoFoto() ? 'Subiendo…' : 'Foto' }}
-                      <input type="file" accept="image/*" capture="environment" hidden [disabled]="subiendoFoto()" (change)="onFotoElegida($event)" />
+                      <input type="file" accept="image/*" capture="environment" hidden [disabled]="subiendoFoto()" (change)="onFotoElegida($event, servicio)" />
                     </label>
                     <button type="button" class="btn-enlace enlace-gris" [disabled]="procesando()" (click)="avanzarServicio(servicio.ordenServicioId, EstadoServicioOrden.Pendiente)">
                       Volver a pendiente
@@ -379,6 +393,17 @@
                     </button>
                   </div>
                 }
+              </div>
+            } @else if (fotosT.length > 0) {
+              <div class="trabajo-fotos no-imprimir">
+                @for (foto of fotosT.slice(-4); track foto.fotoId) {
+                  <button type="button" (click)="abrirGaleriaTrabajo(servicio)" [attr.aria-label]="'Ver las fotos de ' + servicio.nombreServicio">
+                    <img [src]="urlArchivo(foto.url)" alt="" loading="lazy" />
+                  </button>
+                }
+                <button type="button" class="btn-enlace" (click)="abrirGaleriaTrabajo(servicio)">
+                  {{ fotosT.length === 1 ? '1 foto del trabajo' : fotosT.length + ' fotos del trabajo' }}
+                </button>
               </div>
             }
           </article>
@@ -505,7 +530,7 @@
       <section class="tarjeta bloque-orden-cuerpo">
         <div class="bloque-orden-titulo">
           <h2>Fotos del vehículo</h2>
-          @if (fotosVehiculo().length > 0) {
+          @if (fotosGenerales().length > 0) {
             <button type="button" class="btn-enlace" (click)="abrirGaleriaVehiculo()">Ver todas</button>
           }
         </div>
@@ -516,9 +541,9 @@
             <input type="file" accept="image/*" capture="environment" hidden [disabled]="subiendoFoto()" (change)="onFotoElegida($event)" />
           </label>
         }
-        @if (fotosVehiculo().length > 0) {
+        @if (fotosGenerales().length > 0) {
           <div class="miniaturas-orden">
-            @for (foto of fotosVehiculo().slice(-3).reverse(); track foto.fotoId) {
+            @for (foto of fotosGenerales().slice(-3).reverse(); track foto.fotoId) {
               <button type="button" (click)="abrirGaleriaVehiculo()" [attr.aria-label]="'Ver fotos de ' + o.placaVehiculo">
                 <img [src]="urlArchivo(foto.url)" alt="" loading="lazy" />
               </button>
@@ -936,17 +961,22 @@
   }
 
   @if (galeriaAbierta()) {
-    <app-modal titulo="Fotos de {{ o.placaVehiculo }}" [ancho]="720" (cerrar)="galeriaAbierta.set(false)">
+    <app-modal [titulo]="galeriaServicio() ? 'Fotos de ' + galeriaServicio()!.nombreServicio : 'Fotos de ' + o.placaVehiculo" [ancho]="720" (cerrar)="cerrarGaleria()">
       <div class="galeria-fotos-orden">
-        @for (foto of fotosVehiculo(); track foto.fotoId) {
-          <img [src]="urlArchivo(foto.url)" alt="Foto del vehículo {{ o.placaVehiculo }}" />
+        @for (foto of fotosGaleria(); track foto.fotoId) {
+          <figure>
+            <a [href]="urlArchivo(foto.url)" target="_blank" rel="noopener">
+              <img [src]="urlArchivo(foto.url)" alt="Foto de {{ foto.servicio || 'el vehículo ' + o.placaVehiculo }}" />
+            </a>
+            <figcaption>{{ foto.servicio || 'Estado del vehículo' }}</figcaption>
+          </figure>
         }
       </div>
       <p class="texto-tenue texto-sm mb-0 mt-2">
-        Para agregar o quitar fotos, hágalo desde la ficha del vehículo en Vehículos.
+        Las fotos de cada trabajo se sacan con el botón Foto de ese trabajo. Para quitar una, hágalo desde la ficha del vehículo en Vehículos.
       </p>
       <div pie>
-        <button type="button" class="btn btn-secundario" (click)="galeriaAbierta.set(false)">Cerrar</button>
+        <button type="button" class="btn btn-secundario" (click)="cerrarGaleria()">Cerrar</button>
       </div>
     </app-modal>
   }
@@ -1164,8 +1194,10 @@
   @if (excepcionCategoria(); as excepcion) {
     <app-modal titulo="Repuesto de otra categoría" [ancho]="560" (cerrar)="cancelarExcepcionCategoria()">
       <p class="mt-0">
-        <strong>{{ excepcion.servicio }}</strong> lleva <strong>{{ excepcion.lleva }}</strong>, y
-        <strong>{{ excepcion.repuesto }}</strong> no es de esa categoría.
+        {{ excepcion.texto }}.
+      </p>
+      <p class="texto-sm">
+        ¿Era para otro trabajo? Cancele y elíjalo en <strong>Para el trabajo</strong>, arriba del repuesto.
       </p>
       <p class="texto-tenue texto-sm">
         Puede registrarlo igual como excepción. El motivo queda en el historial de la orden y en

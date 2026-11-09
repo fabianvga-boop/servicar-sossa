@@ -11,6 +11,13 @@ public class VehiculoFoto
     public string NombreArchivo { get; set; } = string.Empty; // nombre físico en disco
     public DateTime FechaSubida { get; set; } = DateTime.UtcNow;
 
+    /// <summary>
+    /// Trabajo de la orden al que pertenece la foto (evidencia de lo que se hizo).
+    /// Null cuando es una foto general del vehículo (estado al ingresar).
+    /// </summary>
+    public string? OrdenServicioId { get; set; }
+
     // Navegación
     public Vehiculo Vehiculo { get; set; } = null!;
+    public OrdenServicio? OrdenServicio { get; set; }
 }

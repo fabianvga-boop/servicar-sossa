@@ -192,19 +192,40 @@ public class VehiculoService(
             return Result<IEnumerable<VehiculoFotoResponseDto>>.NoEncontrado(
                 $"No existe el vehículo {vehiculoId}.");
 
-        var lista = await fotos.FindAsync(f => f.VehiculoId == vehiculoId, ct);
+        var lista = (await fotos.FindAsync(f => f.VehiculoId == vehiculoId, ct))
+            .OrderByDescending(f => f.FechaSubida).ToList();
+
+        // Rótulo del trabajo de cada foto (una sola consulta para todas).
+        var trabajos = (await ordenes.GetServiciosPorIdsAsync(
+                lista.Where(f => f.OrdenServicioId is not null).Select(f => f.OrdenServicioId!), ct))
+            .ToDictionary(s => s.OrdenServicioId);
+
         return Result<IEnumerable<VehiculoFotoResponseDto>>.Ok(
-            lista.OrderByDescending(f => f.FechaSubida).Select(MapearFoto));
+            lista.Select(f => MapearFoto(
+                f, f.OrdenServicioId is not null && trabajos.TryGetValue(f.OrdenServicioId, out var t) ? t : null)));
     }
 
     public async Task<Result<VehiculoFotoResponseDto>> SubirFotoAsync(
-        string vehiculoId, SubirFotoDto dto, CancellationToken ct = default)
+        string vehiculoId, SubirFotoDto dto, string? ordenServicioId = null,
+        CancellationToken ct = default)
     {
         if (!await vehiculos.ExistsAsync(v => v.VehiculoId == vehiculoId, ct))
             return Result<VehiculoFotoResponseDto>.NoEncontrado($"No existe el vehículo {vehiculoId}.");
 
         var invalida = ValidadorFotos.Validar(dto);
         if (invalida is not null) return Result<VehiculoFotoResponseDto>.Fail(invalida);
+
+        // La foto de un trabajo solo puede ser de una orden de este mismo vehículo.
+        OrdenServicio? trabajo = null;
+        if (!string.IsNullOrWhiteSpace(ordenServicioId))
+        {
+            trabajo = (await ordenes.GetServiciosPorIdsAsync([ordenServicioId], ct)).FirstOrDefault();
+            if (trabajo is null)
+                return Result<VehiculoFotoResponseDto>.NoEncontrado($"No existe el trabajo {ordenServicioId}.");
+            if (trabajo.Orden.VehiculoId != vehiculoId)
+                return Result<VehiculoFotoResponseDto>.Fail(
+                    $"El trabajo {ordenServicioId} no es de una orden de este vehículo.");
+        }
 
         var fotoId = await generadorId.SiguienteAsync<VehiculoFoto>("FOT", ct);
         var nombreArchivo = await archivos.GuardarAsync(
@@ -215,13 +236,14 @@ public class VehiculoService(
             FotoId = fotoId,
             VehiculoId = vehiculoId,
             NombreArchivo = nombreArchivo,
-            FechaSubida = DateTime.UtcNow
+            FechaSubida = DateTime.UtcNow,
+            OrdenServicioId = trabajo?.OrdenServicioId
         };
 
         await fotos.AddAsync(foto, ct);
         await fotos.SaveChangesAsync(ct);
 
-        return Result<VehiculoFotoResponseDto>.Ok(MapearFoto(foto), "Foto subida correctamente.");
+        return Result<VehiculoFotoResponseDto>.Ok(MapearFoto(foto, trabajo), "Foto subida correctamente.");
     }
 
     public async Task<Result<bool>> EliminarFotoAsync(
@@ -294,12 +316,15 @@ public class VehiculoService(
         FechaRegistro = z.FechaRegistro
     };
 
-    private VehiculoFotoResponseDto MapearFoto(VehiculoFoto f) => new()
+    private VehiculoFotoResponseDto MapearFoto(VehiculoFoto f, OrdenServicio? trabajo = null) => new()
     {
         FotoId = f.FotoId,
         VehiculoId = f.VehiculoId,
         Url = archivos.RutaPublica(SubcarpetaFotos, f.NombreArchivo),
-        FechaSubida = f.FechaSubida
+        FechaSubida = f.FechaSubida,
+        OrdenServicioId = f.OrdenServicioId,
+        OrdenId = trabajo?.OrdenId,
+        Servicio = trabajo is null ? null : trabajo.NombreLibre ?? trabajo.Servicio?.Nombre
     };
 
     private static decimal Total(OrdenTrabajo o)

@@ -81,6 +81,25 @@ public class OrdenRepository(AppDbContext context)
             .Include(s => s.Servicio).ThenInclude(t => t!.Categorias).ThenInclude(c => c.Categoria)
             .FirstOrDefaultAsync(s => s.OrdenServicioId == ordenServicioId, ct);
 
+    public async Task<List<OrdenServicio>> GetServiciosPorIdsAsync(
+        IEnumerable<string> ids, CancellationToken ct = default)
+    {
+        var codigos = ids.Distinct().ToList();
+        if (codigos.Count == 0) return [];
+        return await Context.OrdenServicios
+            .Where(s => codigos.Contains(s.OrdenServicioId))
+            .Include(s => s.Orden)
+            .Include(s => s.Servicio)
+            .ToListAsync(ct);
+    }
+
+    public async Task<List<OrdenServicio>> GetServiciosDeOrdenAsync(
+        string ordenId, CancellationToken ct = default)
+        => await Context.OrdenServicios
+            .Where(s => s.OrdenId == ordenId)
+            .Include(s => s.Servicio).ThenInclude(t => t!.Categorias).ThenInclude(c => c.Categoria)
+            .ToListAsync(ct);
+
     public async Task<OrdenRepuesto?> GetRepuestoAsync(
         string ordenRepuestoId, CancellationToken ct = default)
         => await Context.OrdenRepuestos

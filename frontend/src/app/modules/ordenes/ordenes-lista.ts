@@ -285,7 +285,8 @@ export class OrdenesLista {
     ).subscribe((listas) => {
       const mapa = new Map<string, Portada>();
       vehiculoIds.forEach((id, i) => {
-        const fotos = listas[i];
+        // Solo fotos del vehículo: las de un trabajo no van de portada.
+        const fotos = [...listas[i]].filter((f) => !f.ordenServicioId);
         if (fotos.length > 0) mapa.set(id, { url: fotos[0].url, cantidad: fotos.length });
       });
       this.portadas.set(mapa);

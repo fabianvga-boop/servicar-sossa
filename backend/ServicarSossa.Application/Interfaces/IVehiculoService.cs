@@ -28,8 +28,13 @@ public interface IVehiculoService
     Task<Result<IEnumerable<VehiculoFotoResponseDto>>> GetFotosAsync(
         string vehiculoId, CancellationToken ct = default);
 
+    /// <param name="ordenServicioId">
+    /// Opcional: el trabajo de la orden del que es evidencia la foto. Debe ser de una
+    /// orden de este vehículo.
+    /// </param>
     Task<Result<VehiculoFotoResponseDto>> SubirFotoAsync(
-        string vehiculoId, SubirFotoDto dto, CancellationToken ct = default);
+        string vehiculoId, SubirFotoDto dto, string? ordenServicioId = null,
+        CancellationToken ct = default);
 
     Task<Result<bool>> EliminarFotoAsync(
         string vehiculoId, string fotoId, CancellationToken ct = default);

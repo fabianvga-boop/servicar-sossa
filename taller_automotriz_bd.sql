@@ -120,7 +120,9 @@ CREATE TABLE vehiculo_fotos (
                         CHECK (foto_id ~ '^FOT-[0-9]{3,}$'),    -- FOT-001
     vehiculo_id     VARCHAR(20) NOT NULL REFERENCES vehiculos(vehiculo_id) ON DELETE CASCADE,
     nombre_archivo  VARCHAR(255) NOT NULL,
-    fecha_subida    TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP
+    fecha_subida    TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- Trabajo de la orden del que es evidencia la foto (FK mas abajo, tras orden_servicios).
+    orden_servicio_id VARCHAR(20)
 );
 
 -- ============================================================================
@@ -575,12 +577,15 @@ CREATE UNIQUE INDEX idx_plantillas_vehiculo_marca_modelo
 CREATE INDEX idx_usuarios_rol              ON usuarios(rol_id);
 CREATE INDEX idx_vehiculos_cliente         ON vehiculos(cliente_id);
 CREATE INDEX idx_vehiculo_fotos_vehiculo   ON vehiculo_fotos(vehiculo_id);
+CREATE INDEX idx_vehiculo_fotos_servicio   ON vehiculo_fotos(orden_servicio_id);
 CREATE INDEX idx_ventas_fecha              ON ventas(fecha_venta);
 CREATE INDEX idx_venta_detalle_venta       ON venta_detalle(venta_id);
 CREATE INDEX idx_ordenes_vehiculo          ON ordenes_trabajo(vehiculo_id);
 CREATE INDEX idx_ordenes_cliente           ON ordenes_trabajo(cliente_id);
 CREATE INDEX idx_ordenes_estado            ON ordenes_trabajo(estado);
 CREATE INDEX idx_diagnosticos_vehiculo     ON diagnosticos(vehiculo_id);
+ALTER TABLE vehiculo_fotos ADD CONSTRAINT fk_vehiculo_fotos_servicio
+    FOREIGN KEY (orden_servicio_id) REFERENCES orden_servicios(orden_servicio_id) ON DELETE SET NULL;
 CREATE INDEX idx_orden_servicios_orden     ON orden_servicios(orden_id);
 CREATE INDEX idx_orden_servicios_mecanico  ON orden_servicios(mecanico_id);
 CREATE INDEX idx_orden_repuestos_orden     ON orden_repuestos(orden_id);

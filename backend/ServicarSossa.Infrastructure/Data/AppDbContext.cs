@@ -183,9 +183,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.VehiculoId).HasColumnName("vehiculo_id").HasMaxLength(20).IsRequired();
             e.Property(x => x.NombreArchivo).HasColumnName("nombre_archivo").HasMaxLength(255).IsRequired();
             e.Property(x => x.FechaSubida).HasColumnName("fecha_subida").IsRequired();
+            e.Property(x => x.OrdenServicioId).HasColumnName("orden_servicio_id").HasMaxLength(20);
             e.HasIndex(x => x.VehiculoId).HasDatabaseName("idx_vehiculo_fotos_vehiculo");
+            e.HasIndex(x => x.OrdenServicioId).HasDatabaseName("idx_vehiculo_fotos_servicio");
             e.HasOne(x => x.Vehiculo).WithMany(v => v.Fotos)
                 .HasForeignKey(x => x.VehiculoId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.OrdenServicio).WithMany()
+                .HasForeignKey(x => x.OrdenServicioId).OnDelete(DeleteBehavior.SetNull);
         });
 
         b.Entity<VehiculoZonaObservacion>(e =>
