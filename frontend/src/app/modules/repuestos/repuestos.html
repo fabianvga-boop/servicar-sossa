@@ -59,6 +59,9 @@
         </span>
       }
       <em>{{ filtrados().length === 1 ? '1 repuesto' : filtrados().length + ' repuestos' }}</em>
+      @if (hayFiltros()) {
+        <button type="button" class="quitar-filtros" (click)="limpiarFiltros()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>Quitar filtros</button>
+      }
     </div>
 
     @if (cargando() && repuestos().length === 0) {
@@ -178,7 +181,12 @@
   <!-- ------------------------------------------------ Búsqueda guiada (derecha) -->
   <aside class="rail-repuestos" aria-label="Buscar por vehículo y categoría">
     <section class="bloque-rail">
-      <h3><span class="rail-n">1</span>Para qué vehículo</h3>
+      <h3>
+        <span class="rail-n">1</span>Para qué vehículo
+        @if (vehiculoFiltro() || marcaFiltro()) {
+          <button type="button" class="quitar-rail" (click)="quitarVehiculoOMarca()">Quitar</button>
+        }
+      </h3>
       @if (vehiculoElegido(); as v) {
         <div class="vehiculo-rail">
           <app-placa [valor]="v.placa" />
@@ -224,10 +232,28 @@
     </section>
 
     <section class="bloque-rail">
-      <h3><span class="rail-n">2</span>Qué busca</h3>
+      <h3>
+        <span class="rail-n">2</span>Qué busca
+        @if (categoriaFiltro()) {
+          <button type="button" class="quitar-rail" (click)="filtrarPorCategoria(null)">Quitar</button>
+        }
+      </h3>
       @for (c of categoriasConCuenta(); track c.id) {
-        <button type="button" class="categoria-rail" [class.activo]="categoriaFiltro() === c.id" (click)="elegirCategoria(c.id)">
-          <span>{{ c.nombre }}</span><span class="monto-mono">{{ c.cuenta }}</span>
+        @let elegida = categoriaFiltro() === c.id;
+        <button
+          type="button"
+          class="categoria-rail"
+          [class.activo]="elegida"
+          [attr.aria-pressed]="elegida"
+          [title]="elegida ? 'Quitar esta categoría' : ''"
+          (click)="elegirCategoria(c.id)"
+        >
+          <span>{{ c.nombre }}</span>
+          @if (elegida) {
+            <span class="quitar-categoria-rail" aria-label="Quitar"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg></span>
+          } @else {
+            <span class="monto-mono">{{ c.cuenta }}</span>
+          }
         </button>
       }
       <button type="button" class="categoria-rail" [class.activo]="!categoriaFiltro()" (click)="filtrarPorCategoria(null)">
@@ -236,7 +262,12 @@
     </section>
 
     <section class="bloque-rail">
-      <h3>Stock</h3>
+      <h3>
+        Stock
+        @if (vista() !== 'todos') {
+          <button type="button" class="quitar-rail" (click)="elegirVista('todos')">Quitar</button>
+        }
+      </h3>
       <div class="chips-rail">
         <button type="button" class="chip-rail" [class.activo]="vista() === 'todos'" (click)="elegirVista('todos')">Todos</button>
         <button type="button" class="chip-rail" [class.activo]="vista() === 'minimo'" (click)="elegirVista('minimo')">En el mínimo <span>{{ cuentasVista().minimo }}</span></button>

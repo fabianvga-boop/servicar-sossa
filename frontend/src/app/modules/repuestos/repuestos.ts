@@ -438,11 +438,15 @@ export class Repuestos {
       if (r.categoriaId) cuenta.set(r.categoriaId, (cuenta.get(r.categoriaId) ?? 0) + 1);
       else sinCategoria++;
     }
+    // La elegida se muestra siempre (aunque el vehículo no tenga ninguna), para poder quitarla.
+    const elegida = this.categoriaFiltro();
     const lista = this.categorias()
-      .filter((c) => cuenta.has(c.categoriaId))
-      .map((c) => ({ id: c.categoriaId, nombre: c.nombre, cuenta: cuenta.get(c.categoriaId)! }))
+      .filter((c) => cuenta.has(c.categoriaId) || c.categoriaId === elegida)
+      .map((c) => ({ id: c.categoriaId, nombre: c.nombre, cuenta: cuenta.get(c.categoriaId) ?? 0 }))
       .sort((a, b) => b.cuenta - a.cuenta);
-    if (sinCategoria > 0) lista.push({ id: SIN_CATEGORIA, nombre: 'Sin categoría', cuenta: sinCategoria });
+    if (sinCategoria > 0 || elegida === SIN_CATEGORIA) {
+      lista.push({ id: SIN_CATEGORIA, nombre: 'Sin categoría', cuenta: sinCategoria });
+    }
     return lista;
   });
 
@@ -536,6 +540,21 @@ export class Repuestos {
   protected inicialesRepuesto(nombre: string): string {
     const palabras = nombre.split(/\s+/).filter((p) => p.length > 2);
     return (palabras.length ? palabras : [nombre]).slice(0, 2).map((p) => p[0] ?? '').join('').toUpperCase();
+  }
+
+  /** Hay algo elegido en la búsqueda guiada o en el buscador: se ofrece quitarlo. */
+  protected readonly hayFiltros = computed(
+    () =>
+      !!(this.vehiculoFiltro() || this.marcaFiltro() || this.categoriaFiltro() || this.proveedorFiltro() || this.buscar()) ||
+      this.vista() !== 'todos',
+  );
+
+  /** "Quitar" del paso 1: el vehículo, o la marca y el modelo elegidos. */
+  protected quitarVehiculoOMarca(): void {
+    this.marcaFiltro.set('');
+    this.modeloFiltro.set('');
+    if (this.vehiculoFiltro()) this.filtrarPorVehiculo(null);
+    else this.actualizarUsoGeneral();
   }
 
   protected limpiarFiltros(): void {
