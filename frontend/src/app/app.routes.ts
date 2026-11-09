@@ -154,15 +154,6 @@ export const routes: Routes = [
         data: { title: 'Auditoría' },
         loadComponent: () => import('./modules/auditoria/auditoria').then((m) => m.Auditoria),
       },
-      {
-        path: 'plantillas-vehiculo',
-        canActivate: [authGuard(['Administrador'])],
-        data: { title: 'Plantillas de vehículo' },
-        loadComponent: () =>
-          import('./modules/plantillas-vehiculo/plantillas-vehiculo').then(
-            (m) => m.PlantillasVehiculo,
-          ),
-      },
     ],
   },
 

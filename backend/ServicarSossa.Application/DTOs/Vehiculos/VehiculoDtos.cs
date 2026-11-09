@@ -91,16 +91,9 @@ public class VehiculoResponseDto
     /// campo guardado en la tabla).
     /// </summary>
     public string TipoCarroceria { get; set; } = string.Empty;
-
-    /// <summary>
-    /// URL del SVG específico de la biblioteca de plantillas para esta
-    /// Marca+Modelo, si existe; null si no hay ninguna cargada (el frontend
-    /// cae al diagrama genérico por tipo de carrocería).
-    /// </summary>
-    public string? DiagramaSvgUrl { get; set; }
 }
 
-// ------------------------------------------------------------- Zonas (diagrama)
+// ------------------------------------------------------------- Zonas (inspección)
 
 /// <summary>Estado actual de una zona marcada sobre el diagrama del vehículo.</summary>
 public class VehiculoZonaResponseDto

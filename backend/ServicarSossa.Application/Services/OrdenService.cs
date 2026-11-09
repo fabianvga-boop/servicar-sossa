@@ -878,6 +878,13 @@ public class OrdenService(
             ?? await ValidarResponsableAsync(ordenId, usuarioId, esAdministrador, ct);
         if (validacion is not null) return validacion;
 
+        // Todo repuesto es de un trabajo: sin él no habría categoría que controlar ni
+        // forma de saber para qué se usó. Si el trabajo no está, se agrega primero.
+        if (string.IsNullOrWhiteSpace(dto.OrdenServicioId))
+            return Result<OrdenDetalleResponseDto>.Fail(
+                "Indique para qué trabajo es el repuesto. " +
+                "Si el trabajo no está en la orden, agréguelo primero con «Agregar trabajo».");
+
         OrdenServicio? servicio = null;
 
         if (!string.IsNullOrWhiteSpace(dto.OrdenServicioId))
@@ -887,6 +894,17 @@ public class OrdenService(
             if (servicio is null || servicio.OrdenId != ordenId)
                 return Result<OrdenDetalleResponseDto>.Fail(
                     $"El servicio {dto.OrdenServicioId} no pertenece a la orden {ordenId}.");
+        }
+
+        // Reemplazo: la línea que se quita debe ser de este mismo trabajo.
+        OrdenRepuesto? reemplazada = null;
+        if (servicio is not null && !string.IsNullOrWhiteSpace(dto.ReemplazaOrdenRepuestoId))
+        {
+            reemplazada = await ordenes.GetRepuestoAsync(dto.ReemplazaOrdenRepuestoId, ct);
+            if (reemplazada is null || reemplazada.OrdenId != ordenId
+                || reemplazada.OrdenServicioId != servicio.OrdenServicioId)
+                return Result<OrdenDetalleResponseDto>.Fail(
+                    "La línea que se quiere reemplazar no es de este trabajo.");
         }
 
         string nombreRepuesto;
@@ -917,7 +935,8 @@ public class OrdenService(
                 ordenId, servicio, repuesto, dto.MotivoCategoria, usuarioId, esAdministrador, ct);
             if (errorCategoria is not null) return errorCategoria;
 
-            var errorRepetido = await ValidarRepuestoRepetidoAsync(ordenId, servicio, repuesto, ct);
+            var errorRepetido = await ValidarRepuestoRepetidoAsync(
+                ordenId, servicio, repuesto, reemplazada?.OrdenRepuestoId, ct);
             if (errorRepetido is not null) return errorRepetido;
 
             linea.RepuestoId = repuesto.RepuestoId;
@@ -931,12 +950,36 @@ public class OrdenService(
         else
         {
             // Cliente trae / compra externa: no toca inventario y lleva descripción libre.
+            if (servicio is not null)
+            {
+                var errorProcedencia = await ValidarOtraProcedenciaAsync(
+                    servicio, dto.Descripcion!.Trim(), reemplazada?.OrdenRepuestoId, ct);
+                if (errorProcedencia is not null) return errorProcedencia;
+            }
+
             linea.Descripcion = dto.Descripcion!.Trim();
             // El que trae el cliente no se cobra; la compra externa va a su costo.
             linea.PrecioUnitario = dto.Origen == OrigenRepuesto.ClienteTrae
                 ? 0m
                 : dto.PrecioUnitario ?? 0m;
             nombreRepuesto = linea.Descripcion;
+        }
+
+        // Reemplazo: el stock del almacén se descuenta recién al cerrar la orden, así que
+        // quitar la línea anterior no toca el inventario.
+        if (reemplazada is not null)
+        {
+            var nombreAnterior = reemplazada.Origen == OrigenRepuesto.Inventario && reemplazada.RepuestoId is not null
+                ? (await repuestos.GetByIdAsync(reemplazada.RepuestoId, ct))?.Nombre ?? reemplazada.RepuestoId
+                : reemplazada.Descripcion;
+
+            ordenes.QuitarRepuesto(reemplazada);
+
+            await auditor.RegistrarAsync(
+                usuarioId, AccionAuditoria.Editar, "Orden", ordenId,
+                $"Reemplazó {reemplazada.Cantidad} × “{nombreAnterior}” ({Etiqueta(reemplazada.Origen)}) " +
+                $"por {linea.Cantidad} × “{nombreRepuesto}” ({Etiqueta(linea.Origen)})" +
+                (servicio is null ? "" : $" en “{NombreDe(servicio)}”") + $" de la orden {ordenId}.", ct);
         }
 
         await ordenes.AgregarRepuestoAsync(linea, ct);
@@ -1059,21 +1102,23 @@ public class OrdenService(
     /// Devuelve null si se puede.
     /// </summary>
     private async Task<Result<OrdenDetalleResponseDto>?> ValidarRepuestoRepetidoAsync(
-        string ordenId, OrdenServicio? servicio, Repuesto repuesto, CancellationToken ct)
+        string ordenId, OrdenServicio? servicio, Repuesto repuesto, string? ignorarLineaId,
+        CancellationToken ct)
     {
         // Con trabajo: sus líneas y las que quedaron sin trabajo. Sin trabajo
         // ("Para el trabajo" vacío): toda la orden, para que no sea una salida
-        // por donde repetir lo que otro trabajo ya lleva.
+        // por donde repetir lo que otro trabajo ya lleva. La línea que se está
+        // reemplazando (ignorarLineaId) no cuenta: se quita en la misma operación.
         var servicioId = servicio?.OrdenServicioId;
         var lineas = (await ordenRepuestos.FindAsync(
                 r => r.OrdenId == ordenId
                      && r.Origen == OrigenRepuesto.Inventario
                      && r.RepuestoId != null
+                     && r.OrdenRepuestoId != ignorarLineaId
                      && (servicioId == null
                          || r.OrdenServicioId == servicioId
                          || r.OrdenServicioId == null), ct))
             .ToList();
-        if (lineas.Count == 0) return null;
 
         foreach (var linea in lineas)
         {
@@ -1090,7 +1135,60 @@ public class OrdenService(
             var donde = servicio is null ? "La orden" : $"“{NombreDe(servicio)}”";
             return Result<OrdenDetalleResponseDto>.Conflicto(
                 $"{donde} ya lleva “{nombrePrevio}” ({linea.Cantidad}). " +
-                "Si hace falta más cantidad, edite esa línea; si era otro repuesto, quite primero el anterior.");
+                (igual
+                    ? "Si hace falta más cantidad, edite esa línea."
+                    : "Si va a usar “" + repuesto.Nombre + "” en su lugar, reemplace esa línea."));
+        }
+
+        // Un trabajo que lleva UNA sola categoría (pastillas de freno) y ya trae la pieza del
+        // cliente o comprada afuera: la del almacén sería la misma pieza dos veces.
+        var categorias = servicio?.Servicio?.Categorias;
+        if (servicio is not null && categorias is { Count: 1 }
+            && repuesto.CategoriaId == categorias.First().CategoriaId)
+        {
+            var otra = (await ordenRepuestos.FindAsync(
+                    r => r.OrdenServicioId == servicio.OrdenServicioId
+                         && r.Origen != OrigenRepuesto.Inventario
+                         && r.OrdenRepuestoId != ignorarLineaId, ct))
+                .FirstOrDefault();
+
+            if (otra is not null)
+                return Result<OrdenDetalleResponseDto>.Conflicto(
+                    $"“{NombreDe(servicio)}” ya lleva “{otra.Descripcion}” ({otra.Cantidad}), " +
+                    $"{(otra.Origen == OrigenRepuesto.ClienteTrae ? "que trajo el cliente" : "comprado afuera")}. " +
+                    $"Si va a usar “{repuesto.Nombre}” en su lugar, reemplace esa línea.");
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Lo que trae el cliente o se compra afuera tampoco se suma a lo del almacén en un
+    /// trabajo que lleva UNA sola categoría: sería la misma pieza dos veces. (Con varias
+    /// categorías no se puede saber de cuál es la pieza escrita a mano, y no se controla.)
+    /// </summary>
+    private async Task<Result<OrdenDetalleResponseDto>?> ValidarOtraProcedenciaAsync(
+        OrdenServicio servicio, string descripcion, string? ignorarLineaId, CancellationToken ct)
+    {
+        var categorias = servicio.Servicio?.Categorias;
+        if (categorias is not { Count: 1 }) return null;
+
+        var categoriaId = categorias.First().CategoriaId;
+        var lineas = (await ordenRepuestos.FindAsync(
+                r => r.OrdenServicioId == servicio.OrdenServicioId
+                     && r.Origen == OrigenRepuesto.Inventario
+                     && r.RepuestoId != null
+                     && r.OrdenRepuestoId != ignorarLineaId, ct))
+            .ToList();
+
+        foreach (var linea in lineas)
+        {
+            var previo = await repuestos.FirstOrDefaultAsync(r => r.RepuestoId == linea.RepuestoId, ct);
+            if (previo?.CategoriaId != categoriaId) continue;
+
+            return Result<OrdenDetalleResponseDto>.Conflicto(
+                $"“{NombreDe(servicio)}” ya lleva “{previo.Nombre}” ({linea.Cantidad}), del almacén. " +
+                $"Si va a usar “{descripcion}” en su lugar, reemplace esa línea.");
         }
 
         return null;
@@ -1101,46 +1199,61 @@ public class OrdenService(
     /// repuesto del inventario de otra categoría: el mecánico no puede, y el
     /// Administrador solo con motivo, que queda en auditoría. No se controla si
     /// el servicio no tiene categorías o el repuesto todavía no tiene una.
-    /// Excepción: un servicio de solo mano de obra tampoco admite un repuesto de
-    /// la categoría que lleva OTRO servicio de la misma orden (un aceite no es
-    /// de "Reparación mayor de motor" si "Cambio de aceite" está en la orden).
+    /// Un trabajo de SOLO MANO DE OBRA no lleva repuestos: ninguno entra sin la
+    /// excepción del Administrador (si el repuesto es de la categoría de otro
+    /// trabajo de la orden, el aviso dice de cuál). Un trabajo fuera de catálogo
+    /// que sí lleva repuestos no tiene categorías definidas y queda libre.
     /// Devuelve null si se puede registrar.
     /// </summary>
     private async Task<Result<OrdenDetalleResponseDto>?> ValidarCategoriaRepuestoAsync(
         string ordenId, OrdenServicio? servicio, Repuesto repuesto, string? motivoCategoria,
         string usuarioId, bool esAdministrador, CancellationToken ct)
     {
-        var categorias = servicio?.Servicio?.Categorias.Select(c => c.Categoria).ToList() ?? [];
+        if (servicio is null) return null;
 
-        if (servicio is null || repuesto.CategoriaId is null) return null;
+        var categorias = servicio.Servicio?.Categorias.Select(c => c.Categoria).ToList() ?? [];
 
-        string lleva;
         string porQue;     // frase que explica por qué no corresponde
         string tipoRegistro;
 
-        if (categorias.Count > 0)
+        if (!servicio.RequiereRepuesto)
+        {
+            // Solo mano de obra (del catálogo o fuera de él): no lleva repuestos. Si el
+            // repuesto es de la categoría de OTRO trabajo de la orden, se dice de cuál.
+            var dueno = repuesto.CategoriaId is null
+                ? null
+                : (await ordenes.GetServiciosDeOrdenAsync(ordenId, ct)).FirstOrDefault(o =>
+                    o.OrdenServicioId != servicio.OrdenServicioId
+                    && o.Servicio is not null
+                    && o.Servicio.Categorias.Any(c => c.CategoriaId == repuesto.CategoriaId));
+
+            if (dueno is not null)
+            {
+                var lleva = dueno.Servicio!.Categorias.First(c => c.CategoriaId == repuesto.CategoriaId).Categoria.Nombre;
+                porQue = $"“{repuesto.Nombre}” es de “{NombreDe(dueno)}”, que está en esta orden, " +
+                         $"y “{NombreDe(servicio)}” es solo mano de obra";
+                tipoRegistro = $"(solo mano de obra; la categoría {lleva} es de “{NombreDe(dueno)}”)";
+            }
+            else
+            {
+                porQue = $"“{NombreDe(servicio)}” es solo mano de obra y no lleva repuestos, " +
+                         $"y “{repuesto.Nombre}” es un repuesto";
+                tipoRegistro = "(solo mano de obra: no lleva repuestos)";
+            }
+        }
+        else if (categorias.Count > 0 && repuesto.CategoriaId is not null)
         {
             if (categorias.Any(c => c.CategoriaId == repuesto.CategoriaId)) return null;
 
-            lleva = string.Join(", ", categorias.Select(c => c.Nombre).Order());
+            var lleva = string.Join(", ", categorias.Select(c => c.Nombre).Order());
             porQue = $"“{repuesto.Nombre}” no es de la categoría que lleva “{NombreDe(servicio)}” ({lleva})";
             tipoRegistro = $"(lleva: {lleva})";
         }
         else
         {
-            // Solo mano de obra: libre, salvo que otro servicio de la orden lleve esa categoría.
-            var otros = await ordenes.GetServiciosDeOrdenAsync(ordenId, ct);
-            var dueno = otros.FirstOrDefault(o =>
-                o.OrdenServicioId != servicio.OrdenServicioId
-                && o.Servicio is not null
-                && o.Servicio.Categorias.Any(c => c.CategoriaId == repuesto.CategoriaId));
-
-            if (dueno is null) return null;
-
-            lleva = dueno.Servicio!.Categorias.First(c => c.CategoriaId == repuesto.CategoriaId).Categoria.Nombre;
-            porQue = $"“{repuesto.Nombre}” es de “{NombreDe(dueno)}”, que está en esta orden, " +
-                     $"y “{NombreDe(servicio)}” es solo mano de obra";
-            tipoRegistro = $"(solo mano de obra; la categoría {lleva} es de “{NombreDe(dueno)}”)";
+            // Lleva repuestos pero sin categorías definidas (fuera de catálogo) o repuesto
+            // sin categoría: no hay contra qué comparar.
+            return null;
         }
 
         if (!esAdministrador)

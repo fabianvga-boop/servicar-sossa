@@ -557,18 +557,6 @@ CREATE TABLE vehiculo_zonas (
 
 CREATE INDEX idx_vehiculo_zonas_vehiculo ON vehiculo_zonas(vehiculo_id);
 
--- Biblioteca de diagramas vectoriales, uno por Marca+Modelo
-CREATE TABLE plantillas_vehiculo (
-    plantilla_id    VARCHAR(20) PRIMARY KEY
-                        CHECK (plantilla_id ~ '^PLV-[0-9]{3,}$'),  -- PLV-001
-    marca           VARCHAR(50) NOT NULL,
-    modelo          VARCHAR(50) NOT NULL,
-    nombre_archivo  VARCHAR(255) NOT NULL,
-    fecha_subida    TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE UNIQUE INDEX idx_plantillas_vehiculo_marca_modelo
-    ON plantillas_vehiculo(marca, modelo);
 
 -- ============================================================================
 -- INDICES RECOMENDADOS (mejoran consultas frecuentes de reportes y busquedas)

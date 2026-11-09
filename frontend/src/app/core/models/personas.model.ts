@@ -85,8 +85,6 @@ export interface Vehiculo {
   fechaRegistro: string;
   /** Silueta a usar en el diagrama vectorial; inferida de marca/modelo por el backend. */
   tipoCarroceria: TipoCarroceria;
-  /** SVG específico de la biblioteca de plantillas para esta marca+modelo, si existe. */
-  diagramaSvgUrl: string | null;
 }
 
 export interface VehiculoRequest {
@@ -132,17 +130,6 @@ export interface RegistrarZonaRequest {
   estado: EstadoZonaVehiculo;
   detalle?: string | null;
   ordenId?: string | null;
-}
-
-// --------------------------------- Biblioteca de plantillas (Marca+Modelo)
-
-/** Un SVG fiel a un vehículo real (Marca+Modelo), cargado por el Administrador. */
-export interface PlantillaVehiculo {
-  plantillaId: string;
-  marca: string;
-  modelo: string;
-  url: string;
-  fechaSubida: string;
 }
 
 // -------------------------------------------------- Fotos del vehículo (galería)

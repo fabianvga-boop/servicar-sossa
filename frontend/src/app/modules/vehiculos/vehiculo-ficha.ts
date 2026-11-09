@@ -1,11 +1,10 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
-import { EstadoZonaVehiculo, NivelCompatibilidad, RespuestaCliente } from '../../core/models/enums';
+import { NivelCompatibilidad, RespuestaCliente } from '../../core/models/enums';
 import { RepuestoParaVehiculo } from '../../core/models/inventario.model';
 import {
   EventoHistorial,
@@ -22,10 +21,12 @@ import { NotificacionService } from '../../core/services/notificacion.service';
 import { OrdenesService } from '../../core/services/ordenes.service';
 import { DiagnosticosService } from '../../core/services/taller.service';
 import { VehiculosService } from '../../core/services/vehiculos.service';
-import { DiagramaVehiculo, etiquetaZona } from '../../shared/components/diagrama-vehiculo';
+import { Confirmacion } from '../../shared/components/confirmacion';
 import { ElegirFoto } from '../../shared/components/elegir-foto';
 import { Esqueleto } from '../../shared/components/esqueleto';
+import { DatosZona, InspeccionVehiculo, etiquetaZona } from '../../shared/components/inspeccion-vehiculo';
 import { Placa } from '../../shared/components/placa';
+import { VisorFotos, aFotoVisor } from '../../shared/components/visor-fotos';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 
 type Pestania = 'historial' | 'fotos' | 'datos';
@@ -48,12 +49,6 @@ interface ItemLinea {
   tono: 'verde' | 'naranja' | 'roja' | 'gris';
 }
 
-const TEXTO_ZONA: Record<string, string> = {
-  Ok: 'Bien',
-  Atencion: 'Atención',
-  EnReparacion: 'En reparación',
-};
-
 /**
  * Ficha de un vehículo: lo que se le hizo, los repuestos que le sirven y su
  * estado (fotos y zonas marcadas en el dibujo), en una sola página con
@@ -63,13 +58,14 @@ const TEXTO_ZONA: Record<string, string> = {
   selector: 'app-vehiculo-ficha',
   imports: [
     RouterLink,
-    ReactiveFormsModule,
     DatePipe,
     DecimalPipe,
-    DiagramaVehiculo,
+    Confirmacion,
+    InspeccionVehiculo,
     ElegirFoto,
     Esqueleto,
     Placa,
+    VisorFotos,
     BolivianosPipe,
   ],
   templateUrl: './vehiculo-ficha.html',
@@ -82,12 +78,9 @@ export class VehiculoFicha {
   private readonly ordenesService = inject(OrdenesService);
   private readonly bs = new BolivianosPipe();
   private readonly notificacion = inject(NotificacionService);
-  private readonly fb = inject(FormBuilder);
   protected readonly auth = inject(AuthService);
 
   protected readonly urlArchivo = urlArchivo;
-  protected readonly etiquetaZona = etiquetaZona;
-  protected readonly EstadoZonaVehiculo = EstadoZonaVehiculo;
   protected readonly NivelCompatibilidad = NivelCompatibilidad;
 
   private readonly id: string;
@@ -107,13 +100,8 @@ export class VehiculoFicha {
   protected readonly subiendoFoto = signal(false);
   protected readonly eliminandoFoto = signal<string | null>(null);
 
-  // --- Zonas del dibujo -----------------------------------------------------------
-  protected readonly zonaEditando = signal<string | null>(null);
+  // --- Inspección (zonas) ------------------------------------------------------------
   protected readonly guardandoZona = signal(false);
-  protected readonly formularioZona = this.fb.nonNullable.group({
-    estado: [EstadoZonaVehiculo.Atencion],
-    detalle: [''],
-  });
 
   /** Los eventos del historial, del más nuevo al más viejo, con su título y su monto. */
   /** Como el historial de la orden: lo último a la vista y el resto a pedido. */
@@ -175,22 +163,16 @@ export class VehiculoFicha {
     return [...grupos.entries()].map(([dia, fotos]) => ({ dia, fotos }));
   });
 
-  /** La última marca de cada zona: es el estado actual de esa parte del vehículo. */
-  protected readonly zonasActuales = computed(() => {
-    const ultimas = new Map<string, VehiculoZona>();
-    for (const z of [...this.zonas()].sort((a, b) => b.fechaRegistro.localeCompare(a.fechaRegistro))) {
-      if (!ultimas.has(z.zona)) ultimas.set(z.zona, z);
-    }
-    return [...ultimas.values()];
-  });
+  /** Todas las fotos en el orden en que se ven en pantalla, para pasar de una a otra en el visor. */
+  private readonly fotosEnOrden = computed(() => this.gruposFotos().flatMap((g) => g.fotos));
+  protected readonly fotosVisor = computed(() => this.fotosEnOrden().map(aFotoVisor));
+  /** Posición de la foto con que se abrió el visor; null = cerrado. */
+  protected readonly visorInicio = signal<number | null>(null);
 
-  /**
-   * El dibujo ya lista cada zona con su estado; aparte solo se muestran las
-   * marcas que traen un detalle escrito ("rayón leve", "falta el espejo").
-   */
-  protected readonly observacionesZonas = computed(() =>
-    this.zonasActuales().filter((z) => z.detalle?.trim()),
-  );
+  protected abrirVisor(foto: VehiculoFoto): void {
+    const posicion = this.fotosEnOrden().findIndex((f) => f.fotoId === foto.fotoId);
+    this.visorInicio.set(posicion >= 0 ? posicion : 0);
+  }
 
   constructor() {
     const ruta = inject(ActivatedRoute);
@@ -279,10 +261,6 @@ export class VehiculoFicha {
     }
   }
 
-  protected textoZona(estado: string): string {
-    return TEXTO_ZONA[estado] ?? estado;
-  }
-
   // --- Fotos -------------------------------------------------------------------------
 
   /** La foto llega ya validada y achicada por app-elegir-foto. */
@@ -299,6 +277,17 @@ export class VehiculoFicha {
     });
   }
 
+  /** Foto cuya eliminación espera confirmación; null = ninguna. */
+  protected readonly fotoPorEliminar = signal<VehiculoFoto | null>(null);
+
+  /** Qué foto es, para que se vea bien cuál se va a borrar. */
+  protected textoFotoPorEliminar(foto: VehiculoFoto): string {
+    const fecha = aFotoVisor(foto).fecha;
+    return foto.servicio
+      ? `Foto del ${fecha}, evidencia del trabajo «${foto.servicio}».`
+      : `Foto del vehículo del ${fecha}.`;
+  }
+
   protected eliminarFoto(foto: VehiculoFoto): void {
     this.eliminandoFoto.set(foto.fotoId);
 
@@ -306,34 +295,28 @@ export class VehiculoFicha {
       next: () => {
         this.fotos.update((lista) => lista.filter((f) => f.fotoId !== foto.fotoId));
         this.eliminandoFoto.set(null);
+        this.fotoPorEliminar.set(null);
+        this.notificacion.exito('Foto eliminada.');
       },
-      error: () => this.eliminandoFoto.set(null),
+      error: () => {
+        this.eliminandoFoto.set(null);
+        this.fotoPorEliminar.set(null);
+      },
     });
   }
 
-  // --- Zonas -------------------------------------------------------------------------
+  // --- Inspección ----------------------------------------------------------------------
 
-  protected onZonaClick(zona: string): void {
-    if (!this.auth.esAdministrador()) return;
-    this.zonaEditando.set(zona);
-    this.formularioZona.reset({ estado: EstadoZonaVehiculo.Atencion, detalle: '' });
-  }
-
-  protected guardarZona(): void {
-    const zona = this.zonaEditando();
-    if (!zona) return;
-
+  protected guardarZona(datos: DatosZona): void {
     this.guardandoZona.set(true);
-    const datos = this.formularioZona.getRawValue();
 
     this.servicio
-      .registrarZona(this.id, { zona, estado: datos.estado, detalle: datos.detalle || null })
+      .registrarZona(this.id, { zona: datos.zona, estado: datos.estado, detalle: datos.detalle })
       .subscribe({
         next: (nueva) => {
           this.zonas.update((lista) => [nueva, ...lista]);
           this.guardandoZona.set(false);
-          this.zonaEditando.set(null);
-          this.notificacion.exito('Zona marcada en el dibujo.');
+          this.notificacion.exito(`Se anotó: ${etiquetaZona(nueva.zona)}.`);
         },
         error: () => this.guardandoZona.set(false),
       });

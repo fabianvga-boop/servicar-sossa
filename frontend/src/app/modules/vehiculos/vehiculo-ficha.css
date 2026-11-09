@@ -327,66 +327,6 @@
 
 /* ------------------------------------------------------- Estado y fotos */
 
-.diagrama-ficha {
-  padding: 12px;
-  border-radius: var(--radio-md);
-  background: var(--fondo-app);
-}
-
-.form-zona {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 14px;
-  border: 1px solid var(--gris-200);
-  border-radius: var(--radio-md);
-}
-
-.form-zona .campo { margin-bottom: 0; }
-
-.form-zona-botones {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.zona-fila {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 0;
-  border-top: 1px solid var(--gris-100);
-  font-size: 14px;
-}
-
-.zonas-observaciones {
-  display: flex;
-  flex-direction: column;
-}
-
-.zonas-observaciones .etiqueta-campo { margin-bottom: 6px; }
-
-.zona-punto {
-  width: 10px;
-  height: 10px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--gris-400);
-}
-
-.zona-punto.Atencion { background: var(--naranja-600); }
-.zona-punto.EnReparacion { background: var(--brand); }
-.zona-punto.Ok { background: var(--verde-700); }
-
-.zona-texto { flex: 1; }
-
-.zona-detalle { color: var(--gris-500); }
-
-.zona-fecha {
-  font-size: 12px;
-  color: var(--gris-400);
-}
-
 .fotos-grupo {
   display: flex;
   flex-direction: column;
@@ -410,12 +350,6 @@
   color: var(--gris-400);
 }
 
-.ficha-pie-dibujo {
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--gris-400);
-}
-
 .fotos-rejilla {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -427,6 +361,10 @@
 
 .foto-ficha-imagen {
   display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  cursor: zoom-in;
   aspect-ratio: 4 / 3;
   overflow: hidden;
   border-radius: var(--radio-sm);

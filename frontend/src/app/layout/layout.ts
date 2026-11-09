@@ -174,12 +174,6 @@ export class Layout {
         { ruta: '/usuarios', etiqueta: 'Usuarios', icono: 'usuarios', roles: ['Administrador'] },
         { ruta: '/reportes', etiqueta: 'Reportes', icono: 'reportes', roles: ['Administrador'] },
         { ruta: '/auditoria', etiqueta: 'Auditoría', icono: 'auditoria', roles: ['Administrador'] },
-        {
-          ruta: '/plantillas-vehiculo',
-          etiqueta: 'Plantillas de vehículo',
-          icono: 'plantillas',
-          roles: ['Administrador'],
-        },
       ],
     },
   ];

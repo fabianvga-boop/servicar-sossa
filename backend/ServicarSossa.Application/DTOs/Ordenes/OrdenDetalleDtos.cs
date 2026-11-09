@@ -185,6 +185,13 @@ public class OrdenRepuestoRequestDto : IValidatableObject
     [RegularExpression(@"^OSR-\d{3,}$", ErrorMessage = "El servicio debe tener el formato OSR-000.")]
     public string? OrdenServicioId { get; set; }
 
+    /// <summary>
+    /// Línea del MISMO trabajo que esta nueva reemplaza (las pastillas del almacén
+    /// por las que trajo el cliente): se quita y se agrega la nueva en una sola operación.
+    /// </summary>
+    [RegularExpression(@"^ORE-\d{3,}$", ErrorMessage = "La línea a reemplazar debe tener el formato ORE-000.")]
+    public string? ReemplazaOrdenRepuestoId { get; set; }
+
     /// <summary>Nombre libre del repuesto cuando no sale del inventario.</summary>
     [MaxLength(150, ErrorMessage = "La descripción no puede superar los 150 caracteres.")]
     public string? Descripcion { get; set; }

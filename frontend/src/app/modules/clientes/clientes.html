@@ -260,7 +260,9 @@
                 <article class="vehiculo-cli">
                   <div class="vehiculo-cli-imagen">
                     @if (fotos.length > 0) {
-                      <img [src]="urlArchivo(fotos[0].url)" [alt]="'Foto de ' + v.placa" loading="lazy" />
+                      <button type="button" class="foto-abrir" [attr.aria-label]="'Ver las fotos de ' + v.placa" (click)="abrirFotos(v)">
+                        <img [src]="urlArchivo(fotos[0].url)" [alt]="'Foto de ' + v.placa" loading="lazy" />
+                      </button>
                     } @else {
                       <svg viewBox="0 0 240 128" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
                         <rect class="silueta-piso" x="0" y="96" width="240" height="32" />
@@ -527,4 +529,8 @@
     (confirmar)="cambiarEstado()"
     (cancelar)="porCambiarEstado.set(null)"
   />
+}
+
+@if (visorFotos(); as visor) {
+  <app-visor-fotos [titulo]="visor.titulo" [fotos]="visor.fotos" (cerrar)="visorFotos.set(null)" />
 }

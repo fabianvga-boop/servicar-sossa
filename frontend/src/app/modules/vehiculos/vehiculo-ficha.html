@@ -216,68 +216,16 @@
           <div class="ficha-bloque-cabecera">
             <h2>Estado del vehículo</h2>
             @if (auth.esAdministrador()) {
-              <span class="ficha-ayuda">Toque una zona del dibujo para marcar cómo está.</span>
+              <span class="ficha-ayuda">Toque una parte para anotar cómo está.</span>
             }
           </div>
 
-          <div class="diagrama-ficha">
-            <app-diagrama-vehiculo
-              [tipoCarroceria]="v.tipoCarroceria"
-              [svgUrl]="v.diagramaSvgUrl"
-              [zonas]="zonas()"
-              [interactivo]="auth.esAdministrador()"
-              [zonaSeleccionada]="zonaEditando()"
-              (zonaClick)="onZonaClick($event)"
-            />
-          </div>
-
-          @if (zonaEditando(); as zona) {
-            <form class="form-zona" [formGroup]="formularioZona" (ngSubmit)="guardarZona()">
-              <strong>{{ zona }}</strong>
-              <div class="campo">
-                <label for="estadoZona">Estado</label>
-                <select id="estadoZona" formControlName="estado">
-                  <option [ngValue]="EstadoZonaVehiculo.Ok">Bien</option>
-                  <option [ngValue]="EstadoZonaVehiculo.Atencion">Atención</option>
-                  <option [ngValue]="EstadoZonaVehiculo.EnReparacion">En reparación</option>
-                </select>
-              </div>
-              <div class="campo">
-                <label for="detalleZona">Detalle (opcional)</label>
-                <input id="detalleZona" formControlName="detalle" placeholder="Rayón leve, golpe, falta una pieza…" />
-              </div>
-              <div class="form-zona-botones">
-                <button type="button" class="btn btn-secundario" (click)="zonaEditando.set(null)">Cancelar</button>
-                <button type="submit" class="btn btn-primario" [disabled]="guardandoZona()">
-                  {{ guardandoZona() ? 'Guardando…' : 'Marcar zona' }}
-                </button>
-              </div>
-            </form>
-          }
-
-          @if (observacionesZonas().length > 0) {
-            <div class="zonas-observaciones">
-              <span class="etiqueta-campo">Observaciones</span>
-              @for (z of observacionesZonas(); track z.zonaObsId) {
-                <div class="zona-fila">
-                  <span class="zona-punto {{ z.estado }}" aria-hidden="true"></span>
-                  <span class="zona-texto">
-                    <strong>{{ etiquetaZona(z.zona) }}</strong> · {{ textoZona(z.estado) }}
-                    <span class="zona-detalle">— {{ z.detalle }}</span>
-                  </span>
-                  <span class="zona-fecha">{{ z.fechaRegistro | date: 'dd/MM/yyyy' }}</span>
-                </div>
-              }
-            </div>
-          }
-
-          <span class="ficha-pie-dibujo">
-            @if (v.diagramaSvgUrl) {
-              Dibujo de la plantilla {{ v.marca }} {{ v.modelo }}.
-            } @else {
-              Este modelo no tiene plantilla propia: se usa la silueta genérica.
-            }
-          </span>
+          <app-inspeccion-vehiculo
+            [zonas]="zonas()"
+            [editable]="auth.esAdministrador()"
+            [guardando]="guardandoZona()"
+            (guardar)="guardarZona($event)"
+          />
         </section>
 
         <section class="tarjeta ficha-bloque">
@@ -297,9 +245,9 @@
               <div class="fotos-rejilla">
                 @for (foto of grupo.fotos; track foto.fotoId) {
                   <div class="foto-ficha">
-                    <a [href]="urlArchivo(foto.url)" target="_blank" rel="noopener" class="foto-ficha-imagen">
+                    <button type="button" class="foto-ficha-imagen" [attr.aria-label]="'Ver la foto de ' + v.placa + ' en grande'" (click)="abrirVisor(foto)">
                       <img [src]="urlArchivo(foto.url)" [alt]="'Foto de ' + v.placa" loading="lazy" />
-                    </a>
+                    </button>
                     @if (foto.servicio) {
                       <span class="foto-ficha-trabajo">{{ foto.servicio }}</span>
                     }
@@ -310,7 +258,7 @@
                         title="Eliminar la foto"
                         aria-label="Eliminar la foto"
                         [disabled]="eliminandoFoto() === foto.fotoId"
-                        (click)="eliminarFoto(foto)"
+                        (click)="fotoPorEliminar.set(foto)"
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
                       </button>
@@ -355,4 +303,30 @@
   }
 } @else {
   <app-esqueleto [filas]="6" [columnas]="2" />
+}
+
+@if (fotoPorEliminar(); as foto) {
+  <app-confirmacion
+    titulo="¿Eliminar esta foto?"
+    [mensaje]="textoFotoPorEliminar(foto)"
+    [advertencia]="
+      foto.servicio
+        ? 'Ya no quedará constancia de cómo se hizo ese trabajo. No se puede deshacer.'
+        : 'No se puede deshacer: la foto se borra del vehículo para siempre.'
+    "
+    textoConfirmar="Eliminar la foto"
+    [peligroso]="true"
+    [procesando]="eliminandoFoto() === foto.fotoId"
+    (confirmar)="eliminarFoto(foto)"
+    (cancelar)="fotoPorEliminar.set(null)"
+  />
+}
+
+@if (visorInicio() !== null) {
+  <app-visor-fotos
+    [titulo]="'Fotos de ' + (vehiculo()?.placa ?? 'el vehículo')"
+    [fotos]="fotosVisor()"
+    [inicio]="visorInicio()!"
+    (cerrar)="visorInicio.set(null)"
+  />
 }

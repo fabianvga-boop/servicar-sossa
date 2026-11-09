@@ -12,18 +12,12 @@ import {
   EstadoOrden,
   EstadoServicioOrden,
   EstadoUsuario,
-  EstadoZonaVehiculo,
   NivelCompatibilidad,
   OrigenRepuesto,
 } from '../../core/models/enums';
 import { Proforma } from '../../core/models/finanzas.model';
 import { Repuesto, RepuestoParaVehiculo } from '../../core/models/inventario.model';
-import {
-  TipoCarroceria,
-  Usuario,
-  VehiculoFoto,
-  VehiculoZona,
-} from '../../core/models/personas.model';
+import { Usuario, VehiculoFoto, VehiculoZona } from '../../core/models/personas.model';
 import {
   OrdenDetalle as OrdenDetalleModel,
   OrdenRepuesto,
@@ -47,9 +41,10 @@ import { DiagnosticosService, TiposServicioService } from '../../core/services/t
 import { UsuariosService } from '../../core/services/usuarios.service';
 import { VehiculosService } from '../../core/services/vehiculos.service';
 import { Confirmacion } from '../../shared/components/confirmacion';
-import { DiagramaVehiculo, etiquetaZona } from '../../shared/components/diagrama-vehiculo';
+import { DatosZona, InspeccionVehiculo, etiquetaZona } from '../../shared/components/inspeccion-vehiculo';
 import { Migas } from '../../shared/components/migas';
 import { Modal } from '../../shared/components/modal';
+import { FotoVisor, VisorFotos, aFotoVisor } from '../../shared/components/visor-fotos';
 import { Cajon } from '../../shared/components/cajon';
 import { coincidePorPalabras } from '../../shared/busqueda';
 import { prepararFoto } from '../../shared/fotos';
@@ -200,6 +195,7 @@ function repuestoSugeridoPara(nombreServicio: string): string | null {
     TextoResaltado,
     DatePipe,
     Modal,
+    VisorFotos,
     Cajon,
     Confirmacion,
     Migas,
@@ -207,7 +203,7 @@ function repuestoSugeridoPara(nombreServicio: string): string | null {
     SelectorBusqueda,
     SiTieneRol,
     BolivianosPipe,
-    DiagramaVehiculo,
+    InspeccionVehiculo,
   ],
   templateUrl: './orden-detalle.html',
   styleUrls: ['./orden-detalle.css', './orden-trabajo.css', './orden-jerarquia.css'],
@@ -258,25 +254,19 @@ export class OrdenDetalle implements ConfirmarSalida {
       ? this.fotosVehiculo().filter((f) => f.ordenServicioId === trabajo.ordenServicioId)
       : this.fotosGenerales();
   });
+  /** Lo que muestra el visor: cada foto con su rótulo (el trabajo o "Estado del vehículo") y su fecha. */
+  protected readonly fotosVisor = computed<FotoVisor[]>(() => this.fotosGaleria().map(aFotoVisor));
   protected readonly urlArchivo = urlArchivo;
-
-  // Diagrama vectorial del vehículo (USU022-025): zonas marcadas sobre la
-  // silueta, para anotar daños/observaciones sin depender solo de texto libre.
-  protected readonly tipoCarroceriaVehiculo = signal<TipoCarroceria>('Generico');
-  protected readonly diagramaSvgUrlVehiculo = signal<string | null>(null);
 
   // Diagnóstico asistido: sugerencias de servicios/repuestos/precio para la
   // orden, calculadas a partir de la falla del diagnóstico que la originó.
   protected readonly sugerenciaOrden = signal<SugerenciaDiagnostico | null>(null);
+
+  // Inspección del vehículo (USU022-025): el estado de cada parte, para anotar
+  // daños/observaciones sin depender solo de texto libre.
   protected readonly zonasVehiculo = signal<VehiculoZona[]>([]);
-  protected readonly zonaEditando = signal<string | null>(null);
   protected readonly guardandoZona = signal(false);
-  protected readonly diagramaAbierto = signal(false);
-  protected readonly EstadoZonaVehiculo = EstadoZonaVehiculo;
-  protected nuevaZona = {
-    estado: EstadoZonaVehiculo.Atencion,
-    detalle: '',
-  };
+  protected readonly inspeccionAbierta = signal(false);
 
   protected readonly mecanicos = signal<Usuario[]>([]);
   protected readonly catalogo = signal<TipoServicio[]>([]);
@@ -549,7 +539,7 @@ export class OrdenDetalle implements ConfirmarSalida {
   });
 
   protected textoZona(estado: string): string {
-    return estado === 'Atencion' ? 'Atención' : estado === 'EnReparacion' ? 'En reparación' : 'Bien';
+    return estado === 'Atencion' ? 'Con daño' : estado === 'EnReparacion' ? 'En reparación' : 'Sin novedad';
   }
 
   /** El historial se muestra corto; el resto, a pedido. */
@@ -807,9 +797,12 @@ export class OrdenDetalle implements ConfirmarSalida {
   }
 
   private encaje(repuesto: Repuesto, servicio: OrdenServicio | null): EncajeCategoria {
-    if (!servicio || !repuesto.categoriaId) return 'libre';
-    // Solo mano de obra: un repuesto es libre, salvo que sea de la categoría de otro trabajo.
-    if (servicio.categorias.length === 0) return this.trabajoDueno(repuesto, servicio) ? 'otra' : 'libre';
+    if (!servicio) return 'libre';
+    // Solo mano de obra: no lleva repuestos, ninguno corresponde.
+    if (!servicio.requiereRepuesto) return 'otra';
+    if (!repuesto.categoriaId) return 'libre';
+    // Lleva repuestos pero sin categorías definidas (fuera de catálogo): no hay contra qué comparar.
+    if (servicio.categorias.length === 0) return 'libre';
     return servicio.categorias.some((c) => c.categoriaId === repuesto.categoriaId)
       ? 'corresponde'
       : 'otra';
@@ -839,9 +832,11 @@ export class OrdenDetalle implements ConfirmarSalida {
 
   /** Por qué un repuesto no corresponde al trabajo elegido, en una frase. */
   private textoNoCorresponde(repuesto: Repuesto, servicio: OrdenServicio): string {
-    const dueno = this.trabajoDueno(repuesto, servicio);
-    if (servicio.categorias.length === 0 && dueno) {
-      return `“${repuesto.nombre}” es de “${dueno.nombreServicio}”, que está en esta orden, y “${servicio.nombreServicio}” es solo mano de obra`;
+    if (!servicio.requiereRepuesto) {
+      const dueno = this.trabajoDueno(repuesto, servicio);
+      return dueno
+        ? `“${repuesto.nombre}” es de “${dueno.nombreServicio}”, que está en esta orden, y “${servicio.nombreServicio}” es solo mano de obra`
+        : `“${servicio.nombreServicio}” es solo mano de obra y no lleva repuestos, y “${repuesto.nombre}” es un repuesto`;
     }
     return `“${servicio.nombreServicio}” lleva ${this.llevaDe(servicio)}, y “${repuesto.nombre}” no es de esa categoría`;
   }
@@ -878,9 +873,14 @@ export class OrdenDetalle implements ConfirmarSalida {
       // 1. Si sirve para el servicio elegido (solo si el servicio lleva categorías).
       if (encaje === 'corresponde') marcas.push({ texto: '✓ Para este servicio', tono: 'verde' });
       else if (otra) {
-        const dueno = servicio && servicio.categorias.length === 0 ? this.trabajoDueno(r, servicio) : null;
+        const manoDeObra = !!servicio && !servicio.requiereRepuesto;
+        const dueno = manoDeObra && servicio ? this.trabajoDueno(r, servicio) : null;
         marcas.push({
-          texto: dueno ? `✖ Es de “${dueno.nombreServicio}”` : `✖ No corresponde: es ${r.nombreCategoria}`,
+          texto: dueno
+            ? `✖ Es de “${dueno.nombreServicio}”`
+            : manoDeObra
+              ? '✖ Este trabajo es solo mano de obra'
+              : `✖ No corresponde: es ${r.nombreCategoria}`,
           tono: 'roja',
         });
       }
@@ -993,15 +993,13 @@ export class OrdenDetalle implements ConfirmarSalida {
           .pipe(catchError(() => of([] as VehiculoFoto[])))
           .subscribe((fotos) => this.fotosVehiculo.set(fotos));
 
-        // Diagrama: tipo de carrocería (para elegir la silueta) y las zonas ya marcadas.
+        // Kilometraje del vehículo, para la columna lateral.
         this.vehiculosService
           .getById(orden.vehiculoId)
           .pipe(catchError(() => of(null)))
           .subscribe((vehiculo) => {
             if (!vehiculo) return;
             this.kilometrajeVehiculo.set(vehiculo.kilometraje ?? null);
-            this.tipoCarroceriaVehiculo.set(vehiculo.tipoCarroceria);
-            this.diagramaSvgUrlVehiculo.set(vehiculo.diagramaSvgUrl ?? null);
           });
 
         // Repuestos ordenados por compatibilidad con este vehículo.
@@ -1075,42 +1073,26 @@ export class OrdenDetalle implements ConfirmarSalida {
     this.galeriaServicio.set(null);
   }
 
-  // --- Diagrama vectorial (zonas) ---------------------------------------------
+  // --- Inspección del vehículo (zonas) -----------------------------------------
 
-  protected onZonaClick(zona: string): void {
-    this.zonaEditando.set(zona);
-    this.nuevaZona = { estado: EstadoZonaVehiculo.Atencion, detalle: '' };
-  }
-
-  protected cancelarZona(): void {
-    this.zonaEditando.set(null);
-  }
-
-  protected cerrarDiagrama(): void {
-    this.diagramaAbierto.set(false);
-    this.zonaEditando.set(null);
-  }
-
-  protected guardarZona(): void {
+  protected guardarZona(datos: DatosZona): void {
     const orden = this.orden();
-    const zona = this.zonaEditando();
-    if (!orden || !zona) return;
+    if (!orden) return;
 
     this.guardandoZona.set(true);
 
     this.vehiculosService
       .registrarZona(orden.vehiculoId, {
-        zona,
-        estado: this.nuevaZona.estado,
-        detalle: this.nuevaZona.detalle || null,
+        zona: datos.zona,
+        estado: datos.estado,
+        detalle: datos.detalle,
         ordenId: orden.ordenId,
       })
       .subscribe({
         next: (nueva) => {
           this.zonasVehiculo.update((lista) => [nueva, ...lista]);
           this.guardandoZona.set(false);
-          this.zonaEditando.set(null);
-          this.notificacion.exito('Zona registrada en el diagrama.');
+          this.notificacion.exito(`Se anotó: ${etiquetaZona(nueva.zona)}.`);
         },
         error: () => this.guardandoZona.set(false),
       });
@@ -1621,7 +1603,70 @@ export class OrdenDetalle implements ConfirmarSalida {
       precioUnitario: null as number | null,
       /** Servicio de la orden para el que se usa (vacío = ninguno en particular). */
       ordenServicioId: '',
+      /** Línea del mismo trabajo que esta reemplaza (se confirma en la ventana de reemplazo). */
+      reemplazaOrdenRepuestoId: '',
     };
+  }
+
+  /** Reemplazo pendiente de confirmar: qué línea sale y qué entra en su lugar. */
+  protected readonly reemplazo = signal<{
+    linea: OrdenRepuesto;
+    trabajo: string;
+    nuevo: string;
+    cantidad: number;
+    procedencia: string;
+    delAlmacen: boolean;
+  } | null>(null);
+
+  /**
+   * Línea del mismo trabajo con la que el repuesto nuevo se superpondría (las pastillas
+   * del cliente cuando ya hay las del almacén, u otro aceite cuando ya hay uno). Con el
+   * mismo repuesto no se reemplaza: se edita la cantidad (`mismo`). La pieza escrita a
+   * mano solo se compara en un trabajo de UNA categoría: con varias no se sabe de cuál es.
+   */
+  private lineaAReemplazar(
+    origen: OrigenRepuesto,
+    repuesto: Repuesto | null,
+    servicio: OrdenServicio | null,
+  ): { linea: OrdenRepuesto; mismo: boolean } | null {
+    if (!servicio) return null;
+    const suyas = this.repuestosDe(servicio);
+    const categoriaUnica = servicio.categorias.length === 1 ? servicio.categorias[0].categoriaId : null;
+    const categoriaDe = (l: OrdenRepuesto): string | null =>
+      l.repuestoId ? (this.repuestos().find((r) => r.repuestoId === l.repuestoId)?.categoriaId ?? null) : null;
+
+    if (origen === OrigenRepuesto.Inventario && repuesto) {
+      const igual = suyas.find((l) => l.repuestoId === repuesto.repuestoId);
+      if (igual) return { linea: igual, mismo: true };
+      const misma = repuesto.categoriaId
+        ? suyas.find((l) => l.repuestoId && categoriaDe(l) === repuesto.categoriaId)
+        : undefined;
+      if (misma) return { linea: misma, mismo: false };
+      if (categoriaUnica && repuesto.categoriaId === categoriaUnica) {
+        const otra = suyas.find((l) => l.origen !== OrigenRepuesto.Inventario);
+        if (otra) return { linea: otra, mismo: false };
+      }
+      return null;
+    }
+
+    if (categoriaUnica) {
+      const almacen = suyas.find((l) => l.origen === OrigenRepuesto.Inventario && categoriaDe(l) === categoriaUnica);
+      if (almacen) return { linea: almacen, mismo: false };
+    }
+    return null;
+  }
+
+  protected cancelarReemplazo(): void {
+    this.reemplazo.set(null);
+  }
+
+  /** Sí, reemplazar: se vuelve a agregar, ahora indicando qué línea sale. */
+  protected confirmarReemplazo(): void {
+    const r = this.reemplazo();
+    if (!r) return;
+    this.nuevoRepuesto.reemplazaOrdenRepuestoId = r.linea.ordenRepuestoId;
+    this.reemplazo.set(null);
+    this.agregarRepuesto();
   }
 
   /**
@@ -1703,6 +1748,15 @@ export class OrdenDetalle implements ConfirmarSalida {
     const { origen, repuestoId, descripcion, cantidad, precioUnitario, ordenServicioId } =
       this.nuevoRepuesto;
 
+    if (!ordenServicioId) {
+      this.notificacion.advertencia(
+        (this.orden()?.servicios.length ?? 0) === 0
+          ? 'Primero agregue el trabajo para el que es el repuesto.'
+          : 'Elija para qué trabajo es el repuesto. Si no está en la lista, agréguelo primero con «Agregar trabajo».',
+      );
+      return;
+    }
+
     if (cantidad < 1) {
       this.notificacion.advertencia('Indique una cantidad válida.');
       return;
@@ -1728,6 +1782,34 @@ export class OrdenDetalle implements ConfirmarSalida {
     const servicio = this.orden()?.servicios.find((s) => s.ordenServicioId === ordenServicioId) ?? null;
     const elegido = this.repuestos().find((r) => r.repuestoId === repuestoId)
       ?? this.clasificacionRepuestos()?.find((c) => c.repuesto.repuestoId === repuestoId)?.repuesto;
+    // Lo que ya lleva el trabajo y se superpone con lo nuevo: se ofrece reemplazarlo.
+    if (!this.nuevoRepuesto.reemplazaOrdenRepuestoId && servicio) {
+      const choque = this.lineaAReemplazar(origen, elegido ?? null, servicio);
+      if (choque) {
+        const l = choque.linea;
+        if (choque.mismo) {
+          this.notificacion.advertencia(
+            `“${servicio.nombreServicio}” ya lleva “${l.nombreRepuesto}” (${l.cantidad}). Si hace falta más cantidad, edite esa línea.`,
+          );
+          return;
+        }
+        this.reemplazo.set({
+          linea: l,
+          trabajo: servicio.nombreServicio,
+          nuevo: origen === OrigenRepuesto.Inventario ? (elegido?.nombre ?? '') : descripcion.trim(),
+          cantidad,
+          procedencia:
+            l.origen === OrigenRepuesto.Inventario
+              ? 'del almacén'
+              : l.origen === OrigenRepuesto.ClienteTrae
+                ? 'que trajo el cliente'
+                : 'comprado afuera',
+          delAlmacen: l.origen === OrigenRepuesto.Inventario,
+        });
+        return;
+      }
+    }
+
     const deOtraCategoria =
       origen === OrigenRepuesto.Inventario && !!elegido && this.encaje(elegido, servicio) === 'otra';
 
@@ -1768,6 +1850,7 @@ export class OrdenDetalle implements ConfirmarSalida {
         // El que trae el cliente va sin cargo; la compra externa a su costo.
         precioUnitario: origen === OrigenRepuesto.ClienteTrae ? 0 : precioUnitario,
         ordenServicioId: ordenServicioId || null,
+        reemplazaOrdenRepuestoId: this.nuevoRepuesto.reemplazaOrdenRepuestoId || null,
         motivoCategoria: deOtraCategoria ? this.motivoCategoria.trim() : null,
       })
       .subscribe(
@@ -1900,7 +1983,9 @@ export class OrdenDetalle implements ConfirmarSalida {
         r.stockActual === 0
           ? 'Sin stock'
           : encaje === 'otra' && !esAdministrador
-            ? `No corresponde: es ${r.nombreCategoria}`
+            ? servicio && !servicio.requiereRepuesto
+              ? 'Solo mano de obra: no lleva repuestos'
+              : `No corresponde: es ${r.nombreCategoria}`
             : '',
     }));
   });
@@ -1916,12 +2001,14 @@ export class OrdenDetalle implements ConfirmarSalida {
   protected elegirRepuestoTocando(repuesto: Repuesto): void {
     this.nuevoRepuesto.repuestoId = repuesto.repuestoId;
     this.nuevoRepuesto.precioUnitario = repuesto.precioVenta;
+    this.nuevoRepuesto.reemplazaOrdenRepuestoId = '';
   }
 
   protected elegirServicioDelRepuesto(ordenServicioId: string): void {
-    const nuevo = this.nuevoRepuesto.ordenServicioId === ordenServicioId ? '' : ordenServicioId;
-    this.nuevoRepuesto.ordenServicioId = nuevo;
-    this.servicioRepuesto.set(nuevo);
+    this.nuevoRepuesto.reemplazaOrdenRepuestoId = '';
+    // Siempre hay un trabajo elegido: tocar el mismo no lo suelta, solo cambia al tocar otro.
+    this.nuevoRepuesto.ordenServicioId = ordenServicioId;
+    this.servicioRepuesto.set(ordenServicioId);
   }
 
   protected cambiarCantidad(delta: number): void {

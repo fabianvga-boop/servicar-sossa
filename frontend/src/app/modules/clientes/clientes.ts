@@ -37,6 +37,7 @@ import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { Paginador } from '../../shared/components/paginador';
 import { estiloOrden, estiloVehiculo } from '../../shared/estilo-estado';
 import { Placa } from '../../shared/components/placa';
+import { FotoVisor, VisorFotos, aFotoVisor } from '../../shared/components/visor-fotos';
 import { Atajo } from '../../shared/directives/atajo';
 import { EnfocarError } from '../../shared/directives/enfocar-error';
 import { PaginacionLocal, TODOS_LOS_REGISTROS } from '../../shared/paginacion-local';
@@ -116,6 +117,7 @@ interface Evento {
     EstadoTabla,
     Paginador,
     Placa,
+    VisorFotos,
     Atajo,
     EnfocarError,
     BolivianosPipe,
@@ -611,6 +613,15 @@ export class Clientes {
     if (tipo === 'Suv') return SILUETAS.suv;
     if (tipo === 'Pickup' || tipo === 'Camion' || tipo === 'Furgon') return SILUETAS.camioneta;
     return SILUETAS.sedan;
+  }
+
+  /** Fotos que se están viendo en grande (visor); null = cerrado. */
+  protected readonly visorFotos = signal<{ titulo: string; fotos: FotoVisor[] } | null>(null);
+
+  protected abrirFotos(vehiculo: Vehiculo): void {
+    const fotos = this.fotosDe(vehiculo);
+    if (fotos.length === 0) return;
+    this.visorFotos.set({ titulo: `Fotos de ${vehiculo.placa}`, fotos: fotos.map(aFotoVisor) });
   }
 
   protected fotosDe(vehiculo: Vehiculo): VehiculoFoto[] {

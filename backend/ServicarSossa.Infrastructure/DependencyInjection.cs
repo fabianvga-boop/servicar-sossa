@@ -80,7 +80,6 @@ public static class DependencyInjection
         services.AddScoped<IUsuarioService, UsuarioService>();           // Sprint 1
         services.AddScoped<IClienteService, ClienteService>();           // Sprint 2
         services.AddScoped<IVehiculoService, VehiculoService>();         // Sprint 2
-        services.AddScoped<IPlantillaVehiculoService, PlantillaVehiculoService>(); // Diagrama del vehículo
         services.AddScoped<ITipoServicioService, TipoServicioService>(); // Sprint 3
         services.AddScoped<IDiagnosticoService, DiagnosticoService>();   // Sprint 3
         services.AddScoped<IOrdenService, OrdenService>();               // Sprint 4

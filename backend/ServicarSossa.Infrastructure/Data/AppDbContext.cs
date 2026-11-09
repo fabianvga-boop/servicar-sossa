@@ -23,7 +23,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Vehiculo> Vehiculos => Set<Vehiculo>();
     public DbSet<VehiculoFoto> VehiculoFotos => Set<VehiculoFoto>();
     public DbSet<VehiculoZonaObservacion> VehiculoZonas => Set<VehiculoZonaObservacion>();
-    public DbSet<PlantillaVehiculo> PlantillasVehiculo => Set<PlantillaVehiculo>();
     public DbSet<TipoServicio> TiposServicio => Set<TipoServicio>();
     public DbSet<Diagnostico> Diagnosticos => Set<Diagnostico>();
     public DbSet<OrdenTrabajo> OrdenesTrabajo => Set<OrdenTrabajo>();
@@ -209,19 +208,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .HasForeignKey(x => x.VehiculoId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(x => x.Orden).WithMany()
                 .HasForeignKey(x => x.OrdenId).OnDelete(DeleteBehavior.SetNull);
-        });
-
-        b.Entity<PlantillaVehiculo>(e =>
-        {
-            e.ToTable("plantillas_vehiculo");
-            e.HasKey(x => x.PlantillaId);
-            e.Property(x => x.PlantillaId).HasColumnName("plantilla_id").HasMaxLength(20);
-            e.Property(x => x.Marca).HasColumnName("marca").HasMaxLength(50).IsRequired();
-            e.Property(x => x.Modelo).HasColumnName("modelo").HasMaxLength(50).IsRequired();
-            e.Property(x => x.NombreArchivo).HasColumnName("nombre_archivo").HasMaxLength(255).IsRequired();
-            e.Property(x => x.FechaSubida).HasColumnName("fecha_subida").IsRequired();
-            // Una sola plantilla activa por combinación marca+modelo (sin distinguir mayúsculas).
-            e.HasIndex(x => new { x.Marca, x.Modelo }).IsUnique();
         });
     }
 

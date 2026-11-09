@@ -71,8 +71,8 @@
             <button type="button" role="menuitem" [disabled]="fotosGenerales().length === 0" (click)="menuMas.set(false); abrirGaleriaVehiculo()">
               Ver fotos del vehículo
             </button>
-            <button type="button" role="menuitem" (click)="menuMas.set(false); diagramaAbierto.set(true)">
-              Marcar zonas en el dibujo
+            <button type="button" role="menuitem" (click)="menuMas.set(false); inspeccionAbierta.set(true)">
+              Inspección del vehículo
             </button>
             <a role="menuitem" [routerLink]="['/vehiculos', o.vehiculoId]">Ficha del vehículo</a>
             @if (o.diagnosticoId) {
@@ -563,7 +563,7 @@
           @if (kilometrajeVehiculo() !== null) {
             <span class="monto-mono">{{ kilometrajeVehiculo()!.toLocaleString('es-BO') }} km</span>
           }
-          <button type="button" class="btn-enlace no-imprimir" (click)="diagramaAbierto.set(true)">Marcar zonas</button>
+          <button type="button" class="btn-enlace no-imprimir" (click)="inspeccionAbierta.set(true)">Inspección</button>
         </div>
       </section>
 
@@ -872,10 +872,27 @@
       </div>
 
       <!-- Para qué trabajo: se toca uno (viene elegido si se llegó desde el trabajo). -->
+      @if (o.servicios.length === 0) {
+        <p class="aviso-sin-trabajo">Primero agregue el trabajo para el que es el repuesto.</p>
+      } @else if (servicioDelRepuesto(); as elegido) {
+        @if (!elegido.requiereRepuesto) {
+          <p class="aviso-sin-trabajo">
+            «{{ elegido.nombreServicio }}» es solo mano de obra y no lleva repuestos.
+            @if (puedeGestionar()) {
+              Si de verdad lleva uno, se registra como excepción con su motivo.
+            } @else {
+              Si lleva uno, pida al Administrador que lo registre.
+            }
+          </p>
+        }
+      }
       @if (o.servicios.length > 1 || !nuevoRepuesto.ordenServicioId) {
         @if (o.servicios.length > 0) {
           <div class="campo">
-            <span class="etiqueta-campo">Para el trabajo</span>
+            <span class="etiqueta-campo">Para el trabajo <span class="obligatorio">*</span></span>
+            @if (!nuevoRepuesto.ordenServicioId) {
+              <small class="texto-tenue">Elija uno. Si el trabajo no está en la lista, agréguelo primero con «Agregar trabajo».</small>
+            }
             <div class="chips-grandes">
               @for (s of o.servicios; track s.ordenServicioId) {
                 <button type="button" class="chip-grande" [class.activo]="nuevoRepuesto.ordenServicioId === s.ordenServicioId" (click)="elegirServicioDelRepuesto(s.ordenServicioId)">
@@ -987,76 +1004,31 @@
   }
 
   @if (galeriaAbierta()) {
-    <app-modal [titulo]="galeriaServicio() ? 'Fotos de ' + galeriaServicio()!.nombreServicio : 'Fotos de ' + o.placaVehiculo" [ancho]="720" (cerrar)="cerrarGaleria()">
-      <div class="galeria-fotos-orden">
-        @for (foto of fotosGaleria(); track foto.fotoId) {
-          <figure>
-            <a [href]="urlArchivo(foto.url)" target="_blank" rel="noopener">
-              <img [src]="urlArchivo(foto.url)" alt="Foto de {{ foto.servicio || 'el vehículo ' + o.placaVehiculo }}" />
-            </a>
-            <figcaption>{{ foto.servicio || 'Estado del vehículo' }}</figcaption>
-          </figure>
-        }
-      </div>
-      <p class="texto-tenue texto-sm mb-0 mt-2">
-        Las fotos de cada trabajo se sacan con el botón Foto de ese trabajo. Para quitar una, hágalo desde la ficha del vehículo en Vehículos.
-      </p>
-      <div pie>
-        <button type="button" class="btn btn-secundario" (click)="cerrarGaleria()">Cerrar</button>
-      </div>
-    </app-modal>
+    <app-visor-fotos
+      [titulo]="galeriaServicio() ? 'Fotos de ' + galeriaServicio()!.nombreServicio : 'Fotos de ' + o.placaVehiculo"
+      [fotos]="fotosVisor()"
+      (cerrar)="cerrarGaleria()"
+    />
   }
 
-  @if (diagramaAbierto()) {
-    <app-modal titulo="Diagrama de {{ o.placaVehiculo }}" [ancho]="560" (cerrar)="cerrarDiagrama()">
-      <p class="texto-tenue texto-sm mb-2">
-        Marque el estado de una zona haciendo clic sobre ella. Queda como historial de esta orden
-        y de las anteriores.
+  @if (inspeccionAbierta()) {
+    <app-cajon titulo="Inspección del vehículo" [etiqueta]="o.ordenId + ' · ' + o.placaVehiculo" [ancho]="560" [enfocarCampo]="false" (cerrar)="inspeccionAbierta.set(false)">
+      <p class="texto-tenue texto-sm mt-0 mb-2">
+        {{ editable() ? "Toque una parte para anotar cómo está." : "Cómo está cada parte del vehículo." }}
+        Lo que anote queda en el historial de esta orden y de las anteriores.
       </p>
 
-      <app-diagrama-vehiculo
-        [tipoCarroceria]="tipoCarroceriaVehiculo()"
-        [svgUrl]="diagramaSvgUrlVehiculo()"
+      <app-inspeccion-vehiculo
         [zonas]="zonasVehiculo()"
-        [interactivo]="editable()"
-        [zonaSeleccionada]="zonaEditando()"
-        (zonaClick)="onZonaClick($event)"
+        [editable]="editable()"
+        [guardando]="guardandoZona()"
+        (guardar)="guardarZona($event)"
       />
 
-      @if (zonaEditando(); as zona) {
-        <form class="rejilla mt-2" style="border-top: 1px solid var(--gris-100); padding-top: 12px" (ngSubmit)="guardarZona()">
-          <div class="campo">
-            <label for="estadoZonaOrden">Estado</label>
-            <select id="estadoZonaOrden" name="estadoZona" [(ngModel)]="nuevaZona.estado">
-              <option [ngValue]="EstadoZonaVehiculo.Ok">Ok</option>
-              <option [ngValue]="EstadoZonaVehiculo.Atencion">Atención</option>
-              <option [ngValue]="EstadoZonaVehiculo.EnReparacion">En reparación</option>
-            </select>
-          </div>
-          <div class="campo">
-            <label for="detalleZonaOrden">Detalle (opcional)</label>
-            <input
-              id="detalleZonaOrden"
-              name="detalleZona"
-              [(ngModel)]="nuevaZona.detalle"
-              placeholder="Ej: rayón leve, golpe, falta pieza…"
-            />
-          </div>
-          <div style="display: flex; gap: 8px; justify-content: flex-end">
-            <button type="button" class="btn btn-secundario" (click)="cancelarZona()">
-              Cancelar
-            </button>
-            <button type="submit" class="btn btn-primario" [disabled]="guardandoZona()">
-              {{ guardandoZona() ? 'Guardando…' : 'Guardar zona' }}
-            </button>
-          </div>
-        </form>
-      }
-
       <div pie>
-        <button type="button" class="btn btn-secundario" (click)="cerrarDiagrama()">Cerrar</button>
+        <button type="button" class="btn btn-secundario btn-pie-grande" (click)="inspeccionAbierta.set(false)">Listo</button>
       </div>
-    </app-modal>
+    </app-cajon>
   }
 
   @if (panelCorregir()) {
@@ -1157,9 +1129,40 @@
     />
   }
 
+  @if (reemplazo(); as r) {
+    <app-modal titulo="¿Reemplazar el repuesto?" [ancho]="500" icono="atencion" [compacto]="true" (cerrar)="cancelarReemplazo()">
+      <p subtitulo class="mensaje-excepcion">
+        «{{ r.trabajo }}» ya lleva <strong>{{ r.linea.nombreRepuesto }}</strong> × {{ r.linea.cantidad }},
+        {{ r.procedencia }}.
+      </p>
+      <ul class="notas-excepcion">
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 16v-5" /><path d="M12 8h.01" /></svg>
+          <span>Si sigue, esa línea se quita de la orden y se registra <strong>{{ r.nuevo }}</strong> × {{ r.cantidad }} en su lugar.</span>
+        </li>
+        @if (r.delAlmacen) {
+          <li>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 16v-5" /><path d="M12 8h.01" /></svg>
+            <span>El stock del almacén se descuenta recién al cerrar la orden: quitar esa línea no lo altera.</span>
+          </li>
+        }
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 16v-5" /><path d="M12 8h.01" /></svg>
+          <span>¿Eran las dos piezas? Cancele y cargue la otra en un trabajo aparte.</span>
+        </li>
+      </ul>
+      <div pie>
+        <button type="button" class="btn btn-secundario" (click)="cancelarReemplazo()">Cancelar</button>
+        <button type="button" class="btn btn-primario" [disabled]="procesando()" (click)="confirmarReemplazo()">
+          {{ procesando() ? 'Procesando…' : 'Reemplazar' }}
+        </button>
+      </div>
+    </app-modal>
+  }
+
   @if (faltaRepuesto(); as servicio) {
-    <app-modal titulo="Falta registrar el repuesto" [ancho]="560" (cerrar)="faltaRepuesto.set(null)">
-      <p class="mensaje-aviso">
+    <app-modal titulo="Falta registrar el repuesto" [ancho]="500" icono="atencion" [compacto]="true" (cerrar)="faltaRepuesto.set(null)">
+      <p subtitulo class="mensaje-excepcion">
         <strong>{{ servicio.nombreServicio }}</strong> usa repuestos. Para completarlo, primero registre en la
         orden el repuesto que se usó: del inventario, traído por el cliente o comprado afuera.
       </p>
@@ -1218,18 +1221,19 @@
   }
 
   @if (excepcionCategoria(); as excepcion) {
-    <app-modal titulo="Repuesto de otra categoría" [ancho]="560" (cerrar)="cancelarExcepcionCategoria()">
-      <p class="mt-0">
-        {{ excepcion.texto }}.
-      </p>
-      <p class="texto-sm">
-        ¿Era para otro trabajo? Cancele y elíjalo en <strong>Para el trabajo</strong>, arriba del repuesto.
-      </p>
-      <p class="texto-tenue texto-sm">
-        Puede registrarlo igual como excepción. El motivo queda en el historial de la orden y en
-        la auditoría.
-      </p>
-      <div class="campo mb-0">
+    <app-modal titulo="El repuesto no corresponde al trabajo" [ancho]="500" icono="atencion" [compacto]="true" (cerrar)="cancelarExcepcionCategoria()">
+      <p subtitulo class="mensaje-excepcion">{{ excepcion.texto }}.</p>
+      <ul class="notas-excepcion">
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 16v-5" /><path d="M12 8h.01" /></svg>
+          <span>¿Era para otro trabajo? Cancele y elíjalo en <strong>Para el trabajo</strong>, arriba del repuesto.</span>
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 16v-5" /><path d="M12 8h.01" /></svg>
+          <span>Puede registrarlo igual como excepción. El motivo queda en el historial de la orden y en la auditoría.</span>
+        </li>
+      </ul>
+      <div class="campo mt-2 mb-0">
         <label for="motivoCategoria">Motivo <span class="obligatorio">*</span></label>
         <textarea
           id="motivoCategoria"

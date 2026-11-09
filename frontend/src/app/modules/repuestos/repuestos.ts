@@ -16,7 +16,7 @@ import {
   Proveedor,
   Repuesto,
 } from '../../core/models/inventario.model';
-import { PlantillaVehiculo, Vehiculo } from '../../core/models/personas.model';
+import { Vehiculo } from '../../core/models/personas.model';
 import { urlArchivo } from '../../core/services/api-base';
 import { AuthService } from '../../core/services/auth.service';
 import { ContadoresService } from '../../core/services/contadores.service';
@@ -26,7 +26,6 @@ import {
   RepuestosService,
 } from '../../core/services/inventario.service';
 import { NotificacionService } from '../../core/services/notificacion.service';
-import { PlantillasVehiculoService } from '../../core/services/plantillas-vehiculo.service';
 import { PreferenciasService } from '../../core/services/preferencias.service';
 import { VehiculosService } from '../../core/services/vehiculos.service';
 import { ElegirFoto } from '../../shared/components/elegir-foto';
@@ -99,7 +98,6 @@ export class Repuestos {
   private readonly proveedoresService = inject(ProveedoresService);
   private readonly categoriasService = inject(CategoriasRepuestoService);
   private readonly vehiculosService = inject(VehiculosService);
-  private readonly plantillasService = inject(PlantillasVehiculoService);
   private readonly fb = inject(FormBuilder);
   private readonly notificacion = inject(NotificacionService);
   private readonly preferencias = inject(PreferenciasService);
@@ -223,17 +221,15 @@ export class Repuestos {
 
   /** Vehículos registrados: alimentan el catálogo de marca/modelo y el filtro. */
   private readonly vehiculos = signal<Vehiculo[]>([]);
-  /** Plantillas de vehículo: otra fuente del catálogo (solo las ve el Administrador). */
-  private readonly plantillas = signal<PlantillaVehiculo[]>([]);
   protected readonly anioMaximo = new Date().getFullYear() + 1;
 
   /**
    * Catálogo de marcas y modelos para los vehículos compatibles: los
-   * frecuentes de vehiculo-sugerencias, más los de los vehículos registrados
-   * y las plantillas. Así se elige en vez de escribir, con la misma escritura
+   * frecuentes de vehiculo-sugerencias, más los de los vehículos registrados.
+   * Así se elige en vez de escribir, con la misma escritura
    * que tendrán los vehículos contra los que luego se compara.
    */
-  private readonly registrados = computed(() => [...this.vehiculos(), ...this.plantillas()]);
+  private readonly registrados = computed(() => this.vehiculos());
   private readonly marcasCatalogo = computed(() => marcasSugeridas(this.registrados()));
   protected readonly opcionesMarca = computed<OpcionSelector[]>(() =>
     this.marcasCatalogo().map((m) => ({ valor: m, etiqueta: m })),
@@ -339,8 +335,6 @@ export class Repuestos {
       .subscribe((resultado) => this.vehiculos.set(resultado.items));
 
     if (this.auth.esAdministrador()) {
-      this.plantillasService.getAll().subscribe((lista) => this.plantillas.set(lista));
-
       this.proveedoresService
         .getAll(undefined, 1, TODOS_LOS_REGISTROS)
         .subscribe((resultado) => this.proveedores.set(resultado.items));

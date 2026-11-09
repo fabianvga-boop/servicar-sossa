@@ -212,6 +212,8 @@ export interface OrdenServicioRequest {
 }
 
 export interface OrdenRepuestoRequest {
+  /** Línea del mismo trabajo que esta reemplaza: se quita y se agrega la nueva en una operación. */
+  reemplazaOrdenRepuestoId?: string | null;
   origen: OrigenRepuesto;
   /** Obligatorio solo si origen = Inventario. */
   repuestoId?: string | null;

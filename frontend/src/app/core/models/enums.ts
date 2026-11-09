@@ -125,7 +125,7 @@ export enum TipoMovimientoInventario {
   Ajuste = 7,
 }
 
-/** Estado de una zona marcada sobre el diagrama vectorial del vehículo. */
+/** Estado de una parte del vehículo en la inspección (Sin novedad, Con daño, En reparación). */
 export enum EstadoZonaVehiculo {
   Ok = 0,
   Atencion = 1,
