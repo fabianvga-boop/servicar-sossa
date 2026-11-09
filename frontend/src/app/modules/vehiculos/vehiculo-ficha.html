@@ -215,17 +215,10 @@
         <section class="tarjeta ficha-bloque">
           <div class="ficha-bloque-cabecera">
             <h2>Estado del vehículo</h2>
-            @if (auth.esAdministrador()) {
-              <span class="ficha-ayuda">Toque una parte para anotar cómo está.</span>
-            }
+            <span class="ficha-ayuda">La inspección se anota al hacer el diagnóstico.</span>
           </div>
 
-          <app-inspeccion-vehiculo
-            [zonas]="zonas()"
-            [editable]="auth.esAdministrador()"
-            [guardando]="guardandoZona()"
-            (guardar)="guardarZona($event)"
-          />
+          <app-inspeccion-vehiculo [zonas]="zonas()" [editable]="false" />
         </section>
 
         <section class="tarjeta ficha-bloque">

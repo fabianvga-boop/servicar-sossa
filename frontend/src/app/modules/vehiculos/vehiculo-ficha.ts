@@ -24,7 +24,7 @@ import { VehiculosService } from '../../core/services/vehiculos.service';
 import { Confirmacion } from '../../shared/components/confirmacion';
 import { ElegirFoto } from '../../shared/components/elegir-foto';
 import { Esqueleto } from '../../shared/components/esqueleto';
-import { DatosZona, InspeccionVehiculo, etiquetaZona } from '../../shared/components/inspeccion-vehiculo';
+import { InspeccionVehiculo } from '../../shared/components/inspeccion-vehiculo';
 import { Placa } from '../../shared/components/placa';
 import { VisorFotos, aFotoVisor } from '../../shared/components/visor-fotos';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
@@ -101,7 +101,6 @@ export class VehiculoFicha {
   protected readonly eliminandoFoto = signal<string | null>(null);
 
   // --- Inspección (zonas) ------------------------------------------------------------
-  protected readonly guardandoZona = signal(false);
 
   /** Los eventos del historial, del más nuevo al más viejo, con su título y su monto. */
   /** Como el historial de la orden: lo último a la vista y el resto a pedido. */
@@ -303,22 +302,5 @@ export class VehiculoFicha {
         this.fotoPorEliminar.set(null);
       },
     });
-  }
-
-  // --- Inspección ----------------------------------------------------------------------
-
-  protected guardarZona(datos: DatosZona): void {
-    this.guardandoZona.set(true);
-
-    this.servicio
-      .registrarZona(this.id, { zona: datos.zona, estado: datos.estado, detalle: datos.detalle })
-      .subscribe({
-        next: (nueva) => {
-          this.zonas.update((lista) => [nueva, ...lista]);
-          this.guardandoZona.set(false);
-          this.notificacion.exito(`Se anotó: ${etiquetaZona(nueva.zona)}.`);
-        },
-        error: () => this.guardandoZona.set(false),
-      });
   }
 }
