@@ -21,6 +21,7 @@ import { Cajon } from '../../shared/components/cajon';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { Paginador } from '../../shared/components/paginador';
 import { Placa } from '../../shared/components/placa';
+import { estiloVehiculo } from '../../shared/estilo-estado';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
 import { PaginacionLocal, TODOS_LOS_REGISTROS } from '../../shared/paginacion-local';
 import { detalleConNuevo } from '../../shared/recientes';
@@ -83,6 +84,8 @@ interface Portada {
   styleUrl: './vehiculos.css',
 })
 export class Vehiculos {
+  protected readonly estiloVehiculo = estiloVehiculo;
+
   private readonly servicio = inject(VehiculosService);
   private readonly clientesService = inject(ClientesService);
   private readonly ordenesService = inject(OrdenesService);

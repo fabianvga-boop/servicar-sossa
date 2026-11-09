@@ -2219,22 +2219,119 @@ table.tabla th.num {
 .monto-fila { font-family: var(--fuente-mono); font-weight: 600; white-space: nowrap; }
 .monto-fila.debe { color: var(--brand); }
 
-/* Estado: píldora con punto */
-.insignia.con-punto {
+/* ----------------------------------------------------- Estados con icono
+
+   Un estado se dice con un ícono, no con un punto: se entiende aunque no se
+   distingan los colores. El ícono es una máscara de CSS, así que una pantalla
+   solo agrega la clase del ícono (ic-ok, ic-reloj…) a su insignia.
+
+     tono (insignia-verde…)  → qué tan bien o mal está
+     ícono (ic-…)            → qué es: listo, esperando, en proceso, anulado
+     .vivo                   → algo está pasando ahora: el ícono se mueve
+     .apagada                → ya no cuenta (anulada, cancelada, inactiva)
+     .cerrada                → terminó bien y quedó archivada (≠ anulada)
+
+   Lo que no es un estado (método de pago, origen, rol, formato) no lleva
+   píldora: es .dato-ico, texto con su ícono. */
+.ic-ok { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E"); }
+.ic-reloj { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='8.5'/%3E%3Cpath d='M12 7.5V12l3 2'/%3E%3C/svg%3E"); }
+.ic-proceso { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3.5a8.5 8.5 0 1 0 8.5 8.5'/%3E%3C/svg%3E"); }
+.ic-ban { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='8.5'/%3E%3Cpath d='m6 6 12 12'/%3E%3C/svg%3E"); }
+.ic-pausa { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6v12M15 6v12'/%3E%3C/svg%3E"); }
+.ic-alerta { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 7v6M12 17h.01'/%3E%3Ccircle cx='12' cy='12' r='8.5'/%3E%3C/svg%3E"); }
+.ic-x { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 7l10 10M17 7 7 17'/%3E%3C/svg%3E"); }
+.ic-caja { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='6.5' width='18' height='11' rx='2'/%3E%3Ccircle cx='12' cy='12' r='2.4'/%3E%3C/svg%3E"); }
+.ic-tarjeta { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5.5' width='18' height='13' rx='2'/%3E%3Cpath d='M3 10h18'/%3E%3C/svg%3E"); }
+.ic-transferencia { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 8h14l-3-3M20 16H6l3 3'/%3E%3C/svg%3E"); }
+.ic-qr { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 18h2v2h-2zM14 20h2'/%3E%3C/svg%3E"); }
+.ic-camion { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 7h11v9H3zM14 10h4l3 3v3h-7'/%3E%3Ccircle cx='7.5' cy='17.5' r='1.6'/%3E%3Ccircle cx='17' cy='17.5' r='1.6'/%3E%3C/svg%3E"); }
+.ic-mano { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12h5l3 4 5-8h5'/%3E%3C/svg%3E"); }
+.ic-doc { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 3h7l4 4v14H7z'/%3E%3Cpath d='M14 3v4h4'/%3E%3C/svg%3E"); }
+.ic-persona { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='3.5'/%3E%3Cpath d='M5 20a7 7 0 0 1 14 0'/%3E%3C/svg%3E"); }
+.ic-escudo { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z'/%3E%3C/svg%3E"); }
+.ic-tienda { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 9l1.5-5h13L20 9M4 9v10h16V9M4 9h16'/%3E%3C/svg%3E"); }
+
+.con-icono::before,
+.dato-ico::before {
+  content: '';
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  background: currentColor;
+  -webkit-mask: var(--ic) center / contain no-repeat;
+  mask: var(--ic) center / contain no-repeat;
+}
+
+.insignia.con-icono {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding-left: 8px;
 }
 
-.insignia.con-punto::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--punto, currentColor);
+.insignia.apagada {
+  padding-top: 2px;
+  padding-bottom: 2px;
+  border: 1px dashed var(--gris-300);
+  background: transparent;
+  color: var(--gris-400);
 }
+
+.insignia.cerrada {
+  padding-top: 2px;
+  padding-bottom: 2px;
+  border: 1.5px solid var(--verde-600);
+  background: var(--blanco);
+  color: var(--verde-700);
+}
+
+@keyframes giro-icono { to { transform: rotate(360deg); } }
+@keyframes latido-icono { 50% { opacity: 0.35; } }
+
+.insignia.vivo.ic-proceso::before { animation: giro-icono 2.6s linear infinite; }
+.insignia.vivo.ic-reloj::before { animation: latido-icono 1.8s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .insignia.vivo::before { animation: none; }
+}
+
+/* Dato que acompaña (no es un estado): texto con su ícono, sin fondo */
+.dato-ico {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.dato-ico::before {
+  width: 15px;
+  height: 15px;
+  color: var(--gris-400);
+}
+
+/* Avance dentro de un estado en curso (servicios hechos de una orden) */
+.avance-mini {
+  display: block;
+  width: 100%;
+  min-width: 90px;
+  height: 4px;
+  margin-top: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--gris-200);
+}
+
+.avance-mini i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--naranja-600);
+  transition: width 0.4s var(--entrada-easing);
+}
+
+.avance-mini.completo i { background: var(--verde-600); }
 
 /* Acciones */
 .acciones-fila {

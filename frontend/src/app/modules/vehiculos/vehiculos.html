@@ -122,11 +122,7 @@
           </div>
           <div class="cliente">{{ vehiculo.nombreCliente }}</div>
           <span
-            class="insignia estado-vehiculo"
-            [class.insignia-naranja]="e.tono === 'naranja'"
-            [class.insignia-azul]="e.tono === 'azul'"
-            [class.insignia-verde]="e.tono === 'verde'"
-            [class.insignia-gris]="e.tono === 'gris'"
+            class="insignia estado-vehiculo {{ estiloVehiculo(e.tono) }}"
             [title]="e.texto"
           >{{ e.texto }}</span>
         </div>

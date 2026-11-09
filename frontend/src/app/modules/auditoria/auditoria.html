@@ -53,7 +53,7 @@
               <span class="celda-sub monto-mono">{{ fila.fecha | date: 'HH:mm' }}</span>
             </span>
           </span>
-          <span class="ocultar-movil"><span class="insignia con-punto {{ claseAccion(fila.accion) }}">{{ ETIQUETAS.accionAuditoria[fila.accion] }}</span></span>
+          <span class="ocultar-movil"><span class="insignia {{ claseAccion(fila.accion) }}">{{ ETIQUETAS.accionAuditoria[fila.accion] }}</span></span>
           <span class="evento-texto"><app-texto-resaltado [texto]="fila.descripcion" /></span>
           <span class="a-la-derecha">
             @if (destino) {

@@ -403,10 +403,12 @@ export class Diagnosticos {
   }
 
   protected claseRespuesta(d: Diagnostico): string {
-    if (d.estado === EstadoDiag.Anulado) return 'insignia-gris';
-    if (d.respuestaCliente === RespuestaCliente.Aprobado) return 'insignia-verde';
-    if (d.respuestaCliente === RespuestaCliente.Rechazado) return 'insignia-roja';
-    return d.montoEstimado == null ? 'insignia-gris' : 'insignia-naranja';
+    if (d.estado === EstadoDiag.Anulado) return 'insignia-gris apagada con-icono ic-ban';
+    if (d.respuestaCliente === RespuestaCliente.Aprobado) return 'insignia-verde con-icono ic-ok';
+    if (d.respuestaCliente === RespuestaCliente.Rechazado) return 'insignia-roja con-icono ic-x';
+    return d.montoEstimado == null
+      ? 'insignia-gris con-icono ic-reloj'
+      : 'insignia-naranja con-icono ic-reloj vivo';
   }
 
   /**

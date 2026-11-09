@@ -34,15 +34,6 @@
 .btn-empezar:not(:disabled):hover { filter: brightness(1.1); }
 .btn-empezar:not(:disabled):active { transform: scale(0.97); }
 .btn-empezar:disabled { opacity: 0.55; cursor: not-allowed; }
-.estado-hecho, .estado-pendiente {
-  padding: 5px 12px;
-  border-radius: 999px;
-  font-size: 12.5px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-.estado-hecho { background: var(--verde-100); color: var(--verde-700); }
-.estado-pendiente { background: var(--gris-100); color: var(--gris-500); }
 
 /* Editar trabajo / repuesto en panel lateral */
 .editar-panel { display: flex; flex-direction: column; gap: 18px; }
@@ -58,5 +49,5 @@
 
 @media (max-width: 720px) {
   .btn-empezar { grid-column: 1 / -1; width: 100%; justify-content: center; }
-  .trabajo > .estado-hecho, .trabajo > .estado-pendiente { display: none; }
+  .trabajo > .insignia { display: none; }
 }

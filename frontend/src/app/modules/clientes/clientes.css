@@ -59,7 +59,6 @@
 .vehiculo-cli-titulo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .vehiculo-cli-titulo strong { font-size: 14.5px; font-weight: 600; }
 .estado-vehiculo { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; font-weight: 500; white-space: normal; }
-.estado-vehiculo-punto { width: 7px; height: 7px; flex-shrink: 0; border-radius: 50%; background: var(--punto); }
 .agregar-cli { height: 48px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 2px dashed var(--gris-300); border-radius: var(--radio-md); background: none; font: inherit; font-weight: 600; color: var(--ink-soft); cursor: pointer; }
 .agregar-cli svg { width: 17px; height: 17px; }
 .agregar-cli:hover { border-color: var(--gris-400); color: var(--ink); }
@@ -69,9 +68,6 @@
 .orden-cli-texto { display: flex; flex-direction: column; min-width: 0; }
 .orden-cli-texto strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 .orden-cli-texto span { font-size: 12px; color: var(--gris-500); }
-.estado-orden-cli { padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; background: var(--gris-100); color: var(--gris-500); }
-.estado-orden-cli.curso { background: var(--naranja-100); color: var(--naranja-700); }
-.estado-orden-cli.cerrada { background: var(--verde-100); color: var(--verde-700); }
 
 .historial-cli { position: relative; margin: 0; padding: 0 0 0 22px; list-style: none; }
 .historial-cli::before { content: ''; position: absolute; left: 6px; top: 8px; bottom: 8px; width: 2px; background: var(--gris-200); }

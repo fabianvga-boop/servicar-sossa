@@ -35,6 +35,7 @@ import { Cajon } from '../../shared/components/cajon';
 import { Confirmacion } from '../../shared/components/confirmacion';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { Paginador } from '../../shared/components/paginador';
+import { estiloOrden, estiloVehiculo } from '../../shared/estilo-estado';
 import { Placa } from '../../shared/components/placa';
 import { Atajo } from '../../shared/directives/atajo';
 import { EnfocarError } from '../../shared/directives/enfocar-error';
@@ -76,6 +77,8 @@ type Modo = 'ficha' | 'nuevo' | 'editar';
 interface EstadoVehiculo {
   texto: string;
   tono: 'naranja' | 'azul' | 'verde' | 'gris';
+  /** Servicios hechos de la orden en curso (para la barrita de avance). */
+  avance?: { hechos: number; total: number };
 }
 
 interface FilaCliente {
@@ -138,6 +141,8 @@ export class Clientes {
 
   protected readonly urlArchivo = urlArchivo;
   protected readonly EstadoCliente = EstadoCliente;
+  protected readonly estiloOrden = estiloOrden;
+  protected readonly estiloVehiculo = estiloVehiculo;
   protected readonly MAX_PLACAS = MAX_PLACAS;
 
   // --- Datos ------------------------------------------------------------------------
@@ -565,11 +570,6 @@ export class Clientes {
   }
 
   /** Clase del chip de estado de una orden en la ficha. */
-  protected claseOrden(orden: Orden): string {
-    if (ORDEN_ACTIVA.includes(orden.estado)) return 'curso';
-    return orden.estado === EstadoOrden.Cerrada ? 'cerrada' : 'cancelada';
-  }
-
   // --- Lo que muestra la fila y la ficha ------------------------------------------------
 
   protected placasVisibles(cliente: Cliente): string[] {
@@ -625,7 +625,11 @@ export class Clientes {
         avance && avance.total > 0
           ? `, ${avance.hechos} de ${avance.total} ${avance.total === 1 ? 'servicio' : 'servicios'}`
           : '';
-      return { texto: `En el taller · ${orden.ordenId} en proceso${detalle}`, tono: 'naranja' };
+      return {
+        texto: `En el taller · ${orden.ordenId} en proceso${detalle}`,
+        tono: 'naranja',
+        avance: avance && avance.total > 0 ? avance : undefined,
+      };
     }
     if (orden) return { texto: `En el taller · ${orden.ordenId} en espera`, tono: 'naranja' };
 
@@ -711,9 +715,13 @@ export class Clientes {
     );
   }
 
+  /** La ficha que estaba abierta al empezar a editar (null: se vino de la tabla). */
+  private fichaPrevia: string | null = null;
+
   protected abrirEditar(cliente: Cliente): void {
     this.menuDe.set(null);
     this.editando.set(cliente);
+    this.fichaPrevia = this.elegidoId();
     this.elegidoId.set(cliente.clienteId);
     this.registrarVehiculo.set(false);
     this.formulario.reset({
@@ -730,6 +738,9 @@ export class Clientes {
   }
 
   protected cerrarFormulario(): void {
+    // Cancelar vuelve a donde se estaba: a la ficha si se editó desde ella, a la
+    // tabla si se editó desde el menú ⋯ de una fila.
+    if (this.modo() === 'editar') this.elegidoId.set(this.fichaPrevia);
     this.modo.set('ficha');
     this.editando.set(null);
   }
@@ -842,7 +853,8 @@ export class Clientes {
         cliente,
         ...lista.filter((c) => c.clienteId !== cliente.clienteId),
       ]);
-      this.elegidoId.set(cliente.clienteId);
+      // Un alta muestra la ficha del nuevo cliente; una edición vuelve a donde estaba.
+      this.elegidoId.set(this.modo() === 'editar' ? this.fichaPrevia : cliente.clienteId);
       this.modo.set('ficha');
       this.editando.set(null);
       // Que el filtro o la búsqueda no escondan al que se acaba de guardar.

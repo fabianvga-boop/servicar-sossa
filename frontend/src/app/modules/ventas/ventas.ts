@@ -18,6 +18,7 @@ import { Cajon } from '../../shared/components/cajon';
 import { Paginador } from '../../shared/components/paginador';
 import { OpcionSelector, SelectorBusqueda } from '../../shared/components/selector-busqueda';
 import { detalleConNuevo } from '../../shared/recientes';
+import { iconoMetodo } from '../../shared/estilo-estado';
 import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
 import { coincideRepuesto } from '../../shared/busqueda-repuestos';
 import { coincidePorPalabras } from '../../shared/busqueda';
@@ -68,6 +69,8 @@ const TONOS = ['naranja', 'azul', 'verde', 'gris'] as const;
   },
 })
 export class Ventas implements ConfirmarSalida {
+  protected readonly iconoMetodo = iconoMetodo;
+
   private readonly servicio = inject(VentasService);
   private readonly repuestosService = inject(RepuestosService);
   private readonly clientesService = inject(ClientesService);

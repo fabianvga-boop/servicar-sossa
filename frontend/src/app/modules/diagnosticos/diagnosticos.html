@@ -248,7 +248,7 @@
         </span>
 
         <span>
-          <span class="insignia con-punto {{ claseRespuesta(d) }}">{{ textoRespuesta(d) }}</span>
+          <span class="insignia {{ claseRespuesta(d) }}">{{ textoRespuesta(d) }}</span>
         </span>
 
         <span class="acciones-fila">
@@ -607,7 +607,7 @@
           <span>Presupuesto</span>
           <b>{{ d.montoEstimado != null ? (d.montoEstimado | bs) : 'Sin presupuesto' }}</b>
         </div>
-        <span class="insignia con-punto {{ claseRespuesta(d) }}">{{ textoRespuesta(d) }}</span>
+        <span class="insignia {{ claseRespuesta(d) }}">{{ textoRespuesta(d) }}</span>
       </div>
 
       <div class="cita-diag fuerte">

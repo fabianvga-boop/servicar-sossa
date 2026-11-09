@@ -249,8 +249,12 @@ export class Proveedores {
     this.crearOtro = true;
   }
 
+  /** La ficha que estaba abierta al empezar a editar (null: se vino de la tabla). */
+  private fichaPrevia: FilaProveedor | null = null;
+
   protected abrirEditar(proveedor: Proveedor): void {
     this.menuDe.set(null);
+    this.fichaPrevia = this.ficha();
     this.ficha.set(null);
     this.editando.set(proveedor);
     this.formulario.patchValue({
@@ -263,7 +267,17 @@ export class Proveedores {
     this.formularioAbierto.set(true);
   }
 
+  /** Cancelar (o la X): vuelve a la ficha si la edición empezó desde ella. */
   protected cerrarFormulario(): void {
+    if (this.editando() && this.fichaPrevia?.proveedor.proveedorId === this.editando()!.proveedorId) {
+      this.ficha.set(this.fichaPrevia);
+    }
+    this.cerrarSinVolver();
+  }
+
+  /** Tras guardar: se cierra sin reabrir la ficha, que traería los datos de antes. */
+  private cerrarSinVolver(): void {
+    this.fichaPrevia = null;
     this.formularioAbierto.set(false);
     this.editando.set(null);
   }
@@ -294,7 +308,7 @@ export class Proveedores {
           this.editando.set(null);
           this.formulario.reset();
         } else {
-          this.cerrarFormulario();
+          this.cerrarSinVolver();
         }
         this.cargar();
       },

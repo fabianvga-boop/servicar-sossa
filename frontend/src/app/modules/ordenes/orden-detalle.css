@@ -64,19 +64,7 @@
 
 .orden-titulo h1 { font-size: 24px; }
 
-.estado-orden {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 500;
-}
-
-.estado-punto {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--punto);
-}
+.estado-orden { font-weight: 500; }
 
 .orden-subtitulo {
   font-size: 14px;

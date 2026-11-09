@@ -1,5 +1,6 @@
 import { Component, computed, input } from '@angular/core';
 
+import { estiloOrden } from '../estilo-estado';
 import {
   EstadoDiag,
   EstadoProforma,
@@ -28,27 +29,7 @@ type Familia =
  */
 @Component({
   selector: 'app-insignia-estado',
-  template: `<span class="insignia" [class]="clase()"><span class="punto"></span>{{ texto() }}</span>`,
-  // El punto sólido agrega un segundo canal además del color: el estado se
-  // distingue aunque el usuario no diferencie bien los tonos. Va acá y no en
-  // .insignia global porque esa clase también rotula cosas que no son estados
-  // (el módulo y el formato en Auditoría y Reportes).
-  styles: `
-    .insignia {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding-left: 8px;
-    }
-
-    .punto {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--punto, currentColor);
-      flex-shrink: 0;
-    }
-  `,
+  template: `<span class="insignia" [class]="clase()">{{ texto() }}</span>`,
 })
 export class InsigniaEstado {
   readonly familia = input.required<Familia>();
@@ -74,55 +55,49 @@ export class InsigniaEstado {
 
     switch (this.familia()) {
       case 'orden':
-        return {
-          [EstadoOrden.Abierta]: 'insignia-azul',
-          [EstadoOrden.EnProceso]: 'insignia-naranja',
-          [EstadoOrden.Finalizada]: 'insignia-verde',
-          [EstadoOrden.Cerrada]: 'insignia-gris',
-          [EstadoOrden.Cancelada]: 'insignia-roja',
-        }[v as EstadoOrden];
+        return estiloOrden(v as EstadoOrden);
 
       case 'servicioOrden':
         return {
-          [EstadoServicioOrden.Pendiente]: 'insignia-gris',
-          [EstadoServicioOrden.EnProceso]: 'insignia-naranja',
-          [EstadoServicioOrden.Completado]: 'insignia-verde',
+          [EstadoServicioOrden.Pendiente]: 'insignia-gris con-icono ic-reloj',
+          [EstadoServicioOrden.EnProceso]: 'insignia-naranja con-icono ic-proceso vivo',
+          [EstadoServicioOrden.Completado]: 'insignia-verde con-icono ic-ok',
         }[v as EstadoServicioOrden];
 
       case 'diagnostico':
         return {
-          [EstadoDiag.Registrado]: 'insignia-azul',
-          [EstadoDiag.Revisado]: 'insignia-verde',
-          [EstadoDiag.Anulado]: 'insignia-gris',
+          [EstadoDiag.Registrado]: 'insignia-azul con-icono ic-reloj',
+          [EstadoDiag.Revisado]: 'insignia-verde con-icono ic-ok',
+          [EstadoDiag.Anulado]: 'insignia-gris apagada con-icono ic-ban',
         }[v as EstadoDiag];
 
       case 'respuestaCliente':
         return {
-          [RespuestaCliente.Pendiente]: 'insignia-naranja',
-          [RespuestaCliente.Aprobado]: 'insignia-verde',
-          [RespuestaCliente.Rechazado]: 'insignia-roja',
+          [RespuestaCliente.Pendiente]: 'insignia-naranja con-icono ic-reloj vivo',
+          [RespuestaCliente.Aprobado]: 'insignia-verde con-icono ic-ok',
+          [RespuestaCliente.Rechazado]: 'insignia-roja con-icono ic-x',
         }[v as RespuestaCliente];
 
       case 'proforma':
         return {
-          [EstadoProforma.Emitida]: 'insignia-verde',
-          [EstadoProforma.Anulada]: 'insignia-gris',
+          [EstadoProforma.Emitida]: 'insignia-verde con-icono ic-ok',
+          [EstadoProforma.Anulada]: 'insignia-gris apagada con-icono ic-ban',
         }[v as EstadoProforma];
 
       case 'venta':
         return {
-          [EstadoVenta.Emitida]: 'insignia-verde',
-          [EstadoVenta.Anulada]: 'insignia-gris',
+          [EstadoVenta.Emitida]: 'insignia-verde con-icono ic-ok',
+          [EstadoVenta.Anulada]: 'insignia-gris apagada con-icono ic-ban',
         }[v as EstadoVenta];
 
       case 'pago':
         return {
-          [EstadoPago.Pendiente]: 'insignia-naranja',
-          [EstadoPago.Pagado]: 'insignia-verde',
+          [EstadoPago.Pendiente]: 'insignia-naranja con-icono ic-reloj vivo',
+          [EstadoPago.Pagado]: 'insignia-verde con-icono ic-ok',
         }[v as EstadoPago];
 
       case 'activo':
-        return v === 0 ? 'insignia-verde' : 'insignia-gris';
+        return v === 0 ? 'insignia-verde con-icono ic-ok' : 'insignia-gris apagada con-icono ic-pausa';
     }
   });
 }

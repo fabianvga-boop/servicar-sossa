@@ -249,8 +249,8 @@ export class Proformas {
 
   /** Estado en la tabla: verde saldada, rojo con saldo, gris anulada. */
   protected estadoInsignia(p: Proforma): string {
-    if (p.estado === EstadoProforma.Anulada) return 'insignia-gris';
-    return p.estaSaldada ? 'insignia-verde' : 'insignia-roja';
+    if (p.estado === EstadoProforma.Anulada) return 'insignia-gris apagada con-icono ic-ban';
+    return p.estaSaldada ? 'insignia-verde con-icono ic-ok' : 'insignia-roja con-icono ic-alerta';
   }
 
   /** "Bs 100 de 250", o "Reemplazada" si se anuló sin pagos. */
