@@ -153,6 +153,11 @@ export interface VehiculoFoto {
   /** Ruta pública relativa al origen del backend, ej. "/uploads/vehiculos/FOT-001.jpg". */
   url: string;
   fechaSubida: string;
+  /** Trabajo de la orden del que es evidencia; null en las fotos generales del vehículo. */
+  ordenServicioId?: string | null;
+  ordenId?: string | null;
+  /** Nombre del trabajo, para rotular la foto. */
+  servicio?: string | null;
 }
 
 // ------------------------------------------------------- Historial (vehículo)

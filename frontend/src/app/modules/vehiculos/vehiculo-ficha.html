@@ -300,6 +300,9 @@
                     <a [href]="urlArchivo(foto.url)" target="_blank" rel="noopener" class="foto-ficha-imagen">
                       <img [src]="urlArchivo(foto.url)" [alt]="'Foto de ' + v.placa" loading="lazy" />
                     </a>
+                    @if (foto.servicio) {
+                      <span class="foto-ficha-trabajo">{{ foto.servicio }}</span>
+                    }
                     @if (auth.esAdministrador()) {
                       <button
                         type="button"

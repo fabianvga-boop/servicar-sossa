@@ -143,6 +143,13 @@ public class VehiculoFotoResponseDto
     public string Url { get; set; } = string.Empty;
 
     public DateTime FechaSubida { get; set; }
+
+    /// <summary>Trabajo de la orden al que pertenece (null: foto general del vehículo).</summary>
+    public string? OrdenServicioId { get; set; }
+    public string? OrdenId { get; set; }
+
+    /// <summary>Nombre del trabajo, para rotular la foto.</summary>
+    public string? Servicio { get; set; }
 }
 
 // ----------------------------------------------------------------- Historial

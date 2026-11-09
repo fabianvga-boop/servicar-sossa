@@ -484,7 +484,12 @@ export class Clientes {
     this.vehiculosService
       .getFotos(vehiculoId)
       .pipe(catchError(() => of([] as VehiculoFoto[])))
-      .subscribe((lista) => this.fotos.update((mapa) => new Map(mapa).set(vehiculoId, lista)));
+      // Solo fotos del vehículo: las de un trabajo no van de portada.
+      .subscribe((lista) =>
+        this.fotos.update((mapa) =>
+          new Map(mapa).set(vehiculoId, lista.filter((f) => !f.ordenServicioId)),
+        ),
+      );
   }
 
   private pedirAvance(ordenId: string): void {

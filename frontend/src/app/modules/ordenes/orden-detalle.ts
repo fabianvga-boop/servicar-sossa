@@ -142,9 +142,8 @@ const ESTILO_HISTORIAL: Record<
 
 /** Repuesto de otra categoría que el Administrador quiere registrar igual. */
 interface ExcepcionCategoria {
-  repuesto: string;
-  servicio: string;
-  lleva: string;
+  /** La frase que explica por qué no corresponde (ya armada). */
+  texto: string;
 }
 
 /**
@@ -243,7 +242,22 @@ export class OrdenDetalle implements ConfirmarSalida {
   // Fotos del vehículo (mismas que gestiona el módulo Vehículos): acá se ven
   // nada más, de sólo lectura — subir o borrar sigue viviendo en Vehículos.
   protected readonly fotosVehiculo = signal<VehiculoFoto[]>([]);
+  /**
+   * Solo las fotos del vehículo en sí (estado al ingresar). Las fotos de un
+   * trabajo son evidencia de ese trabajo y se ven en su tarjeta, no arriba.
+   */
+  protected readonly fotosGenerales = computed(() =>
+    this.fotosVehiculo().filter((f) => !f.ordenServicioId),
+  );
   protected readonly galeriaAbierta = signal(false);
+  /** Trabajo cuya galería se muestra; null = las fotos del vehículo. */
+  protected readonly galeriaServicio = signal<OrdenServicio | null>(null);
+  protected readonly fotosGaleria = computed(() => {
+    const trabajo = this.galeriaServicio();
+    return trabajo
+      ? this.fotosVehiculo().filter((f) => f.ordenServicioId === trabajo.ordenServicioId)
+      : this.fotosGenerales();
+  });
   protected readonly urlArchivo = urlArchivo;
 
   // Diagrama vectorial del vehículo (USU022-025): zonas marcadas sobre la
@@ -776,11 +790,60 @@ export class OrdenDetalle implements ConfirmarSalida {
     return servicio.categorias.map((c) => c.nombre).join(', ');
   }
 
+  /**
+   * Otro trabajo de la orden que lleva la categoría de este repuesto. Sirve
+   * para los trabajos de solo mano de obra: un aceite no es de "Reparación
+   * mayor de motor" si "Cambio de aceite" está en la misma orden.
+   */
+  private trabajoDueno(repuesto: Repuesto, servicio: OrdenServicio): OrdenServicio | null {
+    if (!repuesto.categoriaId) return null;
+    return (
+      this.orden()?.servicios.find(
+        (s) =>
+          s.ordenServicioId !== servicio.ordenServicioId &&
+          s.categorias.some((c) => c.categoriaId === repuesto.categoriaId),
+      ) ?? null
+    );
+  }
+
   private encaje(repuesto: Repuesto, servicio: OrdenServicio | null): EncajeCategoria {
-    if (!servicio || servicio.categorias.length === 0 || !repuesto.categoriaId) return 'libre';
+    if (!servicio || !repuesto.categoriaId) return 'libre';
+    // Solo mano de obra: un repuesto es libre, salvo que sea de la categoría de otro trabajo.
+    if (servicio.categorias.length === 0) return this.trabajoDueno(repuesto, servicio) ? 'otra' : 'libre';
     return servicio.categorias.some((c) => c.categoriaId === repuesto.categoriaId)
       ? 'corresponde'
       : 'otra';
+  }
+
+  /**
+   * Línea que ya cubre este repuesto en el trabajo: el mismo repuesto o uno de
+   * su misma categoría (tres aceites en un solo "Cambio de aceite"). Un trabajo
+   * se hace una vez: para más cantidad se edita la línea, no se agrega otra.
+   */
+  private lineaQueYaCubre(repuesto: Repuesto, servicio: OrdenServicio | null): OrdenRepuesto | null {
+    if (!this.orden()) return null;
+    // Con trabajo: sus líneas y las que quedaron sin trabajo. Sin trabajo: toda la orden.
+    const lineas =
+      this.orden()?.repuestos.filter(
+        (l) => !servicio || l.ordenServicioId === servicio.ordenServicioId || !l.ordenServicioId,
+      ) ?? [];
+    return (
+      lineas.find((l) => {
+        if (!l.repuestoId) return false;
+        if (l.repuestoId === repuesto.repuestoId) return true;
+        if (!repuesto.categoriaId) return false;
+        return this.repuestos().find((r) => r.repuestoId === l.repuestoId)?.categoriaId === repuesto.categoriaId;
+      }) ?? null
+    );
+  }
+
+  /** Por qué un repuesto no corresponde al trabajo elegido, en una frase. */
+  private textoNoCorresponde(repuesto: Repuesto, servicio: OrdenServicio): string {
+    const dueno = this.trabajoDueno(repuesto, servicio);
+    if (servicio.categorias.length === 0 && dueno) {
+      return `“${repuesto.nombre}” es de “${dueno.nombreServicio}”, que está en esta orden, y “${servicio.nombreServicio}” es solo mano de obra`;
+    }
+    return `“${servicio.nombreServicio}” lleva ${this.llevaDe(servicio)}, y “${repuesto.nombre}” no es de esa categoría`;
   }
 
   protected readonly opcionesRepuesto = computed<OpcionSelector[]>(() => {
@@ -806,11 +869,21 @@ export class OrdenDetalle implements ConfirmarSalida {
 
     return conEncaje.map(({ repuesto: r, encaje, nivel }) => {
       const otra = encaje === 'otra';
+      const yaCubierto = this.lineaQueYaCubre(r, servicio);
       const marcas: MarcaOpcion[] = [];
+      if (yaCubierto) {
+        marcas.push({ texto: `✖ Ya lleva ${yaCubierto.nombreRepuesto} (${yaCubierto.cantidad})`, tono: 'roja' });
+      }
 
       // 1. Si sirve para el servicio elegido (solo si el servicio lleva categorías).
       if (encaje === 'corresponde') marcas.push({ texto: '✓ Para este servicio', tono: 'verde' });
-      else if (otra) marcas.push({ texto: `✖ No corresponde: es ${r.nombreCategoria}`, tono: 'roja' });
+      else if (otra) {
+        const dueno = servicio && servicio.categorias.length === 0 ? this.trabajoDueno(r, servicio) : null;
+        marcas.push({
+          texto: dueno ? `✖ Es de “${dueno.nombreServicio}”` : `✖ No corresponde: es ${r.nombreCategoria}`,
+          tono: 'roja',
+        });
+      }
       else if (controla && !r.categoriaId) marcas.push({ texto: 'Sin categoría', tono: 'gris' });
       // Sin servicio que controle, la categoría igual orienta: "Aceite de motor".
       if (!controla && r.nombreCategoria) marcas.push({ texto: r.nombreCategoria, tono: 'azul' });
@@ -833,11 +906,14 @@ export class OrdenDetalle implements ConfirmarSalida {
         detalle: new BolivianosPipe().transform(r.precioVenta),
         // El mecánico no puede registrar un repuesto de otra categoría; el
         // Administrador sí, escribiendo el motivo (se le pide al agregar).
-        deshabilitada: r.stockActual === 0 || (otra && !esAdministrador),
+        // Repetir lo que el trabajo ya lleva no se permite a nadie.
+        deshabilitada: r.stockActual === 0 || !!yaCubierto || (otra && !esAdministrador),
         razonDeshabilitada:
           r.stockActual === 0
             ? 'Sin stock disponible'
-            : `“${servicio?.nombreServicio}” lleva ${servicio ? this.llevaDe(servicio) : ''}. Solo el Administrador puede registrar otra categoría.`,
+            : yaCubierto
+              ? `${servicio ? `“${servicio.nombreServicio}”` : 'La orden'} ya lleva ${yaCubierto.nombreRepuesto} (${yaCubierto.cantidad}). Si hace falta más cantidad, edite esa línea; si era otro repuesto, quite primero el anterior.`
+              : `${servicio ? this.textoNoCorresponde(r, servicio) : ''}. Solo el Administrador puede registrarlo aquí.`,
       };
     });
   });
@@ -978,8 +1054,25 @@ export class OrdenDetalle implements ConfirmarSalida {
   }
 
   protected abrirGaleriaVehiculo(): void {
-    if (this.fotosVehiculo().length === 0) return;
+    if (this.fotosGenerales().length === 0) return;
+    this.galeriaServicio.set(null);
     this.galeriaAbierta.set(true);
+  }
+
+  /** Fotos de un trabajo: la evidencia de lo que se hizo. */
+  protected fotosDe(servicio: OrdenServicio): VehiculoFoto[] {
+    return this.fotosVehiculo().filter((f) => f.ordenServicioId === servicio.ordenServicioId);
+  }
+
+  protected abrirGaleriaTrabajo(servicio: OrdenServicio): void {
+    if (this.fotosDe(servicio).length === 0) return;
+    this.galeriaServicio.set(servicio);
+    this.galeriaAbierta.set(true);
+  }
+
+  protected cerrarGaleria(): void {
+    this.galeriaAbierta.set(false);
+    this.galeriaServicio.set(null);
   }
 
   // --- Diagrama vectorial (zonas) ---------------------------------------------
@@ -1531,14 +1624,24 @@ export class OrdenDetalle implements ConfirmarSalida {
 
   /**
    * Abre el panel de repuesto. Si se llega desde un servicio, queda asociado a
-   * él; si no, se propone el único servicio que todavía espera su repuesto.
+   * él. Desde el botón general se propone, en este orden: el trabajo que está
+   * en curso (lo normal es que el repuesto sea de lo que se está haciendo) y,
+   * si no hay uno solo en curso, el único que todavía espera su repuesto.
    */
   protected abrirPanelRepuesto(servicio?: OrdenServicio): void {
     const pendientes = this.serviciosSinRepuesto();
+    const enCurso = (this.orden()?.servicios ?? []).filter(
+      (s) => s.estado === EstadoServicioOrden.EnProceso && s.requiereRepuesto,
+    );
 
     this.nuevoRepuesto = this.repuestoVacio();
     this.nuevoRepuesto.ordenServicioId =
-      servicio?.ordenServicioId ?? (pendientes.length === 1 ? pendientes[0].ordenServicioId : '');
+      servicio?.ordenServicioId ??
+      (enCurso.length === 1
+        ? enCurso[0].ordenServicioId
+        : pendientes.length === 1
+          ? pendientes[0].ordenServicioId
+          : '');
     this.servicioRepuesto.set(this.nuevoRepuesto.ordenServicioId);
     this.motivoCategoria = '';
     this.buscarRepuesto.set('');
@@ -1629,16 +1732,12 @@ export class OrdenDetalle implements ConfirmarSalida {
     if (deOtraCategoria && servicio && elegido) {
       if (!this.auth.esAdministrador()) {
         this.notificacion.advertencia(
-          `“${servicio.nombreServicio}” lleva ${this.llevaDe(servicio)}: “${elegido.nombre}” no corresponde. Elija el repuesto correcto o regístrelo para otro servicio.`,
+          `${this.textoNoCorresponde(elegido, servicio)}. Cámbielo en «Para el trabajo» si era para otro trabajo.`,
         );
         return;
       }
       if (!this.motivoCategoria.trim()) {
-        this.excepcionCategoria.set({
-          repuesto: elegido.nombre,
-          servicio: servicio.nombreServicio,
-          lleva: this.llevaDe(servicio),
-        });
+        this.excepcionCategoria.set({ texto: this.textoNoCorresponde(elegido, servicio) });
         return;
       }
     }
@@ -2002,8 +2101,11 @@ export class OrdenDetalle implements ConfirmarSalida {
 
   protected readonly subiendoFoto = signal(false);
 
-  /** Abre la cámara del celular (o el selector de archivos en la computadora). */
-  protected async onFotoElegida(evento: Event): Promise<void> {
+  /**
+   * Abre la cámara del celular (o el selector de archivos en la computadora).
+   * Con `servicio` la foto queda ligada a ese trabajo; sin él, es del vehículo.
+   */
+  protected async onFotoElegida(evento: Event, servicio?: OrdenServicio): Promise<void> {
     const entrada = evento.target as HTMLInputElement;
     const archivo = entrada.files?.[0];
     entrada.value = '';
@@ -2017,11 +2119,15 @@ export class OrdenDetalle implements ConfirmarSalida {
     }
 
     this.subiendoFoto.set(true);
-    this.vehiculosService.subirFoto(orden.vehiculoId, lista).subscribe({
+    this.vehiculosService.subirFoto(orden.vehiculoId, lista, servicio?.ordenServicioId).subscribe({
       next: (foto) => {
         this.fotosVehiculo.update((fotos) => [...fotos, foto]);
         this.subiendoFoto.set(false);
-        this.notificacion.exito('Foto guardada en la ficha del vehículo.');
+        this.notificacion.exito(
+          servicio
+            ? `Foto guardada en el trabajo “${servicio.nombreServicio}”.`
+            : 'Foto guardada en la ficha del vehículo.',
+        );
       },
       error: () => this.subiendoFoto.set(false),
     });

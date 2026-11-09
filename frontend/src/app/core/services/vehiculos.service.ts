@@ -50,9 +50,11 @@ export class VehiculosService extends ApiBase {
     return this.http.get<VehiculoFoto[]>(this.url(vehiculoId, 'fotos'));
   }
 
-  subirFoto(vehiculoId: string, archivo: File): Observable<VehiculoFoto> {
+  /** Con `ordenServicioId` la foto queda como evidencia de ese trabajo de la orden. */
+  subirFoto(vehiculoId: string, archivo: File, ordenServicioId?: string): Observable<VehiculoFoto> {
     const datos = new FormData();
     datos.append('foto', archivo, archivo.name);
+    if (ordenServicioId) datos.append('ordenServicioId', ordenServicioId);
     return this.http.post<VehiculoFoto>(this.url(vehiculoId, 'fotos'), datos);
   }
 

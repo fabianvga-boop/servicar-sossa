@@ -423,6 +423,7 @@
 }
 
 .foto-ficha { position: relative; }
+.foto-ficha-trabajo { display: block; margin-top: 4px; font-size: 0.75rem; line-height: 1.25; color: var(--gris-500); }
 
 .foto-ficha-imagen {
   display: block;

@@ -343,14 +343,16 @@ export class Vehiculos {
     this.servicio
       .getFotos(vehiculoId)
       .pipe(catchError(() => of([])))
-      .subscribe((fotos) =>
+      .subscribe((todas) => {
+        // Solo fotos del vehículo: las de un trabajo no van de portada.
+        const fotos = [...todas].filter((f) => !f.ordenServicioId);
         this.portadas.update((mapa) =>
           new Map(mapa).set(
             vehiculoId,
             fotos.length ? { url: fotos[0].url, cantidad: fotos.length } : null,
           ),
-        ),
-      );
+        );
+      });
   }
 
   protected portada(vehiculo: Vehiculo): Portada | null {

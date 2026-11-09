@@ -41,6 +41,14 @@ public interface IOrdenRepository : IRepository<OrdenTrabajo>
     Task<OrdenServicio?> GetServicioAsync(
         string ordenServicioId, CancellationToken ct = default);
 
+    /// <summary>Los servicios de una orden, con su tipo y las categorías que lleva cada uno.</summary>
+    /// <summary>Servicios por código, con su orden y el catálogo (para rotular fotos).</summary>
+    Task<List<OrdenServicio>> GetServiciosPorIdsAsync(
+        IEnumerable<string> ids, CancellationToken ct = default);
+
+    Task<List<OrdenServicio>> GetServiciosDeOrdenAsync(
+        string ordenId, CancellationToken ct = default);
+
     Task<OrdenRepuesto?> GetRepuestoAsync(
         string ordenRepuestoId, CancellationToken ct = default);
 

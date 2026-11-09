@@ -66,14 +66,18 @@ public class VehiculosController(IVehiculoService service) : ApiControllerBase
     public async Task<IActionResult> GetFotos(string id, CancellationToken ct)
         => Responder(await service.GetFotosAsync(id, ct));
 
-    /// <summary>Sube una foto (JPG, PNG o WEBP, hasta 8 MB) a la galería del vehículo.</summary>
+    /// <summary>
+    /// Sube una foto (JPG, PNG o WEBP, hasta 8 MB) a la galería del vehículo. Con
+    /// <c>ordenServicioId</c> queda como evidencia de ese trabajo de la orden.
+    /// </summary>
     // El mecánico también: saca la foto desde la orden mientras trabaja.
     [HttpPost("{id}/fotos")]
     [Authorize(Roles = "Administrador,Mecanico")]
     [ProducesResponseType(typeof(VehiculoFotoResponseDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> SubirFoto(string id, IFormFile foto, CancellationToken ct)
+    public async Task<IActionResult> SubirFoto(
+        string id, IFormFile foto, [FromForm] string? ordenServicioId, CancellationToken ct)
     {
         using var buffer = new MemoryStream();
         await foto.CopyToAsync(buffer, ct);
@@ -82,7 +86,7 @@ public class VehiculosController(IVehiculoService service) : ApiControllerBase
         {
             Contenido = buffer.ToArray(),
             NombreOriginal = foto.FileName
-        }, ct);
+        }, ordenServicioId, ct);
 
         return ResponderCreado(result, nameof(GetFotos), new { id });
     }

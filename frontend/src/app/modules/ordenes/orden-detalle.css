@@ -518,7 +518,10 @@
   gap: 10px;
 }
 
+.galeria-fotos-orden figure { margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.galeria-fotos-orden figcaption { font-size: 0.78rem; color: var(--gris-500); line-height: 1.25; }
 .galeria-fotos-orden img {
+  display: block;
   width: 100%;
   aspect-ratio: 4 / 3;
   object-fit: cover;
