@@ -1480,7 +1480,9 @@ export class OrdenDetalle implements ConfirmarSalida {
       return;
     }
 
-    if (!delCatalogo && (precio == null || precio <= 0)) {
+    // El precio de un trabajo fuera de catálogo lo pone el Administrador: el
+    // mecánico lo carga sin precio y el Administrador se lo completa después.
+    if (!delCatalogo && this.puedeGestionar() && (precio == null || precio <= 0)) {
       this.notificacion.advertencia('Indique el precio cobrado por el servicio.');
       return;
     }
@@ -1494,7 +1496,7 @@ export class OrdenDetalle implements ConfirmarSalida {
         // El backend asigna al mecánico su propio servicio; solo el Administrador elige.
         mecanicoId: this.puedeGestionar() ? mecanicoId || null : null,
         descripcion: descripcion || null,
-        precio,
+        precio: delCatalogo || this.puedeGestionar() ? precio : null,
         requiereRepuesto: delCatalogo ? null : requiereRepuesto,
       })
       .subscribe(
@@ -1972,6 +1974,25 @@ export class OrdenDetalle implements ConfirmarSalida {
             : 'Lleva repuestos',
       }));
   });
+
+  /** "Otro trabajo": si venía de una búsqueda sin resultado, el nombre ya queda escrito. */
+  protected abrirTrabajoLibre(): void {
+    const buscado = this.buscarServicio().trim();
+    if (buscado && !this.nuevoServicio.nombreLibre.trim()) {
+      this.nuevoServicio.nombreLibre = buscado;
+      this.onNombreLibreCambiado(buscado);
+    }
+    this.servicioLibre.set(true);
+  }
+
+  /** La X y Escape: dentro de "Otro trabajo" vuelven al catálogo; ahí sí cierran el panel. */
+  protected cerrarPanelServicio(): void {
+    if (this.servicioLibre()) {
+      this.volverAlCatalogo();
+      return;
+    }
+    this.panelServicio.set(false);
+  }
 
   protected volverAlCatalogo(): void {
     const mecanicoId = this.nuevoServicio.mecanicoId;

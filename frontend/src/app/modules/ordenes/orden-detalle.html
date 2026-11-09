@@ -268,6 +268,9 @@
                 @if (servicio.requiereRepuesto && servicio.descripcion && !enCurso) {
                   <span>{{ servicio.descripcion }}</span>
                 }
+                @if (!servicio.servicioId && servicio.precio === 0) {
+                  <span class="chip-trabajo ambar">Falta el precio</span>
+                }
                 @if (o.mecanicos.length > 1) {
                   <span>· {{ servicio.nombreMecanico }}</span>
                 }
@@ -695,7 +698,7 @@
   }
 
   @if (panelServicio()) {
-    <app-cajon titulo="Agregar trabajo" [etiqueta]="o.ordenId + ' · ' + o.placaVehiculo" [ancho]="600" [enfocarCampo]="false" (cerrar)="panelServicio.set(false)">
+    <app-cajon titulo="Agregar trabajo" [etiqueta]="o.ordenId + ' · ' + o.placaVehiculo" [ancho]="600" [enfocarCampo]="false" (cerrar)="cerrarPanelServicio()">
       @if (o.mecanicos.length === 0) {
         <p class="texto-tenue mb-0">Primero hay que asignar el mecánico de la orden: cada trabajo tiene un responsable.</p>
       } @else {
@@ -718,6 +721,17 @@
             <button type="button" class="chip-grande" [class.activo]="filtroServicios() === 'repuestos'" (click)="filtroServicios.set('repuestos')">Llevan repuestos</button>
             <button type="button" class="chip-grande" [class.activo]="filtroServicios() === 'mano'" (click)="filtroServicios.set('mano')">Solo mano de obra</button>
           </div>
+
+          <button type="button" class="otro-trabajo-fila" (click)="abrirTrabajoLibre()">
+            <span class="otro-trabajo-mas" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+            </span>
+            <span class="otro-trabajo-textos">
+              <b>Otro trabajo</b>
+              <small>Si no está en el catálogo, escriba su nombre{{ puedeGestionar() ? ' y su precio' : '' }}</small>
+            </span>
+            <svg class="otro-trabajo-flecha" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+          </button>
 
           @if (ultimoAgregado(); as agregado) {
             <div class="aviso-agregado" role="status">
@@ -750,7 +764,14 @@
                 </span>
               </button>
             } @empty {
-              <p class="texto-tenue texto-sm mb-0">Nada coincide. Pruebe con otra palabra o cargue otro trabajo.</p>
+              <div class="sin-coincidencia">
+                <p class="texto-tenue texto-sm mb-0">Nada coincide con lo que buscó.</p>
+                @if (buscarServicio().trim()) {
+                  <button type="button" class="btn btn-secundario btn-sm" (click)="abrirTrabajoLibre()">
+                    Cargar «{{ buscarServicio().trim() }}» como otro trabajo
+                  </button>
+                }
+              </div>
             }
           </div>
 
@@ -759,12 +780,12 @@
             <input type="search" placeholder="Buscar en el catálogo" [value]="buscarServicio()" (input)="buscarServicio.set($any($event.target).value)" />
             <small>solo si no aparece</small>
           </label>
-
-          <button type="button" class="btn-enlace otro-trabajo" (click)="servicioLibre.set(true)">
-            ¿No está en el catálogo? Cargar otro trabajo
-          </button>
         } @else {
           <!-- Fuera de catálogo: aquí sí se escribe el nombre y el precio. -->
+          <button type="button" class="volver-catalogo" (click)="volverAlCatalogo()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6" /></svg>
+            Volver al catálogo
+          </button>
           <div class="campo">
             <label for="nombreLibreServicio">Nombre del trabajo</label>
             <input
@@ -784,10 +805,17 @@
               }
             </datalist>
           </div>
-          <div class="campo">
-            <label for="precioServicio">Precio (Bs)</label>
-            <input id="precioServicio" type="number" min="0" step="0.01" inputmode="decimal" name="precioServicio" [(ngModel)]="nuevoServicio.precio" />
-          </div>
+          @if (puedeGestionar()) {
+            <div class="campo">
+              <label for="precioServicio">Precio (Bs)</label>
+              <input id="precioServicio" type="number" min="0" step="0.01" inputmode="decimal" name="precioServicio" [(ngModel)]="nuevoServicio.precio" />
+            </div>
+          } @else {
+            <p class="texto-tenue texto-sm">
+              El precio lo pone el Administrador. El trabajo queda cargado con la marca «Falta el precio»
+              y no se puede finalizar la orden hasta que lo ponga.
+            </p>
+          }
           <label class="casilla mb-1">
             <input
               type="checkbox"
@@ -798,14 +826,12 @@
             />
             Lleva repuestos: no se termina sin registrar el que se usó
           </label>
-          <button type="button" class="btn-enlace otro-trabajo" (click)="volverAlCatalogo()">
-            Volver al catálogo
-          </button>
         }
       }
 
       <div pie>
         @if (servicioLibre()) {
+          <button type="button" class="btn btn-secundario btn-pie-grande" (click)="volverAlCatalogo()">Volver</button>
           <button type="button" class="btn btn-primario btn-pie-grande" [disabled]="procesando() || o.mecanicos.length === 0" (click)="nuevoServicio.delCatalogo = false; agregarServicio()">
             Agregar trabajo
           </button>

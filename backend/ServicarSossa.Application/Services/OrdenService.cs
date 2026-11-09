@@ -247,6 +247,18 @@ public class OrdenService(
                 return Result<OrdenDetalleResponseDto>.Fail(
                     "La orden tiene servicios sin completar. " +
                     "Márquelos como Completado antes de finalizar el trabajo.");
+
+            // Un trabajo fuera de catálogo cargado por el mecánico queda sin precio
+            // hasta que el Administrador lo pone; sin él, el total y la comisión salen mal.
+            if (!esAdministrador)
+            {
+                var sinPrecio = await ordenes.GetServiciosDeOrdenAsync(id, ct);
+                var falta = sinPrecio.FirstOrDefault(s => s.ServicioId is null && s.Precio == 0);
+                if (falta is not null)
+                    return Result<OrdenDetalleResponseDto>.Fail(
+                        $"Falta el precio de “{NombreDe(falta)}”. Avise al Administrador para que lo ponga " +
+                        "y después finalice el trabajo.");
+            }
         }
 
         // El cierre no es un simple cambio de estado: mueve stock y genera comisiones.
@@ -675,9 +687,15 @@ public class OrdenService(
         }
         else
         {
-            // Servicio fuera de catálogo: nombre y precio se registran sueltos.
+            // Servicio fuera de catálogo: nombre y precio se registran sueltos. El
+            // precio lo pone solo el Administrador (de él sale la comisión del
+            // mecánico): si lo carga el mecánico queda en Bs 0, "falta el precio".
+            if (esAdministrador && (dto.Precio is null || dto.Precio <= 0))
+                return Result<OrdenDetalleResponseDto>.Fail(
+                    "Un servicio fuera de catálogo exige el precio cobrado.");
+
             servicio.NombreLibre = dto.NombreLibre!.Trim();
-            servicio.Precio = dto.Precio!.Value;
+            servicio.Precio = esAdministrador ? dto.Precio!.Value : 0m;
             servicio.RequiereRepuesto = dto.RequiereRepuesto ?? false;
             nombreServicio = servicio.NombreLibre;
         }
@@ -688,7 +706,10 @@ public class OrdenService(
         await auditor.RegistrarAsync(
             usuarioId, AccionAuditoria.Crear, "Orden", ordenId,
             $"Agregó el servicio “{nombreServicio}” " +
-            $"(Bs {servicio.Precio:N2}) a la orden {ordenId}, a cargo de {NombreDe(responsable)}.", ct);
+            (servicio.ServicioId is null && servicio.Precio == 0
+                ? "(falta el precio, lo pone el Administrador) "
+                : $"(Bs {servicio.Precio:N2}) ") +
+            $"a la orden {ordenId}, a cargo de {NombreDe(responsable)}.", ct);
 
         await ordenes.SaveChangesAsync(ct);
 
