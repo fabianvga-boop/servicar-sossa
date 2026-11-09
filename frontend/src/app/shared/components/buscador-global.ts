@@ -134,7 +134,7 @@ interface Resultado {
       width: 100%;
       max-width: 640px;
       background: var(--blanco);
-      border-radius: 18px;
+      border-radius: var(--radio-lg);
       box-shadow: 0 30px 60px -24px rgba(0, 0, 0, 0.45);
       overflow: hidden;
       display: flex;
@@ -213,7 +213,7 @@ interface Resultado {
       align-items: center;
       gap: 12px;
       padding: 8px 10px;
-      border-radius: 10px;
+      border-radius: var(--radio-sm);
       cursor: pointer;
     }
 
@@ -225,7 +225,7 @@ interface Resultado {
       width: 32px;
       height: 32px;
       flex-shrink: 0;
-      border-radius: 9px;
+      border-radius: var(--radio-sm);
       background: var(--gris-100);
       color: var(--ink-soft);
     }

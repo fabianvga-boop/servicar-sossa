@@ -134,7 +134,7 @@ let cajonesAbiertos = 0;
       display: grid;
       place-items: center;
       border: 0;
-      border-radius: 8px;
+      border-radius: var(--radio-xs);
       background: transparent;
       color: var(--gris-500);
       cursor: pointer;

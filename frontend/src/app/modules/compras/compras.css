@@ -31,7 +31,7 @@
   align-items: center;
   gap: 12px;
   padding: 14px;
-  border-radius: 12px;
+  border-radius: var(--radio-md);
   background: var(--fondo-app);
 }
 
@@ -42,7 +42,7 @@
   display: grid;
   place-items: center;
   border: 1px solid var(--gris-200);
-  border-radius: 10px;
+  border-radius: var(--radio-sm);
   background: var(--blanco);
   color: var(--gris-500);
 }
@@ -90,7 +90,7 @@
   height: 40px;
   display: grid;
   place-items: center;
-  border-radius: 9px;
+  border-radius: var(--radio-sm);
   background: var(--gris-100);
   font-size: 12px;
   font-weight: 600;
@@ -141,7 +141,7 @@
   display: flex;
   gap: 10px;
   padding: 12px 14px;
-  border-radius: 12px;
+  border-radius: var(--radio-md);
   background: var(--verde-100);
   color: var(--verde-700);
   font-size: 13px;
@@ -166,7 +166,7 @@
   border-left: 3px solid var(--naranja-600);
   border-radius: 0 var(--radio-sm) var(--radio-sm) 0;
   background: var(--naranja-100);
-  color: #5c3d00;
+  color: var(--naranja-700);
   font-size: 13.5px;
   line-height: 1.45;
 }
@@ -235,7 +235,7 @@ table.tabla.tabla-detalle-compra td:last-child { padding-top: 22px; }
   width: 40px;
   height: 40px;
   flex-shrink: 0;
-  border-radius: 10px;
+  border-radius: var(--radio-sm);
   background: var(--azul-100);
   color: var(--azul-700);
   font-size: 13px;
@@ -251,7 +251,7 @@ table.tabla.tabla-detalle-compra td:last-child { padding-top: 22px; }
   gap: 12px;
   padding: 12px 14px;
   border: 1px solid var(--gris-300);
-  border-radius: 12px;
+  border-radius: var(--radio-md);
 }
 
 .proveedor-elegido .compra-avatar { background: var(--gris-100); color: var(--gris-500); }
@@ -267,7 +267,7 @@ table.tabla.tabla-detalle-compra td:last-child { padding-top: 22px; }
   gap: 6px 10px;
   padding: 12px 14px;
   border: 1px solid var(--gris-200);
-  border-radius: 12px;
+  border-radius: var(--radio-md);
 }
 
 .cabecera-lineas {
@@ -307,14 +307,14 @@ table.tabla.tabla-detalle-compra td:last-child { padding-top: 22px; }
   height: 40px;
   padding: 0 5px;
   border: 1px solid var(--gris-300);
-  border-radius: 10px;
+  border-radius: var(--radio-sm);
 }
 
 .cantidad-compra button {
   width: 28px;
   height: 28px;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radio-xs);
   background: var(--gris-100);
   font: inherit;
   font-weight: 600;
@@ -347,7 +347,7 @@ table.tabla.tabla-detalle-compra td:last-child { padding-top: 22px; }
   width: 30px;
   height: 30px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radio-xs);
   background: none;
   color: var(--gris-400);
   cursor: pointer;
@@ -373,7 +373,7 @@ table.tabla.tabla-detalle-compra td:last-child { padding-top: 22px; }
   gap: 12px;
   padding: 12px 14px;
   border: 1px dashed var(--gris-300);
-  border-radius: 12px;
+  border-radius: var(--radio-md);
   background: var(--gris-50);
 }
 .vista-repuesto-nuevo .compra-avatar { background: var(--verde-100); color: var(--verde-700); }
@@ -387,7 +387,7 @@ table.tabla.tabla-detalle-compra td:last-child { padding-top: 22px; }
   gap: 8px;
   padding: 11px;
   border: 1px dashed var(--gris-300);
-  border-radius: 12px;
+  border-radius: var(--radio-md);
   background: none;
   font: inherit;
   font-weight: 500;
@@ -405,7 +405,7 @@ table.tabla.tabla-detalle-compra td:last-child { padding-top: 22px; }
   gap: 16px;
   padding: 16px 18px;
   border: 1px solid var(--gris-200);
-  border-radius: 14px;
+  border-radius: var(--radio);
   background: var(--gris-50);
 }
 

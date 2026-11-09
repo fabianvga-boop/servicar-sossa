@@ -186,7 +186,7 @@ import { NotificacionService } from '../../core/services/notificacion.service';
       margin: 0;
       font-size: 16px;
       line-height: 1.6;
-      color: #b9c0cb;
+      color: var(--texto-sobre-oscuro);
     }
 
     .datos {
@@ -226,7 +226,7 @@ import { NotificacionService } from '../../core/services/notificacion.service';
 
     .dato-sub {
       font-size: 14px;
-      color: #b9c0cb;
+      color: var(--texto-sobre-oscuro);
     }
 
     .acceso {
@@ -269,7 +269,7 @@ import { NotificacionService } from '../../core/services/notificacion.service';
        pantalla y se usa también desde el celular. */
     .campo input {
       min-height: 48px;
-      border-radius: 12px;
+      border-radius: var(--radio-md);
     }
 
     .clave { position: relative; }
@@ -287,7 +287,7 @@ import { NotificacionService } from '../../core/services/notificacion.service';
       height: 36px;
       padding: 0 10px;
       border: 0;
-      border-radius: 8px;
+      border-radius: var(--radio-xs);
       background: transparent;
       color: var(--gris-500);
       font: inherit;
@@ -304,7 +304,7 @@ import { NotificacionService } from '../../core/services/notificacion.service';
     .btn-ingresar {
       width: 100%;
       min-height: 48px;
-      border-radius: 12px;
+      border-radius: var(--radio-md);
       font-size: 15px;
     }
 

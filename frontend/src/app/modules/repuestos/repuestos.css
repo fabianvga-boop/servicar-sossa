@@ -27,7 +27,7 @@
   align-items: center;
   gap: 5px;
   padding: 4px 6px 4px 11px;
-  border-radius: 20px;
+  border-radius: var(--radio-lg);
   background: var(--brand-soft);
   color: var(--brand-dk);
   font-size: 12px;
@@ -53,17 +53,6 @@
 .chip-filtro-proveedor button:hover { background: rgba(255, 255, 255, 0.5); }
 
 /* Lista de repuestos */
-
-.titulo-con-antetitulo {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.titulo-con-antetitulo span {
-  font-size: 14px;
-  color: var(--gris-400);
-}
 
 .filtros-repuestos {
   display: flex;
@@ -101,7 +90,7 @@
   padding: 0;
   overflow: hidden;
   border: 0;
-  border-radius: 9px;
+  border-radius: var(--radio-sm);
   background: var(--gris-100);
   font-size: 12px;
   font-weight: 600;
@@ -180,7 +169,7 @@ button.repuesto-foto:not(:disabled) { cursor: zoom-in; }
   display: inline-grid;
   place-items: center;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radio-xs);
   background: transparent;
   color: var(--gris-500);
   cursor: pointer;
@@ -344,7 +333,7 @@ button.repuesto-foto:not(:disabled) { cursor: zoom-in; }
 .aviso-catalogo {
   margin: -2px 0 2px;
   font-size: 12px;
-  color: #b45309;
+  color: var(--naranja-700);
 }
 
 .aviso-catalogo .btn-enlace {
@@ -397,7 +386,6 @@ button.repuesto-foto:not(:disabled) { cursor: zoom-in; }
 }
 
 /* ------------------------------------------- Búsqueda guiada: tarjetas + panel derecho */
-.subtitulo-repuestos { margin: -8px 0 16px; }
 .repuestos-guiado { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 22px; align-items: start; }
 .resultados-repuestos { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .barra-repuestos { margin-bottom: 0; }
@@ -406,8 +394,8 @@ button.repuesto-foto:not(:disabled) { cursor: zoom-in; }
 .miga-repuestos > span[aria-hidden] { color: var(--gris-400); }
 .miga-repuestos em { margin-left: auto; font-style: normal; font-size: 13px; color: var(--gris-500); }
 .tarjetas-repuestos { display: grid; grid-template-columns: repeat(auto-fill, minmax(235px, 1fr)); gap: 14px; }
-.tarjeta-repuesto { display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--gris-200); border-radius: 16px; background: var(--blanco); transition: border-color 0.15s, box-shadow 0.15s; }
-.tarjeta-repuesto:hover { border-color: var(--gris-300); box-shadow: 0 14px 30px -24px rgba(21, 26, 34, 0.45); }
+.tarjeta-repuesto { display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--gris-200); border-radius: var(--radio); background: var(--blanco); transition: border-color 0.15s, box-shadow 0.15s; }
+.tarjeta-repuesto:hover { border-color: var(--gris-300); box-shadow: var(--sombra-elegida); }
 .tarjeta-repuesto.elegida { border-color: var(--ink); }
 .tarjeta-repuesto-foto { position: relative; display: grid; place-items: center; aspect-ratio: 4 / 3; padding: 0; border: 0; background: var(--azul-100); color: var(--azul-700); font: inherit; font-size: 22px; font-weight: 600; cursor: pointer; overflow: hidden; }
 .tarjeta-repuesto-foto:disabled { cursor: default; }
@@ -420,33 +408,33 @@ button.repuesto-foto:not(:disabled) { cursor: zoom-in; }
 .tarjeta-repuesto-cuerpo small { font-size: 12.5px; color: var(--gris-500); }
 .stock-tarjeta { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-soft); }
 .stock-tarjeta .stock-barra { flex: 1; }
-.stock-tarjeta.bajo { color: #9a5b00; }
+.stock-tarjeta.bajo { color: var(--naranja-700); }
 .stock-tarjeta.agotado { color: var(--brand); }
 .tarjeta-repuesto-pie { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 4px; }
 .tarjeta-repuesto-pie .monto-mono { font-size: 15px; font-weight: 600; }
 .tarjeta-repuesto-acciones { display: flex; align-items: center; gap: 2px; }
-.aviso-uso-general { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 1px dashed var(--gris-300); border-radius: 14px; background: var(--blanco); font-size: 13.5px; color: var(--ink-soft); }
+.aviso-uso-general { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 1px dashed var(--gris-300); border-radius: var(--radio); background: var(--blanco); font-size: 13.5px; color: var(--ink-soft); }
 .aviso-uso-general svg { width: 18px; height: 18px; flex-shrink: 0; }
 .aviso-uso-general .btn { margin-left: auto; }
 
 .rail-repuestos { position: sticky; top: 84px; display: flex; flex-direction: column; gap: 14px; }
-.bloque-rail { display: flex; flex-direction: column; gap: 10px; padding: 16px; border: 1px solid var(--gris-200); border-radius: 16px; background: var(--blanco); }
+.bloque-rail { display: flex; flex-direction: column; gap: 10px; padding: 16px; border: 1px solid var(--gris-200); border-radius: var(--radio); background: var(--blanco); }
 .bloque-rail h3 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 12.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--gris-500); }
 .rail-n { width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; background: var(--ink); color: var(--blanco); font-size: 11px; letter-spacing: 0; }
-.vehiculo-rail { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--ink); color: var(--blanco); }
+.vehiculo-rail { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radio-md); background: var(--ink); color: var(--blanco); }
 .vehiculo-rail span { display: flex; flex-direction: column; min-width: 0; }
-.vehiculo-rail small { font-size: 12px; color: #c9ced6; }
+.vehiculo-rail small { font-size: 12px; color: var(--texto-sobre-oscuro); }
 .vehiculo-rail button { margin-left: auto; padding: 4px; border: 0; background: none; color: inherit; opacity: 0.75; cursor: pointer; }
-.seg-rail { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 10px; background: var(--gris-100); }
-.seg-rail button { height: 34px; border: 0; border-radius: 7px; background: transparent; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); cursor: pointer; }
-.seg-rail button.activo { background: var(--blanco); color: var(--ink); box-shadow: 0 2px 6px -2px rgba(0, 0, 0, 0.2); }
+.seg-rail { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: var(--radio-sm); background: var(--gris-100); }
+.seg-rail button { height: 34px; border: 0; border-radius: var(--radio-xs); background: transparent; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); cursor: pointer; }
+.seg-rail button.activo { background: var(--ink); color: var(--blanco); }
 .rail-ayuda { font-size: 12px; color: var(--gris-500); }
 .chips-rail { display: flex; flex-wrap: wrap; gap: 6px; }
-.chip-rail { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--gris-200); border-radius: 999px; background: var(--blanco); font: inherit; font-size: 12.5px; font-weight: 500; color: var(--ink-soft); cursor: pointer; }
+.chip-rail { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--gris-300); border-radius: 999px; background: var(--blanco); font: inherit; font-size: 13px; font-weight: 500; color: var(--ink-soft); cursor: pointer; }
 .chip-rail span { font-family: var(--fuente-mono, 'Geist Mono', monospace); color: var(--gris-400); }
 .chip-rail.activo { border-color: var(--ink); background: var(--ink); color: var(--blanco); }
-.chip-rail.activo span { color: #c9ced6; }
-.categoria-rail { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border: 0; border-radius: 9px; background: transparent; font: inherit; font-size: 13.5px; text-align: left; color: var(--ink-soft); cursor: pointer; }
+.chip-rail.activo span { color: var(--texto-sobre-oscuro); }
+.categoria-rail { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border: 0; border-radius: var(--radio-sm); background: transparent; font: inherit; font-size: 13.5px; text-align: left; color: var(--ink-soft); cursor: pointer; }
 .categoria-rail:hover { background: var(--gris-50); }
 .categoria-rail.activo { background: var(--gris-100); color: var(--ink); font-weight: 600; }
 .quitar-categoria-rail { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: var(--ink); color: var(--blanco); }
@@ -472,7 +460,7 @@ button.repuesto-foto:not(:disabled) { cursor: zoom-in; }
   min-width: 0;
   padding: 0 2px;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--radio-sm);
   font: inherit;
   font-size: 12.5px;
   font-weight: 600;
@@ -484,7 +472,7 @@ button.repuesto-foto:not(:disabled) { cursor: zoom-in; }
 .accion-repuesto:hover { filter: brightness(0.95); }
 .accion-repuesto:active { transform: scale(0.97); }
 .accion-repuesto.stock { background: var(--azul-100); color: var(--azul-700); }
-.accion-repuesto.kardex { background: #fff4e0; color: #9a5b00; }
+.accion-repuesto.kardex { background: var(--naranja-100); color: var(--naranja-700); }
 .accion-repuesto.editar { background: var(--ink); color: var(--blanco); }
 .accion-repuesto.editar:hover { filter: brightness(1.25); }
 

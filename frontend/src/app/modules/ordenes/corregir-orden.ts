@@ -222,7 +222,7 @@ import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
       color: var(--gris-500);
     }
 
-    .lista { border: 1px solid var(--gris-200); border-radius: 14px; background: var(--blanco); }
+    .lista { border: 1px solid var(--gris-200); border-radius: var(--radio); background: var(--blanco); }
 
     .fila {
       display: grid;
@@ -238,7 +238,7 @@ import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
       height: 32px;
       display: grid;
       place-items: center;
-      border-radius: 9px;
+      border-radius: var(--radio-sm);
     }
     .ico-fila svg {
       width: 16px;
@@ -275,18 +275,18 @@ import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
       flex-direction: column;
       gap: 12px;
       padding: 16px 18px;
-      border: 1px solid #f6dcae;
-      border-radius: 14px;
-      background: #fff8ec;
+      border: 1px solid var(--naranja-100);
+      border-radius: var(--radio);
+      background: var(--naranja-100);
     }
     .bloqueo strong { font-size: 15px; font-weight: 600; }
     .bloqueo p { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--ink-soft); }
 
     .confirmar-reversion {
       padding: 10px 12px;
-      border-radius: 10px;
+      border-radius: var(--radio-sm);
       background: var(--blanco);
-      border: 1px solid #f0c9a0;
+      border: 1px solid var(--gris-300);
       font-weight: 500;
       color: var(--ink) !important;
     }
@@ -347,7 +347,7 @@ import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
     .cargando { display: flex; flex-direction: column; gap: 10px; }
     .esqueleto {
       height: 56px;
-      border-radius: 14px;
+      border-radius: var(--radio);
       background: linear-gradient(90deg, var(--gris-100), var(--gris-50), var(--gris-100));
       background-size: 200% 100%;
       animation: brillo 1.2s ease-in-out infinite;
@@ -355,8 +355,6 @@ import { BolivianosPipe } from '../../shared/pipes/bolivianos.pipe';
     .esqueleto.corto { height: 38px; width: 60%; }
     @keyframes brillo { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 
-    .btn-oscuro { background: var(--ink); border-color: var(--ink); color: var(--blanco); }
-    .btn-oscuro:hover { filter: brightness(1.15); }
 
     @media (max-width: 560px) {
       .camino { flex-wrap: wrap; row-gap: 8px; }

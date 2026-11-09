@@ -64,7 +64,7 @@ import { TextoResaltado } from './texto-resaltado';
       margin: 0;
       font-size: 14.5px;
       line-height: 1.5;
-      color: var(--gris-600, #4b5260);
+      color: var(--ink-soft);
     }
 
     .efectos {
@@ -72,7 +72,7 @@ import { TextoResaltado } from './texto-resaltado';
       padding: 2px 0;
       list-style: none;
       border: 1px solid var(--gris-200);
-      border-radius: 12px;
+      border-radius: var(--radio-md);
       background: var(--gris-50);
     }
 

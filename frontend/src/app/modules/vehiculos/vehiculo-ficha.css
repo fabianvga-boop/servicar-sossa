@@ -329,7 +329,7 @@
 
 .diagrama-ficha {
   padding: 12px;
-  border-radius: 12px;
+  border-radius: var(--radio-md);
   background: var(--fondo-app);
 }
 
@@ -339,7 +339,7 @@
   gap: 10px;
   padding: 14px;
   border: 1px solid var(--gris-200);
-  border-radius: 12px;
+  border-radius: var(--radio-md);
 }
 
 .form-zona .campo { margin-bottom: 0; }
@@ -428,7 +428,7 @@
   display: block;
   aspect-ratio: 4 / 3;
   overflow: hidden;
-  border-radius: 10px;
+  border-radius: var(--radio-sm);
   background: var(--gris-100);
 }
 

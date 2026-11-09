@@ -69,11 +69,33 @@
 
   /* Radios un poco más generosos: esquinas más suaves leen como una
      interfaz más amigable/cercana que el look "SaaS" cuadrado. */
-  --radio: 14px;
+  /* Escala de radios (de chico a grande):
+       xs  8px  → píldoras cuadradas chicas, miniaturas
+       sm 10px  → controles: botones, campos, íconos de acción
+       md 12px  → cajas dentro de una tarjeta (datos, avisos, filas-tarjeta)
+          14px  → tarjetas, paneles y tablas (--radio)
+       lg 20px  → superficies destacadas: modal, buscador global, tarjeta del
+                  trabajo en curso del mecánico
+       999px    → píldoras (chips, insignias) */
+  --radio-xs: 8px;
   --radio-sm: 10px;
+  --radio-md: 12px;
+  --radio: 14px;
+  --radio-lg: 20px;
   --sombra-sm: 0 9px 17.5px rgba(0, 0, 0, 0.05);
   --sombra-md: 0 4px 14px rgba(20, 23, 28, 0.12);
   --sombra-lg: 0 18px 50px rgba(0, 0, 0, 0.35);
+  /* Menús y paneles que flotan sobre el contenido (⋯, selectores) */
+  --sombra-flotante: 0 18px 40px -18px rgba(21, 26, 34, 0.35);
+  /* Tarjeta elegida o "levantada" (la opción marcada, el trabajo en curso) */
+  --sombra-elegida: 0 10px 24px -16px rgba(21, 26, 34, 0.4);
+
+  /* Texto sobre superficies oscuras (--ink): secundario y acento cálido */
+  --texto-sobre-oscuro: #c9ced6;
+  --acento-sobre-oscuro: #f3b24a;
+
+  /* Verde muy claro para listas de "sirve para" (debajo de --verde-100) */
+  --verde-50: #f5fbf7;
 
   --ancho-lateral: 248px;
   --alto-encabezado: 66px;
@@ -349,6 +371,47 @@ a:hover {
 }
 .btn-exito:not(:disabled):hover { background: #165c2c; filter: none; }
 
+/* Acción principal de una ficha que no tiene un paso de negocio en rojo
+   (Editar en la ficha del proveedor, del repuesto o del cliente; Elegir
+   repuesto del mecánico). Antes vivía repetida en cuatro módulos. */
+.btn-oscuro {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--blanco);
+}
+.btn-oscuro:not(:disabled):hover { filter: brightness(1.18); }
+
+/* Acción terciaria sin borde (Ver, Reemplazar, Eliminar en una tarjeta) */
+.btn-fantasma {
+  border-color: transparent;
+  background: transparent;
+  color: var(--gris-500);
+}
+.btn-fantasma:not(:disabled):hover { background: var(--gris-100); color: var(--ink); filter: none; }
+.btn-fantasma.peligro:not(:disabled):hover { color: var(--brand-dk); }
+
+/* Dictar con el micrófono: el mismo botón en el diagnóstico y en la orden */
+.btn-dictar {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radio-sm);
+  background: var(--brand-soft);
+  color: var(--brand);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.btn-dictar svg { width: 17px; height: 17px; }
+.btn-dictar.escuchando { background: var(--brand); color: var(--blanco); animation: latido-dictar 1.2s ease-in-out infinite; }
+@keyframes latido-dictar { 50% { box-shadow: 0 0 0 6px rgba(200, 35, 28, 0.16); } }
+@media (prefers-reduced-motion: reduce) { .btn-dictar.escuchando { animation: none; } }
+
 /* Acción "Nuevo…" de cada pantalla (cliente, repuesto, compra…). Es la que
    más se usa, así que tiene que encontrarse sin buscarla: más grande, con un
    ícono que se reconoce de lejos, el atajo de teclado a la vista y siempre en
@@ -368,6 +431,14 @@ a:hover {
 }
 
 .btn-nuevo-atajo { display: none; }
+
+/* Cabecera de cada pantalla: título, subtítulo y acciones. El mismo espacio
+   hasta lo que sigue (barra de búsqueda, tarjetas) en todos los módulos. */
+.encabezado-pagina { margin-bottom: 16px; }
+
+/* Si el título es largo (o el panel lateral angosta la pantalla) y las
+   acciones bajan de renglón, quedan a la derecha como siempre. */
+.encabezado-pagina.fila-entre > :last-child:not(:first-child) { margin-left: auto; }
 
 /* En computadora la cabecera de la pantalla (título y botón "Nuevo") queda
    fija debajo de la barra superior al bajar por una lista larga: el botón
@@ -601,7 +672,7 @@ textarea.invalido:focus {
   gap: 6px;
   padding: 4px 10px 4px 8px;
   border: 1px solid var(--gris-200);
-  border-radius: 20px;
+  border-radius: var(--radio-lg);
   background: var(--blanco);
   font: inherit;
   font-size: 12.5px;
@@ -636,7 +707,7 @@ textarea.invalido:focus {
 .chip-sugerido {
   padding: 4px 11px;
   border: 1px solid var(--gris-200);
-  border-radius: 20px;
+  border-radius: var(--radio-lg);
   background: var(--blanco);
   font: inherit;
   font-size: 12.5px;
@@ -703,7 +774,7 @@ textarea.invalido:focus {
   gap: 4px;
   padding: 4px 6px 4px 11px;
   border: 1px solid var(--azul-600);
-  border-radius: 20px;
+  border-radius: var(--radio-lg);
   background: var(--azul-100);
   color: #14417f;
   font-size: 12.5px;
@@ -785,7 +856,7 @@ textarea.invalido:focus {
 
 .chip-badge {
   padding: 3px 10px;
-  border-radius: 20px;
+  border-radius: var(--radio-lg);
   background: var(--blanco);
   border: 1px solid var(--gris-200);
   font-size: 12.5px;
@@ -909,7 +980,7 @@ table.tabla tbody tr.fila-agotada:hover {
 .acciones .btn-enlace {
   padding: 5px 11px;
   border: 1px solid var(--gris-200);
-  border-radius: 20px;
+  border-radius: var(--radio-lg);
   background: var(--blanco);
   color: var(--ink-soft);
   white-space: nowrap;
@@ -1088,7 +1159,7 @@ table.tabla th.th-acciones {
   margin-top: 4px;
   padding: 2px 7px;
   border: 1px solid var(--azul-100);
-  border-radius: 20px;
+  border-radius: var(--radio-lg);
   background: var(--azul-100);
   color: #14417f;
   font-family: var(--fuente-mono);
@@ -1391,7 +1462,7 @@ table.tabla th.num {
   display: inline-flex;
   align-items: center;
   padding: 2px 10px;
-  border-radius: 20px;
+  border-radius: var(--radio-lg);
   border: 1px solid transparent;
   background: var(--gris-100);
   color: var(--ink-soft);
@@ -1478,7 +1549,7 @@ table.tabla th.num {
   padding: 4px;
   background: var(--blanco);
   border: 1px solid var(--gris-200);
-  border-radius: 12px;
+  border-radius: var(--radio-md);
 }
 
 .segmento {
@@ -1486,7 +1557,7 @@ table.tabla th.num {
   padding: 8px 12px;
   border: none;
   background: transparent;
-  border-radius: 8px;
+  border-radius: var(--radio-xs);
   font: inherit;
   font-size: 14px;
   font-weight: 500;
@@ -1775,6 +1846,10 @@ table.tabla th.num {
   flex-direction: column;
   gap: 18px;
 }
+
+/* Dos campos lado a lado: cuando se apilan (celular o panel angosto) dejan
+   el mismo aire que el resto de los campos del formulario. */
+.cajon-cuerpo .rejilla { row-gap: 18px; }
 
 /* Lo que va en el panel no se encoge para caber: el panel scrollea. Sin
    esto, una caja con overflow:hidden (un presupuesto, una orden) se aplasta
@@ -2176,7 +2251,7 @@ table.tabla th.num {
   display: inline-grid;
   place-items: center;
   border: 0;
-  border-radius: 9px;
+  border-radius: var(--radio-sm);
   background: transparent;
   color: var(--ink-soft);
   cursor: pointer;
@@ -2190,6 +2265,36 @@ table.tabla th.num {
 .icono-fila.whatsapp { background: #e4f9ec; color: #128c7e; }
 .icono-fila.apagado { opacity: 0.35; cursor: default; background: var(--gris-100); }
 
+/* En pantallas táctiles (tablet, celular) el ícono se acierta con el dedo */
+@media (pointer: coarse) {
+  .icono-fila { width: 40px; height: 40px; }
+}
+
+/* Pie de un panel lateral o modal en el celular: sin botones partidos en dos
+   renglones; la acción principal arriba y a todo el ancho, el resto debajo. */
+@media (max-width: 560px) {
+  :is(app-cajon, app-modal) [pie] {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+  }
+
+  /* Algunos pies agrupan los botones en un span (con "Desactivar" aparte) */
+  :is(app-cajon, app-modal) [pie] > span:has(> .btn) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+  }
+
+  :is(app-cajon, app-modal) [pie] > .btn,
+  :is(app-cajon, app-modal) [pie] > span > .btn { flex: 1 1 0; justify-content: center; }
+
+  :is(app-cajon, app-modal) [pie] > .btn-primario,
+  :is(app-cajon, app-modal) [pie] > span > .btn-primario { order: -1; flex-basis: 100%; }
+}
+
 /* Menú ⋯ de la fila */
 .menu-fila { position: relative; }
 
@@ -2201,9 +2306,9 @@ table.tabla th.num {
   min-width: 200px;
   padding: 6px;
   border: 1px solid var(--gris-200);
-  border-radius: 12px;
+  border-radius: var(--radio-md);
   background: var(--blanco);
-  box-shadow: 0 18px 40px -18px rgba(21, 26, 34, 0.35);
+  box-shadow: var(--sombra-flotante);
 }
 
 .menu-fila-lista button,
@@ -2212,7 +2317,7 @@ table.tabla th.num {
   width: 100%;
   padding: 9px 10px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radio-xs);
   background: none;
   font: inherit;
   font-size: 13.5px;
@@ -2322,7 +2427,7 @@ table.tabla th.num {
     margin-top: -22px;
     display: grid;
     place-items: center;
-    border-radius: 16px;
+    border-radius: var(--radio);
     background: var(--brand);
     color: var(--blanco);
     box-shadow: 0 8px 18px -8px rgba(200, 35, 28, 0.7);
@@ -2461,7 +2566,7 @@ table.tabla th.num {
   .mas-salir {
     min-height: 48px;
     border: 1px solid #e9a9a5;
-    border-radius: 12px;
+    border-radius: var(--radio-md);
     background: var(--blanco);
     font: inherit;
     font-size: 15px;
@@ -2536,7 +2641,7 @@ table.tabla th.num {
     flex: none;
     display: grid;
     place-items: center;
-    border-radius: 12px;
+    border-radius: var(--radio-md);
   }
 
   .accion-cuadro svg { width: 22px; height: 22px; }
@@ -2560,7 +2665,7 @@ table.tabla th.num {
     min-height: 48px;
     margin-top: 4px;
     border: 1px solid var(--gris-300);
-    border-radius: 12px;
+    border-radius: var(--radio-md);
     background: var(--blanco);
     font: inherit;
     font-size: 15px;

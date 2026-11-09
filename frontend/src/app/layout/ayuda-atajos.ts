@@ -93,7 +93,7 @@ interface GrupoAtajos {
       padding: 0 7px;
       border: 1px solid var(--gris-300);
       border-bottom-width: 2px;
-      border-radius: 7px;
+      border-radius: var(--radio-xs);
       background: var(--blanco);
       font-family: var(--fuente-mono);
       font-size: 12px;

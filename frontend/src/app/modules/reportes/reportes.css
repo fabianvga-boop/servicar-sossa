@@ -32,7 +32,7 @@
   gap: 14px;
   padding: 16px;
   border: 1px solid var(--gris-200);
-  border-radius: 12px;
+  border-radius: var(--radio-md);
   background: var(--blanco);
   font: inherit;
   text-align: left;
@@ -55,7 +55,7 @@
   flex: none;
   display: grid;
   place-items: center;
-  border-radius: 10px;
+  border-radius: var(--radio-sm);
 }
 
 .tipo-icono svg { width: 20px; height: 20px; }
@@ -119,7 +119,7 @@
   height: 40px;
   padding: 0 10px;
   border: 1px solid var(--gris-300);
-  border-radius: 9px;
+  border-radius: var(--radio-sm);
   background: var(--blanco);
   font: inherit;
   font-size: 13px;

@@ -20,7 +20,7 @@
   height: 46px;
   padding: 0 20px 0 16px;
   border: 0;
-  border-radius: 12px;
+  border-radius: var(--radio-md);
   background: var(--azul-700);
   color: var(--blanco);
   font: inherit;
@@ -41,7 +41,7 @@
   font-weight: 600;
   white-space: nowrap;
 }
-.estado-hecho { background: var(--verde-100); color: var(--verde-700, #1e6b35); }
+.estado-hecho { background: var(--verde-100); color: var(--verde-700); }
 .estado-pendiente { background: var(--gris-100); color: var(--gris-500); }
 
 /* Editar trabajo / repuesto en panel lateral */

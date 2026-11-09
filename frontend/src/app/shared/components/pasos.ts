@@ -119,7 +119,7 @@ export interface Paso {
     }
 
     /* Etapa ya superada: círculo verde con tilde y conector verde */
-    .paso.completado { color: #1f6b39; }
+    .paso.completado { color: var(--verde-700); }
 
     .paso.completado .nodo {
       background: var(--verde-600);

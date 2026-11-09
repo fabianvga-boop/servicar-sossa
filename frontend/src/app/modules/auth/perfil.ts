@@ -208,7 +208,7 @@ import { ElegirFoto } from '../../shared/components/elegir-foto';
       gap: 16px;
       margin: 0;
       padding: 16px;
-      border-radius: 12px;
+      border-radius: var(--radio-md);
       background: var(--fondo-app);
     }
 
@@ -241,7 +241,7 @@ import { ElegirFoto } from '../../shared/components/elegir-foto';
       height: 36px;
       padding: 0 12px;
       border: 1px solid var(--gris-300);
-      border-radius: 8px;
+      border-radius: var(--radio-xs);
       background: var(--blanco);
       font: inherit;
       font-size: 13px;

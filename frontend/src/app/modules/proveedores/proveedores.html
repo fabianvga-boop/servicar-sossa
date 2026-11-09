@@ -186,7 +186,7 @@
     <div pie class="ficha-prov-pie">
       <a class="btn btn-secundario" [routerLink]="['/repuestos']" [queryParams]="{ proveedorId: f.proveedor.proveedorId }">Repuestos</a>
       <a class="btn btn-suave" [routerLink]="['/compras']" [queryParams]="{ nueva: true, proveedorId: f.proveedor.proveedorId }">Compra</a>
-      <button type="button" class="btn btn-oscuro-prov" (click)="abrirEditar(f.proveedor)">Editar</button>
+      <button type="button" class="btn btn-oscuro" (click)="abrirEditar(f.proveedor)">Editar</button>
     </div>
   </app-cajon>
 }
