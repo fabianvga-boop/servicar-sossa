@@ -39,13 +39,27 @@ interface DatosDiagnostico {
 }
 
 /** Filtro por la respuesta del cliente: lo que más importa de un diagnóstico. */
-type FiltroRespuesta = 'todos' | 'sinDiagnostico' | 'sinPresupuesto' | 'esperando' | 'aprobados' | 'rechazados';
+type FiltroRespuesta = 'atender' | 'todos' | 'sinDiagnostico' | 'sinPresupuesto' | 'esperando' | 'aprobados' | 'rechazados';
 
 /** Lo que más cuentan los clientes: un toque lo suma al relato. */
 const SINTOMAS = ['Ruido', 'Golpe', 'Vibración', 'No arranca', 'Fuga', 'Frenos', 'Luz en el tablero', 'Se calienta'];
 
-/** Cuántos pendientes se ven en cada bloque de la bandeja; el resto, con "Ver los N". */
-const MAXIMO_BANDEJA = 4;
+/** Etapa de un diagnóstico, de lo que falta hacer a lo ya resuelto. */
+type Etapa = 'sinDiagnostico' | 'sinPresupuesto' | 'esperando' | 'aprobado' | 'rechazado' | 'anulado' | 'otro';
+
+/** Los filtros de la barra, en el orden en que se ven. */
+const FILTROS: { clave: FiltroRespuesta; texto: string; punto?: 'roja' | 'naranja' | 'verde' }[] = [
+  { clave: 'atender', texto: 'Por atender', punto: 'roja' },
+  { clave: 'sinDiagnostico', texto: 'Sin diagnosticar' },
+  { clave: 'sinPresupuesto', texto: 'Falta presupuesto' },
+  { clave: 'esperando', texto: 'Esperando respuesta', punto: 'naranja' },
+  { clave: 'aprobados', texto: 'Aprobados', punto: 'verde' },
+  { clave: 'rechazados', texto: 'Rechazados' },
+  { clave: 'todos', texto: 'Todos' },
+];
+
+/** Lo que espera una acción: se muestra lo que más espera primero. */
+const PENDIENTES: FiltroRespuesta[] = ['atender', 'sinDiagnostico', 'sinPresupuesto', 'esperando'];
 
 /** Desde esta espera, el pendiente se marca en rojo: hay que llamar al cliente. */
 const DIAS_ESPERA_LARGA = 5;
@@ -109,7 +123,8 @@ export class Diagnosticos {
   protected readonly cargando = signal(true);
   protected readonly guardando = signal(false);
 
-  protected readonly filtro = signal<FiltroRespuesta>('todos');
+  protected readonly filtro = signal<FiltroRespuesta>('atender');
+  protected readonly FILTROS = FILTROS;
   protected readonly buscar = signal('');
   protected readonly pagina = signal(1);
   protected readonly tamanoPagina = signal(20);
@@ -183,6 +198,7 @@ export class Diagnosticos {
   protected readonly cuentas = computed(() => {
     const lista = this.todos();
     return {
+      atender: lista.filter((d) => this.pasaFiltro(d, 'atender')).length,
       todos: lista.length,
       sinDiagnostico: lista.filter((d) => this.pasaFiltro(d, 'sinDiagnostico')).length,
       sinPresupuesto: lista.filter((d) => this.pasaFiltro(d, 'sinPresupuesto')).length,
@@ -196,7 +212,7 @@ export class Diagnosticos {
     const filtro = this.filtro();
     const texto = this.buscar();
 
-    return this.todos().filter(
+    const lista = this.todos().filter(
       (d) =>
         this.pasaFiltro(d, filtro) &&
         coincidePorPalabras(
@@ -209,6 +225,11 @@ export class Diagnosticos {
           d.observacionesTecnicas,
         ),
     );
+
+    // Lo pendiente, lo que más lleva esperando primero; el resto, lo más reciente.
+    return PENDIENTES.includes(filtro)
+      ? [...lista].sort((a, b) => a.fecha.localeCompare(b.fecha))
+      : lista;
   });
 
   protected readonly totalPaginas = computed(() =>
@@ -219,31 +240,6 @@ export class Diagnosticos {
     const inicio = (Math.min(this.pagina(), this.totalPaginas()) - 1) * this.tamanoPagina();
     return this.filtrados().slice(inicio, inicio + this.tamanoPagina());
   });
-
-  // --- Bandeja: lo que espera una acción, lo que más espera primero -------------
-
-  protected readonly MAXIMO_BANDEJA = MAXIMO_BANDEJA;
-
-  /** Presupuesto enviado y sin respuesta del cliente. */
-  protected readonly esperandoRespuesta = computed(() =>
-    this.todos()
-      .filter((d) => this.pasaFiltro(d, 'esperando'))
-      .sort((a, b) => a.fecha.localeCompare(b.fecha)),
-  );
-
-  /** Recibido con lo que cuenta el cliente; el mecánico todavía no lo revisó. */
-  protected readonly faltaDiagnostico = computed(() =>
-    this.todos()
-      .filter((d) => this.pasaFiltro(d, 'sinDiagnostico'))
-      .sort((a, b) => a.fecha.localeCompare(b.fecha)),
-  );
-
-  /** Ya diagnosticado: falta ponerle precio. */
-  protected readonly faltaPresupuesto = computed(() =>
-    this.todos()
-      .filter((d) => this.pasaFiltro(d, 'sinPresupuesto'))
-      .sort((a, b) => a.fecha.localeCompare(b.fecha)),
-  );
 
   /** La fila del diagnóstico abierto en el panel lateral. */
   protected readonly filaElegida = computed(
@@ -352,12 +348,6 @@ export class Diagnosticos {
     this.pagina.set(1);
   }
 
-  /** "Ver los N" de la bandeja: el historial filtrado por ese estado. */
-  protected verTodos(filtro: FiltroRespuesta): void {
-    this.elegirFiltro(filtro);
-    document.getElementById('historial-diag')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
   /** Espera larga: se pinta en rojo para que no se olvide llamar al cliente. */
   protected esperaLarga(fecha: string): boolean {
     return (Date.now() - new Date(fecha).getTime()) / 86_400_000 >= DIAS_ESPERA_LARGA;
@@ -372,6 +362,9 @@ export class Diagnosticos {
   private pasaFiltro(d: Diagnostico, filtro: FiltroRespuesta): boolean {
     if (filtro === 'todos') return true;
     if (d.estado === EstadoDiag.Anulado) return false;
+    if (filtro === 'atender') {
+      return this.pasaFiltro(d, 'sinDiagnostico') || this.pasaFiltro(d, 'sinPresupuesto') || this.pasaFiltro(d, 'esperando');
+    }
 
     switch (filtro) {
       // Con orden ya no espera nada (p. ej. una revisión sin presupuesto que pasó a orden).
@@ -395,11 +388,57 @@ export class Diagnosticos {
   }
 
   /** Lo que dice la insignia de la columna Respuesta. */
+  /** En qué etapa está: define la píldora, la barrita y el siguiente paso. */
+  protected etapa(d: Diagnostico): Etapa {
+    if (d.estado === EstadoDiag.Anulado) return 'anulado';
+    if (d.respuestaCliente === RespuestaCliente.Aprobado) return 'aprobado';
+    if (d.respuestaCliente === RespuestaCliente.Rechazado) return 'rechazado';
+    if (d.ordenId) return 'otro';
+    if (d.montoEstimado != null) return 'esperando';
+    return d.observacionesTecnicas?.trim() ? 'sinPresupuesto' : 'sinDiagnostico';
+  }
+
+  /** Cuántos de los 4 pasos (recibido, diagnóstico, presupuesto, respuesta) lleva. */
+  protected pasoEtapa(d: Diagnostico): number {
+    switch (this.etapa(d)) {
+      case 'sinDiagnostico':
+        return 1;
+      case 'sinPresupuesto':
+        return 2;
+      case 'esperando':
+        return 3;
+      case 'anulado':
+        return 0;
+      default:
+        return 4;
+    }
+  }
+
+  protected tonoEtapa(d: Diagnostico): string {
+    switch (this.etapa(d)) {
+      case 'esperando':
+        return 'naranja';
+      case 'aprobado':
+        return 'verde';
+      case 'rechazado':
+        return 'roja';
+      default:
+        return 'gris';
+    }
+  }
+
+  /** Falta algo por hacer: se muestra desde cuándo espera. */
+  protected enEspera(d: Diagnostico): boolean {
+    const etapa = this.etapa(d);
+    return etapa === 'sinDiagnostico' || etapa === 'sinPresupuesto' || etapa === 'esperando';
+  }
+
   protected textoRespuesta(d: Diagnostico): string {
     if (d.estado === EstadoDiag.Anulado) return 'Anulado';
     if (d.respuestaCliente === RespuestaCliente.Aprobado) return 'Aprobado';
     if (d.respuestaCliente === RespuestaCliente.Rechazado) return 'Rechazado';
-    return d.montoEstimado == null ? 'Sin presupuesto' : 'Esperando respuesta';
+    if (d.montoEstimado == null) return d.observacionesTecnicas?.trim() ? 'Falta presupuesto' : 'Sin diagnosticar';
+    return 'Esperando respuesta';
   }
 
   protected claseRespuesta(d: Diagnostico): string {
