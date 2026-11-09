@@ -69,7 +69,8 @@ $migraciones = @(
     'migracion_categorias_repuesto.sql',
     'migracion_compra_ocasional.sql',
     'migracion_kardex.sql',
-    'migracion_quitar_plantillas.sql'
+    'migracion_quitar_plantillas.sql',
+    'migracion_inspeccion_diagnostico.sql'
 )
 
 function Consultar($sql) {

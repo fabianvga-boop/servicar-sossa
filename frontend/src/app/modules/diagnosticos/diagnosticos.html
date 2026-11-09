@@ -386,6 +386,27 @@
         </div>
       }
 
+      <!-- Inspección del vehículo: se hace al recibirlo, junto con el diagnóstico -->
+      <section class="seccion-diag inspeccion-diag">
+        <div class="inspeccion-fila">
+          <span class="inspeccion-texto">
+            <strong>Inspección del vehículo</strong>
+            <small>
+              @if (resumenInspeccion().partes === 0) {
+                Opcional: marque cómo llega el auto sobre el dibujo.
+              } @else if (resumenInspeccion().conDanio === 0) {
+                {{ resumenInspeccion().partes }} {{ resumenInspeccion().partes === 1 ? 'parte revisada' : 'partes revisadas' }}, sin daños.
+              } @else {
+                {{ resumenInspeccion().conDanio }} {{ resumenInspeccion().conDanio === 1 ? 'parte con novedad' : 'partes con novedad' }}.
+              }
+            </small>
+          </span>
+          <button type="button" class="btn btn-secundario btn-sm" (click)="abrirInspeccion()">
+            {{ resumenInspeccion().partes === 0 ? 'Inspeccionar' : 'Ver o cambiar' }}
+          </button>
+        </div>
+      </section>
+
       <!-- 1. Lo que cuenta el cliente -->
       <section class="seccion-diag">
         <div class="seccion-diag-cab"><span class="carril-n gris">1</span><strong>Lo que cuenta el cliente</strong><small>con sus palabras</small></div>
@@ -467,6 +488,16 @@
       </button>
     </div>
   </app-cajon>
+
+  @if (inspeccionAbierta()) {
+    <app-cajon titulo="Inspección del vehículo" subtitulo="Se guarda junto con el diagnóstico." [ancho]="560" [enfocarCampo]="false" (cerrar)="inspeccionAbierta.set(false)">
+      <app-inspeccion-vehiculo [zonas]="zonasParaMostrar()" [editable]="true" (guardar)="marcarZona($event)" />
+
+      <div pie>
+        <button type="button" class="btn btn-primario btn-pie-grande" (click)="inspeccionAbierta.set(false)">Listo</button>
+      </div>
+    </app-cajon>
+  }
 }
 
 <!-- --------------------------------------------------------- Panel: detalle -->

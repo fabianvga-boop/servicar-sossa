@@ -118,6 +118,8 @@ export interface VehiculoZona {
   zonaObsId: string;
   vehiculoId: string;
   ordenId?: string | null;
+  /** Diagnóstico en el que se hizo la inspección. */
+  diagnosticoId?: string | null;
   zona: string;
   /** 'Ok' | 'Atencion' | 'EnReparacion', tal como lo serializa el backend. */
   estado: string;
@@ -130,6 +132,7 @@ export interface RegistrarZonaRequest {
   estado: EstadoZonaVehiculo;
   detalle?: string | null;
   ordenId?: string | null;
+  diagnosticoId?: string | null;
 }
 
 // -------------------------------------------------- Fotos del vehículo (galería)

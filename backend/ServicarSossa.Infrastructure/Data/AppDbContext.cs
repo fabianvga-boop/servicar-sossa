@@ -198,6 +198,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.ZonaObsId).HasColumnName("zona_obs_id").HasMaxLength(20);
             e.Property(x => x.VehiculoId).HasColumnName("vehiculo_id").HasMaxLength(20).IsRequired();
             e.Property(x => x.OrdenId).HasColumnName("orden_id").HasMaxLength(20);
+            e.Property(x => x.DiagnosticoId).HasColumnName("diagnostico_id").HasMaxLength(20);
             e.Property(x => x.Zona).HasColumnName("zona").HasMaxLength(40).IsRequired();
             e.Property(x => x.Estado).HasColumnName("estado").HasMaxLength(20)
                 .HasConversion<string>().IsRequired();
@@ -208,6 +209,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .HasForeignKey(x => x.VehiculoId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(x => x.Orden).WithMany()
                 .HasForeignKey(x => x.OrdenId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Diagnostico).WithMany()
+                .HasForeignKey(x => x.DiagnosticoId).OnDelete(DeleteBehavior.SetNull);
         });
     }
 

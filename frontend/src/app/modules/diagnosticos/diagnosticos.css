@@ -329,3 +329,9 @@
 .cita-diag.fuerte p { border-left-color: var(--ink); font-weight: 500; }
 
 
+
+/* Inspección del vehículo dentro del alta */
+.inspeccion-diag { padding: 12px 14px; }
+.inspeccion-fila { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.inspeccion-texto { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.inspeccion-texto small { font-size: 12.5px; color: var(--gris-500); }

@@ -1014,16 +1014,10 @@
   @if (inspeccionAbierta()) {
     <app-cajon titulo="Inspección del vehículo" [etiqueta]="o.ordenId + ' · ' + o.placaVehiculo" [ancho]="560" [enfocarCampo]="false" (cerrar)="inspeccionAbierta.set(false)">
       <p class="texto-tenue texto-sm mt-0 mb-2">
-        {{ editable() ? "Toque una parte para anotar cómo está." : "Cómo está cada parte del vehículo." }}
-        Lo que anote queda en el historial de esta orden y de las anteriores.
+        Cómo está cada parte del vehículo. La inspección se anota al hacer el diagnóstico; aquí solo se consulta.
       </p>
 
-      <app-inspeccion-vehiculo
-        [zonas]="zonasVehiculo()"
-        [editable]="editable()"
-        [guardando]="guardandoZona()"
-        (guardar)="guardarZona($event)"
-      />
+      <app-inspeccion-vehiculo [zonas]="zonasVehiculo()" [editable]="false" />
 
       <div pie>
         <button type="button" class="btn btn-secundario btn-pie-grande" (click)="inspeccionAbierta.set(false)">Listo</button>

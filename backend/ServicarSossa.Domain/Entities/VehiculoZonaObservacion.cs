@@ -13,6 +13,8 @@ public class VehiculoZonaObservacion
     public string ZonaObsId { get; set; } = string.Empty;   // ZNA-001
     public string VehiculoId { get; set; } = string.Empty;
     public string? OrdenId { get; set; }
+    /// <summary>Diagnóstico en el que se hizo la inspección (la inspección se registra al diagnosticar).</summary>
+    public string? DiagnosticoId { get; set; }
     public string Zona { get; set; } = string.Empty;        // capo, parabrisas, puerta_del_izq, ...
     public EstadoZonaVehiculo Estado { get; set; }
     public string? Detalle { get; set; }
@@ -21,4 +23,5 @@ public class VehiculoZonaObservacion
     // Navegación
     public Vehiculo Vehiculo { get; set; } = null!;
     public OrdenTrabajo? Orden { get; set; }
+    public Diagnostico? Diagnostico { get; set; }
 }

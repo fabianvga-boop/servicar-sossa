@@ -101,6 +101,7 @@ public class VehiculoZonaResponseDto
     public string ZonaObsId { get; set; } = string.Empty;
     public string VehiculoId { get; set; } = string.Empty;
     public string? OrdenId { get; set; }
+    public string? DiagnosticoId { get; set; }
     public string Zona { get; set; } = string.Empty;
     public string Estado { get; set; } = string.Empty;
     public string? Detalle { get; set; }
@@ -122,6 +123,9 @@ public class RegistrarZonaDto
 
     [RegularExpression(@"^ORD-\d{3,}$", ErrorMessage = "La orden debe tener el formato ORD-000.")]
     public string? OrdenId { get; set; }
+
+    [RegularExpression(@"^DIA-\d{3,}$", ErrorMessage = "El diagnóstico debe tener el formato DIA-000.")]
+    public string? DiagnosticoId { get; set; }
 }
 
 // --------------------------------------------------------------------- Fotos

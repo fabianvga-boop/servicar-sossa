@@ -41,7 +41,7 @@ import { DiagnosticosService, TiposServicioService } from '../../core/services/t
 import { UsuariosService } from '../../core/services/usuarios.service';
 import { VehiculosService } from '../../core/services/vehiculos.service';
 import { Confirmacion } from '../../shared/components/confirmacion';
-import { DatosZona, InspeccionVehiculo, etiquetaZona } from '../../shared/components/inspeccion-vehiculo';
+import { InspeccionVehiculo, etiquetaZona } from '../../shared/components/inspeccion-vehiculo';
 import { Migas } from '../../shared/components/migas';
 import { Modal } from '../../shared/components/modal';
 import { FotoVisor, VisorFotos, aFotoVisor } from '../../shared/components/visor-fotos';
@@ -265,7 +265,6 @@ export class OrdenDetalle implements ConfirmarSalida {
   // Inspección del vehículo (USU022-025): el estado de cada parte, para anotar
   // daños/observaciones sin depender solo de texto libre.
   protected readonly zonasVehiculo = signal<VehiculoZona[]>([]);
-  protected readonly guardandoZona = signal(false);
   protected readonly inspeccionAbierta = signal(false);
 
   protected readonly mecanicos = signal<Usuario[]>([]);
@@ -1071,31 +1070,6 @@ export class OrdenDetalle implements ConfirmarSalida {
   protected cerrarGaleria(): void {
     this.galeriaAbierta.set(false);
     this.galeriaServicio.set(null);
-  }
-
-  // --- Inspección del vehículo (zonas) -----------------------------------------
-
-  protected guardarZona(datos: DatosZona): void {
-    const orden = this.orden();
-    if (!orden) return;
-
-    this.guardandoZona.set(true);
-
-    this.vehiculosService
-      .registrarZona(orden.vehiculoId, {
-        zona: datos.zona,
-        estado: datos.estado,
-        detalle: datos.detalle,
-        ordenId: orden.ordenId,
-      })
-      .subscribe({
-        next: (nueva) => {
-          this.zonasVehiculo.update((lista) => [nueva, ...lista]);
-          this.guardandoZona.set(false);
-          this.notificacion.exito(`Se anotó: ${etiquetaZona(nueva.zona)}.`);
-        },
-        error: () => this.guardandoZona.set(false),
-      });
   }
 
   /** Lo registrado en Auditoría sobre esta orden, del más reciente al más antiguo. */

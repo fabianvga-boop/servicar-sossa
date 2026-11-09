@@ -280,11 +280,19 @@ public class VehiculoService(
         if (!await vehiculos.ExistsAsync(v => v.VehiculoId == vehiculoId, ct))
             return Result<VehiculoZonaResponseDto>.NoEncontrado($"No existe el vehículo {vehiculoId}.");
 
+        // La inspección se hace al diagnosticar: si viene el diagnóstico, debe ser de este vehículo.
+        string? diagnosticoId = string.IsNullOrWhiteSpace(dto.DiagnosticoId) ? null : dto.DiagnosticoId;
+        if (diagnosticoId is not null
+            && !await diagnosticos.ExistsAsync(d => d.DiagnosticoId == diagnosticoId && d.VehiculoId == vehiculoId, ct))
+            return Result<VehiculoZonaResponseDto>.NoEncontrado(
+                $"No existe el diagnóstico {diagnosticoId} para este vehículo.");
+
         var zona = new VehiculoZonaObservacion
         {
             ZonaObsId = await generadorId.SiguienteAsync<VehiculoZonaObservacion>("ZNA", ct),
             VehiculoId = vehiculoId,
             OrdenId = string.IsNullOrWhiteSpace(dto.OrdenId) ? null : dto.OrdenId,
+            DiagnosticoId = diagnosticoId,
             Zona = dto.Zona.Trim(),
             Estado = dto.Estado,
             Detalle = string.IsNullOrWhiteSpace(dto.Detalle) ? null : dto.Detalle.Trim(),
@@ -307,6 +315,7 @@ public class VehiculoService(
         ZonaObsId = z.ZonaObsId,
         VehiculoId = z.VehiculoId,
         OrdenId = z.OrdenId,
+        DiagnosticoId = z.DiagnosticoId,
         Zona = z.Zona,
         Estado = z.Estado.ToString(),
         Detalle = z.Detalle,

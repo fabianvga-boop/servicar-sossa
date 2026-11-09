@@ -2,10 +2,10 @@ import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { catchError, debounceTime, distinctUntilChanged, map, of, switchMap } from 'rxjs';
+import { catchError, concat, debounceTime, distinctUntilChanged, last, map, of, switchMap } from 'rxjs';
 
-import { EstadoDiag, RespuestaCliente } from '../../core/models/enums';
-import { Vehiculo } from '../../core/models/personas.model';
+import { EstadoDiag, EstadoZonaVehiculo, RespuestaCliente } from '../../core/models/enums';
+import { Vehiculo, VehiculoZona } from '../../core/models/personas.model';
 import { Diagnostico, SugerenciaDiagnostico } from '../../core/models/taller.model';
 import { unicosOrdenados } from '../../shared/sugerencias-texto';
 import { DIAGNOSTICO_ASISTIDO } from '../../core/funciones-activas';
@@ -21,6 +21,7 @@ import { VehiculosService } from '../../core/services/vehiculos.service';
 import { coincidePorPalabras } from '../../shared/busqueda';
 import { Cajon } from '../../shared/components/cajon';
 import { Confirmacion } from '../../shared/components/confirmacion';
+import { DatosZona, InspeccionVehiculo, etiquetaZona } from '../../shared/components/inspeccion-vehiculo';
 import { EstadoTabla } from '../../shared/components/estado-tabla';
 import { Paginador } from '../../shared/components/paginador';
 import { Placa } from '../../shared/components/placa';
@@ -98,6 +99,7 @@ const MOTIVOS_RECHAZO = ['Le pareció caro', 'Lo hará en otro taller', 'Lo va a
     EstadoTabla,
     Paginador,
     Placa,
+    InspeccionVehiculo,
     SelectorBusqueda,
     Atajo,
     BolivianosPipe,
@@ -570,6 +572,7 @@ export class Diagnosticos {
 
   protected abrirNuevo(): void {
     this.cerrarPaneles();
+    this.limpiarInspeccion();
     this.faltaElDiagnostico.set(false);
     this.formulario.reset();
     this.formulario.controls.vehiculoId.enable();
@@ -581,6 +584,7 @@ export class Diagnosticos {
 
   protected abrirEditar(diagnostico: Diagnostico): void {
     this.cerrarPaneles();
+    this.limpiarInspeccion();
     this.faltaElDiagnostico.set(false);
     this.editando.set(diagnostico);
     this.sugerencia.set(null);
@@ -637,6 +641,7 @@ export class Diagnosticos {
     this.borradorPendiente.set(null);
     this.formularioAbierto.set(false);
     this.editando.set(null);
+    this.limpiarInspeccion();
   }
 
   protected textoSiguiente(): string {
@@ -665,6 +670,85 @@ export class Diagnosticos {
 
   protected atras(): void {
     this.cerrarFormulario();
+  }
+
+  // --- Inspección del vehículo: se hace al diagnosticar -----------------------
+
+  /** Lo ya registrado del vehículo (sus marcas anteriores), para verlo al inspeccionar. */
+  protected readonly zonasAnteriores = signal<VehiculoZona[]>([]);
+  /** Lo marcado en este diagnóstico: se guarda junto con el diagnóstico. */
+  protected readonly zonasNuevas = signal<(DatosZona & { fecha: string })[]>([]);
+  protected readonly inspeccionAbierta = signal(false);
+  protected readonly etiquetaZona = etiquetaZona;
+
+  /** Marcas anteriores más las de este diagnóstico: la última de cada parte manda. */
+  protected readonly zonasParaMostrar = computed<VehiculoZona[]>(() => [
+    ...this.zonasNuevas().map((z, i) => ({
+      zonaObsId: 'nueva-' + i,
+      vehiculoId: this.vehiculoDelFormulario(),
+      zona: z.zona,
+      estado: EstadoZonaVehiculo[z.estado],
+      detalle: z.detalle,
+      fechaRegistro: z.fecha,
+    })),
+    ...this.zonasAnteriores(),
+  ]);
+
+  protected readonly resumenInspeccion = computed(() => {
+    const partes = new Set(this.zonasNuevas().map((z) => z.zona));
+    const conDanio = new Set(this.zonasNuevas().filter((z) => z.estado !== EstadoZonaVehiculo.Ok).map((z) => z.zona));
+    return { partes: partes.size, conDanio: conDanio.size };
+  });
+
+  private vehiculoDelFormulario(): string {
+    return this.editando()?.vehiculoId ?? this.formulario.getRawValue().vehiculoId ?? '';
+  }
+
+  protected abrirInspeccion(): void {
+    const vehiculoId = this.vehiculoDelFormulario();
+    if (!vehiculoId) {
+      this.formulario.controls.vehiculoId.markAsTouched();
+      this.notificacion.advertencia('Elija primero el vehículo.');
+      return;
+    }
+    this.vehiculosService
+      .getZonas(vehiculoId)
+      .pipe(catchError(() => of([] as VehiculoZona[])))
+      .subscribe((zonas) => {
+        this.zonasAnteriores.set(zonas);
+        this.inspeccionAbierta.set(true);
+      });
+  }
+
+  protected marcarZona(datos: DatosZona): void {
+    this.zonasNuevas.update((lista) => [...lista, { ...datos, fecha: new Date().toISOString() }]);
+  }
+
+  private limpiarInspeccion(): void {
+    this.zonasNuevas.set([]);
+    this.zonasAnteriores.set([]);
+    this.inspeccionAbierta.set(false);
+  }
+
+  /** Con el diagnóstico ya guardado, deja registradas las marcas hechas (en el orden en que se hicieron). */
+  private guardarInspeccion(vehiculoId: string, diagnosticoId: string): void {
+    const marcas = this.zonasNuevas();
+    if (marcas.length === 0) return;
+    concat(
+      ...marcas.map((m) =>
+        this.vehiculosService.registrarZona(vehiculoId, {
+          zona: m.zona,
+          estado: m.estado,
+          detalle: m.detalle,
+          diagnosticoId,
+        }),
+      ),
+    )
+      .pipe(last())
+      .subscribe({
+        error: () =>
+          this.notificacion.advertencia('El diagnóstico se guardó, pero no se pudo registrar la inspección.'),
+      });
   }
 
   protected guardar(sinDiagnostico = false): void {
@@ -697,6 +781,7 @@ export class Diagnosticos {
         this.notificacion.exito(
           enEdicion ? 'Diagnóstico actualizado.' : 'Diagnóstico registrado correctamente.',
         );
+        this.guardarInspeccion(guardado.vehiculoId, guardado.diagnosticoId);
         this.guardando.set(false);
         this.cerrarFormulario();
         this.cargar();
