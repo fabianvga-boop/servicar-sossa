@@ -75,7 +75,7 @@
       >
         <span class="celda-texto">
           <strong class="servicio-nombre">{{ servicio.nombre }}</strong>
-          <span class="celda-sub">
+          <span class="celda-sub" [class.completa]="!!servicio.descripcion">
             <span class="codigo">{{ servicio.servicioId }}</span> ·
             {{ servicio.descripcion || 'Sin descripción de lo que incluye' }}
           </span>

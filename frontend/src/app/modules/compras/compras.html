@@ -117,7 +117,7 @@
           <span>
             <strong>{{ compra.ocasional ? 'Compra ocasional' : compra.nombreProveedor }}</strong>
             @if (compra.ocasional) {
-              <span class="celda-sub">{{ compra.referencia || 'Sin referencia' }}</span>
+              <span class="celda-sub" [class.completa]="!!compra.referencia">{{ compra.referencia || 'Sin referencia' }}</span>
             }
           </span>
         </span>

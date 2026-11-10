@@ -99,7 +99,7 @@ export interface Portada {
           <!-- La API todavía no manda los nombres: al menos el conteo -->
           <span class="texto-tenue">{{ orden().cantidadMecanicos }} mec.</span>
         } @else {
-          <span class="texto-tenue">Sin mecánico</span>
+          <span class="insignia insignia-naranja con-icono ic-reloj etiqueta-chica">Sin mecánico</span>
         }
       </span>
       <span class="total">{{ orden().total | bs }}</span>

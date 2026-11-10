@@ -332,3 +332,5 @@ a.fila-reciente:hover { color: var(--ink); }
 .dato-mecanico strong { margin: 2px 0; font-size: 20px; }
 .recibir-vehiculo { display: flex; align-items: center; justify-content: center; gap: 8px; height: 56px; border: 2px dashed var(--gris-300); border-radius: var(--radio); font-weight: 600; color: var(--ink-soft); text-decoration: none; }
 .recibir-vehiculo svg { width: 20px; height: 20px; }
+
+.tarea-detalle { font-size: 13.5px; color: var(--ink-soft); }

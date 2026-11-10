@@ -357,7 +357,10 @@
         <span class="stock-barra" aria-hidden="true">
           <span [class.agotado]="agotadoFicha" [class.bajo]="!agotadoFicha && f.stockBajo" [style.width.%]="nivelStock(f)"></span>
         </span>
-        <small>Mínimo {{ f.stockMinimo }} · avisa para reponer cuando baja de ahí</small>
+        <span class="ficha-rep-minimo">
+          <span class="dato-rotulo"><small>Mínimo</small><span class="monto-mono">{{ f.stockMinimo }}</span></span>
+          <span>avisa para reponer cuando baja de ahí</span>
+        </span>
       </div>
 
       <div class="ficha-rep-movs">

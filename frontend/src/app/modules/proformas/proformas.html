@@ -101,7 +101,7 @@
           <span class="celda-texto">
             <strong>{{ proforma.nombreCliente }}</strong>
             @if (proforma.nitRazonSocial) {
-              <span class="celda-sub">A nombre de {{ proforma.nitRazonSocial }}</span>
+              <span class="celda-sub completa"><b>A nombre de</b> {{ proforma.nitRazonSocial }}</span>
             }
           </span>
         </span>
@@ -109,7 +109,7 @@
         <span class="a-la-derecha"><span class="monto-fila">{{ proforma.total | bs }}</span></span>
 
         <span class="proforma-cobrado ocultar-movil">
-          <span class="celda-sub">{{ cobradoTexto(proforma) }}</span>
+          <span class="celda-sub completa">{{ cobradoTexto(proforma) }}</span>
           <span class="barra-cobro" aria-hidden="true">
             <span
               class="barra-cobro-relleno {{ estadoClase(proforma) }}"
