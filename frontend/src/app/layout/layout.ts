@@ -135,7 +135,6 @@ export class Layout {
           contador: 'ordenesActivas',
         },
         { ruta: '/diagnosticos', etiqueta: 'Diagnósticos', icono: 'diagnosticos' },
-        { ruta: '/agenda', etiqueta: 'Agenda', icono: 'agenda' },
         { ruta: '/tipos-servicio', etiqueta: 'Catálogo de servicios', icono: 'catalogo' },
       ],
     },

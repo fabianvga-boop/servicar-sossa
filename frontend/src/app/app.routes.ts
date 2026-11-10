@@ -50,13 +50,6 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./modules/diagnosticos/diagnosticos').then((m) => m.Diagnosticos),
       },
-      // Semana del taller con los datos reales: recepciones, órdenes en el
-      // taller, entregas estimadas y cierres (ver agenda.ts).
-      {
-        path: 'agenda',
-        data: { title: 'Agenda' },
-        loadComponent: () => import('./modules/agenda/agenda').then((m) => m.Agenda),
-      },
       {
         path: 'tipos-servicio',
         data: { title: 'Catálogo de servicios' },
