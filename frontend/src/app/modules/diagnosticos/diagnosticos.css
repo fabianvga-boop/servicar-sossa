@@ -336,3 +336,7 @@
 .inspeccion-fila { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .inspeccion-texto { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .inspeccion-texto small { font-size: 12.5px; color: var(--gris-500); }
+
+/* Lo que contó el cliente va con barra ámbar (como la pieza global .nota-cliente) */
+.cita-diag:not(.fuerte) p { border-left-color: var(--naranja-600); color: var(--ink); }
+.resp-notas { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 12px; }

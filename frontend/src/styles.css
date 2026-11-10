@@ -2831,3 +2831,74 @@ table.tabla th.num {
 }
 
 .limpiar-fechas:hover { background: var(--gris-100); color: var(--ink-soft); }
+
+/* ==========================================================================
+   Texto escrito por personas: no es letra chica
+   Lo que anotó el taller (mecánico o administrador) y lo que dijo el cliente
+   se lee en tinta y a tamaño normal, con su rótulo y una barra a la izquierda:
+   oscura para el taller, ámbar para el cliente. La ayuda del sistema sigue gris.
+   ========================================================================== */
+.nota {
+  position: relative;
+  padding: 9px 12px 10px 15px;
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio-sm);
+  background: var(--gris-50);
+}
+.nota::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--ink);
+}
+.nota-quien {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--gris-500);
+}
+.nota-quien svg { width: 13px; height: 13px; flex: none; }
+.nota-texto {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--ink);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.nota-cliente { border-color: #f1e4c4; background: #fffcf5; }
+.nota-cliente::before { background: var(--naranja-600); }
+
+/* Segunda línea de tabla con un dato importante: no se corta, hasta dos líneas y en tinta suave */
+.celda-sub.completa {
+  display: -webkit-box;
+  overflow: hidden;
+  white-space: normal;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ink-soft);
+}
+.celda-sub.completa b { font-weight: 600; color: var(--ink); }
+
+/* Un dato con su rótulo chico delante ("Para · Cambio de caja") */
+.dato-rotulo { display: inline-flex; align-items: baseline; gap: 6px; color: var(--ink); font-weight: 500; }
+.dato-rotulo > small { font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--gris-400); }
+
+.celda-texto strong.completa {
+  display: -webkit-box;
+  white-space: normal;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.35;
+}

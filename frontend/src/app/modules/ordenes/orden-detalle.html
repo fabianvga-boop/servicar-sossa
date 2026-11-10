@@ -207,7 +207,10 @@
         </span>
         <strong>{{ o.observacionesTecnicasDiagnostico || 'Sin diagnóstico escrito todavía' }}</strong>
         @if (o.descripcionFalla) {
-          <em>El cliente contó: {{ o.descripcionFalla }}</em>
+          <div class="nota nota-cliente nota-pidio">
+            <span class="nota-quien"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.5A8 8 0 1 1 21 12z" /></svg>El cliente contó</span>
+            <p class="nota-texto">{{ o.descripcionFalla }}</p>
+          </div>
         }
       </div>
     </section>
@@ -273,7 +276,10 @@
 
               <!-- Descripción: información complementaria, en su propio renglón -->
               @if (servicio.descripcion && !enCurso) {
-                <p class="trabajo-desc">{{ servicio.descripcion }}</p>
+                <div class="nota trabajo-nota">
+                  <span class="nota-quien"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /></svg>Nota del trabajo</span>
+                  <p class="nota-texto">{{ servicio.descripcion }}</p>
+                </div>
               }
 
               <!-- Repuestos de este trabajo: nombre, cantidad y procedencia -->
@@ -402,7 +408,10 @@
                     </button>
                   </div>
                 } @else if (servicio.descripcion) {
-                  <p class="nota-solo">{{ servicio.descripcion }}</p>
+                  <div class="nota">
+                    <span class="nota-quien"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /></svg>Nota del trabajo</span>
+                    <p class="nota-texto">{{ servicio.descripcion }}</p>
+                  </div>
                 }
 
                 @if (fotosT.length > 0) {
@@ -519,9 +528,9 @@
           <div><dt>Responsable</dt><dd>{{ o.nombreAdministrador }}</dd></div>
         </dl>
         @if (o.observaciones) {
-          <div class="dato-orden">
-            <span>Observaciones</span>
-            <p>{{ o.observaciones }}</p>
+          <div class="nota nota-lateral">
+            <span class="nota-quien"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /></svg>Observaciones de la orden</span>
+            <p class="nota-texto">{{ o.observaciones }}</p>
           </div>
         }
       </section>
@@ -607,7 +616,12 @@
         @for (z of zonasMarcadas(); track z.zonaObsId; let i = $index) {
           <span class="zona-orden">
             <strong>{{ i + 1 }}</strong>
-            <span>{{ etiquetaZona(z.zona) }} · {{ textoZona(z.estado) }}{{ z.detalle ? ' — ' + z.detalle : '' }}</span>
+            <span class="zona-orden-textos">
+              <span><b>{{ etiquetaZona(z.zona) }}</b> · {{ textoZona(z.estado) }}</span>
+              @if (z.detalle) {
+                <span class="zona-orden-detalle">{{ z.detalle }}</span>
+              }
+            </span>
           </span>
         }
         <div class="pie-estado">

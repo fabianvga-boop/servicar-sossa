@@ -488,4 +488,20 @@
 .categorias-compat a:hover { border-color: var(--gris-400); color: var(--ink); }
 .categorias-compat span { font-family: var(--fuente-mono, 'Geist Mono', monospace); color: var(--gris-500); }
 .repuesto-fila-categoria { font-size: 12px; color: var(--gris-500); }
-.ficha-uso-general { margin: 0; padding: 12px 20px 16px; border-top: 1px solid var(--gris-100); font-size: 12.5px; color: var(--gris-500); }
+.ficha-uso-general { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 12px 20px 16px; border-top: 1px solid var(--gris-100); font-size: 13.5px; color: var(--ink); }
+.ficha-uso-general b { font-weight: 600; }
+.ficha-uso-general a { flex: none; font-weight: 600; color: var(--brand); }
+
+/* Estado vacío que pide una acción, en vez de un párrafo gris */
+.ficha-vacio { display: flex; align-items: flex-start; gap: 12px; margin: 0 20px 16px; padding: 12px 14px; border: 1px dashed var(--gris-300); border-radius: var(--radio-md); }
+.ficha-vacio-ico { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: var(--radio-xs); background: var(--gris-100); color: var(--gris-500); }
+.ficha-vacio-ico svg { width: 16px; height: 16px; }
+.ficha-vacio-textos { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
+.ficha-vacio-textos b { font-size: 14px; font-weight: 600; color: var(--ink); }
+.ficha-vacio-textos > span { font-size: 13px; color: var(--gris-500); }
+.ficha-vacio-btn { margin-top: 8px; }
+
+/* Línea de tiempo: el monto a la derecha y lo que contó el cliente como su nota */
+.evento-titulo { flex-wrap: wrap; }
+.evento-monto { margin-left: auto; font-weight: 600; white-space: nowrap; }
+.evento-nota { margin: 6px 0 2px; }

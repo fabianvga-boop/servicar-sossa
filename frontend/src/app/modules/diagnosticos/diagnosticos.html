@@ -101,11 +101,11 @@
 
         <span class="celda-texto ocultar-movil" [title]="d.descripcionFalla">
           @if (d.observacionesTecnicas) {
-            <strong>{{ d.observacionesTecnicas }}</strong>
+            <strong class="completa">{{ d.observacionesTecnicas }}</strong>
           } @else {
-            <strong class="texto-tenue">Sin diagnosticar</strong>
+            <span class="insignia insignia-naranja con-icono ic-reloj">Sin diagnosticar</span>
           }
-          <span class="celda-sub">Cliente: {{ d.descripcionFalla }}</span>
+          <span class="celda-sub completa"><b>Cliente:</b> {{ d.descripcionFalla }}</span>
         </span>
 
         <span class="a-la-derecha">
@@ -240,10 +240,18 @@
           {{ descargando() === d.diagnosticoId ? 'Generando…' : 'Ver PDF' }}
         </button>
       </div>
-      <div class="resp-linea">{{ d.descripcionFalla }}</div>
-      @if (d.observacionesTecnicas) {
-        <div class="resp-linea resp-linea-tenue">{{ d.observacionesTecnicas }}</div>
-      }
+      <div class="resp-notas">
+        <div class="nota nota-cliente">
+          <span class="nota-quien"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.5A8 8 0 1 1 21 12z" /></svg>El cliente contó</span>
+          <p class="nota-texto">{{ d.descripcionFalla }}</p>
+        </div>
+        @if (d.observacionesTecnicas) {
+          <div class="nota">
+            <span class="nota-quien"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /></svg>Diagnóstico del mecánico</span>
+            <p class="nota-texto">{{ d.observacionesTecnicas }}</p>
+          </div>
+        }
+      </div>
       <div class="resp-total">
         <strong>Total del presupuesto</strong>
         <span class="resp-monto">{{ d.montoEstimado | bs }}</span>

@@ -125,3 +125,11 @@
 }
 
 .trabajo-acciones-lado { justify-content: flex-end; margin-top: 2px; }
+
+/* Notas escritas por personas dentro de la orden (pieza global .nota) */
+.nota-pidio { margin-top: 10px; }
+.trabajo-nota { margin-top: 10px; max-width: 70ch; }
+.nota-lateral { margin-top: 14px; }
+.zona-orden-textos { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.zona-orden-textos b { font-weight: 600; color: var(--ink); }
+.zona-orden-detalle { font-size: 13.5px; color: var(--ink); }

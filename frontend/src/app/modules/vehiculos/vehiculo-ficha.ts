@@ -43,7 +43,12 @@ interface ItemLinea {
   tipo: 'Diagnostico' | 'Orden';
   id: string;
   titulo: string;
+  /** Estado en palabras ("En proceso", "No se hizo el trabajo"); puede ir vacío. */
   detalle: string;
+  /** Lo que contó el cliente, para mostrarlo como su nota. */
+  nota?: string;
+  /** Monto ya formateado: va aparte, a la derecha del título. */
+  monto?: string;
   fecha: string;
   /** Verde lo terminado, ámbar lo que sigue abierto, rojo lo que no se hizo. */
   tono: 'verde' | 'naranja' | 'roja' | 'gris';
@@ -217,46 +222,39 @@ export class VehiculoFicha {
 
   private itemDiagnostico(e: EventoHistorial, d: Diagnostico | undefined): ItemLinea {
     const base = { clave: 'D' + e.id, tipo: e.tipo, id: e.id, fecha: e.fecha };
-    const monto = d?.montoEstimado ? ` · ${this.bs.transform(d.montoEstimado)}` : '';
-    const detalle = e.detalle + monto;
+    const monto = d?.montoEstimado ? this.bs.transform(d.montoEstimado) : undefined;
+    const nota = e.detalle?.trim() || undefined;
+    const detalle = '';
 
-    if (e.estado === 'Anulado') return { ...base, titulo: 'Diagnóstico anulado', detalle, tono: 'roja' };
-    if (!d) return { ...base, titulo: 'Diagnóstico', detalle, tono: 'gris' };
+    if (e.estado === 'Anulado') return { ...base, titulo: 'Diagnóstico anulado', detalle, nota, monto, tono: 'roja' };
+    if (!d) return { ...base, titulo: 'Diagnóstico', detalle, nota, monto, tono: 'gris' };
     if (d.ordenId || d.respuestaCliente === RespuestaCliente.Aprobado) {
-      return { ...base, titulo: 'Presupuesto aprobado', detalle, tono: 'verde' };
+      return { ...base, titulo: 'Presupuesto aprobado', detalle, nota, monto, tono: 'verde' };
     }
     if (d.respuestaCliente === RespuestaCliente.Rechazado) {
-      return { ...base, titulo: 'Presupuesto rechazado', detalle, tono: 'roja' };
+      return { ...base, titulo: 'Presupuesto rechazado', detalle, nota, monto, tono: 'roja' };
     }
-    return { ...base, titulo: 'Presupuesto esperando respuesta', detalle, tono: 'naranja' };
+    return { ...base, titulo: 'Presupuesto esperando respuesta', detalle, nota, monto, tono: 'naranja' };
   }
 
   private itemOrden(e: EventoHistorial, o: Orden | undefined): ItemLinea {
     const base = { clave: 'O' + e.id, tipo: e.tipo, id: e.id, fecha: e.fecha };
-    const total = o ? this.bs.transform(o.total) : e.detalle;
+    const total = o ? this.bs.transform(o.total) : undefined;
     const falla = o?.descripcionFalla?.trim();
+
+    const nota = falla || undefined;
 
     switch (e.estado) {
       case 'Cancelada':
-        return {
-          ...base,
-          titulo: 'Orden cancelada',
-          detalle: falla ? `${falla} · no se hizo el trabajo` : 'No se hizo el trabajo',
-          tono: 'roja',
-        };
+        return { ...base, titulo: 'Orden cancelada', detalle: 'No se hizo el trabajo', nota, tono: 'roja' };
       case 'Cerrada':
-        return { ...base, titulo: falla || 'Orden cerrada', detalle: `Cerrada · ${total}`, tono: 'verde' };
+        return { ...base, titulo: 'Orden cerrada', detalle: '', nota, monto: total, tono: 'verde' };
       case 'Finalizada':
-        return {
-          ...base,
-          titulo: falla || 'Orden finalizada',
-          detalle: `Lista para entregar · ${total}`,
-          tono: 'verde',
-        };
+        return { ...base, titulo: 'Lista para entregar', detalle: '', nota, monto: total, tono: 'verde' };
       case 'EnProceso':
-        return { ...base, titulo: falla || 'Orden en proceso', detalle: `En proceso · ${total}`, tono: 'naranja' };
+        return { ...base, titulo: 'Orden en proceso', detalle: '', nota, monto: total, tono: 'naranja' };
       default:
-        return { ...base, titulo: falla || 'Orden en espera', detalle: `En espera · ${total}`, tono: 'naranja' };
+        return { ...base, titulo: 'Orden en espera', detalle: '', nota, monto: total, tono: 'naranja' };
     }
   }
 

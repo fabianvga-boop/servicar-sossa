@@ -150,7 +150,7 @@
 }
 .nota-abrir svg { width: 18px; height: 18px; flex-shrink: 0; color: var(--gris-400); }
 .nota-vacia { color: var(--gris-400); }
-.nota-texto { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nota-abrir .nota-texto { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nota-botones { display: flex; align-items: center; gap: 8px; }
 .nota-solo { margin: 0; font-size: 14px; color: var(--ink-soft); }
 
