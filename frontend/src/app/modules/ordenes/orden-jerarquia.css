@@ -51,3 +51,77 @@
   .btn-empezar { grid-column: 1 / -1; width: 100%; justify-content: center; }
   .trabajo > .insignia { display: none; }
 }
+
+/* ------------------------------------------------ Jerarquía de cada trabajo
+   Título y atributos arriba; la descripción, aparte y en gris; los repuestos
+   como filas con nombre, cantidad y procedencia; el responsable como persona;
+   y a la derecha el precio como bloque con su estado. */
+.trabajo { align-items: start; }
+.trabajo-marca { margin-top: 2px; }
+.trabajo-textos { gap: 0; }
+.trabajo-titulo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.trabajo-titulo strong { font-size: 17px; font-weight: 600; letter-spacing: -0.005em; }
+.trabajo.hecho .trabajo-titulo strong { color: var(--ink); }
+.trabajo.actual .trabajo-titulo strong { font-size: 20px; }
+.etiqueta-trabajo { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 9px; border-radius: 999px; background: var(--gris-100); color: var(--ink-soft); font-size: 12px; font-weight: 500; white-space: nowrap; }
+.etiqueta-trabajo svg { width: 12px; height: 12px; }
+.trabajo-precio-curso { margin-left: auto; font-size: 15px; font-weight: 600; }
+
+.trabajo-desc { margin: 6px 0 0; max-width: 62ch; font-size: 13.5px; line-height: 1.5; color: var(--gris-500); }
+
+.trabajo-piezas { display: flex; flex-direction: column; gap: 7px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--gris-100); }
+.trabajo-pieza { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 9px; min-width: 0; }
+.trabajo-pieza b { font-size: 14px; font-weight: 500; min-width: 0; }
+.trabajo-pieza-ico { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: var(--radio-xs); background: var(--gris-100); color: var(--gris-500); }
+.trabajo-pieza-ico svg { width: 15px; height: 15px; }
+.trabajo-pieza-origen { font-size: 12px; color: var(--gris-500); }
+.etiqueta-cantidad { flex: none; padding: 1px 7px; border-radius: 6px; background: var(--gris-100); color: var(--ink-soft); font-family: var(--fuente-mono, 'Geist Mono', monospace); font-size: 12px; font-weight: 500; }
+
+.trabajo-pie { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
+.persona-chip { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.persona-avatar { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--gris-200); background: var(--gris-100); color: var(--ink-soft); font-size: 10.5px; font-weight: 600; letter-spacing: 0.02em; }
+.persona-textos { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.persona-textos small { font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--gris-400); }
+.persona-textos b { font-size: 13px; font-weight: 600; color: var(--ink); }
+/* Editar y Quitar: enlaces discretos en gris; Quitar se vuelve rojo al pasar el mouse */
+.trabajo-pie .trabajo-enlaces .btn-enlace,
+.trabajo-acciones-lado .btn-enlace,
+.repuesto-usado .trabajo-enlaces .btn-enlace { color: var(--gris-500); font-size: 12.5px; }
+.trabajo-acciones-lado .btn-enlace:hover,
+.trabajo-pie .trabajo-enlaces .btn-enlace:hover,
+.repuesto-usado .trabajo-enlaces .btn-enlace:hover { color: var(--ink); }
+.trabajo-acciones-lado .texto-rojo:hover,
+.trabajo-pie .trabajo-enlaces .texto-rojo:hover,
+.repuesto-usado .trabajo-enlaces .texto-rojo:hover { color: var(--brand); }
+.repuesto-usado .trabajo-enlaces { margin-top: 4px; }
+
+/* Columna derecha de ancho fijo: precio, estado y acciones quedan alineados entre trabajos */
+@media (min-width: 721px) {
+  .trabajo:not(.actual) { grid-template-columns: 44px minmax(0, 1fr) 150px; }
+}
+
+.trabajo-aside { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; text-align: right; }
+.trabajo-precio-bloque { display: flex; flex-direction: column; align-items: flex-end; }
+.trabajo-precio-bloque .trabajo-precio { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; }
+.trabajo-precio-cap { margin-top: -1px; font-size: 11px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; color: var(--gris-400); white-space: nowrap; }
+
+/* Repuestos usados (columna lateral) */
+.repuesto-usado { padding: 12px 0; border-top: 1px solid var(--gris-100); }
+.repuesto-usado:first-of-type { padding-top: 4px; border-top: 0; }
+.repuesto-usado-nombre { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 7px; }
+.repuesto-usado-nombre strong { font-size: 14px; font-weight: 600; }
+.repuesto-usado-datos { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 2px; font-size: 12.5px; color: var(--gris-500); }
+.repuesto-usado-para { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
+.repuesto-usado-para svg { flex: none; width: 12px; height: 12px; }
+.repuesto-usado-precio { font-size: 14px; font-weight: 600; white-space: nowrap; }
+.repuesto-usado-precio .texto-tenue { font-family: var(--fuente, inherit); font-size: 12.5px; font-weight: 500; }
+
+@media (max-width: 720px) {
+  .trabajo { align-items: start; }
+  .trabajo-aside { grid-column: 2; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 10px; text-align: left; }
+  .trabajo-precio-bloque { flex-direction: row; align-items: baseline; gap: 8px; }
+  .trabajo-precio-cap { margin: 0; }
+  .trabajo.actual .trabajo-titulo strong { font-size: 18px; }
+}
+
+.trabajo-acciones-lado { justify-content: flex-end; margin-top: 2px; }

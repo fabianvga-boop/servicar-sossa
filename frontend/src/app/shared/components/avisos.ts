@@ -28,6 +28,10 @@ const TITULOS: Record<TipoAviso, string> = {
           class="aviso"
           [class]="'aviso-' + aviso.tipo"
           [attr.role]="aviso.tipo === 'error' || aviso.tipo === 'advertencia' ? 'alert' : 'status'"
+          (mouseenter)="notificacion.pausar(aviso.id)"
+          (mouseleave)="notificacion.reanudar(aviso.id)"
+          (focusin)="notificacion.pausar(aviso.id)"
+          (focusout)="notificacion.reanudar(aviso.id)"
         >
           <span class="icono" aria-hidden="true">
             @switch (aviso.tipo) {
@@ -203,6 +207,9 @@ const TITULOS: Record<TipoAviso, string> = {
       animation-timing-function: linear;
       animation-fill-mode: forwards;
     }
+
+    .aviso:hover .tiempo,
+    .aviso:focus-within .tiempo { animation-play-state: paused; }
 
     @keyframes agotar {
       from { transform: scaleX(1); }

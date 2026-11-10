@@ -34,11 +34,20 @@ export class NotificacionService {
 
   error(mensaje: string): void {
     // Los errores se quedan más tiempo: suelen requerir que el usuario los lea.
-    this.mostrar('error', mensaje, 8000);
+    this.mostrar('error', mensaje, this.tiempoDeLectura(mensaje, 8000));
   }
 
   advertencia(mensaje: string): void {
-    this.mostrar('advertencia', mensaje, 6000);
+    this.mostrar('advertencia', mensaje, this.tiempoDeLectura(mensaje, 6000));
+  }
+
+  /**
+   * Un aviso largo (una regla del taller que explica qué hacer) necesita tiempo para
+   * leerse: la duración crece con el largo del mensaje, hasta un tope. Además, el aviso
+   * se detiene mientras el mouse está encima (ver pausar y reanudar).
+   */
+  private tiempoDeLectura(mensaje: string, minimoMs: number): number {
+    return Math.min(25000, Math.max(minimoMs, 3000 + mensaje.length * 75));
   }
 
   info(mensaje: string): void {
@@ -58,8 +67,31 @@ export class NotificacionService {
   }
 
   cerrar(id: number): void {
+    this.temporizadores.delete(id);
     this._avisos.update((lista) => lista.filter((aviso) => aviso.id !== id));
   }
+
+  /** Mientras se lee (mouse encima) el aviso no se cierra. */
+  pausar(id: number): void {
+    const t = this.temporizadores.get(id);
+    if (!t || t.pausado) return;
+    clearTimeout(t.manija);
+    t.restante = Math.max(1500, t.restante - (Date.now() - t.inicio));
+    t.pausado = true;
+  }
+
+  reanudar(id: number): void {
+    const t = this.temporizadores.get(id);
+    if (!t || !t.pausado) return;
+    t.pausado = false;
+    t.inicio = Date.now();
+    t.manija = setTimeout(() => this.cerrar(id), t.restante);
+  }
+
+  private readonly temporizadores = new Map<
+    number,
+    { manija: ReturnType<typeof setTimeout>; restante: number; inicio: number; pausado: boolean }
+  >();
 
   /** Ejecuta la acción del aviso y lo cierra: ya cumplió su función. */
   ejecutarAccion(aviso: Aviso): void {
@@ -77,6 +109,11 @@ export class NotificacionService {
 
     this._avisos.update((lista) => [...lista, { id, tipo, mensaje, accion, duracionMs }]);
 
-    setTimeout(() => this.cerrar(id), duracionMs);
+    this.temporizadores.set(id, {
+      manija: setTimeout(() => this.cerrar(id), duracionMs),
+      restante: duracionMs,
+      inicio: Date.now(),
+      pausado: false,
+    });
   }
 }

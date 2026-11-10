@@ -939,6 +939,13 @@ public class OrdenService(
                 ordenId, servicio, repuesto, reemplazada?.OrdenRepuestoId, ct);
             if (errorRepetido is not null) return errorRepetido;
 
+            if (servicio is not null)
+            {
+                var errorParecido = await ValidarPiezaParecidaAsync(
+                    servicio, repuesto.Nombre, soloEscritasAMano: true, reemplazada?.OrdenRepuestoId, ct);
+                if (errorParecido is not null) return errorParecido;
+            }
+
             linea.RepuestoId = repuesto.RepuestoId;
             // Congela el precio de venta vigente al momento del consumo. Solo el
             // Administrador puede cobrar otro precio que el del inventario.
@@ -952,6 +959,10 @@ public class OrdenService(
             // Cliente trae / compra externa: no toca inventario y lleva descripción libre.
             if (servicio is not null)
             {
+                var errorParecido = await ValidarPiezaParecidaAsync(
+                    servicio, dto.Descripcion!.Trim(), soloEscritasAMano: false, reemplazada?.OrdenRepuestoId, ct);
+                if (errorParecido is not null) return errorParecido;
+
                 var errorProcedencia = await ValidarOtraProcedenciaAsync(
                     servicio, dto.Descripcion!.Trim(), reemplazada?.OrdenRepuestoId, ct);
                 if (errorProcedencia is not null) return errorProcedencia;
@@ -1157,6 +1168,67 @@ public class OrdenService(
                     $"“{NombreDe(servicio)}” ya lleva “{otra.Descripcion}” ({otra.Cantidad}), " +
                     $"{(otra.Origen == OrigenRepuesto.ClienteTrae ? "que trajo el cliente" : "comprado afuera")}. " +
                     $"Si va a usar “{repuesto.Nombre}” en su lugar, reemplace esa línea.");
+        }
+
+        return null;
+    }
+
+    private static readonly HashSet<string> PalabrasVacias =
+        ["de", "del", "la", "el", "los", "las", "para", "y", "con", "un", "una", "en", "por"];
+
+    /// <summary>Palabras del nombre de una pieza, sin tildes, mayúsculas ni palabras de relleno.</summary>
+    private static HashSet<string> PalabrasDe(string nombre)
+    {
+        var sinTildes = new string(nombre.Normalize(System.Text.NormalizationForm.FormD)
+            .Where(c => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c)
+                        != System.Globalization.UnicodeCategory.NonSpacingMark)
+            .ToArray());
+
+        return sinTildes.ToLowerInvariant()
+            .Split([' ', '-', '/', ',', '.', '(', ')', '_'], StringSplitOptions.RemoveEmptyEntries)
+            .Where(p => p.Length > 1 && !PalabrasVacias.Contains(p))
+            .ToHashSet();
+    }
+
+    /// <summary>
+    /// Una pieza escrita a mano no puede repetir otra del mismo trabajo con solo cambiarle el
+    /// nombre ("Caja manual para Changan" y "Caja manual para Changan Americana" son la misma
+    /// caja): si las palabras de un nombre están todas en el otro, se pide editar o reemplazar
+    /// la línea que ya está. Con soloEscritasAMano se compara solo con lo escrito a mano (al
+    /// agregar algo del almacén); si no, con todo lo que lleva el trabajo.
+    /// </summary>
+    private async Task<Result<OrdenDetalleResponseDto>?> ValidarPiezaParecidaAsync(
+        OrdenServicio servicio, string nombreNuevo, bool soloEscritasAMano, string? ignorarLineaId,
+        CancellationToken ct)
+    {
+        var nuevas = PalabrasDe(nombreNuevo);
+        if (nuevas.Count == 0) return null;
+
+        var lineas = (await ordenRepuestos.FindAsync(
+                r => r.OrdenServicioId == servicio.OrdenServicioId
+                     && r.OrdenRepuestoId != ignorarLineaId, ct))
+            .ToList();
+
+        foreach (var linea in lineas)
+        {
+            string? nombrePrevio;
+            if (linea.Origen == OrigenRepuesto.Inventario)
+            {
+                if (soloEscritasAMano) continue;
+                nombrePrevio = (await repuestos.FirstOrDefaultAsync(r => r.RepuestoId == linea.RepuestoId, ct))?.Nombre;
+            }
+            else
+            {
+                nombrePrevio = linea.Descripcion;
+            }
+
+            if (string.IsNullOrWhiteSpace(nombrePrevio)) continue;
+            var previas = PalabrasDe(nombrePrevio);
+            if (previas.Count == 0 || !(previas.IsSubsetOf(nuevas) || nuevas.IsSubsetOf(previas))) continue;
+
+            return Result<OrdenDetalleResponseDto>.Conflicto(
+                $"“{NombreDe(servicio)}” ya lleva “{nombrePrevio}” ({linea.Cantidad}), que se parece a “{nombreNuevo}”. " +
+                "Si hace falta más cantidad, edite esa línea; si va a usar la otra pieza en su lugar, reemplace esa línea.");
         }
 
         return null;

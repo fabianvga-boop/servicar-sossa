@@ -250,55 +250,97 @@
               @if (enCurso) {
                 <span class="trabajo-en-curso">En curso</span>
               }
-              <strong>
-                {{ servicio.nombreServicio }}
+
+              <!-- Título y atributos del trabajo -->
+              <div class="trabajo-titulo">
+                <strong>{{ servicio.nombreServicio }}</strong>
                 @if (!servicio.servicioId) {
                   <span class="insignia insignia-gris etiqueta-chica">Fuera de catálogo</span>
                 }
-              </strong>
-              <small>
-                @for (r of suyos; track r.ordenRepuestoId) {
-                  <span class="chip-trabajo verde">{{ r.nombreRepuesto }} × {{ r.cantidad }}</span>
-                }
-                @if (servicio.requiereRepuesto && suyos.length === 0 && hecho) {
-                  <span class="chip-trabajo ambar">Sin repuesto (excepción)</span>
-                } @else if (!servicio.requiereRepuesto && !enCurso) {
-                  <span>{{ servicio.descripcion || 'Solo mano de obra' }}</span>
-                }
-                @if (servicio.requiereRepuesto && servicio.descripcion && !enCurso) {
-                  <span>{{ servicio.descripcion }}</span>
+                @if (!servicio.requiereRepuesto) {
+                  <span class="etiqueta-trabajo">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z" /></svg>
+                    Solo mano de obra
+                  </span>
                 }
                 @if (!servicio.servicioId && servicio.precio === 0) {
                   <span class="chip-trabajo ambar">Falta el precio</span>
                 }
-                @if (o.mecanicos.length > 1) {
-                  <span>· {{ servicio.nombreMecanico }}</span>
+                @if (enCurso && puedeGestionar()) {
+                  <span class="monto-mono trabajo-precio-curso">{{ servicio.precio | bs }}</span>
                 }
-                @if (puedeGestionar()) {
-                  <span class="monto-mono trabajo-precio">{{ servicio.precio | bs }}</span>
-                }
-              </small>
-              @if (!enCurso && (edita || (puedeGestionar() && editableTrabajo()))) {
-                <span class="trabajo-enlaces no-imprimir">
-                  @if (puedeGestionar() && editableTrabajo()) {
-                    <button type="button" class="btn-enlace" [disabled]="procesando()" (click)="abrirEditarServicio(servicio)">Editar</button>
+              </div>
+
+              <!-- Descripción: información complementaria, en su propio renglón -->
+              @if (servicio.descripcion && !enCurso) {
+                <p class="trabajo-desc">{{ servicio.descripcion }}</p>
+              }
+
+              <!-- Repuestos de este trabajo: nombre, cantidad y procedencia -->
+              @if (suyos.length > 0 || (servicio.requiereRepuesto && hecho)) {
+                <div class="trabajo-piezas">
+                  @for (r of suyos; track r.ordenRepuestoId) {
+                    <div class="trabajo-pieza">
+                      <span class="trabajo-pieza-ico" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5z" /><path d="m3 8 9 5 9-5M12 13v8" /></svg>
+                      </span>
+                      <b>{{ r.nombreRepuesto }}</b>
+                      <span class="etiqueta-cantidad">×{{ r.cantidad }}</span>
+                      @if (r.origen !== OrigenRepuesto.Inventario) {
+                        <span class="trabajo-pieza-origen">{{ ETIQUETAS.origenRepuesto[r.origen] }}</span>
+                      }
+                    </div>
                   }
-                  @if (edita) {
-                    <button type="button" class="btn-enlace texto-rojo" [disabled]="procesando()" (click)="quitarServicio(servicio)">Quitar</button>
+                  @if (suyos.length === 0) {
+                    <span class="chip-trabajo ambar">Sin repuesto (excepción)</span>
                   }
-                </span>
+                </div>
+              }
+
+              <!-- Responsable y acciones del trabajo -->
+              @if (puedeGestionar() || o.mecanicos.length > 1) {
+                <div class="trabajo-pie">
+                  <span class="persona-chip">
+                    <span class="persona-avatar" aria-hidden="true">{{ iniciales(servicio.nombreMecanico) }}</span>
+                    <span class="persona-textos">
+                      <small>Responsable</small>
+                      <b>{{ servicio.nombreMecanico }}</b>
+                    </span>
+                  </span>
+                </div>
               }
             </div>
 
-            @if (!enCurso && avanza && servicio.estado === EstadoServicioOrden.Pendiente) {
-              <button type="button" class="btn-empezar no-imprimir" [disabled]="procesando()" (click)="avanzarServicio(servicio.ordenServicioId, EstadoServicioOrden.EnProceso)">
-                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z" /></svg>
-                Empezar
-              </button>
-            } @else if (hecho) {
-              <span class="insignia insignia-verde con-icono ic-ok">Hecho</span>
-            } @else if (!enCurso) {
-              <span class="insignia insignia-gris con-icono ic-reloj">Pendiente</span>
+            <!-- Precio (solo el Administrador) y estado, a la derecha -->
+            @if (!enCurso) {
+              <div class="trabajo-aside">
+                @if (puedeGestionar()) {
+                  <span class="trabajo-precio-bloque">
+                    <span class="monto-mono trabajo-precio">{{ servicio.precio | bs }}</span>
+                    <span class="trabajo-precio-cap">Mano de obra</span>
+                  </span>
+                }
+                @if (avanza && servicio.estado === EstadoServicioOrden.Pendiente) {
+                  <button type="button" class="btn-empezar no-imprimir" [disabled]="procesando()" (click)="avanzarServicio(servicio.ordenServicioId, EstadoServicioOrden.EnProceso)">
+                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z" /></svg>
+                    Empezar
+                  </button>
+                } @else if (hecho) {
+                  <span class="insignia insignia-verde con-icono ic-ok">Hecho</span>
+                } @else {
+                  <span class="insignia insignia-gris con-icono ic-reloj">Pendiente</span>
+                }
+                @if (edita || (puedeGestionar() && editableTrabajo())) {
+                  <span class="trabajo-enlaces trabajo-acciones-lado no-imprimir">
+                    @if (puedeGestionar() && editableTrabajo()) {
+                      <button type="button" class="btn-enlace" [disabled]="procesando()" (click)="abrirEditarServicio(servicio)">Editar</button>
+                    }
+                    @if (edita) {
+                      <button type="button" class="btn-enlace texto-rojo" [disabled]="procesando()" (click)="quitarServicio(servicio)">Quitar</button>
+                    }
+                  </span>
+                }
+              </div>
             }
 
             <!-- El trabajo en curso trae todo lo que hace falta para terminarlo. -->
@@ -500,14 +542,23 @@
               <span class="repuesto-miniatura" aria-hidden="true">{{ iniciales(repuesto.nombreRepuesto) }}</span>
             }
             <span class="repuesto-usado-textos">
-              <strong>{{ repuesto.nombreRepuesto }} × {{ repuesto.cantidad }}</strong>
-              <small>
-                @if (repuesto.origen !== OrigenRepuesto.Inventario) {
-                  {{ ETIQUETAS.origenRepuesto[repuesto.origen] }}
-                } @else if (repuesto.nombreServicio) {
-                  {{ repuesto.nombreServicio }}
-                }
-              </small>
+              <span class="repuesto-usado-nombre">
+                <strong>{{ repuesto.nombreRepuesto }}</strong>
+                <span class="etiqueta-cantidad">×{{ repuesto.cantidad }}</span>
+              </span>
+              @if (repuesto.nombreServicio || repuesto.origen !== OrigenRepuesto.Inventario) {
+                <span class="repuesto-usado-datos">
+                  @if (repuesto.nombreServicio) {
+                    <span class="repuesto-usado-para">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z" /></svg>
+                      {{ repuesto.nombreServicio }}
+                    </span>
+                  }
+                  @if (repuesto.origen !== OrigenRepuesto.Inventario) {
+                    <span class="chip-trabajo ambar">{{ ETIQUETAS.origenRepuesto[repuesto.origen] }}</span>
+                  }
+                </span>
+              }
               @if (puedeTrabajar() && editableTrabajo()) {
                 <span class="trabajo-enlaces no-imprimir">
                   <button type="button" class="btn-enlace" [disabled]="procesando()" (click)="abrirEditarRepuesto(repuesto)">Editar</button>
@@ -515,7 +566,7 @@
                 </span>
               }
             </span>
-            <span class="monto-mono">
+            <span class="monto-mono repuesto-usado-precio">
               @if (repuesto.origen === OrigenRepuesto.ClienteTrae) {
                 <span class="texto-tenue">Sin cargo</span>
               } @else {

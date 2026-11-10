@@ -206,28 +206,6 @@
   width: auto;
 }
 
-/* Migas: grupo del menú / sección activa. Complementan (no reemplazan) la
-   píldora .activo del lateral; se recortan antes que empujar al buscador. */
-.migas-barra {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  flex-shrink: 1;
-  white-space: nowrap;
-  font-size: 14px;
-}
-
-.migas-grupo { color: var(--gris-500); }
-.migas-sep { color: var(--gris-300); }
-
-.titulo-seccion {
-  max-width: 220px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-weight: 600;
-  color: var(--ink);
-}
 
 /* ---------------------------------------------------- Buscador global */
 
@@ -460,10 +438,7 @@
 
   .usuario-datos { display: none; }
 
-  /* En móvil no hay ancho para las migas además del buscador y la cuenta. */
-  .migas-barra { display: none; }
-
-  .usuario-btn { padding: 0; border: 0; }
+    .usuario-btn { padding: 0; border: 0; }
   .usuario-flecha { display: none; }
 
   /* En móvil el disparador se reduce al ícono: no hay ancho para la leyenda */
