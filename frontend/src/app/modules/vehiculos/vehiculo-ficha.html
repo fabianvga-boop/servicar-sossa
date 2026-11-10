@@ -44,7 +44,7 @@
   <section class="ficha-indicadores">
     <div class="ficha-indicador">
       <span>Kilometraje</span>
-      <span class="monto-mono">{{ v.kilometraje != null ? (v.kilometraje | number) + ' km' : '—' }}</span>
+      <span class="monto-mono">{{ v.kilometraje ? (v.kilometraje | number) + ' km' : 'Sin registrar' }}</span>
     </div>
     <div class="ficha-indicador">
       <span>Visitas al taller</span>
@@ -279,7 +279,7 @@
           <div><dt>Modelo</dt><dd>{{ v.modelo }}</dd></div>
           <div><dt>Año</dt><dd>{{ v.anio ?? '—' }}</dd></div>
           <div><dt>Color</dt><dd>{{ v.color || '—' }}</dd></div>
-          <div><dt>Kilometraje</dt><dd class="monto-mono">{{ v.kilometraje != null ? (v.kilometraje | number) + ' km' : '—' }}</dd></div>
+          <div><dt>Kilometraje</dt><dd class="monto-mono">{{ v.kilometraje ? (v.kilometraje | number) + ' km' : 'Sin registrar' }}</dd></div>
           <div><dt>N.º de motor</dt><dd class="monto-mono">{{ v.numMotor || '—' }}</dd></div>
           <div><dt>N.º de chasis</dt><dd class="monto-mono">{{ v.numChasis || '—' }}</dd></div>
           <div><dt>Dueño</dt><dd>{{ v.nombreCliente }}</dd></div>

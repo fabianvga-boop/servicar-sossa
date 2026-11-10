@@ -482,6 +482,9 @@
 
 /* "Volver a Clientes": al pasar de un módulo a otro por un enlace. */
 .volver-modulo {
+  /* Por encima de la cabecera fija de la pantalla, que sube con margen negativo y lo tapaba. */
+  position: relative;
+  z-index: 31;
   display: inline-flex;
   align-items: center;
   gap: 6px;

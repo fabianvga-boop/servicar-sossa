@@ -6,6 +6,7 @@
 .etapas-diag i { flex: 1; height: 4px; border-radius: 3px; background: var(--gris-200); }
 .etapas-diag i.on { background: var(--c); }
 .etapas-diag.tono-gris { --c: var(--gris-400); }
+.etapas-diag.tono-azul { --c: var(--azul-600); }
 .etapas-diag.tono-naranja { --c: var(--naranja-600); }
 .etapas-diag.tono-verde { --c: var(--verde-600); }
 .etapas-diag.tono-roja { --c: var(--brand); }

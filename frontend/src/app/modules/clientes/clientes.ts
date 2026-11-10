@@ -220,7 +220,7 @@ export class Clientes {
     color: ['', Validators.maxLength(30)],
     numMotor: ['', Validators.maxLength(50)],
     numChasis: ['', Validators.maxLength(50)],
-    kilometraje: [0, Validators.min(0)],
+    kilometraje: [null as number | null, Validators.min(0)],
   });
 
   // --- Cruces -------------------------------------------------------------------------
@@ -337,8 +337,12 @@ export class Clientes {
       return palabras.every((p) => texto.includes(p));
     });
 
-    // Orden fijo por nombre, como el resto de las tablas (sin ordenar por columna).
-    return lista.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+    // Lo más nuevo arriba: el cliente recién registrado se ve sin buscarlo.
+    return lista.sort(
+      (a, b) =>
+        (b.cliente.fechaRegistro ?? '').localeCompare(a.cliente.fechaRegistro ?? '') ||
+        a.nombre.localeCompare(b.nombre, 'es'),
+    );
   });
 
   protected readonly paginacion = new PaginacionLocal(
@@ -706,7 +710,7 @@ export class Clientes {
     this.formulario.reset();
     this.registrarVehiculo.set(false);
     // El año casi siempre es el actual: se ofrece hecho y solo se corrige si no.
-    this.formularioVehiculo.reset({ kilometraje: 0, anio: new Date().getFullYear() });
+    this.formularioVehiculo.reset({ kilometraje: null, anio: new Date().getFullYear() });
     this.placaActual.set('');
     this.marcaActual.set('');
   }
@@ -788,7 +792,7 @@ export class Clientes {
   /** Ir directo a registrar otro vehículo de este cliente, sin volver a buscarlo. */
   protected agregarVehiculo(cliente: Cliente): void {
     void this.router.navigate(['/vehiculos'], {
-      queryParams: { clienteId: cliente.clienteId, nuevo: true },
+      queryParams: { clienteId: cliente.clienteId, nuevo: true, volver: 'cliente' },
     });
   }
 

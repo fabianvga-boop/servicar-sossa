@@ -139,7 +139,7 @@
               <svg class="icono-odometro" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="m12 14 4-4" /><path d="M3.34 19a10 10 0 1 1 17.32 0" />
               </svg>
-              {{ vehiculo.kilometraje ?? 0 | number }} km
+              {{ vehiculo.kilometraje ? (vehiculo.kilometraje | number) + ' km' : 'Sin km' }}
             </span>
           </span>
           <!-- *appSiRol quita el botón del DOM para quien no sea Administrador -->
@@ -309,7 +309,8 @@
 
         <div class="campo">
           <label for="kilometraje">Kilometraje</label>
-          <input id="kilometraje" type="number" min="0" formControlName="kilometraje" />
+          <input id="kilometraje" type="number" min="0" formControlName="kilometraje" placeholder="No se sabe" />
+          <span class="campo-ayuda">Déjelo vacío si no se sabe.</span>
         </div>
       </div>
 
@@ -317,11 +318,13 @@
         <div class="campo">
           <label for="numMotor">N.º de motor</label>
           <input id="numMotor" formControlName="numMotor" />
+          <span class="campo-ayuda">Opcional. No puede repetirse en otro vehículo.</span>
         </div>
 
         <div class="campo">
           <label for="numChasis">N.º de chasis</label>
           <input id="numChasis" formControlName="numChasis" />
+          <span class="campo-ayuda">Opcional. No puede repetirse en otro vehículo.</span>
         </div>
       </div>
     </form>

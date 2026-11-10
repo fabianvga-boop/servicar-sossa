@@ -146,6 +146,8 @@ export class Vehiculos {
    * o cerrar se vuelve a esa ficha, que es donde estaba quien lo pidió.
    */
   private volverAFicha: string | null = null;
+  /** Cliente desde cuya ficha se pidió "Agregar vehículo": al terminar se vuelve a él. */
+  private volverACliente: string | null = null;
 
   /** Espejo reactivo de la placa: alimenta la vista previa en vivo. */
   protected readonly placaActual = signal('');
@@ -164,7 +166,7 @@ export class Vehiculos {
     color: ['', Validators.maxLength(30)],
     numMotor: ['', Validators.maxLength(50)],
     numChasis: ['', Validators.maxLength(50)],
-    kilometraje: [0, Validators.min(0)],
+    kilometraje: [null as number | null, Validators.min(0)],
   });
 
   /** Escribir menos = elegir de la lista; ver `vehiculo-sugerencias`. */
@@ -287,6 +289,8 @@ export class Vehiculos {
     // "+ Agregar vehículo" desde la ficha de un cliente enlaza con ?clienteId=...&nuevo=true:
     // abre el alta directo con el propietario ya elegido, sin buscarlo de nuevo.
     if (parametros.get('nuevo') === 'true') {
+      // Desde la ficha de un cliente: al guardar o cancelar se vuelve a ese cliente.
+      if (parametros.get('volver') === 'cliente') this.volverACliente = parametros.get('clienteId');
       this.abrirNuevo();
       this.limpiarParametro('nuevo');
     }
@@ -438,7 +442,7 @@ export class Vehiculos {
     this.volverAFicha = null;
     // El año casi siempre es el actual: se ofrece hecho y solo se corrige si no.
     this.formulario.reset({
-      kilometraje: 0,
+      kilometraje: null,
       clienteId: this.clienteFiltro(),
       anio: new Date().getFullYear(),
     });
@@ -459,7 +463,7 @@ export class Vehiculos {
       color: vehiculo.color ?? '',
       numMotor: vehiculo.numMotor ?? '',
       numChasis: vehiculo.numChasis ?? '',
-      kilometraje: vehiculo.kilometraje ?? 0,
+      kilometraje: vehiculo.kilometraje ?? null,
     });
     this.placaActual.set(vehiculo.placa ?? '');
     this.marcaActual.set(vehiculo.marca ?? '');
@@ -495,6 +499,10 @@ export class Vehiculos {
     const ficha = this.volverAFicha;
     this.volverAFicha = null;
     if (ficha) void this.router.navigate(['/vehiculos', ficha]);
+
+    const cliente = this.volverACliente;
+    this.volverACliente = null;
+    if (cliente) void this.router.navigate(['/clientes'], { queryParams: { clienteId: cliente } });
   }
 
   protected guardar(): void {

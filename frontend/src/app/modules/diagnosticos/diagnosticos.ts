@@ -228,10 +228,9 @@ export class Diagnosticos {
         ),
     );
 
-    // Lo pendiente, lo que más lleva esperando primero; el resto, lo más reciente.
-    return PENDIENTES.includes(filtro)
-      ? [...lista].sort((a, b) => a.fecha.localeCompare(b.fecha))
-      : lista;
+    // Lo más reciente arriba: el diagnóstico recién registrado se ve sin buscarlo.
+    // Lo que lleva mucho esperando se distingue por el aviso en rojo de cada fila.
+    return [...lista].sort((a, b) => b.fecha.localeCompare(a.fecha));
   });
 
   protected readonly totalPaginas = computed(() =>
@@ -424,8 +423,10 @@ export class Diagnosticos {
         return 'verde';
       case 'rechazado':
         return 'roja';
-      default:
+      case 'anulado':
         return 'gris';
+      default:
+        return 'azul';
     }
   }
 
@@ -448,7 +449,7 @@ export class Diagnosticos {
     if (d.respuestaCliente === RespuestaCliente.Aprobado) return 'insignia-verde con-icono ic-ok';
     if (d.respuestaCliente === RespuestaCliente.Rechazado) return 'insignia-roja con-icono ic-x';
     return d.montoEstimado == null
-      ? 'insignia-gris con-icono ic-reloj'
+      ? 'insignia-azul con-icono ic-reloj'
       : 'insignia-naranja con-icono ic-reloj vivo';
   }
 

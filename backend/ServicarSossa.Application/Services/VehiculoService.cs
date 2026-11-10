@@ -61,6 +61,9 @@ public class VehiculoService(
             return Result<VehiculoResponseDto>.Conflicto(
                 $"Ya existe un vehículo registrado con la placa '{placa}'.");
 
+        var repetido = await ValidarMotorYChasisAsync(dto.NumMotor, dto.NumChasis, null, ct);
+        if (repetido is not null) return repetido;
+
         var vehiculo = new Vehiculo
         {
             VehiculoId = await generadorId.SiguienteAsync<Vehiculo>("VEH", ct),
@@ -72,7 +75,7 @@ public class VehiculoService(
             Color = string.IsNullOrWhiteSpace(dto.Color) ? null : dto.Color.Trim(),
             NumMotor = string.IsNullOrWhiteSpace(dto.NumMotor) ? null : dto.NumMotor.Trim(),
             NumChasis = string.IsNullOrWhiteSpace(dto.NumChasis) ? null : dto.NumChasis.Trim(),
-            Kilometraje = dto.Kilometraje ?? 0,
+            Kilometraje = dto.Kilometraje,   // null = no se sabe
             FechaRegistro = DateTime.UtcNow
         };
 
@@ -103,6 +106,9 @@ public class VehiculoService(
             return Result<VehiculoResponseDto>.Conflicto(
                 $"Ya existe otro vehículo registrado con la placa '{placa}'.");
 
+        var repetido = await ValidarMotorYChasisAsync(dto.NumMotor, dto.NumChasis, id, ct);
+        if (repetido is not null) return repetido;
+
         vehiculo.Placa = placa;
         vehiculo.Marca = dto.Marca.Trim();
         vehiculo.Modelo = dto.Modelo.Trim();
@@ -110,7 +116,7 @@ public class VehiculoService(
         vehiculo.Color = string.IsNullOrWhiteSpace(dto.Color) ? null : dto.Color.Trim();
         vehiculo.NumMotor = string.IsNullOrWhiteSpace(dto.NumMotor) ? null : dto.NumMotor.Trim();
         vehiculo.NumChasis = string.IsNullOrWhiteSpace(dto.NumChasis) ? null : dto.NumChasis.Trim();
-        if (dto.Kilometraje.HasValue) vehiculo.Kilometraje = dto.Kilometraje;
+        vehiculo.Kilometraje = dto.Kilometraje;   // null = no se sabe
 
         await auditor.RegistrarAsync(
             usuarioId, AccionAuditoria.Editar, "Vehiculo", id,
@@ -308,6 +314,38 @@ public class VehiculoService(
         await zonas.SaveChangesAsync(ct);
 
         return Result<VehiculoZonaResponseDto>.Ok(MapearZona(zona), "Zona registrada correctamente.");
+    }
+
+    /// <summary>
+    /// El n.º de motor y el de chasis identifican a un vehículo: son opcionales, pero
+    /// si se anotan no pueden repetirse en otro. Se comparan sin distinguir mayúsculas.
+    /// </summary>
+    private async Task<Result<VehiculoResponseDto>?> ValidarMotorYChasisAsync(
+        string? numMotor, string? numChasis, string? ignorarVehiculoId, CancellationToken ct)
+    {
+        var motor = numMotor?.Trim().ToUpper();
+        if (!string.IsNullOrEmpty(motor))
+        {
+            var otro = await vehiculos.FirstOrDefaultAsync(
+                v => v.VehiculoId != ignorarVehiculoId && v.NumMotor != null && v.NumMotor.ToUpper() == motor, ct);
+            if (otro is not null)
+                return Result<VehiculoResponseDto>.Conflicto(
+                    $"El n.º de motor '{numMotor!.Trim()}' ya está registrado en el vehículo {otro.Placa}. " +
+                    "Revise el número: no puede repetirse.");
+        }
+
+        var chasis = numChasis?.Trim().ToUpper();
+        if (!string.IsNullOrEmpty(chasis))
+        {
+            var otro = await vehiculos.FirstOrDefaultAsync(
+                v => v.VehiculoId != ignorarVehiculoId && v.NumChasis != null && v.NumChasis.ToUpper() == chasis, ct);
+            if (otro is not null)
+                return Result<VehiculoResponseDto>.Conflicto(
+                    $"El n.º de chasis '{numChasis!.Trim()}' ya está registrado en el vehículo {otro.Placa}. " +
+                    "Revise el número: no puede repetirse.");
+        }
+
+        return null;
     }
 
     private static VehiculoZonaResponseDto MapearZona(VehiculoZonaObservacion z) => new()

@@ -35,7 +35,7 @@ public class VehiculoRequestDto
     public string? NumChasis { get; set; }
 
     [Range(0, int.MaxValue, ErrorMessage = "El kilometraje no puede ser negativo.")]
-    public int? Kilometraje { get; set; } = 0;
+    public int? Kilometraje { get; set; }
 }
 
 /// <summary>USU010 — edición de vehículo. El cliente propietario no se reasigna aquí.</summary>
