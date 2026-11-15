@@ -19,7 +19,7 @@
 --   * Las marcas de tiempo usan TIMESTAMPTZ y se guardan en UTC. Npgsql mapea
 --     DateTime con Kind=Utc directamente a este tipo; NO usar TIMESTAMP simple.
 -- ============================================================================
--- USO (instalacion nueva; crea las 32 tablas del esquema vigente):
+-- USO (instalacion nueva; crea las 31 tablas del esquema vigente):
 --   psql -U postgres -c "CREATE ROLE servicar_app LOGIN PASSWORD '<clave>';"
 --   psql -U postgres -c "CREATE DATABASE servicar_sossa OWNER servicar_app ENCODING 'UTF8';"
 --   psql -U servicar_app -d servicar_sossa -f taller_automotriz_bd.sql
