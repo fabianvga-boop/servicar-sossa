@@ -14,7 +14,8 @@
 .espera-diag.larga { font-weight: 600; color: var(--brand-dk); }
 
 @container (max-width: 1080px) {
-  .fila-diag { grid-template-columns: 104px minmax(150px, 1fr) 150px 190px; }
+  /* Sin la columna de texto quedan 5 celdas: id, vehículo, presupuesto, etapa y siguiente paso */
+  .fila-diag { grid-template-columns: 104px minmax(140px, 1fr) 112px 160px 190px; }
   .fila-diag > .celda-texto { display: none; }
   .fila-diag.cabecera-lista > span:nth-child(3) { display: none; }
 }
