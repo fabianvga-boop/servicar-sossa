@@ -22,14 +22,10 @@ import {
   OrdenDetalle as OrdenDetalleModel,
   OrdenRepuesto,
   OrdenServicio,
-  SugerenciaDiagnostico,
-  SugerenciaRepuesto,
-  SugerenciaServicio,
   TipoServicio,
 } from '../../core/models/taller.model';
 import { Auditoria } from '../../core/models/auditoria.model';
 import { AuditoriaService } from '../../core/services/auditoria.service';
-import { DIAGNOSTICO_ASISTIDO } from '../../core/funciones-activas';
 import { AuthService } from '../../core/services/auth.service';
 import { urlArchivo } from '../../core/services/api-base';
 import { ContadoresService } from '../../core/services/contadores.service';
@@ -257,10 +253,6 @@ export class OrdenDetalle implements ConfirmarSalida {
   /** Lo que muestra el visor: cada foto con su rótulo (el trabajo o "Estado del vehículo") y su fecha. */
   protected readonly fotosVisor = computed<FotoVisor[]>(() => this.fotosGaleria().map(aFotoVisor));
   protected readonly urlArchivo = urlArchivo;
-
-  // Diagnóstico asistido: sugerencias de servicios/repuestos/precio para la
-  // orden, calculadas a partir de la falla del diagnóstico que la originó.
-  protected readonly sugerenciaOrden = signal<SugerenciaDiagnostico | null>(null);
 
   // Inspección del vehículo (USU022-025): el estado de cada parte, para anotar
   // daños/observaciones sin depender solo de texto libre.
@@ -976,7 +968,6 @@ export class OrdenDetalle implements ConfirmarSalida {
     this.cargando.set(true);
     this.fotosVehiculo.set([]);
     this.proforma.set(null);
-    this.sugerenciaOrden.set(null);
 
     this.servicio.getById(id).subscribe({
       next: (orden) => {
@@ -1026,20 +1017,6 @@ export class OrdenDetalle implements ConfirmarSalida {
             .subscribe((proforma) => this.proforma.set(proforma));
         }
 
-        // Diagnóstico asistido: solo tiene sentido mientras se puede seguir
-        // agregando servicios/repuestos (orden abierta/en proceso).
-        const editable = orden.estado === EstadoOrden.Abierta || orden.estado === EstadoOrden.EnProceso;
-
-        if (DIAGNOSTICO_ASISTIDO && orden.diagnosticoId && editable) {
-          this.diagnosticosService
-            .sugerenciasPorId(orden.diagnosticoId)
-            .pipe(catchError(() => of(null)))
-            .subscribe((sugerencia) => {
-              this.sugerenciaOrden.set(
-                sugerencia && sugerencia.basadoEnCasos > 0 ? sugerencia : null,
-              );
-            });
-        }
       },
       error: () => this.cargando.set(false),
     });
@@ -1358,27 +1335,6 @@ export class OrdenDetalle implements ConfirmarSalida {
   protected onRequiereRepuestoCambiado(valor: boolean): void {
     this.nuevoServicio.requiereRepuesto = valor;
     this.nuevoServicio.requiereRepuestoTocado = true;
-  }
-
-  /** Diagnóstico asistido: abre el panel de servicio con la sugerencia ya cargada. */
-  protected abrirPanelServicioSugerido(sugerencia: SugerenciaServicio): void {
-    this.abrirPanelServicio();
-    this.nuevoServicio.delCatalogo = !!sugerencia.servicioId;
-    this.nuevoServicio.servicioId = sugerencia.servicioId ?? '';
-    this.nuevoServicio.nombreLibre = sugerencia.servicioId ? '' : sugerencia.nombre;
-    this.nuevoServicio.precio = sugerencia.precioPromedio;
-    if (!sugerencia.servicioId) this.onNombreLibreCambiado(sugerencia.nombre);
-  }
-
-  /** Diagnóstico asistido: abre el panel de repuesto con la sugerencia ya cargada. */
-  protected abrirPanelRepuestoSugerido(sugerencia: SugerenciaRepuesto): void {
-    this.abrirPanelRepuesto();
-    this.nuevoRepuesto.origen = sugerencia.repuestoId
-      ? OrigenRepuesto.Inventario
-      : OrigenRepuesto.CompraExterna;
-    this.nuevoRepuesto.repuestoId = sugerencia.repuestoId ?? '';
-    this.nuevoRepuesto.descripcion = sugerencia.repuestoId ? '' : sugerencia.nombre;
-    this.nuevoRepuesto.precioUnitario = sugerencia.precioUnitarioPromedio;
   }
 
   /**

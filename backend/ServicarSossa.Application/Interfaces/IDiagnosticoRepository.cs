@@ -33,11 +33,4 @@ public interface IDiagnosticoRepository : IRepository<Diagnostico>
         string? buscar,
         int pagina, int tamanoPagina,
         CancellationToken ct = default);
-
-    /// <summary>
-    /// Diagnóstico asistido: candidatos para comparar contra una falla nueva —
-    /// solo los que ya se convirtieron en orden de trabajo (si no hay orden no
-    /// hay servicios/repuestos reales que sugerir), con esa orden ya cargada.
-    /// </summary>
-    Task<IEnumerable<Diagnostico>> ObtenerConOrdenParaSugerenciasAsync(CancellationToken ct = default);
 }

@@ -3,7 +3,7 @@ using ServicarSossa.Application.DTOs.Comprobantes;
 namespace ServicarSossa.Application.Interfaces;
 
 /// <summary>
-/// Maqueta un comprobante (factura o proforma) como documento imprimible.
+/// Maqueta un comprobante (proforma o presupuesto del diagnóstico) como documento imprimible.
 ///
 /// Es distinto de <see cref="IExportadorReportes"/>: aquél vuelca tablas
 /// genéricas de columnas y filas, mientras que aquí el formato es el de un

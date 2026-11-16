@@ -24,7 +24,6 @@ public class OrdenService(
     IRepository<OrdenServicio> ordenServicios,
     IRepository<OrdenRepuesto> ordenRepuestos,
     IProformaRepository proformas,
-    IRepository<Factura> facturas,
     IGeneradorId generadorId,
     IUnitOfWork unitOfWork,
     IAuditor auditor,
@@ -32,7 +31,7 @@ public class OrdenService(
 {
     /// <summary>
     /// Transiciones permitidas. Cerrada y Cancelada son terminales: una orden
-    /// facturada o anulada no puede reabrirse sin falsear el histórico.
+    /// cobrada o anulada no puede reabrirse sin falsear el histórico.
     /// </summary>
     private static readonly Dictionary<EstadoOrden, EstadoOrden[]> TransicionesValidas = new()
     {
@@ -397,15 +396,8 @@ public class OrdenService(
                 ? "La orden está en proceso: sus servicios y repuestos ya se pueden editar."
                 : $"Una orden {orden.Estado} no se puede corregir.");
 
-        // Lo que ya salió del taller no se reescribe en silencio: una factura
-        // fiscal, pagos del cliente o una comisión ya pagada al mecánico.
-        var factura = await facturas.FirstOrDefaultAsync(
-            f => f.OrdenId == ordenId && f.Estado == EstadoFactura.Emitida, ct);
-
-        if (factura is not null)
-            return Result<OrdenDetalleResponseDto>.Conflicto(
-                $"La orden tiene la factura {factura.FacturaId} emitida: anúlela antes de corregir la orden.");
-
+        // Lo que ya salió del taller no se reescribe en silencio: pagos del
+        // cliente o una comisión ya pagada al mecánico.
         var proforma = await proformas.FirstOrDefaultAsync(
             p => p.OrdenId == ordenId && p.Estado == EstadoProforma.Emitida, ct);
 

@@ -8,7 +8,6 @@ import {
   DiagnosticoRequest,
   DiagnosticoUpdate,
   ResponderDiagnostico,
-  SugerenciaDiagnostico,
   TipoServicio,
   TipoServicioRequest,
 } from '../models/taller.model';
@@ -89,17 +88,4 @@ export class DiagnosticosService extends ApiBase {
     return this.archivo([id, 'pdf'], `${id}-presupuesto.pdf`);
   }
 
-  // --- Diagnóstico asistido ---------------------------------------------------
-
-  /** Sugerencias mientras se redacta la falla (antes de guardar el diagnóstico). */
-  sugerencias(descripcionFalla: string): Observable<SugerenciaDiagnostico> {
-    return this.http.get<SugerenciaDiagnostico>(this.url('sugerencias'), {
-      params: { descripcion: descripcionFalla },
-    });
-  }
-
-  /** Misma sugerencia, a partir de la falla ya guardada de un diagnóstico existente. */
-  sugerenciasPorId(id: string): Observable<SugerenciaDiagnostico> {
-    return this.http.get<SugerenciaDiagnostico>(this.url(id, 'sugerencias'));
-  }
 }

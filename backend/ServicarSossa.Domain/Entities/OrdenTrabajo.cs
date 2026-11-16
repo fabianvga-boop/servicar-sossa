@@ -35,7 +35,4 @@ public class OrdenTrabajo
     public ICollection<Comision> Comisiones { get; set; } = [];
     /// <summary>Documentos de cobro del taller (sin valor fiscal).</summary>
     public ICollection<Proforma> Proformas { get; set; } = [];
-
-    /// <summary>Comprobantes fiscales SIAT, solo con la facturación en línea activa.</summary>
-    public ICollection<Factura> Facturas { get; set; } = [];
 }

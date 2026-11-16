@@ -9,5 +9,4 @@ public class Rol
 
     // Navegación
     public ICollection<Usuario> Usuarios { get; set; } = [];
-    public ICollection<RolPermiso> RolPermisos { get; set; } = [];
 }

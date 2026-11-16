@@ -14,7 +14,7 @@ public interface IPagoService
 
     Task<Result<PagoResponseDto>> GetByIdAsync(string id, CancellationToken ct = default);
 
-    /// <summary>USU037 — registra un pago (total o parcial) contra una factura emitida.</summary>
+    /// <summary>USU037 — registra un pago (total o parcial) contra una proforma emitida.</summary>
     Task<Result<PagoResponseDto>> CreateAsync(
         PagoRequestDto dto, string usuarioId, CancellationToken ct = default);
 

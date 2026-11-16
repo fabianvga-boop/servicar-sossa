@@ -2,13 +2,12 @@ import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { catchError, concat, debounceTime, distinctUntilChanged, last, map, of, switchMap } from 'rxjs';
+import { catchError, concat, debounceTime, last, map, of } from 'rxjs';
 
 import { EstadoDiag, EstadoZonaVehiculo, RespuestaCliente } from '../../core/models/enums';
 import { Vehiculo, VehiculoZona } from '../../core/models/personas.model';
-import { Diagnostico, SugerenciaDiagnostico } from '../../core/models/taller.model';
+import { Diagnostico } from '../../core/models/taller.model';
 import { unicosOrdenados } from '../../shared/sugerencias-texto';
-import { DIAGNOSTICO_ASISTIDO } from '../../core/funciones-activas';
 import { dictadoDisponible, dictar, sumarFrase } from '../../shared/dictado';
 import { AuthService } from '../../core/services/auth.service';
 import { ClientesService } from '../../core/services/clientes.service';
@@ -178,10 +177,6 @@ export class Diagnosticos {
     return editando ? `diagnostico.${editando.diagnosticoId}` : 'diagnostico.nuevo';
   }
 
-  // --- Diagnóstico asistido: sugerencias mientras se redacta la falla --------
-  protected readonly sugerencia = signal<SugerenciaDiagnostico | null>(null);
-  protected readonly cargandoSugerencia = signal(false);
-
   /** Fallas ya registradas: para no volver a escribir una que ya se tipeó antes. */
   protected readonly fallasSugeridas = computed(() =>
     unicosOrdenados(this.todos().map((d) => d.descripcionFalla)),
@@ -273,27 +268,6 @@ export class Diagnosticos {
     this.vehiculosService
       .getAll(undefined, undefined, 1, 500)
       .subscribe((resultado) => this.vehiculos.set(resultado.items));
-
-    // Diagnóstico asistido: apenas se redacta la falla (con algo de texto real),
-    // se buscan casos históricos parecidos y se sugieren servicios/repuestos/precio.
-    this.formulario.controls.descripcionFalla.valueChanges
-      .pipe(
-        map((texto) => texto.trim()),
-        debounceTime(500),
-        distinctUntilChanged(),
-        switchMap((texto) => {
-          if (!DIAGNOSTICO_ASISTIDO || texto.length < 8) {
-            this.cargandoSugerencia.set(false);
-            return of(null);
-          }
-          this.cargandoSugerencia.set(true);
-          return this.servicio.sugerencias(texto).pipe(catchError(() => of(null)));
-        }),
-      )
-      .subscribe((resultado) => {
-        this.cargandoSugerencia.set(false);
-        this.sugerencia.set(resultado && resultado.basadoEnCasos > 0 ? resultado : null);
-      });
 
     // "Nuevo diagnóstico" desde Órdenes enlaza con ?nuevo=true: abre el alta directo.
     // Desde la ficha de un vehículo llega además ?vehiculoId=: queda ya elegido.
@@ -577,7 +551,6 @@ export class Diagnosticos {
     this.faltaElDiagnostico.set(false);
     this.formulario.reset();
     this.formulario.controls.vehiculoId.enable();
-    this.sugerencia.set(null);
     this.paso.set(1);
     this.borradorPendiente.set(leerBorrador(this.auth.usuarioId(), this.claveBorrador()));
     this.formularioAbierto.set(true);
@@ -588,7 +561,6 @@ export class Diagnosticos {
     this.limpiarInspeccion();
     this.faltaElDiagnostico.set(false);
     this.editando.set(diagnostico);
-    this.sugerencia.set(null);
     this.formulario.reset({
       vehiculoId: diagnostico.vehiculoId,
       descripcionFalla: diagnostico.descripcionFalla,
@@ -843,21 +815,6 @@ export class Diagnosticos {
   protected usarFallaSugerida(texto: string): void {
     this.formulario.controls.descripcionFalla.setValue(texto);
     this.formulario.controls.descripcionFalla.markAsDirty();
-  }
-
-  /** Toma el promedio sugerido y lo pone directo en "Monto estimado". */
-  protected usarPrecioSugerido(): void {
-    const monto = this.sugerencia()?.precioPromedio;
-    if (monto == null) return;
-    this.formulario.controls.montoEstimado.setValue(Math.round(monto));
-    this.formulario.controls.montoEstimado.markAsDirty();
-  }
-
-  protected marcarRevisado(diagnostico: Diagnostico): void {
-    this.servicio.cambiarEstado(diagnostico.diagnosticoId, EstadoDiag.Revisado).subscribe(() => {
-      this.notificacion.exito('Diagnóstico marcado como revisado.');
-      this.cargar();
-    });
   }
 
   protected verDetalle(diagnostico: Diagnostico): void {

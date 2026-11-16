@@ -6,7 +6,7 @@ namespace ServicarSossa.Domain.Entities;
 /// Tabla <c>ventas</c>: venta de repuestos en mostrador (punto de venta), sin
 /// orden de trabajo ni vehículo de por medio. PK formato VTA-000.
 ///
-/// A diferencia de una factura de taller se cobra completa en el acto, así que
+/// A diferencia de una orden de trabajo se cobra completa en el acto, así que
 /// el método de pago vive en la cabecera y no hay saldo pendiente ni pagos
 /// parciales asociados.
 /// </summary>
@@ -26,19 +26,8 @@ public class Venta
     public EstadoVenta Estado { get; set; } = EstadoVenta.Emitida;
     public string? Observaciones { get; set; }
 
-    /// <summary>
-    /// Código de "tipo de método de pago" del SIN, congelado al vender. Se guarda
-    /// aparte de <see cref="MetodoPago"/> porque el catálogo del SIN cambia con
-    /// el tiempo: lo ya emitido debe conservar el código con el que se emitió.
-    /// Nullable mientras se opere con recibos internos.
-    /// </summary>
-    public int? MetodoPagoId { get; set; }
-
     // Navegación
     public Cliente? Cliente { get; set; }
     public Usuario Usuario { get; set; } = null!;
     public ICollection<VentaDetalle> Detalles { get; set; } = [];
-
-    /// <summary>Comprobante fiscal, solo si la venta se facturó ante el SIAT.</summary>
-    public Factura? Factura { get; set; }
 }

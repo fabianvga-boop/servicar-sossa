@@ -11,9 +11,8 @@ namespace ServicarSossa.Application.Services;
 /// <summary>
 /// USU038 — proformas: el documento de cobro del taller.
 ///
-/// No emite nada ante el SIN y no necesita saber de facturación electrónica:
-/// eso vive en <see cref="FacturaService"/>. Acá solo se arma el documento que
-/// el cliente recibe y contra el que paga.
+/// Es el documento de cobro del taller, sin valor fiscal. Acá se arma el
+/// documento que el cliente recibe y contra el que paga.
 /// </summary>
 public class ProformaService(
     IProformaRepository proformas,

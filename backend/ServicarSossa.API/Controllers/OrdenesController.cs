@@ -87,7 +87,7 @@ public class OrdenesController(IOrdenService service) : ApiControllerBase
 
     /// <summary>
     /// Reabre una orden Finalizada o Cerrada para corregir un error. Devuelve
-    /// 409 si su proforma tiene pagos, si hay factura emitida o si alguna
+    /// 409 si su proforma tiene pagos o si alguna
     /// comisión ya se pagó.
     /// </summary>
     [HttpPost("{id}/corregir")]

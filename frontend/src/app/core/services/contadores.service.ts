@@ -31,7 +31,7 @@ export class ContadoresService {
       ).length,
   );
 
-  /** Finalizadas sin cerrar: el administrador todavía debe cerrarlas y facturar. */
+  /** Finalizadas sin cerrar: el administrador todavía debe cerrarlas y cobrarlas. */
   readonly ordenesPorCerrar = computed(
     () => this.ordenes().filter((o) => o.estado === EstadoOrden.Finalizada).length,
   );

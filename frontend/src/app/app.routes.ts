@@ -105,9 +105,7 @@ export const routes: Routes = [
       },
 
       // --- Finanzas -------------------------------------------------------
-      // El taller cobra con proformas (sin valor fiscal). Facturas queda fuera
-      // del menú y de las rutas: el taller no tiene NIT. El módulo sigue en
-      // modules/facturas por si algún día se habilita la facturación.
+      // El taller cobra con proformas, un documento de cobro sin valor fiscal.
       {
         path: 'proformas',
         canActivate: [authGuard(['Administrador'])],

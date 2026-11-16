@@ -15,13 +15,8 @@ public enum EstadoServicio { Activo, Inactivo }
 
 public enum EstadoOrden { Abierta, EnProceso, Finalizada, Cerrada, Cancelada }
 
-/// <summary>Estado del comprobante fiscal SIAT (tabla facturas).</summary>
-public enum EstadoFactura { Emitida, Anulada }
-
 /// <summary>
-/// Estado del documento de cobro del taller (tabla proformas). Mismos valores
-/// que <see cref="EstadoFactura"/>, pero son documentos distintos: separarlos
-/// evita que un cambio en el ciclo fiscal arrastre al operativo.
+/// Estado del documento de cobro del taller (tabla proformas).
 /// </summary>
 public enum EstadoProforma { Emitida, Anulada }
 
@@ -51,7 +46,7 @@ public enum EstadoServicioOrden { Pendiente, EnProceso, Completado }
 /// </summary>
 public enum OrigenRepuesto { Inventario, ClienteTrae, CompraExterna }
 
-public enum MetodoPago { Efectivo, Transferencia, Tarjeta, QR, Otro }
+public enum MetodoPago { Efectivo, QR, Otro }
 
 public enum FormatoReporte { Pdf, Excel, Csv }
 

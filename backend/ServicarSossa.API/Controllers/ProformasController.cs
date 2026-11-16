@@ -8,9 +8,7 @@ using ServicarSossa.Domain.Enums;
 namespace ServicarSossa.API.Controllers;
 
 /// <summary>
-/// USU035 — proformas: el documento de cobro del taller, sin valor fiscal.
-/// Es el flujo operativo de todos los días. La emisión de la factura fiscal
-/// (USU038) vive en <see cref="FacturasController"/>.
+/// Proformas: el documento de cobro del taller, sin valor fiscal.
 ///
 /// Una proforma no se edita: si tiene un error se anula (siempre que no tenga
 /// pagos) y se emite una nueva.

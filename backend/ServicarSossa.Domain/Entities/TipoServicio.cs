@@ -17,16 +17,6 @@ public class TipoServicio
     /// </summary>
     public bool RequiereRepuesto { get; set; }
 
-    // --- Datos fiscales (preparación SIAT) ------------------------------------
-    // La mano de obra también se factura, así que el catálogo de servicios
-    // necesita su homologación igual que los repuestos. Ver Repuesto.CodigoSin.
-
-    /// <summary>Código de servicio del catálogo del SIN.</summary>
-    public string? CodigoSin { get; set; }
-
-    /// <summary>Código de unidad de medida del SIN (para servicios suele ser "unidad").</summary>
-    public int? UnidadMedidaSin { get; set; }
-
     // Navegación
     public ICollection<OrdenServicio> OrdenServicios { get; set; } = [];
 

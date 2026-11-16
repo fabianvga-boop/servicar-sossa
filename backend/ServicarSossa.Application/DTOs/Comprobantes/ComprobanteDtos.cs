@@ -2,7 +2,7 @@ namespace ServicarSossa.Application.DTOs.Comprobantes;
 
 /// <summary>
 /// Datos ya resueltos del comprobante (documento "Proforma" del taller, sin
-/// valor fiscal SIAT), listos para maquetar. La capa de aplicación arma este
+/// valor fiscal), listos para maquetar. La capa de aplicación arma este
 /// objeto desde la orden; el generador solo lo dibuja y no vuelve a consultar
 /// la base de datos.
 /// </summary>

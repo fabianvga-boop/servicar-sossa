@@ -14,7 +14,7 @@ namespace ServicarSossa.API.Controllers;
 [Authorize(Roles = "Administrador")]
 public class PagosController(IPagoService service) : ApiControllerBase
 {
-    /// <summary>Lista pagos filtrables por factura, cliente, método y periodo.</summary>
+    /// <summary>Lista pagos filtrables por proforma, cliente, método y periodo.</summary>
     [HttpGet]
     [ProducesResponseType(typeof(ResultadoPaginadoDto<PagoResponseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll(

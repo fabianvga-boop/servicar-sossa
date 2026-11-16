@@ -79,24 +79,6 @@ public class DiagnosticosController(IDiagnosticoService service) : ApiController
         string id, [FromBody] ResponderDiagnosticoDto dto, CancellationToken ct)
         => Responder(await service.ResponderAsync(id, dto, UsuarioIdActual, EsAdministrador, ct));
 
-    /// <summary>
-    /// Diagnóstico asistido: sugiere servicios, repuestos y un rango de precio
-    /// para una falla que todavía se está redactando, comparándola contra el
-    /// historial. Se llama mientras el mecánico escribe, antes de guardar nada.
-    /// </summary>
-    [HttpGet("sugerencias")]
-    [ProducesResponseType(typeof(SugerenciaDiagnosticoDto), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetSugerencias(
-        [FromQuery] string descripcion, CancellationToken ct)
-        => Responder(await service.GetSugerenciasAsync(descripcion ?? string.Empty, ct));
-
-    /// <summary>Misma sugerencia, a partir de la falla ya guardada de un diagnóstico existente.</summary>
-    [HttpGet("{id}/sugerencias")]
-    [ProducesResponseType(typeof(SugerenciaDiagnosticoDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetSugerenciasPorId(string id, CancellationToken ct)
-        => Responder(await service.GetSugerenciasPorIdAsync(id, ct));
-
     /// <summary>Descarga el presupuesto preliminar del diagnóstico en PDF.</summary>
     // Sin [Produces("application/pdf")]: restringir el tipo de salida haría que
     // el error (JSON) devuelva 406 en vez del 404 real.

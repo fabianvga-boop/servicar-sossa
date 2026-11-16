@@ -43,18 +43,4 @@ public interface IDiagnosticoService
 
     /// <summary>Genera el presupuesto preliminar del diagnóstico en PDF.</summary>
     Task<Result<ArchivoComprobanteDto>> GetPdfAsync(string id, CancellationToken ct = default);
-
-    // ------------------------------------------------------- Diagnóstico asistido
-
-    /// <summary>
-    /// Sugiere servicios, repuestos y un rango de precio para una falla que
-    /// todavía se está redactando (antes de guardar el diagnóstico), comparándola
-    /// contra el historial de diagnósticos que sí llegaron a una orden.
-    /// </summary>
-    Task<Result<SugerenciaDiagnosticoDto>> GetSugerenciasAsync(
-        string descripcionFalla, CancellationToken ct = default);
-
-    /// <summary>Misma sugerencia, pero a partir de la falla ya guardada de un diagnóstico existente.</summary>
-    Task<Result<SugerenciaDiagnosticoDto>> GetSugerenciasPorIdAsync(
-        string diagnosticoId, CancellationToken ct = default);
 }

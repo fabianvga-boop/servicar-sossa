@@ -36,15 +36,6 @@ public class DiagnosticoRepository(AppDbContext context)
         => await ConstruirConsulta(vehiculoId, mecanicoId, estado, buscar)
             .ToPagedListAsync(pagina, tamanoPagina, ct);
 
-    public async Task<IEnumerable<Diagnostico>> ObtenerConOrdenParaSugerenciasAsync(
-        CancellationToken ct = default)
-        => await Set
-            .Where(d => d.Orden != null)
-            .Include(d => d.Orden!).ThenInclude(o => o.Servicios).ThenInclude(s => s.Servicio)
-            .Include(d => d.Orden!).ThenInclude(o => o.Repuestos).ThenInclude(r => r.Repuesto)
-            .AsNoTracking()
-            .ToListAsync(ct);
-
     // Más recientes primero: es el orden natural del historial clínico del vehículo.
     private IQueryable<Diagnostico> ConstruirConsulta(
         string? vehiculoId, string? mecanicoId, EstadoDiag? estado, string? buscar = null)

@@ -275,7 +275,7 @@ export class Pagos {
 
   protected marcadorReferencia(): string {
     return Number(this.nuevo.metodoPago) === MetodoPago.Otro
-      ? 'Transferencia 48213'
+      ? 'Depósito 48213'
       : 'Número de transacción o comprobante';
   }
 

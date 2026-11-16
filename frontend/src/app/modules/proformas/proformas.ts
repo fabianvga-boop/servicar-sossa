@@ -35,8 +35,6 @@ const montoCorto = new Intl.NumberFormat('es-BO', { maximumFractionDigits: 0 });
  * Las proformas se traen todas (el tope de 500 sobra para un taller) y se
  * filtran en pantalla: así las pestañas muestran su cantidad y se sabe qué
  * orden ya tiene la suya.
- *
- * El comprobante fiscal ante el SIN vive aparte, en el módulo de Facturas.
  */
 @Component({
   selector: 'app-proformas',

@@ -8,10 +8,6 @@ namespace ServicarSossa.Domain.Entities;
 /// Documento de cobro del taller, SIN valor fiscal: es contra esto que el
 /// cliente paga y lo que se le entrega impreso. Nace de una orden Finalizada o
 /// Cerrada y admite pagos parciales.
-///
-/// Es el flujo operativo de todos los días. No se confunde con
-/// <see cref="Factura"/>, que es el comprobante fiscal ante el SIN y solo
-/// existe cuando el taller está habilitado ante Impuestos.
 /// </summary>
 public class Proforma
 {

@@ -70,7 +70,8 @@ $migraciones = @(
     'migracion_compra_ocasional.sql',
     'migracion_kardex.sql',
     'migracion_quitar_plantillas.sql',
-    'migracion_inspeccion_diagnostico.sql'
+    'migracion_inspeccion_diagnostico.sql',
+    'migracion_depuracion_facturas_permisos.sql'
 )
 
 function Consultar($sql) {
@@ -173,9 +174,9 @@ if ((Consultar "SELECT count(*) FROM information_schema.tables WHERE table_schem
 Write-Host ""
 Write-Host "=== 5. Verificacion final ===" -ForegroundColor Cyan
 $esperadas = @('auditoria','categorias_repuesto','clientes','comisiones','comisiones_config','compra_detalle','compras',
-               'diagnosticos','facturas','orden_mecanicos','orden_repuestos','orden_servicios',
-               'movimientos_inventario','ordenes_trabajo','pagos','permisos','proformas','proveedores',
-               'reportes_generados','repuesto_compatibilidad','repuestos','rol_permisos','roles','servicio_categorias','tipos_servicio','usuarios',
+               'diagnosticos','orden_mecanicos','orden_repuestos','orden_servicios',
+               'movimientos_inventario','ordenes_trabajo','pagos','proformas','proveedores',
+               'reportes_generados','repuesto_compatibilidad','repuestos','roles','servicio_categorias','tipos_servicio','usuarios',
                'vehiculo_fotos','vehiculo_zonas','vehiculos','venta_detalle','ventas')
 
 $final    = Consultar "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' ORDER BY 1;"

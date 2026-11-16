@@ -329,7 +329,7 @@ public class GeneradorComprobantes : IGeneradorComprobantes
                     izq.Item().Element(e => Linea(e, "Teléfono", telefono));
 
                 // Dato aparte, no sustituto del CI: es el nombre con el que el
-                // cliente pidió la factura, y puede diferir del titular.
+                // cliente pidió en la proforma, y puede diferir del titular.
                 if (!string.IsNullOrWhiteSpace(aNombreDe))
                     izq.Item().Element(e => Linea(e, "A nombre de", aNombreDe));
             });

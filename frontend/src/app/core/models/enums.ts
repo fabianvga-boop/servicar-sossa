@@ -63,10 +63,8 @@ export enum EstadoPago {
 
 export enum MetodoPago {
   Efectivo = 0,
-  Transferencia = 1,
-  Tarjeta = 2,
-  QR = 3,
-  Otro = 4,
+  QR = 1,
+  Otro = 2,
 }
 
 export enum FormatoReporte {
@@ -181,8 +179,6 @@ export const ETIQUETAS = {
   },
   metodoPago: {
     [MetodoPago.Efectivo]: 'Efectivo',
-    [MetodoPago.Transferencia]: 'Transferencia',
-    [MetodoPago.Tarjeta]: 'Tarjeta',
     [MetodoPago.QR]: 'QR',
     [MetodoPago.Otro]: 'Otro',
   },

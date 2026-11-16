@@ -3,12 +3,11 @@
 -- Proyecto de Grado - UAJMS (Tarija, Bolivia)
 -- Motor: PostgreSQL 16
 -- ============================================================================
--- Cobertura: 9 Epicas / 41 Historias de Usuario
---   EPIC001 Gestion de Usuarios            EPIC002 Gestion de Clientes y Vehiculos
---   EPIC003 Servicios y Diagnosticos       EPIC004 Gestion de Reportes
---   EPIC005 Ordenes de Trabajo             EPIC006 Gestion de Inventario
---   EPIC007 Gestion de Comisiones          EPIC008 Facturacion (Proforma) y Pagos
---   EPIC009 Aprobacion de Presupuestos
+-- Cobertura: 8 Epicas / 57 Historias de Usuario (ver docs_tesis/backlog.js)
+--   EPIC001 Acceso y usuarios              EPIC002 Clientes y vehiculos
+--   EPIC003 Servicios y diagnosticos       EPIC004 Ordenes de trabajo
+--   EPIC005 Inventario, compras y ventas   EPIC006 Comisiones
+--   EPIC007 Cobros y reportes              EPIC008 Uso en el taller
 -- ============================================================================
 -- CONVENCIONES
 --   * Llaves primarias: VARCHAR(20) alfanumericas con prefijo por entidad
@@ -19,7 +18,7 @@
 --   * Las marcas de tiempo usan TIMESTAMPTZ y se guardan en UTC. Npgsql mapea
 --     DateTime con Kind=Utc directamente a este tipo; NO usar TIMESTAMP simple.
 -- ============================================================================
--- USO (instalacion nueva; crea las 31 tablas del esquema vigente):
+-- USO (instalacion nueva; crea las 28 tablas del esquema vigente):
 --   psql -U postgres -c "CREATE ROLE servicar_app LOGIN PASSWORD '<clave>';"
 --   psql -U postgres -c "CREATE DATABASE servicar_sossa OWNER servicar_app ENCODING 'UTF8';"
 --   psql -U servicar_app -d servicar_sossa -f taller_automotriz_bd.sql
@@ -34,7 +33,7 @@
 SET client_encoding = 'UTF8';
 
 -- ============================================================================
--- EPICA 1: GESTION DE USUARIOS (US001-US005)
+-- EPIC001: ACCESO Y USUARIOS
 -- ============================================================================
 
 CREATE TABLE roles (
@@ -42,20 +41,6 @@ CREATE TABLE roles (
                         CHECK (rol_id ~ '^ROL-[0-9]{3,}$'),         -- ROL-001
     nombre_rol      VARCHAR(50)  NOT NULL UNIQUE,       -- Administrador, Mecanico
     descripcion     VARCHAR(200)
-);
-
-CREATE TABLE permisos (
-    permiso_id      VARCHAR(20)  PRIMARY KEY
-                        CHECK (permiso_id ~ '^PER-[0-9]{3,}$'),     -- PER-001
-    nombre          VARCHAR(80)  NOT NULL UNIQUE,
-    descripcion     VARCHAR(200)
-);
-
--- Relacion N:M entre roles y permisos (US005 - asignar roles y permisos)
-CREATE TABLE rol_permisos (
-    rol_id          VARCHAR(20) NOT NULL REFERENCES roles(rol_id)       ON DELETE CASCADE,
-    permiso_id      VARCHAR(20) NOT NULL REFERENCES permisos(permiso_id) ON DELETE CASCADE,
-    PRIMARY KEY (rol_id, permiso_id)
 );
 
 CREATE TABLE usuarios (
@@ -69,14 +54,14 @@ CREATE TABLE usuarios (
     rol_id          VARCHAR(20)  NOT NULL REFERENCES roles(rol_id),
     telefono        VARCHAR(20),
     estado          VARCHAR(20)  NOT NULL DEFAULT 'Activo'
-                        CHECK (estado IN ('Activo','Inactivo')),    -- US004 / EstadoUsuario
+                        CHECK (estado IN ('Activo','Inactivo')),    -- EstadoUsuario
     fecha_registro  TIMESTAMPTZ    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     -- Foto de perfil (opcional): nombre fisico del archivo en disco.
     nombre_archivo_foto VARCHAR(255)
 );
 
 -- ============================================================================
--- EPICA 2: GESTION DE CLIENTES Y VEHICULOS (US006-US011)
+-- EPIC002: CLIENTES Y VEHICULOS
 -- ============================================================================
 
 CREATE TABLE clientes (
@@ -91,12 +76,7 @@ CREATE TABLE clientes (
     direccion       VARCHAR(200),
     fecha_registro  TIMESTAMPTZ    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     estado          VARCHAR(20)  NOT NULL DEFAULT 'Activo'
-                        CHECK (estado IN ('Activo','Inactivo')),
-    -- Documento desglosado para el SIAT (opcional mientras Facturacion:Modo = INTERNAL).
-    -- El uso diario sigue siendo ci_nit; estas columnas solo alimentan la factura fiscal.
-    tipo_documento_id SMALLINT,                   -- catalogo SIN: 1=CI, 2=CEX, 3=PAS, 4=OD, 5=NIT
-    numero_documento  VARCHAR(30),
-    complemento       VARCHAR(5)                  -- letra que acompana a algunos CI
+                        CHECK (estado IN ('Activo','Inactivo'))
 );
 
 CREATE TABLE vehiculos (
@@ -126,7 +106,7 @@ CREATE TABLE vehiculo_fotos (
 );
 
 -- ============================================================================
--- EPICA 3: GESTION DE SERVICIOS Y DIAGNOSTICOS (US012-US016)
+-- EPIC003: SERVICIOS Y DIAGNOSTICOS
 -- ============================================================================
 
 -- Catalogo de tipos de servicio (usado tambien en Ordenes de Trabajo, Epica 5)
@@ -140,10 +120,7 @@ CREATE TABLE tipos_servicio (
                         CHECK (estado IN ('Activo','Inactivo')),
     -- El servicio consume un repuesto (cambio de aceite, de bateria...): en la
     -- orden no se completa sin registrar el repuesto usado.
-    requiere_repuesto BOOLEAN    NOT NULL DEFAULT FALSE,
-    -- Homologacion contra el catalogo del SIN (solo para facturacion SIAT)
-    codigo_sin        VARCHAR(20),
-    unidad_medida_sin SMALLINT
+    requiere_repuesto BOOLEAN    NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE diagnosticos (
@@ -153,10 +130,10 @@ CREATE TABLE diagnosticos (
     mecanico_id            VARCHAR(20) NOT NULL REFERENCES usuarios(usuario_id),
     fecha                  TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     descripcion_falla      TEXT        NOT NULL,
-    observaciones_tecnicas TEXT,                  -- US016
+    observaciones_tecnicas TEXT,                  -- observaciones del mecanico
     estado                 VARCHAR(20) NOT NULL DEFAULT 'Registrado'
                                CHECK (estado IN ('Registrado','Revisado','Anulado')),  -- EstadoDiag
-    fecha_modificacion     TIMESTAMPTZ,             -- US015
+    fecha_modificacion     TIMESTAMPTZ,             -- ultima modificacion
     -- Presupuesto aproximado que se presenta al cliente y su decision.
     monto_estimado         DECIMAL(12,2),
     respuesta_cliente      VARCHAR(20) NOT NULL DEFAULT 'Pendiente'
@@ -166,8 +143,8 @@ CREATE TABLE diagnosticos (
 );
 
 -- ============================================================================
--- EPICA 5: GESTION DE ORDENES DE TRABAJO (US021-US025)
--- (se define antes de Inventario/Comisiones/Facturacion porque estas dependen de ella)
+-- EPIC004: ORDENES DE TRABAJO
+-- (se define antes de Inventario/Comisiones/Cobros porque estas dependen de ella)
 -- ============================================================================
 
 CREATE TABLE ordenes_trabajo (
@@ -188,7 +165,7 @@ CREATE TABLE ordenes_trabajo (
     observaciones       TEXT
 );
 
--- Mecanicos asignados a la orden (US022). Por regla, una orden la trabaja un
+-- Mecanicos asignados a la orden. Por regla, una orden la trabaja un
 -- solo mecanico; un segundo se admite solo como excepcion del Administrador,
 -- con su motivo registrado en auditoria. Por eso la relacion sigue siendo N:M.
 CREATE TABLE orden_mecanicos (
@@ -198,7 +175,7 @@ CREATE TABLE orden_mecanicos (
     PRIMARY KEY (orden_id, mecanico_id)
 );
 
--- Detalle de servicios ejecutados dentro de una orden (US013, US023)
+-- Detalle de servicios ejecutados dentro de una orden.
 -- Un servicio puede venir del catalogo (servicio_id) o registrarse suelto,
 -- fuera de catalogo, con un nombre libre (nombre_libre).
 CREATE TABLE orden_servicios (
@@ -224,7 +201,7 @@ CREATE TABLE orden_servicios (
 );
 
 -- ============================================================================
--- EPICA 6: GESTION DE INVENTARIO (US026-US030)
+-- EPIC005: INVENTARIO, COMPRAS Y VENTAS
 -- ============================================================================
 
 CREATE TABLE proveedores (
@@ -259,9 +236,6 @@ CREATE TABLE repuestos (
     proveedor_id    VARCHAR(20)  REFERENCES proveedores(proveedor_id),
     -- Foto del producto (opcional): nombre del archivo en Uploads/repuestos
     nombre_archivo_foto VARCHAR(255),
-    -- Homologacion contra el catalogo del SIN (solo para facturacion SIAT)
-    codigo_sin        VARCHAR(20),
-    unidad_medida_sin SMALLINT,
     -- Universal (aceites, liquidos, fusibles) o Especifico de ciertos vehiculos
     tipo_aplicacion   VARCHAR(20) NOT NULL DEFAULT 'Universal'
                           CONSTRAINT repuestos_tipo_aplicacion_check
@@ -364,7 +338,7 @@ CREATE TABLE orden_repuestos (
 );
 
 -- ============================================================================
--- EPICA 7: GESTION DE COMISIONES (US031-US034)
+-- EPIC006: COMISIONES
 -- ============================================================================
 
 CREATE TABLE comisiones_config (
@@ -390,15 +364,10 @@ CREATE TABLE comisiones (
 );
 
 -- ============================================================================
--- EPICA 8 y 9: PROFORMAS, FACTURACION SIAT Y PAGOS (US035-US041)
--- La proforma es el documento de cobro operativo del taller, SIN valor fiscal:
--- nace de una orden Finalizada/Cerrada y es contra lo que el cliente paga
--- (tabla propia, no un alias de "factura"). La factura SOLO existe cuando el
--- taller esta habilitado ante el SIN (Facturacion:Modo = SIAT_ONLINE) y puede
--- nacer de una orden o de una venta de mostrador, nunca de las dos; mientras
--- tanto la tabla queda vacia. Los pagos se registran contra la proforma, no
--- contra la factura, porque la proforma es el flujo operativo de todos los
--- dias y la factura no duplica los cobros.
+-- COBROS: PROFORMAS Y PAGOS
+-- La proforma es el documento de cobro del taller, SIN valor fiscal: nace de
+-- una orden Finalizada/Cerrada y es contra lo que el cliente paga. Los pagos
+-- se registran contra la proforma y pueden ser parciales.
 -- ============================================================================
 
 CREATE TABLE proformas (
@@ -428,14 +397,11 @@ CREATE TABLE ventas (
     usuario_id      VARCHAR(20) NOT NULL REFERENCES usuarios(usuario_id),
     fecha_venta     TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     metodo_pago     VARCHAR(30) NOT NULL                            -- MetodoPago
-                        CHECK (metodo_pago IN ('Efectivo','Transferencia','Tarjeta','QR','Otro')),
+                        CHECK (metodo_pago IN ('Efectivo','QR','Otro')),
     total           DECIMAL(12,2) NOT NULL DEFAULT 0,
     estado          VARCHAR(20) NOT NULL DEFAULT 'Emitida'          -- EstadoVenta
                         CHECK (estado IN ('Emitida','Anulada')),
-    observaciones   VARCHAR(255),
-    -- Codigo del catalogo del SIN para la forma de cobro, congelado al vender
-    -- (la venta tambien necesita el codigo para poder facturarse en linea).
-    metodo_pago_id  SMALLINT
+    observaciones   VARCHAR(255)
 );
 
 CREATE TABLE venta_detalle (
@@ -448,61 +414,21 @@ CREATE TABLE venta_detalle (
     subtotal         DECIMAL(12,2) GENERATED ALWAYS AS (cantidad * precio_unitario) STORED
 );
 
--- Comprobante fiscal ante el SIN: lleva CUF, CUFD y el XML firmado que se
--- envia a los webservices del SIAT. Cuelga de una orden de trabajo O de una
--- venta de mostrador (chk_facturas_un_origen), nunca de las dos, y no
--- depende de la proforma: se emite directo del documento que origino el cobro.
-CREATE TABLE facturas (
-    factura_id         VARCHAR(20) PRIMARY KEY
-                           CHECK (factura_id ~ '^FAC-[0-9]{3,}$'),  -- FAC-001
-    orden_id            VARCHAR(20) REFERENCES ordenes_trabajo(orden_id),
-    venta_id            VARCHAR(20) REFERENCES ventas(venta_id),
-    fecha_emision       TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    nit_razon_social    VARCHAR(150),
-    total               DECIMAL(12,2) NOT NULL CHECK (total >= 0),
-    -- Codigo del catalogo del SIN para la forma de cobro.
-    metodo_pago_id      SMALLINT,
-    estado              VARCHAR(20) NOT NULL DEFAULT 'Emitida'      -- EstadoFactura
-                           CHECK (estado IN ('Emitida','Anulada')),
-    -- --- Datos fiscales (SIAT); permanecen NULL mientras el modo no sea SIAT_ONLINE ---
-    numero_factura      BIGINT,                    -- correlativo fiscal que exige el SIN
-    cuf                 VARCHAR(100),               -- Codigo Unico de Factura
-    cufd                VARCHAR(100),               -- Codigo Unico de Descarga (vence cada dia)
-    codigo_recepcion    VARCHAR(100),               -- acuse del webservice si la recepcion fue correcta
-    estado_siat         VARCHAR(20) NOT NULL DEFAULT 'Pendiente'    -- EstadoSiat
-                           CHECK (estado_siat IN ('Pendiente','Enviada','Validada','Rechazada','Contingencia','Anulada')),
-    xml_generado        TEXT,                       -- XML armado segun el XSD del SIN, antes de firmar
-    xml_firmado         TEXT,                       -- el mismo XML ya firmado digitalmente
-    fecha_emision_siat  TIMESTAMPTZ,                -- fecha que consta en el comprobante fiscal
-    mensaje_servicio    VARCHAR(500),               -- ultima respuesta del webservice: acuse o motivo de rechazo
-    CONSTRAINT chk_facturas_un_origen CHECK (
-        (orden_id IS NOT NULL AND venta_id IS NULL) OR
-        (orden_id IS NULL AND venta_id IS NOT NULL)
-    )
-);
-
--- A lo sumo una factura vigente (no Anulada) por orden y por venta.
-CREATE UNIQUE INDEX idx_facturas_orden_vigente ON facturas(orden_id) WHERE orden_id IS NOT NULL AND estado = 'Emitida';
-CREATE UNIQUE INDEX idx_facturas_venta_vigente ON facturas(venta_id) WHERE venta_id IS NOT NULL AND estado = 'Emitida';
-
 CREATE TABLE pagos (
     pago_id         VARCHAR(20) PRIMARY KEY
                         CHECK (pago_id ~ '^PAG-[0-9]{3,}$'),        -- PAG-001
-    -- El cobro se registra contra la proforma, que es el documento operativo
-    -- del taller; la factura fiscal, cuando exista, representa ese mismo
+    -- El cobro se registra contra la proforma, el documento de cobro del taller.
     -- dinero y no duplica los pagos.
     proforma_id     VARCHAR(20) NOT NULL REFERENCES proformas(proforma_id) ON DELETE CASCADE,
     monto           DECIMAL(12,2) NOT NULL CHECK (monto > 0),
     fecha_pago      TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     metodo_pago     VARCHAR(30) NOT NULL                            -- MetodoPago
-                        CHECK (metodo_pago IN ('Efectivo','Transferencia','Tarjeta','QR','Otro')),
-    referencia      VARCHAR(100),
-    -- Codigo del catalogo del SIN para la forma de cobro, congelado al cobrar.
-    metodo_pago_id  SMALLINT
+                        CHECK (metodo_pago IN ('Efectivo','QR','Otro')),
+    referencia      VARCHAR(100)
 );
 
 -- ============================================================================
--- EPICA 4: GESTION DE REPORTES (US017-US020)
+-- EPIC007: REPORTES Y AUDITORIA
 -- ============================================================================
 
 -- Registro/bitacora de reportes generados (no reemplaza a las consultas dinamicas
@@ -585,8 +511,6 @@ CREATE INDEX idx_servicio_categorias_categoria ON servicio_categorias(categoria_
 CREATE INDEX idx_compra_detalle_compra     ON compra_detalle(compra_id);
 CREATE INDEX idx_comisiones_mecanico       ON comisiones(mecanico_id);
 CREATE INDEX idx_proformas_orden           ON proformas(orden_id);
-CREATE INDEX idx_facturas_cuf              ON facturas(cuf);
-CREATE INDEX idx_facturas_fecha            ON facturas(fecha_emision);
 CREATE INDEX idx_pagos_proforma            ON pagos(proforma_id);
 
 -- ============================================================================

@@ -42,10 +42,6 @@ export function iconoMetodo(metodo: MetodoPago): string {
   switch (metodo) {
     case MetodoPago.Efectivo:
       return 'ic-caja';
-    case MetodoPago.Transferencia:
-      return 'ic-transferencia';
-    case MetodoPago.Tarjeta:
-      return 'ic-tarjeta';
     case MetodoPago.QR:
       return 'ic-qr';
     default:

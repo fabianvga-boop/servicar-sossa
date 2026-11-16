@@ -10,7 +10,7 @@ namespace ServicarSossa.Application.Services;
 /// <summary>
 /// Punto de venta — venta de repuestos en mostrador.
 ///
-/// Se diferencia de la facturación del taller en tres cosas: no nace de una
+/// Se diferencia del cobro de una orden en tres cosas: no nace de una
 /// orden de trabajo, se cobra completa en el acto (sin saldo pendiente), y el
 /// stock se descuenta al confirmar la venta, no al cerrar nada.
 /// </summary>
@@ -152,9 +152,6 @@ public class VentaService(
 
         var creada = await ventas.GetByIdCompletaAsync(ventaId, ct);
 
-        // La venta no emite comprobante fiscal por sí sola: si el taller está
-        // habilitado ante el SIN, se factura después desde el módulo de
-        // Facturas. Así vender no depende de que un servicio externo responda.
         return Result<VentaResponseDto>.Ok(
             Mapear(creada!), $"Venta {ventaId} registrada por Bs {total:N2}.");
     }

@@ -29,16 +29,6 @@ public class Repuesto
     /// </summary>
     public string? NombreArchivoFoto { get; set; }
 
-    // --- Datos fiscales (preparación SIAT) ------------------------------------
-    // Un ítem solo se puede facturar electrónicamente si está homologado contra
-    // el catálogo del SIN. Nullables: hoy no se usan y el repuesto se vende igual.
-
-    /// <summary>Código de producto del catálogo del SIN (homologación del ítem).</summary>
-    public string? CodigoSin { get; set; }
-
-    /// <summary>Código de unidad de medida del SIN (ej. unidad, litro, juego).</summary>
-    public int? UnidadMedidaSin { get; set; }
-
     /// <summary>
     /// Universal o Específico. Los específicos tienen al menos una fila en
     /// <see cref="Compatibilidades"/>; los universales, ninguna.
