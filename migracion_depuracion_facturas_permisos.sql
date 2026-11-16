@@ -5,6 +5,8 @@
 
 BEGIN;
 
+-- facturas_siat (de migracion_siat_preparacion.sql) depende de facturas: va primero.
+DROP TABLE IF EXISTS facturas_siat;
 DROP TABLE IF EXISTS facturas;
 DROP TABLE IF EXISTS rol_permisos;
 DROP TABLE IF EXISTS permisos;

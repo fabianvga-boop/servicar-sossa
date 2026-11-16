@@ -6,7 +6,7 @@
       1. Respaldo completo con pg_dump. Si falla, NO sigue.
       2. Inventario del esquema actual, para saber de donde partimos.
       3. Aplica las migraciones pendientes, una por una, deteniendose al primer error.
-      4. Verifica que queden las 32 tablas y que pagos apunte a proformas.
+      4. Verifica que queden las 28 tablas y que pagos apunte a proformas.
 
     NO aplica migracion_eliminar_proforma.sql A PROPOSITO: es un paso historico
     del 23/08 que hace DROP TABLE proformas. Correrlo hoy borraria la tabla de
