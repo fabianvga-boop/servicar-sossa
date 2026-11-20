@@ -47,6 +47,20 @@ public class UsuariosController(IUsuarioService service) : ApiControllerBase
         string id, [FromBody] UsuarioUpdateDto dto, CancellationToken ct)
         => Responder(await service.UpdateAsync(id, dto, UsuarioIdActual, ct));
 
+    /// <summary>Asigna una contraseña nueva a un usuario que olvidó la suya.</summary>
+    [HttpPatch("{id}/password")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AsignarPassword(
+        string id, [FromBody] AsignarPasswordDto dto, CancellationToken ct)
+    {
+        var resultado = await service.AsignarPasswordAsync(id, dto, UsuarioIdActual, ct);
+        return resultado.Success
+            ? Ok(new { mensaje = resultado.Message })
+            : Responder(resultado);
+    }
+
     /// <summary>USU004 — activa o desactiva el usuario (baja lógica).</summary>
     [HttpPatch("{id}/estado")]
     [ProducesResponseType(typeof(UsuarioResponseDto), StatusCodes.Status200OK)]

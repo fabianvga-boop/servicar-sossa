@@ -13,3 +13,29 @@
   flex-direction: column;
   gap: 18px;
 }
+
+/* Asignar contraseña nueva (al editar un usuario) */
+.clave-nueva {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border, #e5e7eb);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+.clave-nueva h3 {
+  margin: 0;
+  font-size: 15px;
+}
+.clave-nueva .campo {
+  width: 100%;
+}
+.clave-nueva-fila {
+  display: flex;
+  gap: 8px;
+}
+.clave-nueva-fila input {
+  flex: 1;
+  min-width: 0;
+}

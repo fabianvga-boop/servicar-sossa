@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Observable, map } from 'rxjs';
 
+import { environment } from '../../../environments/environment';
 import { FormatoReporte, TipoReporte } from '../models/enums';
 import { PaginaResultado } from '../models/paginacion.model';
 import { Reporte, ReporteGenerado } from '../models/reporte.model';
@@ -54,6 +55,23 @@ export class ReportesService extends ApiBase {
     return this.http.get<PaginaResultado<ReporteGenerado>>(this.url('bitacora'), {
       params: this.params({ tipoReporte, pagina, tamanoPagina }),
     });
+  }
+
+  /** Respaldo de los datos (solo Administrador): baja un archivo .sql con todas las tablas. */
+  respaldar(): Observable<{ blob: Blob; nombreArchivo: string }> {
+    return this.http
+      .post(`${environment.apiUrl}/respaldos`, null, { responseType: 'blob', observe: 'response' })
+      .pipe(
+        map((respuesta) => ({
+          blob: respuesta.body!,
+          nombreArchivo: nombreDesdeCabecera(respuesta.headers.get('Content-Disposition')) ?? 'respaldo_servicar.sql',
+        })),
+      );
+  }
+
+  /** Cuándo y quién hizo el último respaldo. */
+  ultimoRespaldo(): Observable<{ fecha: string | null; usuario: string | null }> {
+    return this.http.get<{ fecha: string | null; usuario: string | null }>(`${environment.apiUrl}/respaldos/ultimo`);
   }
 
   /** Dispara la descarga en el navegador. */

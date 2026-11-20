@@ -141,6 +141,28 @@ public class UsuarioService(
             Mapear(actualizado!), $"Usuario marcado como {dto.Estado}.");
     }
 
+    public async Task<Result<bool>> AsignarPasswordAsync(
+        string id, AsignarPasswordDto dto, string actorId, CancellationToken ct = default)
+    {
+        var usuario = await usuarios.FirstOrDefaultAsync(u => u.UsuarioId == id, ct);
+
+        if (usuario is null)
+            return Result<bool>.NoEncontrado($"No existe el usuario {id}.");
+
+        if (BCrypt.Net.BCrypt.Verify(dto.PasswordNueva, usuario.PasswordHash))
+            return Result<bool>.Fail("La contraseña nueva debe ser distinta de la actual.");
+
+        usuario.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.PasswordNueva);
+
+        // La auditoría deja constancia de quién y a quién, nunca de la contraseña.
+        await auditor.RegistrarAsync(
+            actorId, AccionAuditoria.Editar, "Usuario", id,
+            $"Asignó una contraseña nueva al usuario '{usuario.Nombre} {usuario.Apellido}'.", ct);
+
+        await usuarios.SaveChangesAsync(ct);
+        return Result<bool>.Ok(true, $"Contraseña nueva asignada a {usuario.Nombre} {usuario.Apellido}.");
+    }
+
     // --------------------------------------------------- Foto de perfil
 
     /// <summary>

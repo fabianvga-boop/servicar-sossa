@@ -49,6 +49,14 @@ export class Usuarios {
   protected readonly formularioAbierto = signal(false);
   protected readonly porCambiarEstado = signal<Usuario | null>(null);
 
+  // --- Asignar contraseña nueva (al editar un usuario) ------------------------
+  protected readonly passwordNueva = signal('');
+  protected readonly verPasswordNueva = signal(false);
+  protected readonly errorPassword = computed(() => {
+    const p = this.passwordNueva();
+    return p.length > 0 && p.length < 8 ? 'La contraseña debe tener al menos 8 caracteres.' : null;
+  });
+
   protected readonly EstadoUsuario = EstadoUsuario;
 
   /** Filtro de la tabla: por rol o los inactivos (sobre la página cargada). */
@@ -181,7 +189,26 @@ export class Usuarios {
     this.formularioAbierto.set(true);
   }
 
+  protected asignarPassword(): void {
+    const usuario = this.editando();
+    const clave = this.passwordNueva();
+    if (!usuario || clave.length < 8) return;
+
+    this.guardando.set(true);
+    this.servicio.asignarPassword(usuario.usuarioId, clave).subscribe({
+      next: (r) => {
+        this.notificacion.exito(r.mensaje ?? 'Contraseña nueva asignada.');
+        this.guardando.set(false);
+        this.passwordNueva.set('');
+        this.verPasswordNueva.set(false);
+      },
+      error: () => this.guardando.set(false),
+    });
+  }
+
   protected cerrarFormulario(): void {
+    this.passwordNueva.set('');
+    this.verPasswordNueva.set(false);
     this.formularioAbierto.set(false);
     this.editando.set(null);
   }

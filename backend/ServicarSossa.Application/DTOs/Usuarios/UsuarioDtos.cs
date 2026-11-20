@@ -68,6 +68,15 @@ public class CambiarEstadoUsuarioDto
     public EstadoUsuario Estado { get; set; }
 }
 
+/// <summary>El Administrador asigna una contraseña nueva a un usuario que olvidó la suya.</summary>
+public class AsignarPasswordDto
+{
+    [Required(ErrorMessage = "La contraseña nueva es obligatoria.")]
+    [MinLength(8, ErrorMessage = "La contraseña debe tener al menos 8 caracteres.")]
+    [MaxLength(100, ErrorMessage = "La contraseña no puede superar los 100 caracteres.")]
+    public string PasswordNueva { get; set; } = string.Empty;
+}
+
 /// <summary>Salida pública de un usuario. Nunca expone el password_hash.</summary>
 public class UsuarioResponseDto
 {

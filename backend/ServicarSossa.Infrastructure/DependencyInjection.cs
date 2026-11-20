@@ -85,6 +85,7 @@ public static class DependencyInjection
         services.AddScoped<IPagoService, PagoService>();                 // Sprint 7
         services.AddScoped<IReporteService, ReporteService>();           // Sprint 8
         services.AddScoped<IAuditoriaService, AuditoriaService>();       // Bitácora de auditoría
+        services.AddScoped<IRespaldoService, RespaldoService>();         // Respaldo de datos (Administrador)
 
         return services;
     }

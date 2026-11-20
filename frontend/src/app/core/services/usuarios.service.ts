@@ -32,6 +32,11 @@ export class UsuariosService extends ApiBase {
     return this.http.patch<Usuario>(this.url(id, 'estado'), { estado });
   }
 
+  /** El Administrador asigna una contraseña nueva (queda en auditoría, sin la clave). */
+  asignarPassword(id: string, passwordNueva: string): Observable<{ mensaje?: string }> {
+    return this.http.patch<{ mensaje?: string }>(this.url(id, 'password'), { passwordNueva });
+  }
+
   /** Catálogo de roles, para poblar el selector del formulario. */
   getRoles(): Observable<Rol[]> {
     return this.http.get<Rol[]>(`${environment.apiUrl}/roles`);

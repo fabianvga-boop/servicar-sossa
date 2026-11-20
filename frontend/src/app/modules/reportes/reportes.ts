@@ -108,8 +108,38 @@ export class Reportes {
   /** "Del 1 al 4 de noviembre de 2026". */
   protected readonly textoPeriodo = computed(() => textoPeriodo(this.desde(), this.hasta()));
 
+  /** Respaldo de datos: cuándo fue el último y si hay uno en curso. */
+  protected readonly ultimoRespaldo = signal<{ fecha: string | null; usuario: string | null } | null>(null);
+  protected readonly respaldando = signal(false);
+
+  /** Días desde el último respaldo (null si nunca se hizo). */
+  protected readonly diasSinRespaldo = computed(() => {
+    const u = this.ultimoRespaldo();
+    if (!u) return undefined;
+    if (!u.fecha) return null;
+    return Math.floor((Date.now() - new Date(u.fecha).getTime()) / 86_400_000);
+  });
+
   constructor() {
     this.cargarBitacora();
+    this.cargarUltimoRespaldo();
+  }
+
+  private cargarUltimoRespaldo(): void {
+    this.servicio.ultimoRespaldo().subscribe((u) => this.ultimoRespaldo.set(u));
+  }
+
+  protected respaldar(): void {
+    this.respaldando.set(true);
+    this.servicio.respaldar().subscribe({
+      next: ({ blob, nombreArchivo }) => {
+        this.servicio.descargar(blob, nombreArchivo);
+        this.notificacion.exito(`Respaldo descargado: ${nombreArchivo}`);
+        this.respaldando.set(false);
+        this.cargarUltimoRespaldo();
+      },
+      error: () => this.respaldando.set(false),
+    });
   }
 
   protected elegirRango(rango: Rango): void {

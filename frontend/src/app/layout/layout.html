@@ -95,7 +95,7 @@
           }
           <span class="usuario-datos">
             <span class="usuario-nombre">{{ auth.nombreCompleto() }}</span>
-            <span class="usuario-rol">{{ auth.rol() }}</span>
+            <span class="usuario-rol">{{ auth.rol() === 'Mecanico' ? 'Mecánico' : auth.rol() }}</span>
           </span>
           <svg class="usuario-flecha" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="m6 9 6 6 6-6" />
@@ -113,7 +113,7 @@
               <span class="menu-usuario-datos">
                 <strong>{{ auth.nombreCompleto() }}</strong>
                 <span>{{ auth.sesion()?.username }}</span>
-                <span class="insignia insignia-roja menu-usuario-rol">{{ auth.rol() }}</span>
+                <span class="insignia insignia-roja menu-usuario-rol">{{ auth.rol() === 'Mecanico' ? 'Mecánico' : auth.rol() }}</span>
               </span>
             </div>
             <a routerLink="/perfil" role="menuitem" (click)="menuUsuarioAbierto.set(false)">

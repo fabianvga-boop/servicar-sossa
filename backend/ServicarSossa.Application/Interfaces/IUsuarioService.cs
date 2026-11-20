@@ -22,6 +22,10 @@ public interface IUsuarioService
     Task<Result<UsuarioResponseDto>> CambiarEstadoAsync(
         string id, CambiarEstadoUsuarioDto dto, string actorId, CancellationToken ct = default);
 
+    /// <summary>El Administrador asigna una contraseña nueva a un usuario (queda en auditoría, sin la clave).</summary>
+    Task<Result<bool>> AsignarPasswordAsync(
+        string id, AsignarPasswordDto dto, string actorId, CancellationToken ct = default);
+
     /// <summary>Sube o reemplaza la foto de perfil (JPG, PNG o WEBP, hasta 8 MB).</summary>
     Task<Result<UsuarioResponseDto>> SubirFotoAsync(
         string id, SubirFotoDto dto, CancellationToken ct = default);

@@ -180,7 +180,7 @@
           <select id="rolId" formControlName="rolId" [class.invalido]="invalido('rolId')">
             <option value="">Seleccione…</option>
             @for (rol of roles(); track rol.rolId) {
-              <option [value]="rol.rolId">{{ rol.nombreRol }}</option>
+              <option [value]="rol.rolId">{{ rol.nombreRol === 'Mecanico' ? 'Mecánico' : rol.nombreRol }}</option>
             }
           </select>
           @if (invalido('rolId')) {
@@ -214,6 +214,37 @@
         </div>
       </div>
     </form>
+
+    @if (editando()) {
+      <section class="clave-nueva">
+        <h3>Contraseña</h3>
+        <p class="campo-ayuda">Si la persona olvidó su contraseña, asígnele una nueva. Entréguesela en persona: podrá cambiarla después desde Mi perfil.</p>
+        <div class="campo">
+          <label for="passwordNueva">Contraseña nueva</label>
+          <div class="clave-nueva-fila">
+            <input
+              id="passwordNueva"
+              [type]="verPasswordNueva() ? 'text' : 'password'"
+              autocomplete="new-password"
+              [value]="passwordNueva()"
+              (input)="passwordNueva.set($any($event.target).value)"
+              [class.invalido]="!!errorPassword()"
+            />
+            <button type="button" class="btn btn-secundario btn-sm" (click)="verPasswordNueva.set(!verPasswordNueva())">
+              {{ verPasswordNueva() ? 'Ocultar' : 'Mostrar' }}
+            </button>
+          </div>
+          @if (errorPassword()) {
+            <span class="campo-error">{{ errorPassword() }}</span>
+          } @else {
+            <span class="campo-ayuda">Al menos 8 caracteres.</span>
+          }
+        </div>
+        <button type="button" class="btn btn-secundario" [disabled]="guardando() || passwordNueva().length < 8" (click)="asignarPassword()">
+          Asignar contraseña nueva
+        </button>
+      </section>
+    }
 
     <div pie>
       <button type="button" class="btn btn-secundario" (click)="cerrarFormulario()">Cancelar</button>

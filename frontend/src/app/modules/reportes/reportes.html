@@ -172,3 +172,26 @@
     />
   }
 </section>
+
+<section class="respaldo-datos ocultar-movil" aria-labelledby="titulo-respaldo">
+  <div class="respaldo-textos">
+    <h2 id="titulo-respaldo" class="titulo-lista">Respaldo de los datos</h2>
+    <p class="texto-tenue texto-sm">
+      Descargue una copia de todos los datos del taller (clientes, órdenes, repuestos, pagos). Guárdela en un lugar privado:
+      contiene información de los clientes. Las fotos no van en el archivo.
+    </p>
+    @if (ultimoRespaldo(); as u) {
+      <p class="texto-sm" [class.respaldo-viejo]="diasSinRespaldo() === null || (diasSinRespaldo() ?? 0) > 30">
+        @if (u.fecha) {
+          Último respaldo: {{ u.fecha | date: 'dd/MM/yyyy · HH:mm' }} por {{ u.usuario }}.
+          @if ((diasSinRespaldo() ?? 0) > 30) { Han pasado más de 30 días: conviene hacer uno nuevo. }
+        } @else {
+          Todavía no se descargó ningún respaldo desde el sistema.
+        }
+      </p>
+    }
+  </div>
+  <button type="button" class="btn btn-primario" [disabled]="respaldando()" (click)="respaldar()">
+    {{ respaldando() ? 'Preparando…' : 'Descargar respaldo' }}
+  </button>
+</section>

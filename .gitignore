@@ -17,6 +17,7 @@ npm-debug.log*
 appsettings.Development.json
 appsettings.Production.json
 appsettings.Local.json
+appsettings.Manual.json
 *.env
 .env.*
 
@@ -47,3 +48,5 @@ Desktop.ini
 
 # Respaldos de produccion: pueden contener datos reales del taller.
 respaldo_supabase_*.sql
+
+# Usuarios de prueba locales del manual

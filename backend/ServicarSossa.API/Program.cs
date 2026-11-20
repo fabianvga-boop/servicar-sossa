@@ -55,7 +55,9 @@ builder.Services.AddCors(opt => opt.AddPolicy(PoliticaCorsAngular, policy =>
               builder.Configuration.GetSection("Cors:OrigenesPermitidos").Get<string[]>()
               ?? ["http://localhost:4200"])
           .AllowAnyHeader()
-          .AllowAnyMethod()));
+          .AllowAnyMethod()
+          // Sin esto el navegador no puede leer el nombre del archivo que manda la API al descargar.
+          .WithExposedHeaders("Content-Disposition")));
 
 // --- Swagger con soporte para el token Bearer ------------------------------
 builder.Services.AddSwaggerGen(opt =>
