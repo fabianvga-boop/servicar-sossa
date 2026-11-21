@@ -69,9 +69,10 @@ public class DiagnosticosController(IDiagnosticoService service) : ApiController
 
     /// <summary>
     /// Registra la respuesta del cliente al presupuesto aproximado (Aprobado /
-    /// Rechazado). Solo con Aprobado se podrá crear la orden de trabajo.
+    /// Rechazado). Solo el Administrador la registra; con Aprobado se abre la orden de trabajo.
     /// </summary>
     [HttpPatch("{id}/respuesta")]
+    [Authorize(Roles = "Administrador")]
     [ProducesResponseType(typeof(DiagnosticoResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

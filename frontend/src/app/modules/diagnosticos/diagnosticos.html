@@ -131,7 +131,7 @@
         </span>
 
         <span class="acciones-fila">
-          @if (puedeResponder(d) && esSuyoOAdmin(d)) {
+          @if (puedeResponder(d) && auth.esAdministrador()) {
             <button type="button" class="btn btn-secundario btn-sm" (click)="abrirResponder(d)">
               Registrar respuesta
             </button>
@@ -157,7 +157,7 @@
               </svg>
             </summary>
             <div class="menu-contextual-panel">
-              @if (puedeResponder(d) && esSuyoOAdmin(d)) {
+              @if (puedeResponder(d) && auth.esAdministrador()) {
                 <button type="button" class="texto-verde" (click)="abrirResponder(d)">Registrar respuesta</button>
               }
               <button type="button" (click)="verDetalle(d)">Ver detalle</button>
@@ -589,7 +589,7 @@
       @if (puedeEditar(d)) {
         <button type="button" class="btn btn-secundario" (click)="abrirEditar(d)">Editar</button>
       }
-      @if (puedeResponder(d) && esSuyoOAdmin(d)) {
+      @if (puedeResponder(d) && auth.esAdministrador()) {
         <button type="button" class="btn btn-primario crece" (click)="abrirResponder(d)">Registrar respuesta</button>
       } @else {
         <button type="button" class="btn btn-secundario crece" (click)="detalle.set(null)">Cerrar</button>

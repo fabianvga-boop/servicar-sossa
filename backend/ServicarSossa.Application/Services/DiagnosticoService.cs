@@ -214,9 +214,10 @@ public class DiagnosticoService(
         if (diagnostico is null)
             return Result<DiagnosticoResponseDto>.NoEncontrado($"No existe el diagnóstico {id}.");
 
-        if (!esAdministrador && diagnostico.MecanicoId != usuarioId)
-            return Result<DiagnosticoResponseDto>.NoAutorizado(
-                "Solo puede registrar la respuesta de los diagnósticos que usted registró.");
+        // La decisión del cliente la registra el Administrador (también cuando él mismo diagnosticó).
+        if (!esAdministrador)
+            return Result<DiagnosticoResponseDto>.Fail(
+                "Solo el Administrador registra la respuesta del cliente al presupuesto.");
 
         if (diagnostico.Estado == EstadoDiag.Anulado)
             return Result<DiagnosticoResponseDto>.Fail(
@@ -259,17 +260,6 @@ public class DiagnosticoService(
         // Aprobado: se abre la orden en el acto, sin pedir fecha estimada —
         // rara vez se conoce de antemano, porque suelen surgir imprevistos que
         // retrasan la entrega. Queda editable después si el taller la calcula.
-        // Solo el administrador puede abrir órdenes; si responde un mecánico
-        // (caso excepcional), la aprobación queda registrada igual pero la
-        // orden se crea manualmente desde la pantalla de la orden.
-        if (!esAdministrador)
-        {
-            var actualizadoSinOrden = await diagnosticos.GetByIdCompletoAsync(id, ct);
-            return Result<DiagnosticoResponseDto>.Ok(
-                Mapear(actualizadoSinOrden!),
-                "Presupuesto aprobado. Un administrador debe crear la orden de trabajo.");
-        }
-
         var ordenCreada = await ordenes.CreateAsync(
             new OrdenRequestDto { DiagnosticoId = id }, usuarioId, ct);
 

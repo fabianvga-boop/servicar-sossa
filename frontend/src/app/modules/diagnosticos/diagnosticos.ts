@@ -307,7 +307,7 @@ export class Diagnosticos {
         const pedido = this.responderPendiente;
         this.responderPendiente = null;
         const diagnostico = pedido ? resultado.items.find((d) => d.diagnosticoId === pedido) : null;
-        if (diagnostico) this.abrirResponder(diagnostico);
+        if (diagnostico && this.auth.esAdministrador()) this.abrirResponder(diagnostico);
       },
       error: () => this.cargando.set(false),
     });
@@ -517,7 +517,7 @@ export class Diagnosticos {
     );
   }
 
-  /** El presupuesto lo responde el Administrador o el mecánico que lo hizo. */
+  /** El diagnóstico lo edita el Administrador o el mecánico que lo hizo. */
   protected esSuyoOAdmin(diagnostico: Diagnostico): boolean {
     return this.auth.esAdministrador() || diagnostico.mecanicoId === this.auth.sesion()?.usuarioId;
   }
